@@ -36,24 +36,36 @@ p126_host_entry:
         ; native video mapping before touching the DS12887 CMOS ports.
         ; This follows Project125: #EFF7 reset, #7FFD setup, TR-DOS #3D2F
         ; trampoline for #0177, then #3FF7/#7FF7/#FFF7 shadow registers.
+        ld      hl, p126_log_video_begin
+        call    p126_host_debug_string
         call    p126_atm_video_init
+        ld      hl, p126_log_video_done
+        call    p126_host_debug_string
 
         ; Probe the Project125 DS12887 RTC backend only after shadow-port
         ; decoding is active.
 
         call    DS12887_PROBE
+        ld      hl, p126_log_rtc_done
+        call    p126_host_debug_string
 
         ld      hl, p126_host_version_text
         call    p126_host_debug_string
         call    p126_host_log_prefix
         call    p126_ipc_emit_version
 
+        ld      hl, p126_log_console_begin
+        call    p126_host_debug_string
         call    BIOS_DebugConsole_Init
         call    BIOS_DebugConsole_Clear
         call    BIOS_DebugConsole_DrawInterface
         ld      hl, p126_host_ui_log
         call    p126_host_console_string
+        ld      hl, p126_log_console_done
+        call    p126_host_debug_string
         call    p126_catalog_initialize
+        ld      hl, p126_log_catalog_return
+        call    p126_host_debug_string
 
 p126_host_idle:
         call    p126_catalog_poll_keyboard
@@ -152,6 +164,13 @@ p126_host_log_prefix:
         pop     bc
         pop     af
         ret
+
+p126_log_video_begin:   db "[BOOT] ATM VIDEO INIT BEGIN",13,10,0
+p126_log_video_done:    db "[BOOT] ATM VIDEO INIT DONE",13,10,0
+p126_log_rtc_done:      db "[BOOT] RTC PROBE RETURN",13,10,0
+p126_log_console_begin: db "[BOOT] CONSOLE INIT BEGIN",13,10,0
+p126_log_console_done:  db "[BOOT] CONSOLE INIT DONE",13,10,0
+p126_log_catalog_return: db "[BOOT] CATALOG INIT RETURN",13,10,0
 
 p126_host_version_text:
         db "[P126 ATM HOST v0.1.0]", 13, 10, 0
