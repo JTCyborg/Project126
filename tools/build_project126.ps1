@@ -86,6 +86,22 @@ try {
         Write-Host "[BUILD] Symbol map bytes=$((Get-Item $map).Length)"
     }
 
+    # Assemble stage-0 at its execution address; SAVEBIN emits only code bytes.
+    Write-Host "[BUILD] Project126 GS105a stage-0 bootstrap"
+    & $assembler --msg=all "--lst=build/P126_BOOTSTRAP.lst" --lstlab=sort "--sym=build/P126_BOOTSTRAP.map" "--raw=build/P126_BOOTSTRAP_AUDIT.bin" "neogs_sub/p126_bootstrap_assemble.asm"
+    if ($LASTEXITCODE -ne 0) {
+        throw "SjASMPlus failed for Project126 bootstrap with exit code $LASTEXITCODE"
+    }
+    $bootstrapBinary = Join-Path $build "P126_BOOTSTRAP.bin"
+    if (-not (Test-Path $bootstrapBinary)) {
+        throw "P126 bootstrap SAVEBIN output was not produced."
+    }
+    $bootstrapBytes = (Get-Item $bootstrapBinary).Length
+    if ($bootstrapBytes -lt 1 -or $bootstrapBytes -gt 256) {
+        throw "P126 bootstrap size $bootstrapBytes is outside the supported 1..256 byte ROM-load block."
+    }
+    Write-Host "[BUILD] P126_GS105A_BOOTSTRAP v0.1.0 bytes=$bootstrapBytes"
+
     # The TR-DOS image is always rebuilt from scratch. Never keep an old disk
     # image if the assembler or a required project file fails.
     Remove-Item -Force -ErrorAction SilentlyContinue $diskImage
@@ -136,6 +152,7 @@ try {
         @{ Name = ($BootName.PadRight(8) + "B"); Label = "$BootName.B" },
         @{ Name = ($HostName.PadRight(8) + "C"); Label = "$HostName.C" },
         @{ Name = "X86CORE C"; Label = "X86CORE.C" },
+        @{ Name = "P126BOOTC"; Label = "P126BOOT.C" },
         @{ Name = "BIOS1   C"; Label = "BIOS1.C"; ExpectedLength = 8192; ExpectedSectors = 32 },
         @{ Name = "BIOS2   C"; Label = "BIOS2.C"; ExpectedLength = 8192; ExpectedSectors = 32 },
         @{ Name = "COMPAQ  C"; Label = "COMPAQ.C"; ExpectedLength = 8192; ExpectedSectors = 32 }

@@ -52,6 +52,19 @@ p126_host_entry:
 
         ; Only after the TR-DOS directory read is complete may ATM video
         ; paging and shadow-port decoding be enabled.
+        ld      hl, p126_log_ngs_begin
+        call    p126_host_debug_string
+        call    p126_neogs_startup
+        jr      c,p126_host_ngs_start_failed
+        ld      a,1
+        ld      (p126_host_ngs_ready),a
+        ld      hl,p126_log_ngs_ready
+        call    p126_host_debug_string
+        jr      p126_host_ngs_start_done
+p126_host_ngs_start_failed:
+        ld      hl,p126_log_ngs_failed
+        call    p126_host_debug_string
+p126_host_ngs_start_done:
         ld      hl, p126_log_video_begin
         call    p126_host_debug_string
         call    p126_atm_video_init
@@ -98,8 +111,8 @@ p126_host_console_string:
 
 p126_host_ui_log:
         db "ATM HOST SHELL INITIALIZED", 13, 10
-        db "NeoGS firmware upload: NOT IMPLEMENTED", 13, 10
-        db "8086 execution: NOT STARTED", 13, 10, 0
+        db "NeoGS BOOTSTRAP LOADER ENABLED",13,10
+        db "8086 execution: NOT STARTED",13,10,0
 
 ; ATM debug output is independent of NeoGS debug output.
 p126_host_debug_string:
@@ -181,6 +194,11 @@ p126_host_log_prefix:
         pop     af
         ret
 
+p126_host_ngs_ready: db 0
+
+p126_log_ngs_begin: db "[BOOT] NEOGS RESIDENT START BEGIN",13,10,0
+p126_log_ngs_ready: db "[BOOT] NEOGS RESIDENT READY",13,10,0
+p126_log_ngs_failed: db "[BOOT] NEOGS RESIDENT START FAILED",13,10,0
 p126_log_trdos_begin:   db "[BOOT] TRDOS DIRECTORY READ BEGIN",13,10,0
 p126_log_trdos_done:    db "[BOOT] TRDOS DIRECTORY READ RETURN",13,10,0
 p126_log_video_begin:   db "[BOOT] ATM VIDEO INIT BEGIN",13,10,0
@@ -196,6 +214,7 @@ p126_host_version_text:
         INCLUDE "atm_host/ds12887_rtc.asm"
         INCLUDE "atm_host/neogs_ipc.asm"
         INCLUDE "atm_host/p126_disk_catalog.asm"
+        INCLUDE "atm_host/p126_neogs_loader.asm"
 
 ; Project125-derived ATM-native text console, relocated to window 2.
 ; Its renderer maps video pages only for each write and restores host pages.

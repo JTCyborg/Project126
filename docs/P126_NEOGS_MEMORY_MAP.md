@@ -83,3 +83,10 @@ The common API is `x86_guest_mem_read8` and `x86_guest_mem_write8`. ROM writes f
 - TR-DOS image generated at 655,360 bytes. `X86CORE.C` is 1,616 bytes / 7 sectors; BIOS1.C, BIOS2.C and COMPAQ.C are each 8,192 bytes / 32 sectors. Listings, maps and disk artifact were published.
 - The disk assembler retains one pre-existing generated-path backslash warning; the NeoGS and IPC assembly units report no warnings.
 - **Not verified:** actual WIN3 paging/read/write on target hardware, ROM contents in physical slots, guest BIOS POST, VGA plane semantics or scanout. This is BUILD PASS only.
+
+
+## Resident startup mapping revision 0.3
+
+The first executable resident image is loaded by the Project126 GS105a stage-0 bootstrap into physical page 00 and entered at logical 0000h. The resident entry enables NOROM/EXPAG, maps WIN0 (port 20h) to physical page 00 and WIN1 (port 21h) to physical page 03, and moves the operational stack to logical 7FFEh. Temporary bootstrap execution uses WIN1/page 03 and WIN3/page 02 with its stack at FFFEh; after handoff the resident kernel owns WIN1/page 03 for stack and WIN3 remains the volatile bank window. WIN2 is initialized to physical page 01. The resident image is constrained to 16 KiB until an overlay manager is implemented.
+
+ATM reads P126BOOT.C and X86CORE.C from TR-DOS before video paging is enabled. P126BOOT.C is a one-sector GS105a #14/#13 bootstrap; X86CORE.C is the resident entry plus IPC and x86 core. DBIT/GSDAT is used only during this ROM bootstrap. After A2h, application frames use ABI 1.0 DMA exclusively.

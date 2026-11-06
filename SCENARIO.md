@@ -511,3 +511,26 @@ Test order after BUILD PASS:
 7. Repeat at 16 KiB boundaries, including an 18-byte empty-payload frame and the 16384-byte maximum frame.
 
 BUILD PASS is assembly/package verification only. Runtime checks are required for HARDWARE PASS.
+
+
+## 16. Resident NeoGS firmware startup — implementation v0.1.0
+
+The previously missing resident startup path is now implemented in source and added to the TR-DOS image:
+
+- `P126BOOT.C` is a one-sector GS105a stage-0 bootstrap, loaded at 4000h using ROM #14 and entered using ROM #13.
+- The ATM host finds `P126BOOT.C` and `X86CORE.C` in the preloaded TR-DOS directory and streams their sectors using the established C=5/B=1 TR-DOS read path before ATM video initialization.
+- Stage-0 switches to writable RAM-over-ROM, sets temporary WIN2/WIN3 pages and a temporary stack, receives the bounded resident image over the stock-ROM DBIT bootstrap channel, then jumps to 0000h.
+- The resident entry maps WIN0 to page 00 and WIN1 to page 03, moves the stack to 7FFEh, initializes WIN2/WIN3, runs the CRC16 self-test and returns A2h to ATM.
+- The resident main loop repeatedly calls `p126_ngs_ipc_dispatch_once`. A valid E0h frame is received into DMA page 42h and CRC-checked before a diagnostic success message.
+
+DBIT/GSDAT remains confined to the stock-ROM bootstrap sequence; post-start application traffic is DMA-only. The first resident image must fit within one 16 KiB page. The 256 KiB kernel allocation remains reserved for future overlays.
+
+Test checklist after BUILD PASS:
+1. Confirm ATM log reaches `NEOGS RESIDENT READY` and NeoGS #EF prints `P126 RESIDENT v0.1.0` and `ABI CRC16 PASS`.
+2. Confirm the resident loop remains responsive with no CBIT command pending.
+3. Send a known 18-byte empty-payload E0h frame; verify DMA READY, FFh completion, CRC acceptance and `DMA FRAME VALID`.
+4. Send a frame with corrupted CRC; verify `DMA FRAME REJECTED`.
+5. Suppress FFh; verify bounded timeout and DMA disable.
+6. Confirm ATM remains in its UI after a loader error and reports startup failure.
+
+BUILD PASS proves assembly and TR-DOS packaging only. ROM boot and all DMA/paging checks require target hardware or a hardware-accurate emulator.

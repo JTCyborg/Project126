@@ -243,3 +243,13 @@ A committed source file is not automatically a successful runtime or hardware te
 - Linked `neogs_sub/p126_ipc.asm` into the assembled `X86CORE.C` image after CPU state and ALU. The standalone IPC audit binary/listing/map remains available.
 - **Not implemented:** no resident firmware startup/main loop currently calls `p126_ngs_ipc_dispatch_once`; final WIN0-WIN2 placement, firmware load/entry, and active polling loop remain open. This commit provides a callable dispatcher in the packaged core, not a running resident endpoint.
 - **Verification target:** BUILD PASS must confirm the enlarged core and TR-DOS packaging. Hardware tests must exercise E0h READY, DMA payload, FFh completion, CRC acceptance/rejection, timeout cleanup, and WIN3 page mapping. No hardware PASS is claimed.
+
+
+## Resident startup implementation v0.1.0
+
+- Added GS105a stage-0 source `neogs_sub/p126_bootstrap.asm`, assembled at 4000h and emitted as a bounded `P126BOOT.C` TR-DOS file (maximum one 256-byte sector).
+- Added ATM loader `atm_host/p126_neogs_loader.asm`. It locates the exact 8.3 files in the preloaded directory, reads TR-DOS sectors through C=5/B=1, resets/probes the stock GS105a ROM, loads stage-0 with #14, enters it with #13, streams the resident core and requires A2h before reporting success.
+- Added resident entry/vector and main polling loop to X86CORE. It establishes WIN0/page00, WIN1/page03, stack 7FFEh, initializes WIN2/WIN3, runs the CRC16 self-test, sends A2h, then continuously polls the ABI 1.0 dispatcher.
+- Added P126BOOT.C to the TR-DOS image and build validation. ATM performs startup file reads before video initialization, preserving the established TR-DOS paging order.
+- DBIT/GSDAT is explicitly confined to stock-ROM bootstrap; after A2h, application payloads are DMA-only.
+- **Not claimed:** no hardware verification yet for GSCTR reset timing, ROM #14/#13 sequence, paging, A2h handshake, DMA timing or frame integrity. The resident loop currently validates incoming frames and logs success/rejection; service dispatch and reverse DMA remain future work.
