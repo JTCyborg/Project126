@@ -90,3 +90,12 @@ The common API is `x86_guest_mem_read8` and `x86_guest_mem_write8`. ROM writes f
 The first executable resident image is loaded by the Project126 GS105a stage-0 bootstrap into physical page 00 and entered at logical 0000h. The resident entry enables NOROM/EXPAG, maps WIN0 (port 20h) to physical page 00 and WIN1 (port 21h) to physical page 03, and moves the operational stack to logical 7FFEh. Temporary bootstrap execution uses WIN1/page 03 and WIN3/page 02 with its stack at FFFEh; after handoff the resident kernel owns WIN1/page 03 for stack and WIN3 remains the volatile bank window. WIN2 is initialized to physical page 01. The resident image is constrained to 16 KiB until an overlay manager is implemented.
 
 ATM reads P126BOOT.C and X86CORE.C from TR-DOS before video paging is enabled. P126BOOT.C is a one-sector GS105a #14/#13 bootstrap; X86CORE.C is the resident entry plus IPC and x86 core. DBIT/GSDAT is used only during this ROM bootstrap. After A2h, application frames use ABI 1.0 DMA exclusively.
+
+
+## ROM independence and full physical RAM ownership
+
+The GS105a stock ROM is a temporary bootstrap transport only. Project126 stage-0 is uploaded with ROM command #14 and entered with #13. The bootstrap sets GSCFG0.NOROM (local port #0F, bit 0) before handing execution to the resident image; it also enables EXPAG. No runtime memory-capacity decision may depend on the stock ROM #20 response.
+
+The 4 MiB physical map describes the target addressable resource: 256 pages of 16 KiB, 000000h–3FFFFFh. Pages 84h–FFh are currently unassigned expansion reserve, not unavailable memory. The runtime must be able to discover/test all physically installed pages and allocate the currently unassigned range when needed. A complete 256-page destructive/non-destructive memory test strategy must preserve the executing kernel, stack, bootstrap, DMA and IPC state (for example by using a reserved test window and restoring its contents).
+
+The previously observed ROM response 3F:40:00 is diagnostic output from the stock ROM only; it is not authoritative proof that the top three pages are absent. The ATM-side pre-bootstrap check requiring RAM24 high byte >= #40 is superseded and must be removed from the startup path. Actual NOROM operation, page detection and full-range read/write retention remain HARDWARE-UNVERIFIED.

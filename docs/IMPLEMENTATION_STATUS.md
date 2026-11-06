@@ -301,3 +301,26 @@ The ATM log `DMA SMOKE FRAME SENT` means the transport handshake completed; it i
 - Kept the Project126 minimum at 4 MiB; no threshold relaxation or inferred RAM-size correction was made.
 - At this point the stock GS105a ROM, not Project126 firmware, owns the NeoGS CPU. Therefore a Project126 `[NGS]` message cannot be produced during this exchange. NeoGS-side diagnostics are independent and begin only after Project126 bootstrap is uploaded and entered.
 - **Verification:** source change pending CI and target run. The raw byte values and whether the threshold passes remain unknown until the user tests the new TR-DOS image.
+
+
+## Архитектурное решение: Project126 не зависит от объёма, сообщаемого штатным ROM
+
+**Решение зафиксировано 2026-11-07; имеет приоритет над предыдущими записями о пороге GS105a #20.**
+
+- Штатное GS105a ROM используется только как временный транспорт первоначальной загрузки: #14 загружает Project126 bootstrap, #13 передаёт ему управление.
+- После старта bootstrap отключает штатное ROM через GSCFG0 (#0F), NOROM bit 0. В текущем исходнике neogs_sub/p126_bootstrap.asm это уже выполняется инструкцией or #09 после чтения/маскирования GSCFG0; bit 3 EXPAG также устанавливается.
+- ATM loader сейчас ошибочно требует, чтобы ответ ROM #20 имел high byte не меньше #40, и завершает запуск до загрузки собственного bootstrap. Это условие признано устаревшим и должно быть удалено из рабочего загрузочного пути. ROM #20 может оставаться только необязательной диагностикой, не влияющей на решение о запуске.
+- После передачи управления собственная прошивка должна выполнить независимое обнаружение/тестирование физической RAM и управлять страницами самостоятельно.
+- Целевой диапазон: 4 MiB / 256 страниц по 16 KiB (000000h–3FFFFFh). Действующая карта распределяет страницы 00h–83h, а 84h–FFh помечает резервом. Резерв — свободное распределение, не аппаратное ограничение.
+- Необходимо разработать безопасный полный тест всех 256 страниц с проверкой записи/чтения и целостности, исключив повреждение кода, стека и активных DMA/IPC областей.
+- ROM-ответ 3F:40:00 — только наблюдение старого ROM (4,145,152 байта); он не доказывает, что физически отсутствуют три верхние страницы. Версия ROM не является входным условием Project126.
+- **Статус реализации:** архитектурное решение принято; загрузчик ATM ещё содержит старую проверку и требует изменения. Наличие NOROM в bootstrap подтверждено исходным кодом, но фактическое отключение ROM и полный тест 4 MiB на оборудовании пока не подтверждены. BUILD/HARDWARE PASS не заявляются.
+
+
+## Independent NeoGS debug stream; ROM RAM-size probe removed from startup gate (2026-11-07)
+
+- Diagnosis: the user's log stopped at stage G, the ATM-side GS105a #20 4 MiB threshold check. Project126 bootstrap had not been entered, so no Project126-originated NeoGS #EF message was possible. The existing resident image already contains direct NeoGS #EF messages (`P126 RESIDENT`, `ABI CRC16 PASS`, DMA frame valid/rejected), but those occur only after successful stage-0 and resident streaming.
+- ATM loader now retains GS105a cold restart #F4 but skips #20 entirely and no longer gates Project126 startup on stock-ROM RAM reporting.
+- `neogs_sub/p126_bootstrap.asm` now emits `[NGS] BOOTSTRAP ENTER` directly to NeoGS #EF and `[NGS] NOROM ENABLED` after writing GSCFG0 with NOROM/EXPAG bits. ATM does not synthesize these messages.
+- Expected NeoGS diagnostics after target run: BOOTSTRAP ENTER -> NOROM ENABLED -> P126 RESIDENT v0.1.0 -> ABI CRC16 PASS. These are separate from the ATM #EF stream.
+- **Status:** source changes committed; CI/build and one-sector bootstrap size verification pending; target hardware verification pending. The actual 4 MiB page test is not implemented by this diagnostic change.

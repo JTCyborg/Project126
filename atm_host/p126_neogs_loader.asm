@@ -35,28 +35,16 @@ p126_neogs_startup::
         or      a
         jp      z,p126_neogs_boot_file_bad
 
-        ; Use the proven GS105a ROM cold-restart path (#F4), not a
-        ; raw GSCTR reset. Retry once if a stale DMA transaction consumes
-        ; the first restart command as its end marker.
-        ld      a,'A'                 ; A: GS105a #F4 cold restart / CBIT wait
+        ; Cold-restart the GS105a ROM only to enter its known bootstrap
+        ; receive state. Do NOT query #20: its RAM-size report is not an
+        ; authority for Project126 physical memory and must not gate startup.
+        ld      a,'A'
         ld      (p126_neogs_startup_stage),a
         ld      a,#F4
         call    p126_neogs_send_command_long
         jp      c,p126_neogs_ram_bad
-        ld      a,'B'                 ; B: first #20 RAM probe
-        ld      (p126_neogs_startup_stage),a
-        call    p126_neogs_probe_rom_ram
-        jr      nc,.p126_neogs_stock_rom_ready
-        ld      a,'H'                 ; H: retry #F4 after failed first probe
-        ld      (p126_neogs_startup_stage),a
-        ld      a,#F4
-        call    p126_neogs_send_command_long
-        jp      c,p126_neogs_ram_bad
-        ld      a,'B'                 ; B: retry #20 RAM probe
-        ld      (p126_neogs_startup_stage),a
-        call    p126_neogs_probe_rom_ram
-        jp      c,p126_neogs_ram_bad
-.p126_neogs_stock_rom_ready:
+
+
 
         ; GS105a #14 receives P126BOOT at logical 4000h.
         ld      a,'4'
