@@ -1,6 +1,7 @@
 ; =========================================================================
 ; PROJECT126 — stage-0 bootstrap assembly unit, executable at 4000h.
 ; =========================================================================
+        DEVICE ZXSPECTRUM128
         ORG #4000
         INCLUDE "neogs_sub/p126_bootstrap.asm"
         ASSERT p126_bootstrap_start = #4000
