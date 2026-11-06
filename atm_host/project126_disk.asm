@@ -17,9 +17,6 @@
 ; -------------------------------------------------------------------------
 ; ATM resident program, loaded by boot.B at 6000h.
 ; -------------------------------------------------------------------------
-P126_HOST_LOAD_ADDRESS EQU 24576
-P126_HOST_ENTRY_POINT  EQU P126_HOST_LOAD_ADDRESS+9
-
         PAGE 0
         ORG P126_HOST_LOAD_ADDRESS
         INCLUDE "atm_host/project126_main.asm"
