@@ -2,16 +2,24 @@
 
 This document records actual artifacts and their verification state; it is not a projection of the roadmap.
 
-## ATM host IPC module
+## ATM host IPC transport primitives
 
-- ATM-side source: `atm_host/neogs_ipc.asm`, public interface: `atm_host/neogs_ipc.inc`.
-- Assembly unit: `atm_host/neogs_ipc_assemble.asm`, source version `P126 ATM_IPC v0.1.0`.
-- Implements bounded CBIT/DBIT polling, command transmission through GSCOM, byte transmission/reception through GSDAT, and an ATM-side version banner on the independent #EF debug port.
-- Handshake semantics follow the established Project125 host transport v2 implementation.
-- ATM build outputs: `build/ATM_IPC.bin`, `build/ATM.lst`, `build/ATM.map`.
-- ATM assembly origin is image-relative `ORG 0000h`; the final host load address is not assigned.
-- Not yet implemented: application command schema, versioned request frames, sequence IDs, CRC, retry/deduplication, DMA aperture and host-service ABIs. These remain explicit interface work, not implied by successful assembly.
-- Status: **BUILD PASS** for ATM assembly in GitHub Actions run `42274548106` (commit `20f5945e47f118706821d6d47b237be8b9b160a3`); 235 source lines, 0 errors, 0 warnings, 181-byte binary, 14,766-byte listing and 1,407-byte symbol map. No live ATM↔NeoGS hardware test has been performed.
+- ATM-side source: `atm_host/neogs_ipc.asm`, public interface: `atm_host/neogs_ipc.inc`; assembly unit: `atm_host/neogs_ipc_assemble.asm`.
+- ATM source version is now `P126 ATM_IPC v0.2.0`; the common ABI constants are in `shared/p126_ipc_protocol.inc`.
+- Existing bounded CBIT/DBIT polling, GSCOM command and legacy GSDAT byte helpers remain available. GSDAT helpers are compatibility/bootstrap primitives, not the application payload transport.
+- Added ATM CRC-16/CCITT-FALSE byte-update routine and executable standard-vector self-test (123456789 → 29B1h). Startup does not call the self-test yet.
+- ATM assembly origin remains image-relative `ORG 0000h`; final host load address is not assigned.
+- Historical BUILD PASS for v0.1.0 is not evidence for v0.2.0. Fresh CI build is required. No live Project126 DMA/IPC hardware test has been performed.
+
+## Unified DMA/IPC ABI 1.0
+
+- Normative specification: `docs/P126_DMA_IPC_PROTOCOL.md`; architecture reference: `SCENARIO.md` section 7.1.1.
+- Fixed: control/data plane separation; ATM-facing DMA aperture contract; NeoGS-only DMA register ownership; GSCOM commands E0h..E3h and FFh end marker; 18-byte P126 frame header; little-endian fields; message types/flags; CRC-16/CCITT-FALSE; per-direction sequence rules; duplicate suppression; ordered fragmentation; status codes; initial service namespace; READY/end/CBIT completion lifecycle.
+- Added shared constants in `shared/p126_ipc_protocol.inc`, imported by the ATM IPC public include.
+- Added ATM-side CRC update and standard test-vector routine in `atm_host/neogs_ipc.asm`.
+- **IN PROGRESS:** only the contract and ATM CRC primitive are implemented. Complete frame encode/decode, DMA send/receive, session negotiation, sequence state, NeoGS endpoint, fragment reassembly and service dispatch remain unimplemented.
+- **OPEN / MUST NOT GUESS:** final ATM and NeoGS staging-buffer addresses, NeoGS 4 MiB resident memory reservations, ATM paging/buffer placement and final DMA window integration. Project125 physical addresses/layout are reference material, not Project126 allocations.
+- **Verification:** no fresh build for ABI 1.0 has yet been recorded; CRC self-test has not run on target hardware. No DMA direction is claimed as Project126 HARDWARE PASS.
 
 ## Build pipeline and address-placement audit
 
