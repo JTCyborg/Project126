@@ -10,7 +10,8 @@ P126_CATALOG_ENTRY_SIZE   EQU 16
 P126_CATALOG_VISIBLE_ROWS EQU 9
 P126_CATALOG_FIRST_ROW    EQU 2
 
-; Called after the ATM screen and DS12887 initialization.
+; Called after ATM video, RTC and console initialization.
+; Disk I/O has already been completed during the legacy TR-DOS boot phase.
 p126_catalog_initialize::
         ld      hl, p126_log_catalog_enter
         call    p126_catalog_log
@@ -19,10 +20,19 @@ p126_catalog_initialize::
         ld      (p126_catalog_selected), a
         ld      (p126_catalog_scroll), a
 
-        ld      hl, p126_log_read_begin
-        call    p126_catalog_log
+        ld      a, (p126_catalog_preloaded)
+        or      a
+        jr      nz, .catalog_data_preloaded
+        ; Defensive fallback for standalone callers; normal startup preloads
+        ; the directory before ATM video initialization.
         call    p126_catalog_read_disk
-        jr      c, .catalog_read_failed
+        ld      a, 1
+        ld      (p126_catalog_preloaded), a
+
+.catalog_data_preloaded:
+        ld      a, (p126_catalog_io_result)
+        or      a
+        jr      nz, .catalog_read_failed
 
         ld      hl, p126_log_read_ok
         call    p126_catalog_log
@@ -187,9 +197,9 @@ p126_catalog_wait_release:
 
 ; -------------------------------------------------------------------------
 ; TR-DOS directory read.
-; The ROM gateway is the same #3D13 API used by Project125:
-;   C=1, B=0, A=drive number — select drive A.
-;   C=5, B=8, D=0, E=0, HL=#C800 — read the 8 catalogue sectors.
+; Executed before p126_atm_video_init, using Project125's legacy mapping.
+; C=5 reads exactly one 256-byte sector (B=1); eight calls stage the
+; 2 KiB directory at #C800..#CFFF.
 ; -------------------------------------------------------------------------
 p126_catalog_read_disk:
         ld      hl, p126_log_disk_enter
@@ -201,7 +211,6 @@ p126_catalog_read_disk:
         push    ix
         push    iy
 
-        ; Preserve the alternate Z80 register banks across the TR-DOS ROM.
         exx
         push    bc
         push    de
@@ -213,80 +222,52 @@ p126_catalog_read_disk:
 
         ld      (p126_catalog_saved_sp), sp
         ld      sp, #BFFF
-        ld      iy, #5C3A
-
-        ; Select drive A and synchronize the TR-DOS system drive variables.
-        xor     a
-        ld      (#5D08), a
-        ld      (#5D09), a
-        ld      (#5D19), a
-        ld      (#5CF6), a
-        ld      (#5CF8), a
-        ld      (#5CF9), a
-
-        ; The Project125 TR-DOS driver configures the 80-track, double-sided
-        ; geometry before issuing directory-sector reads.
-        ld      a, #83
-        ld      (#5CC8), a
-        ld      a, #FF
-        ld      (#5CD8), a
-        xor     a
-        ld      (#5CD6), a
-        ld      (#5D0F), a
-        ld      (#5D10), a
-
-        ld      bc, #0001
-        xor     a
-        call    #3D13
-
-        ld      hl, p126_log_drive_selected
-        call    p126_catalog_log
-        ld      a, (#5D0F)
-        ld      b, a
-        ld      a, (#5D10)
-        or      b
-        jp      nz, .catalog_io_error
-
-        ; Read the complete 128-entry directory (8 x 256-byte sectors).
-        ld      hl, P126_CATALOG_BUFFER
-        ld      de, #0000
-        ld      bc, #0805
-        xor     a
-        ld      (#5D0F), a
-        ld      (#5D10), a
-        ld      (#5D11), a
-        ld      hl, p126_log_sector_read_call
-        call    p126_catalog_log
-        call    #3D13
-        ld      hl, p126_log_sector_read_return
-        call    p126_catalog_log
-
-        ; Wait for the TR-DOS/VG93 command flag to return to idle.
-        ld      bc, #FFFF
-.catalog_wait_vg93:
-        ld      a, (#5D11)
-        or      a
-        jr      z, .catalog_vg93_ready
-        dec     bc
-        ld      a, b
-        or      c
-        jr      nz, .catalog_wait_vg93
-        jp      .catalog_io_error
-
-.catalog_vg93_ready:
-        ld      a, (#5D0F)
-        ld      b, a
-        ld      a, (#5D10)
-        or      b
-        jp      nz, .catalog_io_error
 
         xor     a
         ld      (p126_catalog_io_result), a
-        ld      hl, p126_log_vg93_idle
-        call    p126_catalog_log
+        ld      (p126_catalog_sector_index), a
+        ld      a, #C8
+        ld      (p126_catalog_buffer_ptr+1), a
+        xor     a
+        ld      (p126_catalog_buffer_ptr), a
+
+.catalog_read_sector:
+        ld      a, (p126_catalog_sector_index)
+        cp      8
+        jr      nc, .catalog_sectors_complete
+
+        ld      a, (p126_catalog_sector_index)
+        ld      e, a
+        ld      d, 0
+        ld      hl, (p126_catalog_buffer_ptr)
+        ld      b, 1
+        ld      c, 5
+        xor     a
+        ld      (#5D0F), a
+        ld      (#5D10), a
+        call    #3D13
+
+        ld      a, (#5D0F)
+        ld      b, a
+        ld      a, (#5D10)
+        or      b
+        jr      nz, .catalog_sector_error
+
+        ld      hl, (p126_catalog_buffer_ptr)
+        ld      de, #0100
+        add     hl, de
+        ld      (p126_catalog_buffer_ptr), hl
+        ld      a, (p126_catalog_sector_index)
+        inc     a
+        ld      (p126_catalog_sector_index), a
+        jr      .catalog_read_sector
+
+.catalog_sectors_complete:
+        xor     a
+        ld      (p126_catalog_io_result), a
         jr      .catalog_restore_stack
 
-.catalog_io_error:
+.catalog_sector_error:
         ld      a, 1
         ld      (p126_catalog_io_result), a
 
@@ -517,8 +498,8 @@ p126_log_catalog_enter:       db "[CAT] initialize ENTER",13,10,0
 p126_log_read_begin:           db "[CAT] read_disk BEGIN",13,10,0
 p126_log_disk_enter:           db "[CAT] TRDOS routine ENTER",13,10,0
 p126_log_drive_selected:       db "[CAT] drive-select RETURN",13,10,0
-p126_log_sector_read_call:     db "[CAT] directory READ CALL C=5 B=8",13,10,0
-p126_log_sector_read_return:   db "[CAT] directory READ RETURN",13,10,0
+p126_log_sector_read_call:     db "[CAT] directory READ CALL C=5 B=1",13,10,0
+p126_log_sector_read_return:   db "[CAT] directory SECTOR RETURN",13,10,0
 p126_log_vg93_idle:            db "[CAT] VG93 IDLE",13,10,0
 p126_log_io_error:             db "[CAT] IO RESULT=ERROR",13,10,0
 p126_log_io_success:           db "[CAT] IO RESULT=OK",13,10,0
@@ -538,6 +519,9 @@ p126_catalog_row:      db 0
 p126_catalog_key:      db 0
 p126_catalog_scan_result: db 0
 p126_catalog_io_result: db 0
+p126_catalog_preloaded: db 0
+p126_catalog_sector_index: db 0
+p126_catalog_buffer_ptr: dw P126_CATALOG_BUFFER
 p126_catalog_saved_sp: dw 0
 p126_catalog_line:     db "            ", 0
 p126_catalog_empty_text: db "NO TR-DOS FILES", 0
