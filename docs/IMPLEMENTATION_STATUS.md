@@ -8,6 +8,7 @@ This document records actual artifacts and their verification state; it is not a
 - ATM source version is now `P126 ATM_IPC v0.2.0`; the common ABI constants are in `shared/p126_ipc_protocol.inc`.
 - Existing bounded CBIT/DBIT polling, GSCOM command and legacy GSDAT byte helpers remain available. GSDAT helpers are compatibility/bootstrap primitives, not the application payload transport.
 - Added ATM CRC-16/CCITT-FALSE byte-update routine and executable standard-vector self-test (123456789 → 29B1h). Startup does not call the self-test yet.
+- Added NeoGS-side counterpart in `neogs_sub/p126_ipc.asm`, with standalone audit unit `neogs_sub/p126_ipc_assemble.asm`; it uses the same shared constants and test vector. This is a reusable primitive, not yet connected to a resident command loop.
 - ATM assembly origin remains image-relative `ORG 0000h`; final host load address is not assigned.
 - **BUILD PASS for ATM IPC v0.2.0:** GitHub Actions run [42303249684](https://github.com/JTCyborg/Project126/actions/runs/42303249684), commit `27416c290b7d3f95b3cf98f8825c860e7c3abcef`; SjASMPlus assembly and TR-DOS packaging completed successfully. The CI build assembles the CRC routine and emits the updated ATM binary/listing/map. No live Project126 DMA/IPC hardware test has been performed.
 
@@ -17,7 +18,7 @@ This document records actual artifacts and their verification state; it is not a
 - Fixed: control/data plane separation; ATM-facing DMA aperture contract; NeoGS-only DMA register ownership; GSCOM commands E0h..E3h and FFh end marker; 18-byte P126 frame header; little-endian fields; message types/flags; CRC-16/CCITT-FALSE; per-direction sequence rules; duplicate suppression; ordered fragmentation; status codes; initial service namespace; READY/end/CBIT completion lifecycle.
 - Added shared constants in `shared/p126_ipc_protocol.inc`, imported by the ATM IPC public include.
 - Added ATM-side CRC update and standard test-vector routine in `atm_host/neogs_ipc.asm`.
-- **IN PROGRESS:** only the contract and ATM CRC primitive are implemented. Complete frame encode/decode, DMA send/receive, session negotiation, sequence state, NeoGS endpoint, fragment reassembly and service dispatch remain unimplemented.
+- **IN PROGRESS:** the contract and CRC primitives on both processors are implemented in source. Complete frame encode/decode, DMA send/receive, session negotiation, sequence state, resident NeoGS command endpoint, fragment reassembly and service dispatch remain unimplemented.
 - **OPEN / MUST NOT GUESS:** final ATM and NeoGS staging-buffer addresses, NeoGS 4 MiB resident memory reservations, ATM paging/buffer placement and final DMA window integration. Project125 physical addresses/layout are reference material, not Project126 allocations.
 - **Verification:** BUILD PASS for the ATM-side v0.2.0 source is recorded in run [42303249684](https://github.com/JTCyborg/Project126/actions/runs/42303249684). The CRC self-test routine is assembled but has not been executed on target hardware. Complete DMA directions and frame transport are not implemented and are not claimed as Project126 HARDWARE PASS.
 
@@ -26,9 +27,10 @@ This document records actual artifacts and their verification state; it is not a
 - Assembler: repository-pinned `tools/sjasmplus.exe` (SjASMPlus 1.23.1).
 - Local build entry point: `build_project126.bat` (Windows double-click launcher), which invokes `tools/build_project126.ps1`.
 - CI: `.github/workflows/neogs-assembly.yml`; CI invokes the same PowerShell build script as a local build.
-- Every successful assembly must produce both modules:
+- Every successful assembly must produce all three modules:
   - `build/x86_cpu_state.bin`, `build/NEOGS.lst`, `build/NEOGS.map`;
-  - `build/ATM_IPC.bin`, `build/ATM.lst`, `build/ATM.map`.
+  - `build/ATM_IPC.bin`, `build/ATM.lst`, `build/ATM.map`;
+  - `build/P126_NGS_IPC.bin`, `build/NEOGS_IPC.lst`, `build/NEOGS_IPC.map`.
 - The script deletes stale outputs before assembling and fails if any product is missing.
 - NeoGS assembly translation unit: `neogs_sub/x86_cpu_state_assemble.asm`, version v0.5.0. It exports explicit start/end labels for the CPU-state and ALU modules and displays each module's start, end and size, plus the complete image end and size.
 - NeoGS assembly-time assertions enforce non-empty modules, contiguous placement (ALU begins exactly at CPU-state end), and total image size no greater than 256 KiB.
