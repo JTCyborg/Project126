@@ -334,3 +334,47 @@ p126_ipc_rx_byte:     db 0
 
 p126_ipc_version_text:
         db "[P126 ATM_IPC v0.2.0]", 13, 10, 0
+
+; -------------------------------------------------------------------------
+; Send one complete ATM -> NeoGS ABI 1.0 frame through the ZX DMA aperture.
+; IN: HL=frame, BC=exact frame size (18..16384).
+; OUT: carry clear/A=0 only after NeoGS closes DMA and acknowledges #FF.
+; Clobbers AF,BC,DE,HL. Leaves interrupts disabled during/after transfer.
+; Source buffer remains caller-owned and must remain stable until return.
+; -------------------------------------------------------------------------
+P126_IPC_DMA_WINDOW EQU #0000
+P126_IPC_DMA_END    EQU #FF
+
+p126_ipc_dma_send_frame::
+        ld      (p126_ipc_dma_source),hl
+        ld      (p126_ipc_dma_size),bc
+        call    p126_ipc_validate_frame
+        ret     c
+        ld      bc,(p126_ipc_dma_size)
+        ld      a,b
+        cp      #40
+        jr      c,.p126_dma_size_valid
+        jp      nz,.p126_dma_bad_size
+        ld      a,c
+        or      a
+        jr      z,.p126_dma_size_valid
+        jp      .p126_dma_bad_size
+.p126_dma_size_valid:
+        ld      a,P126_CMD_HOST_FRAME
+        call    p126_ipc_send_command
+        ret     c
+        ld      hl,(p126_ipc_dma_source)
+        ld      bc,(p126_ipc_dma_size)
+        ld      de,P126_IPC_DMA_WINDOW
+        di
+        ldir
+        ld      a,P126_IPC_DMA_END
+        out     (P126_GSCOM),a
+        jp      p126_ipc_wait_cbit_clear
+.p126_dma_bad_size:
+        ld      a,P126_STATUS_BAD_FRAME
+        scf
+        ret
+
+p126_ipc_dma_source: dw 0
+p126_ipc_dma_size:   dw 0

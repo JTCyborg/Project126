@@ -226,3 +226,10 @@ A committed source file is not automatically a successful runtime or hardware te
 
 - CI run `42307162663` still failed at five ATM validator relative branches targeting the shared BAD_MAGIC/BAD_VERSION exits. The earlier correction did not cover those destinations.
 - Converted those remaining branches to absolute `JP`; validation semantics are unchanged. Build verification is pending on this commit. Do not treat either prior failed run as BUILD PASS.
+
+
+## ABI 1.0 DMA endpoint routines
+
+- Added ATM frame sender and NeoGS DMA receive endpoint routines. NeoGS DMA destination is reserved physical page 42h / 108000h; WIN3 maps page 42h only after DMA has been disabled and acknowledged.
+- NeoGS receiver is currently an exported callable routine, not yet wired into a resident command dispatcher. ATM DMA-window mapping and physical hardware tests remain outstanding.
+- CI verification is pending for this revision. No hardware transfer result is claimed.

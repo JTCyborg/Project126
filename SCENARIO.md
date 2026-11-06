@@ -486,3 +486,10 @@ This stage must be built and then exercised on NeoGS with boundary and data-rete
 
 - The first range correction converted the branches to generic BAD_FRAME exits, but CI run `42307162663` showed five remaining relative branches to the MAGIC/VERSION exits were still out of range.
 - Converted the remaining ATM validator branches to absolute `JP`. The failed runs `42306957900` and `42307162663` remain BUILD FAIL; a subsequent CI run is required to establish BUILD PASS.
+
+
+## ABI 1.0 first DMA endpoint routines
+
+- ATM exports `p126_ipc_dma_send_frame`: validates the complete source frame, enforces the 16 KiB aperture bound, posts E0h, waits for READY, copies exactly the frame to the ZX DMA aperture at 0000h, sends FFh and waits for completion acknowledgement.
+- NeoGS exports `p126_ngs_ipc_dma_receive_frame`: selects ZX DMA module 1, targets reserved physical page 42h (108000h), arms DMA, waits for FFh with a bounded timeout, disables DMA on success/timeout, acknowledges CBIT, maps page 42h into WIN3 and validates the received frame using the payload length from its header.
+- The NeoGS receiver is a callable routine but is not yet wired into a resident command dispatcher. ATM DMA aperture paging and physical hardware operation remain to be verified. No hardware DMA PASS is claimed.
