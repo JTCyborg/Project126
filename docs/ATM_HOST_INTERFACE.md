@@ -71,7 +71,7 @@ The current ATM driver still does not implement complete frame send/receive, DMA
 - ATM source version: `P126 ATM_IPC v0.2.0`; shared application ABI: `P126 DMA/IPC ABI 1.0`.
 - The assembly unit continues to generate `build/ATM_IPC.bin`, `build/ATM.lst` and `build/ATM.map`.
 - The CRC self-tests are present as executable code on both processors but are not yet called by startup and have not been run on target hardware.
-- **BUILD PASS for v0.2.0:** GitHub Actions run [42303249684](https://github.com/JTCyborg/Project126/actions/runs/42303249684), commit `27416c290b7d3f95b3cf98f8825c860e7c3abcef`; ATM/NeoGS assembly and TR-DOS packaging completed successfully.
+- **BUILD PASS for the dual-endpoint CRC primitives:** GitHub Actions run [42303465405](https://github.com/JTCyborg/Project126/actions/runs/42303465405), commit `50bf91bf35a0ef89e5d5ebb128fb36b46ceac479`; ATM IPC, NeoGS IPC and x86 modules assembled, and TR-DOS packaging completed successfully.
 - Assembly success will prove syntax and image-boundary assertions only; live DMA/IPC requires separate deterministic hardware tests.
 
 
