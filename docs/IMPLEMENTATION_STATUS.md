@@ -335,3 +335,12 @@ The ATM log `DMA SMOKE FRAME SENT` means the transport handshake completed; it i
 - Comparison against Project125 identified a concrete transport bug in Project126: `p126_neogs_send_argument` did not preserve A across `p126_neogs_wait_dbit_clear`, which overwrites A with GSSTAT. Project125's corresponding `gs_boot_write_command_argument` stores the argument before the wait and restores it before `OUT GSDAT`. Project126 now follows that proven sequence, fixing the first argument byte for both `#14` RECEIVE BLOCK and `#13` JUMP. Build/hardware confirmation is pending.
 
 - Project126 bootstrap startup now follows Project125's validated ordering: temporary stack at `#3FFF`, direct entry marker, ZX DMA disable, settle delay, NOROM/EXPAG and window mapping, then `SP=#FFFE` after WIN3 is selected. This complements the command-argument preservation fix. Assembly and physical-board verification for these latest commits are pending.
+
+
+## Project125 loader parity — 256-byte stage-0 boundary (2026-11-07)
+
+- The target reported `NGS FAIL STAGE=2`. In the active Project126 loader, stage 2 is the P126BOOT.C byte-length validation immediately after the file is opened; it occurs before GS105a cold restart, ROM #14 upload, or ROM #13 jump.
+- GitHub Actions run [42314399945](https://github.com/JTCyborg/Project126/actions/runs/42314399945) completed BUILD PASS and logged `P126_GS105A_BOOTSTRAP bytes=256` and `P126BOOT.C: 256 bytes, 1 sectors`. The build script allowed 1..256 bytes, but the loader's stage-2 check required the high length byte to be zero, thereby rejecting the valid exact length 0100h.
+- Corrected stage-2 validation to accept lengths 1..255 and exactly 256, while rejecting zero and values above 256. The existing #14 header already encodes a 256-byte block as the 16-bit negative length FF00h and streams exactly 256 bytes from the first TR-DOS sector.
+- This is a direct correction of the observed stage-2 failure. It does not claim that #14, #13, bootstrap entry, resident transfer, BIOS loading, or hardware execution have passed; those are later stages and require a new target log.
+- Reference behavior inspected in Project125: `zx_main/neogs_driver.asm` uses the same 256-byte #C000 sector buffer and encodes #14 length as a 16-bit negative value before issuing RECEIVE BLOCK. Project125 also supports repeated sector-sized chunks for larger loader files; Project126 currently intentionally constrains its stage-0 image to one 256-byte block.
