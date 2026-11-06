@@ -29,6 +29,8 @@ p126_bootstrap_start:
         and     #FD
         or      #09
         out     (P126_B_GSCFG0),a
+        xor     a
+        out     (#20),a                ; WIN0 -> physical page 00
         ld      a,#80
         out     (P126_B_MPAGE),a
         ld      a,#01

@@ -534,3 +534,8 @@ Test checklist after BUILD PASS:
 6. Confirm ATM remains in its UI after a loader error and reports startup failure.
 
 BUILD PASS proves assembly and TR-DOS packaging only. ROM boot and all DMA/paging checks require target hardware or a hardware-accurate emulator.
+
+
+### Build verification for resident startup
+
+GitHub Actions run [42309240393](https://github.com/JTCyborg/Project126/actions/runs/42309240393) completed **BUILD PASS** for commit `2375b849bd684087b9027262c277b097e46f408e`. The resident image is 2,356 bytes, stage-0 bootstrap 175 bytes, ATM host program 17,517 bytes, and generated TR-DOS image 655,360 bytes. The image contains `P126BOOT.C` (175 bytes / one sector) and `X86CORE.C` (2,356 bytes / ten sectors). This verifies assembly and packaging, not ROM execution, paging, or physical DMA.

@@ -253,3 +253,11 @@ A committed source file is not automatically a successful runtime or hardware te
 - Added P126BOOT.C to the TR-DOS image and build validation. ATM performs startup file reads before video initialization, preserving the established TR-DOS paging order.
 - DBIT/GSDAT is explicitly confined to stock-ROM bootstrap; after A2h, application payloads are DMA-only.
 - **Not claimed:** no hardware verification yet for GSCTR reset timing, ROM #14/#13 sequence, paging, A2h handshake, DMA timing or frame integrity. The resident loop currently validates incoming frames and logs success/rejection; service dispatch and reverse DMA remain future work.
+
+
+### Verification — resident startup build
+
+- **BUILD PASS:** GitHub Actions run [42309240393](https://github.com/JTCyborg/Project126/actions/runs/42309240393), source commit `2375b849bd684087b9027262c277b097e46f408e`.
+- SjASMPlus 1.23.1: resident/core image 2,356 bytes; ATM IPC 519 bytes; standalone NeoGS IPC 414 bytes; stage-0 bootstrap 175 bytes. All assembly units completed with 0 errors and 0 warnings.
+- TR-DOS image: 655,360 bytes. `proj126.C` 17,517 bytes / 69 sectors; `X86CORE.C` 2,356 bytes / 10 sectors; `P126BOOT.C` 175 bytes / 1 sector; each BIOS image 8,192 bytes / 32 sectors. The disk assembly retains one pre-existing generated-path backslash warning.
+- **BUILD PASS only.** No emulator or hardware boot/DMA test has been run.
