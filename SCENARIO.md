@@ -493,3 +493,21 @@ This stage must be built and then exercised on NeoGS with boundary and data-rete
 - ATM exports `p126_ipc_dma_send_frame`: validates the complete source frame, enforces the 16 KiB aperture bound, posts E0h, waits for READY, copies exactly the frame to the ZX DMA aperture at 0000h, sends FFh and waits for completion acknowledgement.
 - NeoGS exports `p126_ngs_ipc_dma_receive_frame`: selects ZX DMA module 1, targets reserved physical page 42h (108000h), arms DMA, waits for FFh with a bounded timeout, disables DMA on success/timeout, acknowledges CBIT, maps page 42h into WIN3 and validates the received frame using the payload length from its header.
 - The NeoGS receiver is a callable routine but is not yet wired into a resident command dispatcher. ATM DMA aperture paging and physical hardware operation remain to be verified. No hardware DMA PASS is claimed.
+
+
+## 15. ABI 1.0 — NeoGS receive dispatcher callable entry
+
+The NeoGS IPC endpoint now exports `p126_ngs_ipc_dispatch_once`. It checks ZXSTAT/CBIT, reads the pending ZXCMD byte, dispatches E0h (ATM frame) to the DMA receiver, and acknowledges currently unsupported commands with `NO_OPERATION`. A valid receive returns HL=C000h and BC=the exact validated frame size.
+
+The IPC module is linked into `X86CORE.C` after CPU state and ALU code. The standalone IPC audit binary remains a separate build output. This integrates the callable endpoint into the core artifact, **not** a completed resident firmware: no startup/loader or main loop currently places the code in WIN0-WIN2 and repeatedly calls the dispatcher. That must be implemented before the ATM can communicate with an automatically running endpoint.
+
+Test order after BUILD PASS:
+1. Load the updated core image and verify its reported size/version.
+2. Call the dispatcher with no CBIT pending; verify immediate return and no DMA activity.
+3. Send E0h; verify DMA module 1 targets physical 108000h and CBIT clears for READY.
+4. Send a short known frame followed by FFh; verify DMA stops, CBIT completion is acknowledged, WIN3 maps page 42h, and the returned bytes match.
+5. Corrupt payload/CRC; verify CRC_ERROR and no service dispatch.
+6. Suppress FFh; verify bounded TIMEOUT, DMA disable and CBIT cleanup.
+7. Repeat at 16 KiB boundaries, including an 18-byte empty-payload frame and the 16384-byte maximum frame.
+
+BUILD PASS is assembly/package verification only. Runtime checks are required for HARDWARE PASS.

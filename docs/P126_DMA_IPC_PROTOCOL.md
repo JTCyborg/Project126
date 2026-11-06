@@ -202,3 +202,14 @@ This document fixes the ABI and lifecycle contract, not the runtime memory map. 
 6. Implement bounded service dispatch and service-specific ABIs.
 
 This specification alone does not imply BUILD PASS, EMULATOR PASS or HARDWARE PASS.
+
+
+## 11. First callable NeoGS command dispatcher
+
+The NeoGS IPC module exports `p126_ngs_ipc_dispatch_once`. It samples ZXSTAT/CBIT, returns immediately when no command is pending, reads ZXCMD when CBIT is asserted, and routes E0h to the DMA receive endpoint. Unimplemented command IDs are acknowledged by clearing CBIT and return `NO_OPERATION`, preventing the ATM sender from waiting forever on an unsupported doorbell.
+
+The receiver restores the validated frame pointer and exact byte count after the validator returns (the validator clobbers BC/HL). A valid frame returns HL=C000h and BC=18+payload_length; errors return carry set and the ABI status in A. Version mismatches use the shared `UNSUPPORTED_VERSION` status.
+
+The IPC module is linked into `X86CORE.C` after the x86 state and ALU modules. This makes the dispatcher available in the core artifact, but does **not** claim a complete resident firmware or active main loop. The repository still has no NeoGS startup/loader that establishes WIN0-WIN2 placement and repeatedly calls `p126_ngs_ipc_dispatch_once`. That remains a separate integration milestone.
+
+Verification boundary: CI can verify assembly, symbol placement, and packaging. Only target testing can verify ZXCMD/CBIT timing, DMA writes into page 42h, WIN3 mapping, CRC and timeout behavior.

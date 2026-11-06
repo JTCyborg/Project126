@@ -1,6 +1,6 @@
 ; =========================================================================
 ; PROJECT126 — NeoGS-side CRC primitive for unified DMA/IPC ABI 1.0
-; This module performs no hardware port I/O and owns no DMA addresses.
+; This module implements the ABI 1.0 frame codec and the NeoGS DMA receive endpoint.
 ; =========================================================================
 
         INCLUDE "shared/p126_ipc_protocol.inc"
@@ -127,7 +127,7 @@ p126_ngs_ipc_validate_frame::
         scf
         ret
 .p126_ngs_frame_version:
-        ld      a,P126_STATUS_BAD_VERSION
+        ld      a,P126_STATUS_UNSUPPORTED_VERSION
         scf
         ret
 .p126_ngs_frame_crc_bad:
@@ -149,7 +149,7 @@ p126_ngs_ipc_crc_work: dw 0
 ; Resident code, stack and interrupt handlers must stay in WIN0-WIN2.
 ; OUT: carry clear/A=0, HL=#C000 and BC=derived frame size; otherwise
 ; carry set/A=status. Uses physical DMA page 42h (108000h), then maps it
-; into WIN3. This routine is callable but not yet wired to a resident loop.
+; into WIN3. The callable dispatcher below routes E0h to this endpoint.
 ; -------------------------------------------------------------------------
 P126_NGS_DMA_MOD      EQU #1B
 P126_NGS_DMA_HAD      EQU #1C
@@ -216,15 +216,59 @@ p126_ngs_ipc_dma_receive_frame::
         jr      z,.p126_ngs_dma_size_ok
         jp      .p126_ngs_dma_bad_length
 .p126_ngs_dma_size_ok:
-        push    hl
-        pop     bc
+        ld      (p126_ngs_ipc_rx_size),hl
+        ld      bc,(p126_ngs_ipc_rx_size)
         ld      hl,#C000
         call    p126_ngs_ipc_validate_frame
+        ret     c
+        ld      hl,#C000
+        ld      bc,(p126_ngs_ipc_rx_size)
+        xor     a
         ret
 
 .p126_ngs_dma_bad_length:
         ld      a,P126_STATUS_BAD_FRAME
         scf
+        ret
+
+p126_ngs_ipc_rx_size: dw 0
+
+
+; -------------------------------------------------------------------------
+; Resident command-dispatch entry, one bounded unit of work.
+; OUT: carry clear/Z=1/A=0 when no command is pending;
+;      carry clear/Z=0 with HL=#C000, BC=size on a valid E0h frame;
+;      carry set/A=status for a rejected command or receive failure.
+; The caller owns the resident main loop and must keep its stack/code outside
+; WIN3. E0h is consumed from ZXCMD while CBIT stays asserted until DMA is armed.
+; -------------------------------------------------------------------------
+P126_NGS_ZXCMD       EQU #01
+
+p126_ngs_ipc_dispatch_once::
+        in      a,(P126_NGS_ZXSTAT)
+        bit     0,a
+        jr      nz,.p126_ngs_dispatch_command
+        xor     a
+        ret
+
+.p126_ngs_dispatch_command:
+        in      a,(P126_NGS_ZXCMD)
+        cp      P126_CMD_HOST_FRAME
+        jr      z,.p126_ngs_dispatch_host_frame
+
+        ; Unknown/unimplemented command: release the doorbell so the host
+        ; cannot remain blocked, and report a defined ABI error.
+        xor     a
+        out     (P126_NGS_CLRCBIT),a
+        ld      a,P126_STATUS_NO_OPERATION
+        scf
+        ret
+
+.p126_ngs_dispatch_host_frame:
+        call    p126_ngs_ipc_dma_receive_frame
+        ret     c
+        ld      a,1
+        or      a
         ret
 
 
