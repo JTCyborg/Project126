@@ -2,25 +2,35 @@
 
 This document records actual artifacts and their verification state; it is not a projection of the roadmap.
 
-## ATM host IPC module
+## ATM host IPC transport primitives
 
-- ATM-side source: `atm_host/neogs_ipc.asm`, public interface: `atm_host/neogs_ipc.inc`.
-- Assembly unit: `atm_host/neogs_ipc_assemble.asm`, source version `P126 ATM_IPC v0.1.0`.
-- Implements bounded CBIT/DBIT polling, command transmission through GSCOM, byte transmission/reception through GSDAT, and an ATM-side version banner on the independent #EF debug port.
-- Handshake semantics follow the established Project125 host transport v2 implementation.
-- ATM build outputs: `build/ATM_IPC.bin`, `build/ATM.lst`, `build/ATM.map`.
-- ATM assembly origin is image-relative `ORG 0000h`; the final host load address is not assigned.
-- Not yet implemented: application command schema, versioned request frames, sequence IDs, CRC, retry/deduplication, DMA aperture and host-service ABIs. These remain explicit interface work, not implied by successful assembly.
-- Status: **BUILD PASS** for ATM assembly in GitHub Actions run `42274548106` (commit `20f5945e47f118706821d6d47b237be8b9b160a3`); 235 source lines, 0 errors, 0 warnings, 181-byte binary, 14,766-byte listing and 1,407-byte symbol map. No live ATM↔NeoGS hardware test has been performed.
+- ATM-side source: `atm_host/neogs_ipc.asm`, public interface: `atm_host/neogs_ipc.inc`; assembly unit: `atm_host/neogs_ipc_assemble.asm`.
+- ATM source version is now `P126 ATM_IPC v0.2.0`; the common ABI constants are in `shared/p126_ipc_protocol.inc`.
+- Existing bounded CBIT/DBIT polling, GSCOM command and legacy GSDAT byte helpers remain available. GSDAT helpers are compatibility/bootstrap primitives, not the application payload transport.
+- Added ATM CRC-16/CCITT-FALSE byte-update routine and executable standard-vector self-test (123456789 → 29B1h). Startup does not call the self-test yet.
+- Added NeoGS-side counterpart in `neogs_sub/p126_ipc.asm`, with standalone audit unit `neogs_sub/p126_ipc_assemble.asm`; it uses the same shared constants and test vector. This is a reusable primitive, not yet connected to a resident command loop.
+- ATM assembly origin remains image-relative `ORG 0000h`; final host load address is not assigned.
+- **BUILD PASS for ATM IPC v0.2.0:** GitHub Actions run [42303249684](https://github.com/JTCyborg/Project126/actions/runs/42303249684), commit `27416c290b7d3f95b3cf98f8825c860e7c3abcef`; SjASMPlus assembly and TR-DOS packaging completed successfully. The CI build assembles the CRC routine and emits the updated ATM binary/listing/map. No live Project126 DMA/IPC hardware test has been performed.
+
+## Unified DMA/IPC ABI 1.0
+
+- Normative specification: `docs/P126_DMA_IPC_PROTOCOL.md`; architecture reference: `SCENARIO.md` section 7.1.1.
+- Fixed: control/data plane separation; ATM-facing DMA aperture contract; NeoGS-only DMA register ownership; GSCOM commands E0h..E3h and FFh end marker; 18-byte P126 frame header; little-endian fields; message types/flags; CRC-16/CCITT-FALSE; per-direction sequence rules; duplicate suppression; ordered fragmentation; status codes; initial service namespace; READY/end/CBIT completion lifecycle.
+- Added shared constants in `shared/p126_ipc_protocol.inc`, imported by the ATM IPC public include.
+- Added ATM-side CRC update and standard test-vector routine in `atm_host/neogs_ipc.asm`.
+- **IN PROGRESS:** the contract and CRC primitives on both processors are implemented in source. Complete frame encode/decode, DMA send/receive, session negotiation, sequence state, resident NeoGS command endpoint, fragment reassembly and service dispatch remain unimplemented.
+- **OPEN / MUST NOT GUESS:** final ATM and NeoGS staging-buffer addresses, NeoGS 4 MiB resident memory reservations, ATM paging/buffer placement and final DMA window integration. Project125 physical addresses/layout are reference material, not Project126 allocations.
+- **Verification:** BUILD PASS for the ATM-side v0.2.0 source is recorded in run [42303249684](https://github.com/JTCyborg/Project126/actions/runs/42303249684). The CRC self-test routine is assembled but has not been executed on target hardware. Complete DMA directions and frame transport are not implemented and are not claimed as Project126 HARDWARE PASS.
 
 ## Build pipeline and address-placement audit
 
 - Assembler: repository-pinned `tools/sjasmplus.exe` (SjASMPlus 1.23.1).
 - Local build entry point: `build_project126.bat` (Windows double-click launcher), which invokes `tools/build_project126.ps1`.
 - CI: `.github/workflows/neogs-assembly.yml`; CI invokes the same PowerShell build script as a local build.
-- Every successful assembly must produce both modules:
+- Every successful assembly must produce all three modules:
   - `build/x86_cpu_state.bin`, `build/NEOGS.lst`, `build/NEOGS.map`;
-  - `build/ATM_IPC.bin`, `build/ATM.lst`, `build/ATM.map`.
+  - `build/ATM_IPC.bin`, `build/ATM.lst`, `build/ATM.map`;
+  - `build/P126_NGS_IPC.bin`, `build/NEOGS_IPC.lst`, `build/NEOGS_IPC.map`.
 - The script deletes stale outputs before assembling and fails if any product is missing.
 - NeoGS assembly translation unit: `neogs_sub/x86_cpu_state_assemble.asm`, version v0.5.0. It exports explicit start/end labels for the CPU-state and ALU modules and displays each module's start, end and size, plus the complete image end and size.
 - NeoGS assembly-time assertions enforce non-empty modules, contiguous placement (ALU begins exactly at CPU-state end), and total image size no greater than 256 KiB.
@@ -99,43 +109,41 @@ A committed source file is not automatically a successful runtime or hardware te
 
 ## ATM TR-DOS catalogue and BIOS file staging
 
-- Source: `atm_host/p126_disk_catalog.asm`; integration: `atm_host/project126_main.asm`.
-- Implemented in source: select TR-DOS drive A, request the directory sectors through the TR-DOS ROM gateway `#3D13`, scan up to 128 directory descriptors, filter supported TR-DOS file types (`B/C/D/#`), display nine rows, maintain a selected entry and scroll the list using the Project125 CAPS SHIFT+7 / CAPS SHIFT+6 matrix combinations.
-- Disk image source `atm_host/project126_disk.asm` adds three 8 KiB BIOS files under TR-DOS-compatible names: `BIOS1.C`, `BIOS2.C`, and `COMPAQ.C`. The build script checks that these entries exist and have the expected 8 KiB size.
-- **Source implementation committed; BUILD PASS not yet established for this catalogue/BIOS-image revision.** No ATM hardware/runtime directory read has been confirmed. The user's latest runtime report showed only the host and IPC banners and an empty catalogue; therefore directory access and rendering remain **HARDWARE TEST PENDING / FUNCTIONALITY NOT CONFIRMED**.
-- Cursor navigation is implemented in source but has not been confirmed on the user's physical keyboard. The current scan is the Spectrum matrix CAPS SHIFT+7/6 convention; it is not yet verified as native PS/2 arrow-key input.
-- BIOS selection with Enter and loading the selected BIOS into NeoGS are **NOT IMPLEMENTED**.
+- Sources: `atm_host/p126_disk_catalog.asm`, `atm_host/project126_main.asm`, and `atm_host/project126_disk.asm`.
+- Implemented: early TR-DOS directory read before ATM video/shadow-port initialization; eight individual one-sector reads (`C=5, B=1)); directory buffer at `#C800..#CFFF`; directory parsing (up to 128 descriptors); filtering of supported TR-DOS file types (`B/C/D/#`); nine visible rows; selected-entry tracking and scrolling with CAPS SHIFT+7 / CAPS SHIFT+6.
+- The TR-DOS image contains three 8 KiB BIOS images under TR-DOS names: `BIOS1.C` (from `bios/27c64d.bin`), `BIOS2.C` (from `bios/Bios.bin`), and `COMPAQ.C` (from `bios/Compaq Portable Plus 100666-001 Rev C.bin`).
+- **BUILD PASS:** GitHub Actions run [42302005699](https://github.com/JTCyborg/Project126/actions/runs/42302005699), commit `94c7436a258ccab48182f72446609738ec7e80ca`; assembly/package workflow completed successfully, including ATM/NeoGS assembly and TR-DOS disk creation, and published binaries, listings, maps and disk image.
+- **HARDWARE PASS (catalogue stage):** the user explicitly confirmed that this part works on the target ATM. This confirmation covers the working directory/catalogue path and the currently implemented list interaction; it does not validate BIOS transfer or x86 execution.
+- BIOS selection confirmation and transfer to NeoGS are **NOT IMPLEMENTED**. ENTER was proposed as the confirmation/start key, but has not yet been bound in code.
 
 ## ATM startup and TR-DOS catalogue diagnostics
 
-- Added ATM `#EF` stage messages in `atm_host/project126_main.asm` and `atm_host/p126_disk_catalog.asm`.
-- Startup markers identify video initialization begin/end, RTC probe return, console initialization begin/end, and catalogue initialization return.
-- Catalogue markers identify entry to catalogue initialization, disk-read entry, drive-select return, directory-read call/return, VG93 idle, I/O success/error, read result, directory scan completion, drawing begin/end, and detected cursor input.
-- Latest diagnostic commits: `7bb87ac204bd7a32d4bc62eb0465664482ad6de3` (catalogue stages) and `f03c7999ff3b8f3ae27edfe5a856691c816d5da2` (startup stages).
-- These messages are instrumentation only. They do not prove that the TR-DOS read succeeded. The current markers do not yet print the numeric TR-DOS error bytes or the valid-entry count; those values should be added if the next log still does not isolate the cause.
-- **Verification state:** source committed; assembly/build and ATM runtime not yet tested for these diagnostic commits. The next required evidence is the complete `#EF` log from a fresh build/run, including the last emitted marker.
+- ATM `#EF` stage diagnostics remain in `atm_host/project126_main.asm` and `atm_host/p126_disk_catalog.asm`; they identify startup, disk-read, directory-scan, drawing and keyboard-input stages.
+- The earlier diagnostic commits `7bb87ac204bd7a32d4bc62eb0465664482ad6de3` and `f03c7999ff3b8f3ae27edfe5a856691c816d5da2` were superseded by the TR-DOS access-ordering corrections recorded below.
+- The former failure state (catalogue empty / disk-read stage unresolved) is closed by the later successful build and the user's hardware confirmation. Do not treat old diagnostic notes as the current state of the catalogue.
 
 ## Current work queue (2026-11-06)
 
 | Area | State | Notes |
 |---|---|---|
-| ATM host entry and version output | IMPLEMENTED IN SOURCE; prior runtime banner observed | User log confirms host and IPC banners. |
-| DS12887 RTC integration | IMPLEMENTED IN SOURCE; runtime timestamp previously observed | Uses ATM shadow-port activation and Project125-derived RTC driver. |
-| ATM 80x25 status console | IMPLEMENTED IN SOURCE; hardware display validation pending | Catalogue screen currently appears empty per latest user report. |
-| TR-DOS directory read | IN PROGRESS / UNVERIFIED | Must inspect stage log and numeric ROM/VG93 error status; no successful directory data confirmed. |
-| Directory filtering and nine-row rendering | IMPLEMENTED IN SOURCE; runtime unverified | Depends on successful directory read and correct buffer contents. |
-| Cursor navigation | IMPLEMENTED IN SOURCE; runtime unverified | CAPS SHIFT+7/6 matrix combinations. |
-| BIOS files in TR-DOS image | IMPLEMENTED IN SOURCE; build verification pending | BIOS1.C, BIOS2.C, COMPAQ.C, each expected 8192 bytes. |
-| BIOS selection and transfer to NeoGS | PLANNED | Not implemented; wait until catalogue is proven. |
-| NeoGS BIOS receiver / x86 BIOS launch | PLANNED | Requires a defined and tested upload/launch path. |
+| ATM host entry and version output | HARDWARE CONFIRMED | Host and IPC banners observed in the user's runtime log. |
+| DS12887 RTC integration | HARDWARE CONFIRMED IN PRIOR RUN | ATM shadow-port activation and Project125-derived read-only RTC path; valid timestamp was previously observed. |
+| ATM 80x25 status console | HARDWARE CONFIRMED FOR CURRENT CATALOGUE UI | The catalogue interface is displayed on the target ATM. |
+| TR-DOS directory read | HARDWARE PASS | Early read before ATM video init; eight individual C=5, B=1 sector reads. User confirmed operation. |
+| Directory filtering, rendering and scrolling | HARDWARE PASS | Nine-row catalogue and CAPS SHIFT+7/6 navigation confirmed by user. |
+| BIOS images in TR-DOS disk | BUILD PASS | BIOS1.C, BIOS2.C and COMPAQ.C, each 8192 bytes; included in successful disk build. |
+| BIOS choice on ENTER | PLANNED | ENTER is the proposed confirmation key only; no selection/confirmation handler implemented yet. |
+| BIOS file transfer ATM → NeoGS | PLANNED | Transfer mechanism and buffer/address contract must be checked against the approved IPC/DMA architecture before implementation. |
+| NeoGS BIOS receive, validation and x86 handoff | PLANNED | Receiver, integrity check, BIOS placement in the custom 1 MiB guest memory map, and execution entry remain unimplemented. |
+| Full x86 BIOS boot | PLANNED | Not demonstrated by this catalogue milestone. |
 
 
 
 ## TR-DOS access ordering correction (2026-11-06)
 
 - Compared Project126 catalogue access with the working Project125 startup and BIOS sector loader.
-- Corrected startup ordering: Project126 now selects the legacy TR-DOS paging state (7FFD=#10, 5C3B=#10, EFF7=0) and reads the directory before ATM video/shadow-port initialization.
-- Removed the standalone C=1 drive-select call. It was not part of Project125's proven file-access sequence and was the exact point where the user's runtime log stopped.
-- Changed directory reading from one C=5, B=8 call to eight individual C=5, B=1 calls, following Project125's documented one-sector contract. Each call reloads D/E/HL and clears/checks 5D0F/5D10.
-- The directory buffer remains at #C800; catalogue parsing, display and keyboard navigation remain in the later UI phase.
-- **Verification:** source changes committed. No local SjASMPlus build or ATM hardware run was available for this edit; BUILD PASS and HARDWARE PASS remain unclaimed. Expected log order: TR-DOS DIRECTORY READ BEGIN/RETURN before ATM VIDEO INIT BEGIN.
+- Corrected startup ordering: Project126 selects the legacy TR-DOS paging state (`7FFD=#10`, `5C3B=#10`, `EFF7=0`) and reads the directory before ATM video/shadow-port initialization.
+- Removed the standalone `C=1` drive-select call; it was not part of Project125's proven file-access sequence.
+- Replaced one `C=5, B=8` call with eight individual `C=5, B=1` calls. Each call reloads D/E/HL and clears/checks `#5D0F/#5D10`.
+- Directory buffer: `#C800..#CFFF`; parsing, display and keyboard navigation run in the later UI phase.
+- **Verification:** commits `94c7436a258ccab48182f72446609738ec7e80ca`, `591c00eed1227bc89ecbf9658942297ac6867193`, and `ea916953044349e68ef3cc8af93fc8f5020b483e`. GitHub Actions run [42302005699](https://github.com/JTCyborg/Project126/actions/runs/42302005699) completed successfully. The user subsequently confirmed the catalogue stage on physical ATM hardware.

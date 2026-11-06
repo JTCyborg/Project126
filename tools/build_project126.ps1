@@ -28,7 +28,16 @@ $units = @(
         Binary = "ATM_IPC.bin"
         Listing = "ATM.lst"
         Map = "ATM.map"
-        Version = "ATM_IPC v0.1.0"
+        Version = "ATM_IPC v0.2.0"
+        MaxBytes = 65536
+    }
+    @{
+        Name = "NeoGS IPC"
+        Source = "neogs_sub/p126_ipc_assemble.asm"
+        Binary = "P126_NGS_IPC.bin"
+        Listing = "NEOGS_IPC.lst"
+        Map = "NEOGS_IPC.map"
+        Version = "NGS_IPC v0.1.0"
         MaxBytes = 65536
     }
 )
