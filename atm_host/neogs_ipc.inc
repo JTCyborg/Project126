@@ -1,11 +1,12 @@
 ; =========================================================================
 ; PROJECT126 — ATM / NeoGS IPC public interface
-; Version: P126_ATM_IPC_API v0.1.0
+; Version: P126_ATM_IPC_API v0.2.0
 ;
 ; Include this file in ATM-side Z80 modules that call neogs_ipc.asm.
 ; Physical transport: GSCOM/GSSTAT (#BB), GSDAT (#B3), GSCTR (#33).
 ; The ATM-side driver never accesses NeoGS-local DMA registers.
 ; =========================================================================
+        INCLUDE "shared/p126_ipc_protocol.inc"
 
 P126_GSCOM          EQU #BB
 P126_GSSTAT         EQU #BB
@@ -37,5 +38,6 @@ P126_GS_LED         EQU #20
 ;   p126_ipc_send_byte          A=data; waits for consumption
 ;   p126_ipc_receive_byte       returns A=data
 ;   p126_ipc_emit_version
+; ABI 1.0 constants are imported from shared/p126_ipc_protocol.inc.
 
 P126_IPC_TIMEOUT    EQU #FFFF
