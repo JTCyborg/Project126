@@ -185,3 +185,11 @@ A committed source file is not automatically a successful runtime or hardware te
 - RAM helpers check the guest address decoder and reject VGA/ROM overlay regions rather than incorrectly treating them as RAM. They do not yet implement VGA/ROM access.
 - Updated `docs/P126_NEOGS_MEMORY_MAP.md` and `SCENARIO.md` with the WIN3 contract and execution constraints.
 - **Verification status:** source-level only until CI assembles this revision. No target-side page-switch, read/write retention, interrupt-safety or guest execution test is claimed. Final resident placement in WIN0–WIN2 remains an integration requirement.
+
+
+### Verification — banked guest RAM access v0.1
+
+- **BUILD PASS:** GitHub Actions run [42306324753](https://github.com/JTCyborg/Project126/actions/runs/42306324753), source commit `d53e16500183f65f76d93f7b02786829f15c3191`.
+- NeoGS memory module assembled successfully: 0 errors, 0 warnings, image size 1,492 bytes. Build map confirms bank aperture C000h and WIN3 page-select port 0023h. ATM IPC and NeoGS IPC units also assembled; TR-DOS disk generation and artifact upload completed.
+- The disk assembler emitted the existing generated-filename backslash warning; the NeoGS module itself had no warnings.
+- **Not yet verified:** actual WIN3 page selection/read/write on NeoGS hardware or a cycle-accurate emulator. No runtime RAM-retention PASS is claimed. The helpers require the resident runtime to keep code, data, stack and interrupt handlers outside WIN3.
