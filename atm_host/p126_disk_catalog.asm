@@ -183,6 +183,16 @@ p126_catalog_read_disk:
         push    ix
         push    iy
 
+        ; Preserve the alternate Z80 register banks across the TR-DOS ROM.
+        exx
+        push    bc
+        push    de
+        push    hl
+        exx
+        ex      af, af'
+        push    af
+        ex      af, af'
+
         ld      (p126_catalog_saved_sp), sp
         ld      sp, #BFFF
         ld      iy, #5C3A
@@ -256,6 +266,16 @@ p126_catalog_read_disk:
 
 .catalog_restore_stack:
         ld      sp, (p126_catalog_saved_sp)
+
+        ex      af, af'
+        pop     af
+        ex      af, af'
+        exx
+        pop     hl
+        pop     de
+        pop     bc
+        exx
+
         pop     iy
         pop     ix
         pop     hl
