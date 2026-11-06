@@ -58,26 +58,21 @@ All entry points are callable with `CALL`. The module is assembled as a relocata
 
 Wait routines clobber BC. The byte routines use private module storage and are not re-entrant; only one ATM caller may use the transport at a time. The caller must serialize transactions.
 
-## 5. Deliberately not implemented yet
+## 5. Unified DMA/IPC application protocol
 
-This is the first ATM-side transport module, not the completed system protocol. The following remain open and must be agreed/implemented before host services are exposed to the x86 machine:
+The normative ABI is specified in [P126_DMA_IPC_PROTOCOL.md](P126_DMA_IPC_PROTOCOL.md), version 1.0. All application payloads use the same framed ZX DMA transport. GSCOM/CBIT is the control-plane doorbell and READY/end handshake; DBIT/GSDAT remains only a low-level compatibility primitive for stock-ROM/bootstrap work and is not an application payload channel.
 
-- Application command IDs and request/response message schema.
-- Protocol version negotiation, request sequence IDs, payload lengths and CRC.
-- Retry, duplicate suppression, timeout recovery and independent-reset resynchronization.
-- ATM DMA aperture/memory mapping and the exact ATM-side transfer procedure for large blocks.
-- DMA buffer ownership and allowed address ranges.
-- Keyboard event encoding, RTC snapshot ABI, storage request ABI and video-frame transfer ABI.
-- Final ATM module load address and integration point in the host startup program.
+The ATM public include imports common constants from `shared/p126_ipc_protocol.inc`. The common definitions include frame layout, message types, flags, service IDs, status codes, control command IDs and CRC parameters. The ATM driver now contains a CRC-16/CCITT-FALSE byte-update routine and the standard 123456789 → 29B1h self-test routine.
 
-The module intentionally does not write NeoGS-local DMA registers (#1B..#1F), because those are NeoGS-side registers, not ATM-side ports. Bulk DMA must be initiated/owned according to the agreed NeoGS DMA protocol and ATM hardware mapping; this source does not pretend that mapping has already been defined.
+The current ATM driver still does not implement complete frame send/receive, DMA-window transfers, sequence/session handling or error recovery. The NeoGS endpoint, staging buffers and final ATM/NeoGS memory placement are not implemented. In particular, ATM code must never access NeoGS-local DMA ports #1B..#1F.
 
 ## 6. Version and verification
 
-- Source version: `P126 ATM_IPC v0.1.0`.
-- Listing and map are generated on every successful build alongside the NeoGS listing/map.
-- CI build PASS: run `42274548106`, SjASMPlus 1.23.1, 235 source lines, 0 errors, 0 warnings, binary size 181 bytes; listing 14,766 bytes; map 1,407 bytes. [Build artifact](https://github.com/JTCyborg/Project126/actions/runs/42274548106).
-- Assembly success proves syntax and image-boundary assertions only. It does not prove live ATM↔NeoGS handshake on hardware.
+- ATM source version: `P126 ATM_IPC v0.2.0`; shared application ABI: `P126 DMA/IPC ABI 1.0`.
+- The assembly unit continues to generate `build/ATM_IPC.bin`, `build/ATM.lst` and `build/ATM.map`.
+- The CRC self-test is present as executable target-side code but is not yet called by startup and has not been run on ATM hardware.
+- The previous CI result for v0.1.0 is historical only. The v0.2.0 implementation requires a fresh build before BUILD PASS can be claimed.
+- Assembly success will prove syntax and image-boundary assertions only; live DMA/IPC requires separate deterministic hardware tests.
 
 
 ## 7. TR-DOS disk image and boot chain
