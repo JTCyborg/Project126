@@ -608,3 +608,13 @@ This is diagnostic instrumentation; the next ATM log must report the letter afte
 - Версия штатного GS105a ROM не является архитектурным параметром и не должна запрашиваться как условие реализации/запуска Project126.
 
 Это решение отменяет прежнее требование проверять RAM size high byte >= #40 до передачи управления Project126. Исторические записи о GS105a #20 и пороге 4 MiB в журнале ниже отражают предыдущую реализацию, а не действующее архитектурное требование.
+
+
+## NeoGS independent diagnostics and removal of the ROM RAM-size gate (2026-11-07)
+
+- The user's target log had no NeoGS-originated output because ATM stopped at startup stage G while evaluating the stock ROM #20 RAM-size response. Project126 stage-0 was therefore never entered; the resident banner and CRC messages could not appear.
+- ATM loader now sends GS105a cold restart #F4 but no longer calls #20 or rejects startup based on the stock ROM's RAM-size report. It proceeds to #14 bootstrap upload and #13 entry.
+- NeoGS stage-0 now writes `[NGS] BOOTSTRAP ENTER` directly to the NeoGS CPU's own physical #EF port, then `[NGS] NOROM ENABLED` immediately after setting GSCFG0.NOROM. These bytes are not generated or proxied by ATM.
+- After the resident image is fully streamed and entered, the existing resident code independently emits `[NGS] P126 RESIDENT v0.1.0` and `[NGS] ABI CRC16 PASS`; only then can ATM receive A2h and continue. The independent NeoGS stream also reports DMA frame validation/rejection.
+- Expected ordering on target: ATM loader progress; `[NGS] BOOTSTRAP ENTER`; `[NGS] NOROM ENABLED`; `[NGS] P126 RESIDENT v0.1.0`; `[NGS] ABI CRC16 PASS`; ATM reports resident ready. Missing bootstrap messages localize failure before/at #13 entry; bootstrap messages without resident banner localize failure during resident length/data transfer or jump to image.
+- **Verification pending:** the new source must pass the build (including the one-sector P126BOOT size assertion) and then be tested on ATM/NeoGS hardware. Do not treat a successful ATM log alone as proof of NeoGS execution.
