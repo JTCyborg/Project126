@@ -42,10 +42,11 @@ x86_cpu_calc_phys:
         push    bc
         ; low byte of segment<<4
         ld      a,l
-        rlca
-        rlca
-        rlca
-        rlca
+        and     #0F
+        add     a,a
+        add     a,a
+        add     a,a
+        add     a,a
         ld      (x86_phys_addr),a
         ; middle byte = (segment.high<<4) | (segment.low>>4)
         ld      a,l
@@ -56,10 +57,11 @@ x86_cpu_calc_phys:
         and     #0F
         ld      b,a
         ld      a,h
-        rlca
-        rlca
-        rlca
-        rlca
+        and     #0F
+        add     a,a
+        add     a,a
+        add     a,a
+        add     a,a
         or      b
         ld      (x86_phys_addr+1),a
         ; high nibble
