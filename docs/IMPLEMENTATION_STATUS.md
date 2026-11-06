@@ -10,7 +10,7 @@ This document records actual artifacts and their verification state; it is not a
 - Added ATM CRC-16/CCITT-FALSE byte-update routine and executable standard-vector self-test (123456789 → 29B1h). Startup does not call the self-test yet.
 - Added NeoGS-side counterpart in `neogs_sub/p126_ipc.asm`, with standalone audit unit `neogs_sub/p126_ipc_assemble.asm`; it uses the same shared constants and test vector. This is a reusable primitive, not yet connected to a resident command loop.
 - ATM assembly origin remains image-relative `ORG 0000h`; final host load address is not assigned.
-- **BUILD PASS for ATM IPC v0.2.0:** GitHub Actions run [42303249684](https://github.com/JTCyborg/Project126/actions/runs/42303249684), commit `27416c290b7d3f95b3cf98f8825c860e7c3abcef`; SjASMPlus assembly and TR-DOS packaging completed successfully. The CI build assembles the CRC routine and emits the updated ATM binary/listing/map. No live Project126 DMA/IPC hardware test has been performed.
+- **BUILD PASS:** GitHub Actions run [42303465405](https://github.com/JTCyborg/Project126/actions/runs/42303465405), commit `50bf91bf35a0ef89e5d5ebb128fb36b46ceac479`; SjASMPlus assembly and TR-DOS packaging completed successfully. The build assembles the ATM and NeoGS CRC primitives and publishes the new `P126_NGS_IPC.bin`, `NEOGS_IPC.lst` and `NEOGS_IPC.map` alongside existing artifacts. No live Project126 DMA/IPC hardware test has been performed.
 
 ## Unified DMA/IPC ABI 1.0
 
@@ -36,7 +36,7 @@ This document records actual artifacts and their verification state; it is not a
 - NeoGS assembly-time assertions enforce non-empty modules, contiguous placement (ALU begins exactly at CPU-state end), and total image size no greater than 256 KiB.
 - ATM assembly translation unit exports the IPC module start/end/size and asserts a non-empty image no larger than 64 KiB.
 - **Address-space qualification:** both assembly origins are image-relative offsets, not final physical NeoGS/ATM load addresses. Runtime memory maps and the ATM integration/load point remain to be fixed.
-- CI publishes both binaries, listings and maps in one audit artifact.
+- CI publishes all three binaries, listings and maps plus the TR-DOS disk image in one audit artifact.
 
 ## Latest verified assembly
 
