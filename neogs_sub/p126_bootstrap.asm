@@ -19,8 +19,8 @@ P126_B_ERROR EQU #E1
 
 p126_bootstrap_start:
         di
-        ld      a,'B'
-        out     (#EF),a
+        ld      hl,p126_boot_msg_enter
+        call    p126_boot_log
         ld      a,1
         out     (P126_B_DMA_MOD),a
         xor     a
@@ -29,6 +29,8 @@ p126_bootstrap_start:
         and     #FD
         or      #09
         out     (P126_B_GSCFG0),a
+        ld      hl,p126_boot_msg_norom
+        call    p126_boot_log
         xor     a
         out     (#20),a                ; WIN0 -> physical page 00
         ld      a,#80
@@ -130,5 +132,25 @@ p126_boot_receive_ready:
         or      a
         ret
 
+; Independent NeoGS diagnostic output. This routine writes directly to the
+; NeoGS CPU's own physical #EF debug port; ATM does not proxy these bytes.
+p126_boot_log:
+        push    af
+        push    bc
+        ld      bc,#00EF
+.p126_boot_log_loop:
+        ld      a,(hl)
+        inc     hl
+        or      a
+        jr      z,.p126_boot_log_done
+        out     (c),a
+        jr      .p126_boot_log_loop
+.p126_boot_log_done:
+        pop     bc
+        pop     af
+        ret
+
+p126_boot_msg_enter: db "[NGS] BOOTSTRAP ENTER",13,10,0
+p126_boot_msg_norom: db "[NGS] NOROM ENABLED",13,10,0
 p126_boot_tx: db 0
 p126_bootstrap_end:
