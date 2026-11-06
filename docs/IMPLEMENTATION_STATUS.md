@@ -12,10 +12,10 @@ This document records actual artifacts and their verification state; it is not a
 ## x86 CPU architectural state foundation
 
 - Source: `neogs_sub/x86_cpu_state.asm`
-- Runtime component ID: `[P126 X86_CPU_STATE v0.1.0]`
+- Runtime version emitter: `x86_cpu_emit_version`, string `[P126 X86_CPU_STATE v0.1.0]` (startup call is not wired yet because the Project126 firmware entry point does not exist).
 - PCem comparison points: `PCem/808x.c:resetx86()`, `PCem/cpu.h:CPU_8086`.
 - Implemented in source: deterministic register reset, 8086 reset vector FFFF:0000, FLAGS=0002h, 20-bit segment:offset physical-address calculation and target-side self-test vectors.
-- Status: source committed; not assembled or executed on NeoGS.
+- Status: source committed; address test vectors independently checked against 20-bit arithmetic; not assembled or executed on NeoGS.
 - Not implemented by this module: instruction decoding/execution, memory-region mapping, interrupt delivery, timing or device models.
 
 ## Verification policy
