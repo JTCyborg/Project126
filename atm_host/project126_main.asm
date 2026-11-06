@@ -29,9 +29,32 @@ p126_host_entry:
         call    p126_host_debug_string
         call    p126_ipc_emit_version
 
+        ; TR-DOS file access is complete. Bring up the ATM Turbo 2+ native
+        ; 80x25 text display only now, after the BASIC/TR-DOS loader returned.
+        call    p126_atm_video_init
+        call    BIOS_DebugConsole_Init
+        call    BIOS_DebugConsole_Clear
+        call    BIOS_DebugConsole_DrawInterface
+        ld      hl, p126_host_ui_log
+        call    p126_host_console_string
+
 p126_host_idle:
         halt
         jr      p126_host_idle
+
+; IN: HL=zero-terminated string. Writes to the lower on-screen log.
+p126_host_console_string:
+        ld      a, (hl)
+        or      a
+        ret     z
+        call    BIOS_DebugConsole_PrintChar
+        inc     hl
+        jr      p126_host_console_string
+
+p126_host_ui_log:
+        db "ATM HOST SHELL INITIALIZED", 13, 10
+        db "NeoGS firmware upload: NOT IMPLEMENTED", 13, 10
+        db "8086 execution: NOT STARTED", 13, 10, 0
 
 ; ATM debug output is independent of NeoGS debug output.
 p126_host_debug_string:
@@ -54,6 +77,12 @@ p126_host_version_text:
         db "[P126 ATM HOST v0.1.0]", 13, 10, 0
 
         INCLUDE "atm_host/neogs_ipc.asm"
+
+; Project125-derived ATM-native text console, relocated to window 2.
+; Its renderer maps video pages only for each write and restores host pages.
+        PAGE 0
+        ORG #A000
+        INCLUDE "atm_host/p126_screen_console.asm"
 
 p126_host_program_end:
         ASSERT p126_host_program_start = P126_HOST_LOAD_ADDRESS
