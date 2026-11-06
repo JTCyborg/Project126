@@ -1,4 +1,4 @@
-name: Project126 ATM and NeoGS Z80 assembly
+name: Project126 ATM, NeoGS and TR-DOS image build
 
 on:
   push:
@@ -8,6 +8,7 @@ on:
       - "atm_host/**"
       - "tools/build_project126.ps1"
       - "tools/sjasmplus.exe"
+      - "build_project126.bat"
       - ".github/workflows/neogs-assembly.yml"
   pull_request:
     paths:
@@ -15,29 +16,34 @@ on:
       - "atm_host/**"
       - "tools/build_project126.ps1"
       - "tools/sjasmplus.exe"
+      - "build_project126.bat"
       - ".github/workflows/neogs-assembly.yml"
   workflow_dispatch:
 
 jobs:
-  assemble-and-audit:
+  assemble-and-package:
     runs-on: windows-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Assemble ATM and NeoGS modules
+      - name: Assemble ATM, NeoGS and create TR-DOS disk
         shell: pwsh
         run: .\tools\build_project126.ps1
 
-      - name: Publish binaries, listings and symbol maps
+      - name: Publish binaries, listings, maps and TR-DOS disk
         uses: actions/upload-artifact@v4
         with:
-          name: project126-atm-neogs-assembly-audit
+          name: project126-trdos-disk-and-build
           if-no-files-found: error
           path: |
+            disk_A.trd
+            build/disk_A.trd
             build/x86_cpu_state.bin
             build/NEOGS.lst
             build/NEOGS.map
             build/ATM_IPC.bin
             build/ATM.lst
             build/ATM.map
+            build/ATM_DISK.lst
+            build/ATM_DISK.map
