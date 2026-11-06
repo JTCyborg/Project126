@@ -1,4 +1,4 @@
-; PROJECT126 / X86 ASSEMBLY UNIT v0.5.0
+; PROJECT126 / X86 ASSEMBLY UNIT v0.5.1
 ; Address-space audit unit, assembled at logical image origin 0000h.
 ; The listing and symbol map are mandatory build products.
 ; These offsets describe the assembled module image, not yet the final
