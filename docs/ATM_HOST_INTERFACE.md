@@ -78,3 +78,18 @@ The module intentionally does not write NeoGS-local DMA registers (#1B..#1F), be
 - Listing and map are generated on every successful build alongside the NeoGS listing/map.
 - CI build PASS: run `42274548106`, SjASMPlus 1.23.1, 235 source lines, 0 errors, 0 warnings, binary size 181 bytes; listing 14,766 bytes; map 1,407 bytes. [Build artifact](https://github.com/JTCyborg/Project126/actions/runs/42274548106).
 - Assembly success proves syntax and image-boundary assertions only. It does not prove live ATM↔NeoGS handshake on hardware.
+
+
+## 7. TR-DOS disk image and boot chain
+
+The Project126 build now creates a standard 80-track, 2-side, 16-sector TR-DOS image named `disk_A.trd` (655,360 bytes), both at the repository root and as `build/disk_A.trd`.
+
+The image is assembled using SjASMPlus `EMPTYTRD` and `SAVETRD`, following the Project125 disk-image workflow. Its required directory entries are:
+
+- `BOOT.B` — BASIC boot program adapted from the working Project125 loader. It preserves the TR-DOS startup trampoline, the `CLEAR 24000` barrier, loads `PROJ126.C` at address 24576 and transfers control to 24585.
+- `PROJ126.C` — ATM host application at 6000h. It emits its own version and the ATM IPC module version to the independent ATM debug port #EF, then remains in a HALT loop.
+- `X86CORE.C` — current assembled x86 CPU-state/ALU module, stored as a separate TR-DOS CODE file.
+
+The host application is an initial bootable shell. It does not yet read `X86CORE.C`, upload it to NeoGS, or start an x86 executor. That requires the NeoGS-side resident receiver and a defined launch protocol, neither of which is represented as complete by this disk packaging step.
+
+The build validates the 655,360-byte image and checks that all three directory entries exist with non-zero length and sector allocation. It produces `build/ATM_DISK.lst` and `build/ATM_DISK.map` for source/address auditing.

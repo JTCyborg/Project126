@@ -64,3 +64,14 @@ This document records actual artifacts and their verification state; it is not a
 ## Verification policy
 
 A committed source file is not automatically a successful runtime or hardware test. Keep assembly, emulator, NeoGS runtime and ATM hardware results separate. The current CPU-state and ALU modules have BUILD PASS only; they do not yet constitute an executable x86 CPU.
+
+
+## TR-DOS boot image
+
+- Disk assembly source: `atm_host/project126_disk.asm`.
+- BASIC boot loader: `atm_host/boot_loader.asm`, version `P126_TRDOS_BOOT v0.1.0`; based on the proven Project125 boot sequence.
+- ATM host application: `atm_host/project126_main.asm`, version `P126_ATM_HOST v0.1.0`; loaded at 6000h and entered at 6009h.
+- The disk contains `BOOT.B`, `PROJ126.C`, and `X86CORE.C`.
+- Build outputs: root `disk_A.trd`, `build/disk_A.trd`, `build/ATM_DISK.lst`, and `build/ATM_DISK.map`.
+- The build checks the standard 655,360-byte TRD image and all three TR-DOS directory entries. CI result for this new image pipeline is pending; do not infer success from the earlier standalone ATM/NeoGS assembly run.
+- Functional boundary: boot.B loads and starts the ATM host shell. The x86 core is present as a disk file but is not yet transferred to NeoGS or executed.
