@@ -19,7 +19,7 @@ $units = @(
         Binary = "x86_cpu_state.bin"
         Listing = "NEOGS.lst"
         Map = "NEOGS.map"
-        Version = "X86_STATE_ALU_MEMORY v0.7.0"
+        Version = "X86_STATE_ALU_MEMORY v0.8.0"
         MaxBytes = 262144
     },
     @{

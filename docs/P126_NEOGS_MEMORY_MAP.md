@@ -55,3 +55,22 @@ The build can prove internal consistency and fit within 4 MiB. It cannot prove p
 - Guest-visible system-board profile, I/O ports, PIC/PIT/keyboard/RTC.
 - VGA BIOS actual maximum image size and guest ROM mapping.
 - Video frame pixel format, stride, palette and actual ATM output mode.
+
+
+## Guest memory backing access v0.1
+
+The x86 byte dispatcher routes each classified guest physical address to its backing allocation through WIN3:
+
+| Guest range | Backend | NeoGS pages | Access |
+|---|---|---:|---|
+| 00000–9FFFF | Guest RAM | 44–6B | Read/write |
+| A0000–BFFFF | Linear VGA aperture staging | 30–37 | Read/write |
+| C0000–C7FFF | VGA BIOS slot | 20–21 | Read-only |
+| C8000–FDFFF | Guest RAM | 74–83 | Read/write |
+| FE000–FFFFF | System BIOS slot | 10 | Read-only |
+
+The system BIOS slot is 256 KiB but the current guest-visible reset mapping is 8 KiB at FE000–FFFFF. The image is stored at the beginning of the slot; the reset vector FFFF0 therefore addresses slot offset 1FF0. The VGA BIOS guest window is 32 KiB and uses the first two pages of its separate 256 KiB slot.
+
+The initial VGA aperture backend maps the guest's 128 KiB A0000–BFFFF range linearly to the first eight pages of the 256 KiB VRAM allocation. This is an explicit staging implementation, not VGA-compatible plane addressing. Sequencer/GC registers, latches, plane masks, read/write modes and scanout remain unimplemented.
+
+The common API is `x86_guest_mem_read8` and `x86_guest_mem_write8`. ROM writes fail with carry set. The selector's page-bias constants are asserted in the shared NeoGS map. All accesses use the WIN3 page-select port 23h; the runtime placement constraints described above still apply.

@@ -453,3 +453,14 @@ Implemented in `neogs_sub/x86_cpu_state.asm`:
 - The helpers do not yet implement ROM overlays, VGA aperture/VRAM banking, word/string access, DMA transfer, or runtime initialization of the WIN0–WIN2 kernel map.
 
 This stage must be built and then exercised on NeoGS with boundary and data-retention tests before it can be marked as emulator/hardware PASS.
+
+
+## Unified guest memory access layer v0.1
+
+- Added the common byte interface `x86_guest_mem_read8` / `x86_guest_mem_write8`. The dispatcher uses the existing 20-bit `x86_mem_classify` result; callers provide the physical address in `x86_phys_addr[0..2]`.
+- RAM regions (00000–9FFFF and C8000–FDFFF) use the existing 1 MiB guest RAM backing at NeoGS pages 44h–83h.
+- VGA BIOS C0000–C7FFF is read from the separate VGA BIOS slot, pages 20h–21h. System BIOS FE000–FFFFF is read from the system BIOS slot, page 10h; the guest-visible 8 KiB range maps to the first 8 KiB of that 256 KiB slot. Both ROM regions reject writes.
+- VGA aperture A0000–BFFFF is routed to pages 30h–37h, the first 128 KiB of the 256 KiB VRAM allocation. This first backend is explicitly byte-linear staging only. It does not implement VGA plane/latch/read-mode/write-mode behavior and must not be represented as a complete IBM VGA memory model.
+- All physical slots are accessed through WIN3 (C000h–FFFFh) using the page-select port 23h. Page-bias constants are defined and asserted in `shared/p126_neogs_memory_map.inc`.
+- The generic selector uses the 20-bit guest address to select a 16 KiB page and return the in-window offset. WIN3 remains volatile; resident code, data, stack and interrupt handlers must remain in WIN0–WIN2.
+- **Verification boundary:** build-time assembly and map checks can validate encoding and image placement only. No hardware page switching, ROM image contents, VGA rendering or full VGA semantics are claimed.

@@ -193,3 +193,13 @@ A committed source file is not automatically a successful runtime or hardware te
 - NeoGS memory module assembled successfully: 0 errors, 0 warnings, image size 1,492 bytes. Build map confirms bank aperture C000h and WIN3 page-select port 0023h. ATM IPC and NeoGS IPC units also assembled; TR-DOS disk generation and artifact upload completed.
 - The disk assembler emitted the existing generated-filename backslash warning; the NeoGS module itself had no warnings.
 - **Not yet verified:** actual WIN3 page selection/read/write on NeoGS hardware or a cycle-accurate emulator. No runtime RAM-retention PASS is claimed. The helpers require the resident runtime to keep code, data, stack and interrupt handlers outside WIN3.
+
+
+## Unified guest memory dispatcher
+
+- Source: `neogs_sub/x86_cpu_state.asm`; shared page-bias constants: `shared/p126_neogs_memory_map.inc`.
+- Added byte read/write entry points `x86_guest_mem_read8` and `x86_guest_mem_write8`, dispatching by `x86_mem_classify`.
+- RAM accesses use the existing guest RAM backend. VGA aperture accesses use the first 128 KiB of the dedicated VRAM allocation as linear staging. VGA BIOS and system BIOS reads use their independent physical slots; writes to either ROM are rejected.
+- The VGA aperture implementation is not a complete VGA memory model: plane/latch/read/write-mode semantics and register-controlled mapping remain pending.
+- Scenario and physical map documentation record exact guest-to-NeoGS page mapping and the limitations.
+- Verification is pending CI for this commit. No emulator or hardware runtime PASS is claimed.

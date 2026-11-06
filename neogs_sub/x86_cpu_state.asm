@@ -11,6 +11,10 @@
 ;   x86_mem_classify    IN x86_phys_addr[0..2], OUT A=region ID.
 ;   x86_guest_ram_read8 IN x86_phys_addr[0..2], OUT A=byte, carry=error.
 ;   x86_guest_ram_write8 IN x86_phys_addr[0..2], A=byte, carry=error.
+;   x86_guest_mem_read8  IN x86_phys_addr[0..2], OUT A=byte, carry=error.
+;   x86_guest_mem_write8 IN x86_phys_addr[0..2], A=byte, carry=error.
+;                       Dispatches RAM, VGA aperture and BIOS ROM through WIN3.
+;                       Writes to either BIOS ROM region are rejected.
 ;                       Uses WIN3 (C000h..FFFFh) as a dedicated bank window.
 ;                       Code, stack and interrupt handlers must remain WIN0..2.
 ;   x86_cpu_emit_version Emits the executing component version to NeoGS #EF.
@@ -199,6 +203,105 @@ x86_guest_ram_select_page:
         add     a,b
         out     (P126_NGS_BANK_WINDOW_PORT),a
 
+        ld      a,(x86_phys_addr+1)
+        and     #3F
+        or      #C0
+        ld      h,a
+        ld      a,(x86_phys_addr)
+        ld      l,a
+        ret
+
+; -------------------------------------------------------------------------
+; Unified guest memory interface
+;
+; Guest physical address is classified before selecting its physical backing:
+;   00000-9FFFF / C8000-FDFFF : guest RAM, pages 44h-83h
+;   A0000-BFFFF               : linear VGA aperture backing, pages 30h-37h
+;   C0000-C7FFF               : VGA BIOS slot, pages 20h-21h
+;   FE000-FFFFF               : system BIOS slot, page 10h (8 KiB image)
+;
+; The VGA aperture backend is deliberately a byte-linear staging layer over
+; the first 128 KiB of the 256 KiB VRAM allocation. It is NOT yet IBM VGA
+; plane/latch/read-mode/write-mode emulation. VGA register semantics are a
+; separate implementation stage.
+;
+; All backing is reached through WIN3. A is the page bias for the address
+; formula: page = (guest_high_nibble*4)+(guest_middle>>6)+bias.
+; -------------------------------------------------------------------------
+
+x86_guest_mem_read8:
+        call    x86_mem_classify
+        cp      P126_X86_MEM_RAM_LOW
+        jr      z,.ram
+        cp      P126_X86_MEM_RAM_HIGH
+        jr      z,.ram
+        cp      P126_X86_MEM_VGA_APERTURE
+        jr      z,.vram
+        cp      P126_X86_MEM_VGABIOS
+        jr      z,.vgabios
+        cp      P126_X86_MEM_SYSBIOS
+        jr      z,.sysbios
+        scf
+        ret
+.ram:
+        jp      x86_guest_ram_read8
+.vram:
+        ld      a,P126_NGS_GUEST_VRAM_PAGE_BIAS
+        call    x86_guest_mem_select_page
+        ld      a,(hl)
+        or      a
+        ret
+.vgabios:
+        ld      a,P126_NGS_GUEST_VGABIOS_PAGE_BIAS
+        call    x86_guest_mem_select_page
+        ld      a,(hl)
+        or      a
+        ret
+.sysbios:
+        ld      a,P126_NGS_GUEST_SYSBIOS_PAGE_BIAS
+        call    x86_guest_mem_select_page
+        ld      a,(hl)
+        or      a
+        ret
+
+x86_guest_mem_write8:
+        ld      (x86_mem_data),a
+        call    x86_mem_classify
+        cp      P126_X86_MEM_RAM_LOW
+        jr      z,.ram
+        cp      P126_X86_MEM_RAM_HIGH
+        jr      z,.ram
+        cp      P126_X86_MEM_VGA_APERTURE
+        jr      z,.vram
+        ; Both BIOS regions are read-only. Unknown regions fail closed.
+        scf
+        ret
+.ram:
+        ld      a,(x86_mem_data)
+        jp      x86_guest_ram_write8
+.vram:
+        ld      a,P126_NGS_GUEST_VRAM_PAGE_BIAS
+        call    x86_guest_mem_select_page
+        ld      a,(x86_mem_data)
+        ld      (hl),a
+        or      a
+        ret
+
+; Generic WIN3 selector. IN A=page bias; OUT HL=C000h|(guest_address&3FFFh).
+; Clobbers AF, BC, HL. The caller's page bias is consumed here.
+x86_guest_mem_select_page:
+        ld      b,a
+        ld      a,(x86_phys_addr+2)
+        add     a,a
+        add     a,a
+        add     a,b
+        ld      b,a
+        ld      a,(x86_phys_addr+1)
+        rrca
+        rrca
+        and     #03
+        add     a,b
+        out     (P126_NGS_BANK_WINDOW_PORT),a
         ld      a,(x86_phys_addr+1)
         and     #3F
         or      #C0
