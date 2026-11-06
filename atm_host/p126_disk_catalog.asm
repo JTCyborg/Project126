@@ -43,10 +43,10 @@ p126_catalog_poll_keyboard::
         call    p126_catalog_scan_keys
         or      a
         ret     z
-        ld      (p126_catalog_scan_result), a
+        ld      (p126_catalog_key), a
         call    p126_catalog_wait_release
 
-        ld      a, (p126_catalog_scan_result)
+        ld      a, (p126_catalog_key)
         bit     0, a
         jr      nz, .catalog_move_up
         bit     1, a
@@ -439,7 +439,7 @@ p126_catalog_draw:
         inc     a
         ld      (p126_catalog_row), a
         cp      P126_CATALOG_VISIBLE_ROWS
-        jr      nz, .catalog_draw_loop
+        jp      nz, .catalog_draw_loop
 
 .catalog_draw_done:
         pop     hl
