@@ -1,11 +1,12 @@
-# file opened: project126_disk.asm
+warning[backslash]: File name contains \, use / instead (\ fails on most of the supported platforms): C:\Temp\trdos\126\Project126\project126_disk.generated.asm
+# file opened: project126_disk.generated.asm
   1   0000              ; =========================================================================
-  2   0000              ; PROJECT126 — TR-DOS disk image assembly
+  2   0000              ; PROJECT126 ??? TR-DOS disk image assembly
   3   0000              ; Version: P126_TRDOS_IMAGE v0.1.0
   4   0000              ;
   5   0000              ; Produces disk_A.trd containing:
   6   0000              ;   BOOT.B     BASIC boot loader
-  7   0000              ;   PROJ126.C  ATM host program
+  7   0000              ;   proj126.C  ATM host program
   8   0000              ;   X86CORE.C  current NeoGS x86 CPU-state/ALU module image
   9   0000              ;
  10   0000              ; The x86 module is packaged as a disk file, but is not yet auto-uploaded:
@@ -46,320 +47,842 @@
  22+  6003 00 00 00...          BLOCK   6, 0
  23+  6009
  24+  6009              p126_host_entry:
- 25+  6009 F3                   di
- 26+  600A 31 FF AF             ld      sp, P126_HOST_STACK_TOP
- 27+  600D
- 28+  600D 21 A7 60             ld      hl, p126_host_version_text
- 29+  6010 CD 96 60             call    p126_host_debug_string
- 30+  6013 CD 44 61             call    p126_ipc_emit_version
- 31+  6016
- 32+  6016                      ; TR-DOS file access is complete. Bring up the ATM Turbo 2+ native
- 33+  6016                      ; 80x25 text display only now, after the BASIC/TR-DOS loader returned.
- 34+  6016 CD 02 A0             call    p126_atm_video_init
- 35+  6019 CD 6D A0             call    BIOS_DebugConsole_Init
- 36+  601C CD 7D A0             call    BIOS_DebugConsole_Clear
- 37+  601F CD 03 A1             call    BIOS_DebugConsole_DrawInterface
- 38+  6022 21 34 60             ld      hl, p126_host_ui_log
- 39+  6025 CD 2B 60             call    p126_host_console_string
- 40+  6028
- 41+  6028              p126_host_idle:
- 42+  6028 76                   halt
- 43+  6029 18 FD                jr      p126_host_idle
- 44+  602B
- 45+  602B              ; IN: HL=zero-terminated string. Writes to the lower on-screen log.
- 46+  602B              p126_host_console_string:
- 47+  602B 7E                   ld      a, (hl)
- 48+  602C B7                   or      a
- 49+  602D C8                   ret     z
- 50+  602E CD B7 A1             call    BIOS_DebugConsole_PrintChar
- 51+  6031 23                   inc     hl
- 52+  6032 18 F7                jr      p126_host_console_string
- 53+  6034
- 54+  6034              p126_host_ui_log:
- 55+  6034 41 54 4D 20          db "ATM HOST SHELL INITIALIZED", 13, 10
- 55+  6038 48 4F 53 54
- 55+  603C 20 53 48 45
- 55+  6040 4C 4C 20 49
- 55+  6044 4E 49 54 49
- 55+  6048 41 4C 49 5A
- 55+  604C 45 44 0D 0A
- 56+  6050 4E 65 6F 47          db "NeoGS firmware upload: NOT IMPLEMENTED", 13, 10
- 56+  6054 53 20 66 69
- 56+  6058 72 6D 77 61
- 56+  605C 72 65 20 75
- 56+  6060 70 6C 6F 61
- 56+  6064 64 3A 20 4E
- 56+  6068 4F 54 20 49
- 56+  606C 4D 50 4C 45
- 56+  6070 4D 45 4E 54
- 56+  6074 45 44 0D 0A
- 57+  6078 38 30 38 36          db "8086 execution: NOT STARTED", 13, 10, 0
- 57+  607C 20 65 78 65
- 57+  6080 63 75 74 69
- 57+  6084 6F 6E 3A 20
- 57+  6088 4E 4F 54 20
- 57+  608C 53 54 41 52
- 57+  6090 54 45 44 0D
- 57+  6094 0A 00
- 58+  6096
- 59+  6096              ; ATM debug output is independent of NeoGS debug output.
- 60+  6096              p126_host_debug_string:
- 61+  6096 F5                   push    af
- 62+  6097 C5                   push    bc
- 63+  6098 01 EF 00             ld      bc, #00EF
- 64+  609B              .p126_host_debug_loop:
- 65+  609B 7E                   ld      a, (hl)
- 66+  609C 23                   inc     hl
- 67+  609D B7                   or      a
- 68+  609E 28 04                jr      z, .p126_host_debug_done
- 69+  60A0 ED 79                out     (c), a
- 70+  60A2 18 F7                jr      .p126_host_debug_loop
- 71+  60A4              .p126_host_debug_done:
- 72+  60A4 C1                   pop     bc
- 73+  60A5 F1                   pop     af
- 74+  60A6 C9                   ret
- 75+  60A7
- 76+  60A7              p126_host_version_text:
- 77+  60A7 5B 50 31 32          db "[P126 ATM HOST v0.1.0]", 13, 10, 0
- 77+  60AB 36 20 41 54
- 77+  60AF 4D 20 48 4F
- 77+  60B3 53 54 20 76
- 77+  60B7 30 2E 31 2E
- 77+  60BB 30 5D 0D 0A
- 77+  60BF 00
- 78+  60C0
- 79+  60C0                      INCLUDE "atm_host/neogs_ipc.asm"
+ 25+  6009                      ; First instruction-level proof that BASIC USR reached 6009h.
+ 26+  6009                      ; Keep this before display/paging setup so the marker is independent
+ 27+  6009                      ; of the ATM text renderer and its memory-map changes.
+ 28+  6009 01 EF 00             ld      bc, #00EF
+ 29+  600C 3E 3E                ld      a, '>'
+ 30+  600E ED 79                out     (c), a
+ 31+  6010
+ 32+  6010 F3                   di
+ 33+  6011 31 FF AF             ld      sp, P126_HOST_STACK_TOP
+ 34+  6014
+ 35+  6014 21 27 61             ld      hl, p126_host_version_text
+ 36+  6017                      ; Probe the proven Project125 DS12887 RTC backend before normal logs.
+ 37+  6017 CD 40 61             call    DS12887_PROBE
+ 38+  601A 21 27 61             ld      hl, p126_host_version_text
+ 39+  601D CD A6 60             call    p126_host_debug_string
+ 40+  6020 CD BA 60             call    p126_host_log_prefix
+ 41+  6023 CD DE 63             call    p126_ipc_emit_version
+ 42+  6026
+ 43+  6026                      ; TR-DOS file access is complete. Bring up the ATM Turbo 2+ native
+ 44+  6026                      ; 80x25 text display only now, after the BASIC/TR-DOS loader returned.
+ 45+  6026 CD 02 A0             call    p126_atm_video_init
+ 46+  6029 CD 6D A0             call    BIOS_DebugConsole_Init
+ 47+  602C CD 7D A0             call    BIOS_DebugConsole_Clear
+ 48+  602F CD 03 A1             call    BIOS_DebugConsole_DrawInterface
+ 49+  6032 21 44 60             ld      hl, p126_host_ui_log
+ 50+  6035 CD 3B 60             call    p126_host_console_string
+ 51+  6038
+ 52+  6038              p126_host_idle:
+ 53+  6038 76                   halt
+ 54+  6039 18 FD                jr      p126_host_idle
+ 55+  603B
+ 56+  603B              ; IN: HL=zero-terminated string. Writes to the lower on-screen log.
+ 57+  603B              p126_host_console_string:
+ 58+  603B 7E                   ld      a, (hl)
+ 59+  603C B7                   or      a
+ 60+  603D C8                   ret     z
+ 61+  603E CD B7 A1             call    BIOS_DebugConsole_PrintChar
+ 62+  6041 23                   inc     hl
+ 63+  6042 18 F7                jr      p126_host_console_string
+ 64+  6044
+ 65+  6044              p126_host_ui_log:
+ 66+  6044 41 54 4D 20          db "ATM HOST SHELL INITIALIZED", 13, 10
+ 66+  6048 48 4F 53 54
+ 66+  604C 20 53 48 45
+ 66+  6050 4C 4C 20 49
+ 66+  6054 4E 49 54 49
+ 66+  6058 41 4C 49 5A
+ 66+  605C 45 44 0D 0A
+ 67+  6060 4E 65 6F 47          db "NeoGS firmware upload: NOT IMPLEMENTED", 13, 10
+ 67+  6064 53 20 66 69
+ 67+  6068 72 6D 77 61
+ 67+  606C 72 65 20 75
+ 67+  6070 70 6C 6F 61
+ 67+  6074 64 3A 20 4E
+ 67+  6078 4F 54 20 49
+ 67+  607C 4D 50 4C 45
+ 67+  6080 4D 45 4E 54
+ 67+  6084 45 44 0D 0A
+ 68+  6088 38 30 38 36          db "8086 execution: NOT STARTED", 13, 10, 0
+ 68+  608C 20 65 78 65
+ 68+  6090 63 75 74 69
+ 68+  6094 6F 6E 3A 20
+ 68+  6098 4E 4F 54 20
+ 68+  609C 53 54 41 52
+ 68+  60A0 54 45 44 0D
+ 68+  60A4 0A 00
+ 69+  60A6
+ 70+  60A6              ; ATM debug output is independent of NeoGS debug output.
+ 71+  60A6              p126_host_debug_string:
+ 72+  60A6 CD BA 60             call    p126_host_log_prefix
+ 73+  60A9 F5                   push    af
+ 74+  60AA C5                   push    bc
+ 75+  60AB 01 EF 00             ld      bc, #00EF
+ 76+  60AE              .p126_host_debug_loop:
+ 77+  60AE 7E                   ld      a, (hl)
+ 78+  60AF 23                   inc     hl
+ 79+  60B0 B7                   or      a
+ 80+  60B1 28 04                jr      z, .p126_host_debug_done
+ 81+  60B3 ED 79                out     (c), a
+ 82+  60B5 18 F7                jr      .p126_host_debug_loop
+ 83+  60B7              .p126_host_debug_done:
+ 84+  60B7 C1                   pop     bc
+ 85+  60B8 F1                   pop     af
+ 86+  60B9 C9                   ret
+ 87+  60BA
+ 88+  60BA
+ 89+  60BA              ; Prefix every ATM-originated #EF message with the host RTC timestamp.
+ 90+  60BA              ; NeoGS output must bypass this routine and use the independent [NGS] path.
+ 91+  60BA              p126_host_log_prefix:
+ 92+  60BA F5                   push    af
+ 93+  60BB C5                   push    bc
+ 94+  60BC E5                   push    hl
+ 95+  60BD 01 EF 00             ld      bc, #00EF
+ 96+  60C0 3E 5B                ld      a, '['
+ 97+  60C2 ED 79                out     (c), a
+ 98+  60C4 3A 4F 63             ld      a, (ds12887_available)
+ 99+  60C7 B7                   or      a
+100+  60C8 28 2B                jr      z, .p126_time_unknown
+101+  60CA CD 96 61             call    READ_CURRENT_TIME
+project126_main.asm(102): error: Label not found: txt_hour
+102+  60CD 3A 00 00             ld      a, (txt_hour)
+103+  60D0 ED 79                out     (c), a
+project126_main.asm(104): error: Label not found: txt_hour
+104+  60D2 3A 01 00             ld      a, (txt_hour+1)
+105+  60D5 ED 79                out     (c), a
+106+  60D7 3E 3A                ld      a, ':'
+107+  60D9 ED 79                out     (c), a
+project126_main.asm(108): error: Label not found: txt_min
+108+  60DB 3A 00 00             ld      a, (txt_min)
+109+  60DE ED 79                out     (c), a
+project126_main.asm(110): error: Label not found: txt_min
+110+  60E0 3A 01 00             ld      a, (txt_min+1)
+111+  60E3 ED 79                out     (c), a
+112+  60E5 3E 3A                ld      a, ':'
+113+  60E7 ED 79                out     (c), a
+project126_main.asm(114): error: Label not found: txt_sec
+114+  60E9 3A 00 00             ld      a, (txt_sec)
+115+  60EC ED 79                out     (c), a
+project126_main.asm(116): error: Label not found: txt_sec
+116+  60EE 3A 01 00             ld      a, (txt_sec+1)
+117+  60F1 ED 79                out     (c), a
+118+  60F3 18 12                jr     .p126_time_close
+119+  60F5              .p126_time_unknown:
+120+  60F5 3E 3F                ld      a, '?'
+121+  60F7 ED 79                out     (c), a
+122+  60F9 ED 79                out     (c), a
+123+  60FB ED 79                out     (c), a
+124+  60FD ED 79                out     (c), a
+125+  60FF ED 79                out     (c), a
+126+  6101 ED 79                out     (c), a
+127+  6103 ED 79                out     (c), a
+128+  6105 ED 79                out     (c), a
+129+  6107              .p126_time_close:
+130+  6107 3E 5D                ld      a, ']'
+131+  6109 ED 79                out     (c), a
+132+  610B                      ; ATM tag is emitted as individual bytes below.
+133+  610B 3E 5B                ld      a, '['
+134+  610D ED 79                out     (c), a
+135+  610F 3E 41                ld      a, 'A'
+136+  6111 ED 79                out     (c), a
+137+  6113 3E 54                ld      a, 'T'
+138+  6115 ED 79                out     (c), a
+139+  6117 3E 4D                ld      a, 'M'
+140+  6119 ED 79                out     (c), a
+141+  611B 3E 5D                ld      a, ']'
+142+  611D ED 79                out     (c), a
+143+  611F 3E 20                ld      a, ' '
+144+  6121 ED 79                out     (c), a
+145+  6123 E1                   pop     hl
+146+  6124 C1                   pop     bc
+147+  6125 F1                   pop     af
+148+  6126 C9                   ret
+149+  6127
+150+  6127              p126_host_version_text:
+151+  6127 5B 50 31 32          db "[P126 ATM HOST v0.1.0]", 13, 10, 0
+151+  612B 36 20 41 54
+151+  612F 4D 20 48 4F
+151+  6133 53 54 20 76
+151+  6137 30 2E 31 2E
+151+  613B 30 5D 0D 0A
+151+  613F 00
+152+  6140
+153+  6140                      INCLUDE "atm_host/ds12887_rtc.asm"
+# file opened: ds12887_rtc.asm
+  1++ 6140              ; =========================================================================
+  2++ 6140              ; PROJECT125 — Dallas DS12887 RTC driver for ATM Turbo 2+
+  3++ 6140              ; Version: D1.07
+  4++ 6140              ;
+  5++ 6140              ; ATM710 dual interface:
+  6++ 6140              ;   Native GLUK: EFF7 bit 7 gate, DFF7 index, BFF7 data.
+  7++ 6140              ;   SMUC fallback: FFBA selects address mode, DFBA index/data.
+  8++ 6140              ; The RTC data/control registers are never written by this driver.
+  9++ 6140              ; READ_CURRENT_TIME is the timestamp API used by main.asm.
+ 10++ 6140              ;
+ 11++ 6140              ; DS12887 registers used:
+ 12++ 6140              ;   00 seconds, 02 minutes, 04 hours, 0A Status A, 0B Status B, 0D Status D
+ 13++ 6140              ; Status B bit 2: 1=binary, 0=BCD; bit 1: 1=24-hour, 0=12-hour.
+ 14++ 6140              ; Status A bit 7: UIP. Status D bit 7: VRT (valid RAM/time).
+ 15++ 6140              ; =========================================================================
+ 16++ 6140
+ 17++ 6140              DS12887_PROBE:
+ 17++ 6140
+ 18++ 6140 F5                   push    af
+ 19++ 6141 C5                   push    bc
+ 20++ 6142 D5                   push    de
+ 21++ 6143 E5                   push    hl
+ 22++ 6144
+ 23++ 6144                      ; First try the native GLUK/ATM DFF7/BFF7 interface.
+ 24++ 6144 AF                   xor     a
+ 25++ 6145 32 50 63             ld      (ds12887_backend), a
+ 26++ 6148 CD 33 62             call    DS12887_OPEN
+ 27++ 614B CD EA 61             call    DS12887_READ_STATUS
+ 28++ 614E                      ; A floating/unimplemented port often reads FF. A valid DS12887
+ 29++ 614E                      ; has Status D exactly 80h and Status A divider bits 010b.
+ 30++ 614E CD 1F 62             call    DS12887_VALIDATE_STATUS
+ 31++ 6151 30 1C                jr      nc, ds12887_probe_status_ready
+ 32++ 6153
+ 33++ 6153                      ; ATM710 emulators may expose the same Dallas CMOS through SMUC.
+ 34++ 6153                      ; Retry through the SMUC DFBA/FFBA index/data interface.
+ 35++ 6153 CD 4E 62             call    DS12887_CLOSE
+ 36++ 6156 3E 01                ld      a, 1
+ 37++ 6158 32 50 63             ld      (ds12887_backend), a
+ 38++ 615B CD 33 62             call    DS12887_OPEN
+ 39++ 615E CD EA 61             call    DS12887_READ_STATUS
+ 40++ 6161                      ; Read back the SMUC system port after selecting address mode.
+ 41++ 6161                      ; Unreal Speccy decodes SMUC only while CF_DOSPORTS is active;
+ 42++ 6161                      ; an FF readback therefore identifies a closed DOS-port gate.
+ 43++ 6161 3A 50 63             ld      a, (ds12887_backend)
+ 44++ 6164 B7                   or      a
+ 45++ 6165 28 08                jr      z, ds12887_probe_status_ready
+ 46++ 6167                      ; #5FBE is a fixed SMUC signature port in Unreal Speccy:
+ 47++ 6167                      ; it returns #57 only when both CF_DOSPORTS and SMUC decode are active.
+ 48++ 6167                      ; Unlike #FFBA (NVRAM output, which may legitimately be #FF),
+ 49++ 6167                      ; this is a useful decoder-presence test.
+ 50++ 6167 01 BE 5F             ld      bc, #5FBE
+ 51++ 616A ED 78                in      a, (c)
+ 52++ 616C 32 51 63             ld      (ds12887_smuc_control), a
+ 53++ 616F
+ 54++ 616F              ds12887_probe_status_ready:
+ 55++ 616F CD 1F 62             call    DS12887_VALIDATE_STATUS
+ 56++ 6172 DA 83 61             jp      c, ds12887_probe_invalid
+ 57++ 6175
+ 58++ 6175 3E 01                ld      a, 1
+ 59++ 6177 32 4F 63             ld      (ds12887_available), a
+ 60++ 617A
+ 61++ 617A CD 7E 62             call    DS12887_READ_SNAPSHOT
+ 62++ 617D DA 8A 61             jp      c, ds12887_probe_read_error
+ 63++ 6180
+ 64++ 6180 C3 8E 61             jp      ds12887_probe_done
+ 65++ 6183
+ 66++ 6183              ds12887_probe_invalid:
+ 67++ 6183 AF                   xor     a
+ 68++ 6184 32 4F 63             ld      (ds12887_available), a
+ 69++ 6187 C3 8E 61             jp      ds12887_probe_done
+ 70++ 618A
+ 71++ 618A              ds12887_probe_read_error:
+ 72++ 618A AF                   xor     a
+ 73++ 618B 32 4F 63             ld      (ds12887_available), a
+ 74++ 618E
+ 75++ 618E              ds12887_probe_done:
+ 76++ 618E CD 4E 62             call    DS12887_CLOSE
+ 77++ 6191 E1                   pop     hl
+ 78++ 6192 D1                   pop     de
+ 79++ 6193 C1                   pop     bc
+ 80++ 6194 F1                   pop     af
+ 81++ 6195 C9                   ret
+ 82++ 6196
+ 83++ 6196              ; -------------------------------------------------------------------------
+ 84++ 6196              ; Public timestamp API.
+ 85++ 6196              ; Output txt_hour/txt_min/txt_sec = two decimal ASCII digits.
+ 86++ 6196              ; If DS12887 is unavailable or UIP never clears, outputs "??".
+ 87++ 6196              ; AF/BC/DE/HL are preserved for the caller.
+ 88++ 6196              ; -------------------------------------------------------------------------
+ 89++ 6196              READ_CURRENT_TIME:
+ 89++ 6196
+ 90++ 6196 F5                   push    af
+ 91++ 6197 C5                   push    bc
+ 92++ 6198 D5                   push    de
+ 93++ 6199 E5                   push    hl
+ 94++ 619A
+ 95++ 619A CD 33 62             call    DS12887_OPEN
+ 96++ 619D 3A 4F 63             ld      a, (ds12887_available)
+ 97++ 61A0 B7                   or      a
+ 98++ 61A1 CA CE 61             jp      z, ds12887_time_unknown
+ 99++ 61A4
+100++ 61A4 CD 7E 62             call    DS12887_READ_SNAPSHOT
+101++ 61A7 DA CE 61             jp      c, ds12887_time_unknown
+102++ 61AA
+103++ 61AA                      ; Convert the hour according to Status B (12/24-hour and BCD/binary).
+104++ 61AA CD C6 62             call    DS12887_CONVERT_HOUR
+ds12887_rtc.asm(105): error: Label not found: txt_hour
+105++ 61AD 21 00 00             ld      hl, txt_hour
+106++ 61B0 CD 16 63             call    DS12887_TO_DECIMAL
+107++ 61B3
+108++ 61B3 3A 56 63             ld      a, (ds12887_minutes)
+109++ 61B6 CD FB 62             call    DS12887_TO_BINARY
+ds12887_rtc.asm(110): error: Label not found: txt_min
+110++ 61B9 21 00 00             ld      hl, txt_min
+111++ 61BC CD 16 63             call    DS12887_TO_DECIMAL
+112++ 61BF
+113++ 61BF 3A 55 63             ld      a, (ds12887_seconds)
+114++ 61C2 CD FB 62             call    DS12887_TO_BINARY
+ds12887_rtc.asm(115): error: Label not found: txt_sec
+115++ 61C5 21 00 00             ld      hl, txt_sec
+116++ 61C8 CD 16 63             call    DS12887_TO_DECIMAL
+117++ 61CB C3 E2 61             jp      ds12887_time_done
+118++ 61CE
+119++ 61CE              ds12887_time_unknown:
+120++ 61CE 3E 3F                ld      a, '?'
+ds12887_rtc.asm(121): error: Label not found: txt_hour
+121++ 61D0 32 00 00             ld      (txt_hour), a
+ds12887_rtc.asm(122): error: Label not found: txt_hour
+122++ 61D3 32 01 00             ld      (txt_hour+1), a
+ds12887_rtc.asm(123): error: Label not found: txt_min
+123++ 61D6 32 00 00             ld      (txt_min), a
+ds12887_rtc.asm(124): error: Label not found: txt_min
+124++ 61D9 32 01 00             ld      (txt_min+1), a
+ds12887_rtc.asm(125): error: Label not found: txt_sec
+125++ 61DC 32 00 00             ld      (txt_sec), a
+ds12887_rtc.asm(126): error: Label not found: txt_sec
+126++ 61DF 32 01 00             ld      (txt_sec+1), a
+127++ 61E2
+128++ 61E2              ds12887_time_done:
+129++ 61E2 CD 4E 62             call    DS12887_CLOSE
+130++ 61E5 E1                   pop     hl
+131++ 61E6 D1                   pop     de
+132++ 61E7 C1                   pop     bc
+133++ 61E8 F1                   pop     af
+134++ 61E9 C9                   ret
+135++ 61EA
+136++ 61EA              ; Read Status D/A/B through the currently selected backend.
+137++ 61EA              DS12887_READ_STATUS:
+138++ 61EA 3E 0D                ld      a, #0D
+139++ 61EC CD 5F 62             call    DS12887_READ_REG
+140++ 61EF 32 54 63             ld      (ds12887_status_d), a
+141++ 61F2 3E 0A                ld      a, #0A
+142++ 61F4 CD 5F 62             call    DS12887_READ_REG
+143++ 61F7 32 52 63             ld      (ds12887_status_a), a
+144++ 61FA 3E 0B                ld      a, #0B
+145++ 61FC CD 5F 62             call    DS12887_READ_REG
+146++ 61FF 32 53 63             ld      (ds12887_status_b), a
+147++ 6202 C9                   ret
+148++ 6203
+149++ 6203              ; Print the last captured Status D/A/B triplet.
+150++ 6203              DS12887_PRINT_STATUS:
+151++ 6203 3A 54 63             ld      a, (ds12887_status_d)
+152++ 6206 CD 2C 63             call    DS12887_PRINT_HEX8
+153++ 6209 3E 20                ld      a, ' '
+154++ 620B CD 47 63             call    DS12887_PRINT_CHAR
+155++ 620E 3A 52 63             ld      a, (ds12887_status_a)
+156++ 6211 CD 2C 63             call    DS12887_PRINT_HEX8
+157++ 6214 3E 20                ld      a, ' '
+158++ 6216 CD 47 63             call    DS12887_PRINT_CHAR
+159++ 6219 3A 53 63             ld      a, (ds12887_status_b)
+160++ 621C C3 2C 63             jp      DS12887_PRINT_HEX8
+161++ 621F
+162++ 621F              ; Carry clear only for a plausible live DS12887 register set.
+163++ 621F              DS12887_VALIDATE_STATUS:
+164++ 621F 3A 54 63             ld      a, (ds12887_status_d)
+165++ 6222 FE 80                cp      #80
+166++ 6224 20 0B                jr      nz, ds12887_status_invalid
+167++ 6226 3A 52 63             ld      a, (ds12887_status_a)
+168++ 6229 E6 70                and     #70
+169++ 622B FE 20                cp      #20
+170++ 622D 20 02                jr      nz, ds12887_status_invalid
+171++ 622F B7                   or      a
+172++ 6230 C9                   ret
+173++ 6231              ds12887_status_invalid:
+174++ 6231 37                   scf
+175++ 6232 C9                   ret
+176++ 6233
+177++ 6233              ; -------------------------------------------------------------------------
+178++ 6233              ; GLUK/ATM CMOS gate. Match the known-working Project124 sequence.
+179++ 6233              ; EFF7 bit 7 enables the DFF7/BFF7 RTC/CMOS port decoder.
+180++ 6233              ; -------------------------------------------------------------------------
+181++ 6233              DS12887_OPEN:
+182++ 6233 F5                   push    af
+183++ 6234 C5                   push    bc
+184++ 6235 3A 50 63             ld      a, (ds12887_backend)
+185++ 6238 B7                   or      a
+186++ 6239 20 09                jr      nz, ds12887_open_smuc
+187++ 623B 01 F7 EF             ld      bc, #EFF7
+188++ 623E 3E 80                ld      a, #80
+189++ 6240 ED 79                out     (c), a
+190++ 6242 18 07                jr      ds12887_open_done
+191++ 6244              ds12887_open_smuc:
+192++ 6244                      ; SMUC FFBA is not a plain 0/1 selector: D6-D4 and D0
+193++ 6244                      ; must retain the documented fixed pattern 111...1. With D7=0,
+194++ 6244                      ; #71 selects RTC address/read mode on DFBA. Writing #00 corrupts
+195++ 6244                      ; the SMUC multiplexed ISA address/control configuration and can
+196++ 6244                      ; interfere with later TR-DOS disk operations.
+197++ 6244 01 BA FF             ld      bc, #FFBA
+198++ 6247 3E 71                ld      a, #71
+199++ 6249 ED 79                out     (c), a
+200++ 624B              ds12887_open_done:
+201++ 624B C1                   pop     bc
+202++ 624C F1                   pop     af
+203++ 624D C9                   ret
+204++ 624E
+205++ 624E              DS12887_CLOSE:
+206++ 624E F5                   push    af
+207++ 624F C5                   push    bc
+208++ 6250 3A 50 63             ld      a, (ds12887_backend)
+209++ 6253 B7                   or      a
+210++ 6254 20 06                jr      nz, ds12887_close_done
+211++ 6256 01 F7 EF             ld      bc, #EFF7
+212++ 6259 AF                   xor     a
+213++ 625A ED 79                out     (c), a
+214++ 625C              ds12887_close_done:
+215++ 625C C1                   pop     bc
+216++ 625D F1                   pop     af
+217++ 625E C9                   ret
+218++ 625F
+219++ 625F              ; -------------------------------------------------------------------------
+220++ 625F              ; A = DS12887 register number, returns register value in A.
+221++ 625F              ; Caller must have opened the EFF7 CMOS gate.
+222++ 625F              ; No writes are made to the selected RTC register.
+223++ 625F              ; -------------------------------------------------------------------------
+224++ 625F              DS12887_READ_REG:
+225++ 625F C5                   push    bc
+226++ 6260 4F                   ld      c, a
+227++ 6261 3A 50 63             ld      a, (ds12887_backend)
+228++ 6264 B7                   or      a
+229++ 6265 20 0D                jr      nz, ds12887_read_smuc
+230++ 6267 79                   ld      a, c
+231++ 6268 01 F7 DF             ld      bc, #DFF7
+232++ 626B ED 79                out     (c), a
+233++ 626D 01 F7 BF             ld      bc, #BFF7
+234++ 6270 ED 78                in      a, (c)
+235++ 6272 C1                   pop     bc
+236++ 6273 C9                   ret
+237++ 6274              ds12887_read_smuc:
+238++ 6274 79                   ld      a, c
+239++ 6275 01 BA DF             ld      bc, #DFBA
+240++ 6278 ED 79                out     (c), a
+241++ 627A ED 78                in      a, (c)
+242++ 627C C1                   pop     bc
+243++ 627D C9                   ret
+244++ 627E
+245++ 627E              ; -------------------------------------------------------------------------
+246++ 627E              ; Wait for UIP=0 (bounded), then take a seconds/minutes/hours/seconds
+247++ 627E              ; snapshot. A seconds rollover causes a retry. Carry set on timeout.
+248++ 627E              ; -------------------------------------------------------------------------
+249++ 627E              DS12887_READ_SNAPSHOT:
+250++ 627E 06 04                ld      b, 4
+251++ 6280              ds12887_snapshot_retry:
+252++ 6280 CD B2 62             call    DS12887_WAIT_UIP
+253++ 6283 D8                   ret     c
+254++ 6284
+255++ 6284 3E 00                ld      a, #00
+256++ 6286 CD 5F 62             call    DS12887_READ_REG
+257++ 6289 32 55 63             ld      (ds12887_seconds), a
+258++ 628C
+259++ 628C 3E 02                ld      a, #02
+260++ 628E CD 5F 62             call    DS12887_READ_REG
+261++ 6291 32 56 63             ld      (ds12887_minutes), a
+262++ 6294
+263++ 6294 3E 04                ld      a, #04
+264++ 6296 CD 5F 62             call    DS12887_READ_REG
+265++ 6299 32 57 63             ld      (ds12887_hours), a
+266++ 629C
+267++ 629C 3E 00                ld      a, #00
+268++ 629E CD 5F 62             call    DS12887_READ_REG
+269++ 62A1 4F                   ld      c, a
+270++ 62A2 3A 55 63             ld      a, (ds12887_seconds)
+271++ 62A5 B9                   cp      c
+272++ 62A6 28 04                jr      z, ds12887_snapshot_stable
+273++ 62A8 10 D6                djnz    ds12887_snapshot_retry
+274++ 62AA 37                   scf
+275++ 62AB C9                   ret
+276++ 62AC
+277++ 62AC              ds12887_snapshot_stable:
+278++ 62AC 79                   ld      a, c
+279++ 62AD 32 55 63             ld      (ds12887_seconds), a
+280++ 62B0 B7                   or      a
+281++ 62B1 C9                   ret
+282++ 62B2
+283++ 62B2              ; Bounded UIP wait: 256 polls maximum. READ_REG preserves BC.
+284++ 62B2              DS12887_WAIT_UIP:
+285++ 62B2 C5                   push    bc
+286++ 62B3 06 00                ld      b, 0
+287++ 62B5              ds12887_uip_loop:
+288++ 62B5 3E 0A                ld      a, #0A
+289++ 62B7 CD 5F 62             call    DS12887_READ_REG
+290++ 62BA CB 7F                bit     7, a
+291++ 62BC 20 03                jr      nz, ds12887_uip_busy
+292++ 62BE B7                   or      a                       ; clear carry on successful UIP wait
+293++ 62BF C1                   pop     bc
+294++ 62C0 C9                   ret
+295++ 62C1              ds12887_uip_busy:
+296++ 62C1 10 F2                djnz    ds12887_uip_loop
+297++ 62C3 37                   scf
+298++ 62C4 C1                   pop     bc
+299++ 62C5 C9                   ret
+300++ 62C6
+301++ 62C6              ; -------------------------------------------------------------------------
+302++ 62C6              ; Convert DS12887 hour register to 0..23.
+303++ 62C6              ; Supports both BCD/binary and 12/24-hour modes without writing Status B.
+304++ 62C6              ; -------------------------------------------------------------------------
+305++ 62C6              DS12887_CONVERT_HOUR:
+306++ 62C6 3A 57 63             ld      a, (ds12887_hours)
+307++ 62C9 47                   ld      b, a
+308++ 62CA 3A 53 63             ld      a, (ds12887_status_b)
+309++ 62CD CB 4F                bit     1, a
+310++ 62CF 20 26                jr      nz, ds12887_hour_24
+311++ 62D1
+312++ 62D1                      ; 12-hour mode: bit 7 is PM; lower seven bits hold 1..12.
+313++ 62D1 78                   ld      a, b
+314++ 62D2 E6 80                and     #80
+315++ 62D4 32 58 63             ld      (ds12887_hour_pm), a
+316++ 62D7 78                   ld      a, b
+317++ 62D8 E6 7F                and     #7F
+318++ 62DA CD FB 62             call    DS12887_TO_BINARY
+319++ 62DD 32 59 63             ld      (ds12887_hour_binary), a
+320++ 62E0
+321++ 62E0 3A 58 63             ld      a, (ds12887_hour_pm)
+322++ 62E3 B7                   or      a
+323++ 62E4 28 09                jr      z, ds12887_hour_am
+324++ 62E6 3A 59 63             ld      a, (ds12887_hour_binary)
+325++ 62E9 FE 0C                cp      12
+326++ 62EB C8                   ret     z
+327++ 62EC C6 0C                add     a, 12
+328++ 62EE C9                   ret
+329++ 62EF
+330++ 62EF              ds12887_hour_am:
+331++ 62EF 3A 59 63             ld      a, (ds12887_hour_binary)
+332++ 62F2 FE 0C                cp      12
+333++ 62F4 C0                   ret     nz
+334++ 62F5 AF                   xor     a
+335++ 62F6 C9                   ret
+336++ 62F7
+337++ 62F7              ds12887_hour_24:
+338++ 62F7 78                   ld      a, b
+339++ 62F8 C3 FB 62             jp      DS12887_TO_BINARY
+340++ 62FB
+341++ 62FB              ; A = RTC value. Converts BCD to binary unless Status B bit 2 selects binary.
+342++ 62FB              ; Clobbers BC and D; returns binary value in A.
+343++ 62FB              DS12887_TO_BINARY:
+344++ 62FB 47                   ld      b, a
+345++ 62FC 3A 53 63             ld      a, (ds12887_status_b)
+346++ 62FF CB 57                bit     2, a
+347++ 6301 78                   ld      a, b
+348++ 6302 C0                   ret     nz
+349++ 6303
+350++ 6303 47                   ld      b, a
+351++ 6304 E6 0F                and     #0F
+352++ 6306 4F                   ld      c, a
+353++ 6307 78                   ld      a, b
+354++ 6308 E6 F0                and     #F0
+355++ 630A 0F                   rrca
+356++ 630B 0F                   rrca
+357++ 630C 0F                   rrca
+358++ 630D 0F                   rrca
+359++ 630E 47                   ld      b, a
+360++ 630F 87                   add     a, a
+361++ 6310 57                   ld      d, a
+362++ 6311 87                   add     a, a
+363++ 6312 87                   add     a, a
+364++ 6313 82                   add     a, d
+365++ 6314 81                   add     a, c
+366++ 6315 C9                   ret
+367++ 6316
+368++ 6316              ; A = unsigned 0..99, HL = two-character destination.
+369++ 6316              DS12887_TO_DECIMAL:
+370++ 6316 06 00                ld      b, 0
+371++ 6318              ds12887_decimal_tens:
+372++ 6318 FE 0A                cp      10
+373++ 631A 38 05                jr      c, ds12887_decimal_ones
+374++ 631C D6 0A                sub     10
+375++ 631E 04                   inc     b
+376++ 631F 18 F7                jr      ds12887_decimal_tens
+377++ 6321              ds12887_decimal_ones:
+378++ 6321 57                   ld      d, a
+379++ 6322 78                   ld      a, b
+380++ 6323 C6 30                add     a, '0'
+381++ 6325 77                   ld      (hl), a
+382++ 6326 23                   inc     hl
+383++ 6327 7A                   ld      a, d
+384++ 6328 C6 30                add     a, '0'
+385++ 632A 77                   ld      (hl), a
+386++ 632B C9                   ret
+387++ 632C
+388++ 632C              ; A=byte; emit two uppercase hexadecimal digits to port #EF.
+389++ 632C              DS12887_PRINT_HEX8:
+390++ 632C F5                   push    af
+391++ 632D 0F                   rrca
+392++ 632E 0F                   rrca
+393++ 632F 0F                   rrca
+394++ 6330 0F                   rrca
+395++ 6331 CD 3A 63             call    DS12887_PRINT_NIBBLE
+396++ 6334 F1                   pop     af
+397++ 6335 E6 0F                and     #0F
+398++ 6337 C3 3A 63             jp      DS12887_PRINT_NIBBLE
+399++ 633A
+400++ 633A              DS12887_PRINT_NIBBLE:
+401++ 633A E6 0F                and     #0F
+402++ 633C C6 30                add     a, '0'
+403++ 633E FE 3A                cp      '9' + 1
+404++ 6340 38 02                jr      c, ds12887_hex_digit_ready
+405++ 6342 C6 07                add     a, 7
+406++ 6344              ds12887_hex_digit_ready:
+407++ 6344 C3 47 63             jp      DS12887_PRINT_CHAR
+408++ 6347
+409++ 6347              DS12887_PRINT_CHAR:
+410++ 6347 C5                   push    bc
+411++ 6348 01 EF 00             ld      bc, #00EF
+412++ 634B ED 79                out     (c), a
+413++ 634D C1                   pop     bc
+414++ 634E C9                   ret
+415++ 634F
+416++ 634F
+417++ 634F 00           ds12887_available:   defb 0
+418++ 6350 00           ds12887_backend:     defb 0
+419++ 6351 00           ds12887_smuc_control: defb 0
+420++ 6352 00           ds12887_status_a:    defb 0
+421++ 6353 00           ds12887_status_b:    defb 0
+422++ 6354 00           ds12887_status_d:    defb 0
+423++ 6355 00           ds12887_seconds:     defb 0
+424++ 6356 00           ds12887_minutes:     defb 0
+425++ 6357 00           ds12887_hours:       defb 0
+426++ 6358 00           ds12887_hour_pm:     defb 0
+427++ 6359 00           ds12887_hour_binary: defb 0
+428++ 635A
+# file closed: ds12887_rtc.asm
+154+  635A                      INCLUDE "atm_host/neogs_ipc.asm"
 # file opened: neogs_ipc.asm
-  1++ 60C0              ; =========================================================================
-  2++ 60C0              ; PROJECT126 — ATM Turbo 2+ / NeoGS host-side IPC driver
-  3++ 60C0              ; Version: P126_ATM_IPC v0.1.0
-  4++ 60C0              ;
-  5++ 60C0              ; This is ATM Z80 code. It runs on the 7 MHz host CPU.
-  6++ 60C0              ; NeoGS is an independent Z80 and has its own private debug port #EF.
-  7++ 60C0              ;
-  8++ 60C0              ; The implementation follows the proven Project125 host transport v2
-  9++ 60C0              ; handshake semantics. It intentionally contains no NeoGS-local IN/OUT
- 10++ 60C0              ; and does not program DMA_MOD/HAD/MAD/LAD/CST from the ATM side.
- 11++ 60C0              ; =========================================================================
- 12++ 60C0
- 13++ 60C0                      INCLUDE "atm_host/neogs_ipc.inc"
+  1++ 635A              ; =========================================================================
+  2++ 635A              ; PROJECT126 — ATM Turbo 2+ / NeoGS host-side IPC driver
+  3++ 635A              ; Version: P126_ATM_IPC v0.1.0
+  4++ 635A              ;
+  5++ 635A              ; This is ATM Z80 code. It runs on the 7 MHz host CPU.
+  6++ 635A              ; NeoGS is an independent Z80 and has its own private debug port #EF.
+  7++ 635A              ;
+  8++ 635A              ; The implementation follows the proven Project125 host transport v2
+  9++ 635A              ; handshake semantics. It intentionally contains no NeoGS-local IN/OUT
+ 10++ 635A              ; and does not program DMA_MOD/HAD/MAD/LAD/CST from the ATM side.
+ 11++ 635A              ; =========================================================================
+ 12++ 635A
+ 13++ 635A                      INCLUDE "atm_host/neogs_ipc.inc"
 # file opened: neogs_ipc.inc
-  1+++60C0              ; =========================================================================
-  2+++60C0              ; PROJECT126 — ATM / NeoGS IPC public interface
-  3+++60C0              ; Version: P126_ATM_IPC_API v0.1.0
-  4+++60C0              ;
-  5+++60C0              ; Include this file in ATM-side Z80 modules that call neogs_ipc.asm.
-  6+++60C0              ; Physical transport: GSCOM/GSSTAT (#BB), GSDAT (#B3), GSCTR (#33).
-  7+++60C0              ; The ATM-side driver never accesses NeoGS-local DMA registers.
-  8+++60C0              ; =========================================================================
-  9+++60C0
- 10+++60C0              P126_GSCOM          EQU #BB
- 11+++60C0              P126_GSSTAT         EQU #BB
- 12+++60C0              P126_GSDAT          EQU #B3
- 13+++60C0              P126_GSCTR          EQU #33
- 14+++60C0
- 15+++60C0              P126_CBIT           EQU 0
- 16+++60C0              P126_DBIT           EQU 7
- 17+++60C0              P126_M_CBIT         EQU #01
- 18+++60C0              P126_M_DBIT         EQU #80
- 19+++60C0
- 20+++60C0              P126_GS_RESET       EQU #80
- 21+++60C0              P126_GS_NMI         EQU #40
- 22+++60C0              P126_GS_LED         EQU #20
- 23+++60C0
- 24+++60C0              ; Driver result convention:
- 25+++60C0              ;   Carry clear = operation completed.
- 26+++60C0              ;   Carry set   = timeout.
- 27+++60C0              ;   A           = last observed GSSTAT on timeout / final status on wait.
- 28+++60C0              ;   p126_ipc_last_status always contains the last sampled GSSTAT byte.
- 29+++60C0
- 30+++60C0              ; Public entry points (see docs/ATM_HOST_INTERFACE.md):
- 31+++60C0              ;   p126_ipc_read_status
- 32+++60C0              ;   p126_ipc_wait_cbit_clear
- 33+++60C0              ;   p126_ipc_wait_dbit_clear
- 34+++60C0              ;   p126_ipc_wait_dbit_set
- 35+++60C0              ;   p126_ipc_send_command       A=command
- 36+++60C0              ;   p126_ipc_send_argument      A=argument; preloads GSDAT before GSCOM
- 37+++60C0              ;   p126_ipc_send_byte          A=data; waits for consumption
- 38+++60C0              ;   p126_ipc_receive_byte       returns A=data
- 39+++60C0              ;   p126_ipc_emit_version
- 40+++60C0
- 41+++60C0              P126_IPC_TIMEOUT    EQU #FFFF
- 42+++60C0
+  1+++635A              ; =========================================================================
+  2+++635A              ; PROJECT126 — ATM / NeoGS IPC public interface
+  3+++635A              ; Version: P126_ATM_IPC_API v0.1.0
+  4+++635A              ;
+  5+++635A              ; Include this file in ATM-side Z80 modules that call neogs_ipc.asm.
+  6+++635A              ; Physical transport: GSCOM/GSSTAT (#BB), GSDAT (#B3), GSCTR (#33).
+  7+++635A              ; The ATM-side driver never accesses NeoGS-local DMA registers.
+  8+++635A              ; =========================================================================
+  9+++635A
+ 10+++635A              P126_GSCOM          EQU #BB
+ 11+++635A              P126_GSSTAT         EQU #BB
+ 12+++635A              P126_GSDAT          EQU #B3
+ 13+++635A              P126_GSCTR          EQU #33
+ 14+++635A
+ 15+++635A              P126_CBIT           EQU 0
+ 16+++635A              P126_DBIT           EQU 7
+ 17+++635A              P126_M_CBIT         EQU #01
+ 18+++635A              P126_M_DBIT         EQU #80
+ 19+++635A
+ 20+++635A              P126_GS_RESET       EQU #80
+ 21+++635A              P126_GS_NMI         EQU #40
+ 22+++635A              P126_GS_LED         EQU #20
+ 23+++635A
+ 24+++635A              ; Driver result convention:
+ 25+++635A              ;   Carry clear = operation completed.
+ 26+++635A              ;   Carry set   = timeout.
+ 27+++635A              ;   A           = last observed GSSTAT on timeout / final status on wait.
+ 28+++635A              ;   p126_ipc_last_status always contains the last sampled GSSTAT byte.
+ 29+++635A
+ 30+++635A              ; Public entry points (see docs/ATM_HOST_INTERFACE.md):
+ 31+++635A              ;   p126_ipc_read_status
+ 32+++635A              ;   p126_ipc_wait_cbit_clear
+ 33+++635A              ;   p126_ipc_wait_dbit_clear
+ 34+++635A              ;   p126_ipc_wait_dbit_set
+ 35+++635A              ;   p126_ipc_send_command       A=command
+ 36+++635A              ;   p126_ipc_send_argument      A=argument; preloads GSDAT before GSCOM
+ 37+++635A              ;   p126_ipc_send_byte          A=data; waits for consumption
+ 38+++635A              ;   p126_ipc_receive_byte       returns A=data
+ 39+++635A              ;   p126_ipc_emit_version
+ 40+++635A
+ 41+++635A              P126_IPC_TIMEOUT    EQU #FFFF
+ 42+++635A
 # file closed: neogs_ipc.inc
- 14++ 60C0
- 15++ 60C0              ; -------------------------------------------------------------------------
- 16++ 60C0              ; Read the current hardware handshake state.
- 17++ 60C0              ; OUT: A=status; p126_ipc_last_status updated.
- 18++ 60C0              ; -------------------------------------------------------------------------
- 19++ 60C0              p126_ipc_read_status:
- 19++ 60C0
- 20++ 60C0 DB BB                in      a, (P126_GSSTAT)
- 21++ 60C2 32 5A 61             ld      (p126_ipc_last_status), a
- 22++ 60C5 C9                   ret
- 23++ 60C6
- 24++ 60C6              ; -------------------------------------------------------------------------
- 25++ 60C6              ; Wait routines. Every wait is bounded by P126_IPC_TIMEOUT.
- 26++ 60C6              ; OUT: Carry clear on requested state; carry set on timeout.
- 27++ 60C6              ;      A=last sampled GSSTAT. BC is clobbered.
- 28++ 60C6              ; -------------------------------------------------------------------------
- 29++ 60C6              p126_ipc_wait_cbit_clear:
- 29++ 60C6
- 30++ 60C6 01 FF FF             ld      bc, P126_IPC_TIMEOUT
- 31++ 60C9              .p126_cbit_loop:
- 32++ 60C9 CD C0 60             call    p126_ipc_read_status
- 33++ 60CC CB 47                bit     P126_CBIT, a
- 34++ 60CE 28 0A                jr      z, .p126_cbit_ready
- 35++ 60D0 0B                   dec     bc
- 36++ 60D1 78                   ld      a, b
- 37++ 60D2 B1                   or      c
- 38++ 60D3 20 F4                jr      nz, .p126_cbit_loop
- 39++ 60D5 3A 5A 61             ld      a, (p126_ipc_last_status)
- 40++ 60D8 37                   scf
- 41++ 60D9 C9                   ret
- 42++ 60DA              .p126_cbit_ready:
- 43++ 60DA 3A 5A 61             ld      a, (p126_ipc_last_status)
- 44++ 60DD B7                   or      a
- 45++ 60DE C9                   ret
- 46++ 60DF
- 47++ 60DF              p126_ipc_wait_dbit_clear:
- 47++ 60DF
- 48++ 60DF 01 FF FF             ld      bc, P126_IPC_TIMEOUT
- 49++ 60E2              .p126_dbit_clear_loop:
- 50++ 60E2 CD C0 60             call    p126_ipc_read_status
- 51++ 60E5 CB 7F                bit     P126_DBIT, a
- 52++ 60E7 28 0A                jr      z, .p126_dbit_clear_ready
- 53++ 60E9 0B                   dec     bc
- 54++ 60EA 78                   ld      a, b
- 55++ 60EB B1                   or      c
- 56++ 60EC 20 F4                jr      nz, .p126_dbit_clear_loop
- 57++ 60EE 3A 5A 61             ld      a, (p126_ipc_last_status)
- 58++ 60F1 37                   scf
- 59++ 60F2 C9                   ret
- 60++ 60F3              .p126_dbit_clear_ready:
- 61++ 60F3 3A 5A 61             ld      a, (p126_ipc_last_status)
- 62++ 60F6 B7                   or      a
- 63++ 60F7 C9                   ret
- 64++ 60F8
- 65++ 60F8              p126_ipc_wait_dbit_set:
- 65++ 60F8
- 66++ 60F8 01 FF FF             ld      bc, P126_IPC_TIMEOUT
- 67++ 60FB              .p126_dbit_set_loop:
- 68++ 60FB CD C0 60             call    p126_ipc_read_status
- 69++ 60FE CB 7F                bit     P126_DBIT, a
- 70++ 6100 20 0A                jr      nz, .p126_dbit_set_ready
- 71++ 6102 0B                   dec     bc
- 72++ 6103 78                   ld      a, b
- 73++ 6104 B1                   or      c
- 74++ 6105 20 F4                jr      nz, .p126_dbit_set_loop
- 75++ 6107 3A 5A 61             ld      a, (p126_ipc_last_status)
- 76++ 610A 37                   scf
- 77++ 610B C9                   ret
- 78++ 610C              .p126_dbit_set_ready:
- 79++ 610C 3A 5A 61             ld      a, (p126_ipc_last_status)
- 80++ 610F B7                   or      a
- 81++ 6110 C9                   ret
- 82++ 6111
- 83++ 6111              ; -------------------------------------------------------------------------
- 84++ 6111              ; Send one command through GSCOM.
- 85++ 6111              ; IN : A=command.
- 86++ 6111              ; OUT: Carry clear after NeoGS clears CBIT; carry set on timeout.
- 87++ 6111              ; -------------------------------------------------------------------------
- 88++ 6111              p126_ipc_send_command:
- 88++ 6111
- 89++ 6111 32 5B 61             ld      (p126_ipc_tx_byte), a
- 90++ 6114 3A 5B 61             ld      a, (p126_ipc_tx_byte)
- 91++ 6117 D3 BB                out     (P126_GSCOM), a
- 92++ 6119 C3 C6 60             jp      p126_ipc_wait_cbit_clear
- 93++ 611C
- 94++ 611C              ; -------------------------------------------------------------------------
- 95++ 611C              ; Preload one data byte before issuing a command.
- 96++ 611C              ; This ordering is required by the stock GS105a #13/#14 command ABI.
- 97++ 611C              ; IN : A=argument.
- 98++ 611C              ; OUT: Carry clear after GSDAT write; carry set if the data slot is busy.
- 99++ 611C              ; -------------------------------------------------------------------------
-100++ 611C              p126_ipc_send_argument:
-100++ 611C
-101++ 611C 32 5B 61             ld      (p126_ipc_tx_byte), a
-102++ 611F CD DF 60             call    p126_ipc_wait_dbit_clear
-103++ 6122 D8                   ret     c
-104++ 6123 3A 5B 61             ld      a, (p126_ipc_tx_byte)
-105++ 6126 D3 B3                out     (P126_GSDAT), a
-106++ 6128 B7                   or      a
-107++ 6129 C9                   ret
-108++ 612A
-109++ 612A              ; -------------------------------------------------------------------------
-110++ 612A              ; Send a data byte and wait until NeoGS consumes it (DBIT clears).
-111++ 612A              ; IN : A=data.
-112++ 612A              ; OUT: Carry clear on consumption; carry set on timeout.
-113++ 612A              ; -------------------------------------------------------------------------
-114++ 612A              p126_ipc_send_byte:
-114++ 612A
-115++ 612A 32 5B 61             ld      (p126_ipc_tx_byte), a
-116++ 612D CD DF 60             call    p126_ipc_wait_dbit_clear
-117++ 6130 D8                   ret     c
-118++ 6131 3A 5B 61             ld      a, (p126_ipc_tx_byte)
-119++ 6134 D3 B3                out     (P126_GSDAT), a
-120++ 6136 C3 DF 60             jp      p126_ipc_wait_dbit_clear
-121++ 6139
-122++ 6139              ; -------------------------------------------------------------------------
-123++ 6139              ; Receive one byte published by NeoGS.
-124++ 6139              ; OUT: A=data; carry clear. Carry set on timeout.
-125++ 6139              ; Reading GSDAT acknowledges the byte and clears DBIT in the host view.
-126++ 6139              ; -------------------------------------------------------------------------
-127++ 6139              p126_ipc_receive_byte:
-127++ 6139
-128++ 6139 CD F8 60             call    p126_ipc_wait_dbit_set
-129++ 613C D8                   ret     c
-130++ 613D DB B3                in      a, (P126_GSDAT)
-131++ 613F 32 5C 61             ld      (p126_ipc_rx_byte), a
-132++ 6142 B7                   or      a
-133++ 6143 C9                   ret
-134++ 6144
-135++ 6144              ; -------------------------------------------------------------------------
-136++ 6144              ; Emit a build/runtime identity to ATM's independent debug port #EF.
-137++ 6144              ; Preserves AF, BC and HL.
-138++ 6144              ; -------------------------------------------------------------------------
-139++ 6144              p126_ipc_emit_version:
-139++ 6144
-140++ 6144 F5                   push    af
-141++ 6145 C5                   push    bc
-142++ 6146 E5                   push    hl
-143++ 6147 21 5D 61             ld      hl, p126_ipc_version_text
-144++ 614A 01 EF 00             ld      bc, #00EF
-145++ 614D              .p126_version_loop:
-146++ 614D 7E                   ld      a, (hl)
-147++ 614E 23                   inc     hl
-148++ 614F B7                   or      a
-149++ 6150 28 04                jr      z, .p126_version_done
-150++ 6152 ED 79                out     (c), a
-151++ 6154 18 F7                jr      .p126_version_loop
-152++ 6156              .p126_version_done:
-153++ 6156 E1                   pop     hl
-154++ 6157 C1                   pop     bc
-155++ 6158 F1                   pop     af
-156++ 6159 C9                   ret
-157++ 615A
-158++ 615A              ; Driver state is private to this module. Callers must not modify it.
-159++ 615A 00           p126_ipc_last_status: db 0
-160++ 615B 00           p126_ipc_tx_byte:     db 0
-161++ 615C 00           p126_ipc_rx_byte:     db 0
-162++ 615D
-163++ 615D              p126_ipc_version_text:
-164++ 615D 5B 50 31 32          db "[P126 ATM_IPC v0.1.0]", 13, 10, 0
-164++ 6161 36 20 41 54
-164++ 6165 4D 5F 49 50
-164++ 6169 43 20 76 30
-164++ 616D 2E 31 2E 30
-164++ 6171 5D 0D 0A 00
-165++ 6175
+ 14++ 635A
+ 15++ 635A              ; -------------------------------------------------------------------------
+ 16++ 635A              ; Read the current hardware handshake state.
+ 17++ 635A              ; OUT: A=status; p126_ipc_last_status updated.
+ 18++ 635A              ; -------------------------------------------------------------------------
+ 19++ 635A              p126_ipc_read_status:
+ 19++ 635A
+ 20++ 635A DB BB                in      a, (P126_GSSTAT)
+ 21++ 635C 32 F4 63             ld      (p126_ipc_last_status), a
+ 22++ 635F C9                   ret
+ 23++ 6360
+ 24++ 6360              ; -------------------------------------------------------------------------
+ 25++ 6360              ; Wait routines. Every wait is bounded by P126_IPC_TIMEOUT.
+ 26++ 6360              ; OUT: Carry clear on requested state; carry set on timeout.
+ 27++ 6360              ;      A=last sampled GSSTAT. BC is clobbered.
+ 28++ 6360              ; -------------------------------------------------------------------------
+ 29++ 6360              p126_ipc_wait_cbit_clear:
+ 29++ 6360
+ 30++ 6360 01 FF FF             ld      bc, P126_IPC_TIMEOUT
+ 31++ 6363              .p126_cbit_loop:
+ 32++ 6363 CD 5A 63             call    p126_ipc_read_status
+ 33++ 6366 CB 47                bit     P126_CBIT, a
+ 34++ 6368 28 0A                jr      z, .p126_cbit_ready
+ 35++ 636A 0B                   dec     bc
+ 36++ 636B 78                   ld      a, b
+ 37++ 636C B1                   or      c
+ 38++ 636D 20 F4                jr      nz, .p126_cbit_loop
+ 39++ 636F 3A F4 63             ld      a, (p126_ipc_last_status)
+ 40++ 6372 37                   scf
+ 41++ 6373 C9                   ret
+ 42++ 6374              .p126_cbit_ready:
+ 43++ 6374 3A F4 63             ld      a, (p126_ipc_last_status)
+ 44++ 6377 B7                   or      a
+ 45++ 6378 C9                   ret
+ 46++ 6379
+ 47++ 6379              p126_ipc_wait_dbit_clear:
+ 47++ 6379
+ 48++ 6379 01 FF FF             ld      bc, P126_IPC_TIMEOUT
+ 49++ 637C              .p126_dbit_clear_loop:
+ 50++ 637C CD 5A 63             call    p126_ipc_read_status
+ 51++ 637F CB 7F                bit     P126_DBIT, a
+ 52++ 6381 28 0A                jr      z, .p126_dbit_clear_ready
+ 53++ 6383 0B                   dec     bc
+ 54++ 6384 78                   ld      a, b
+ 55++ 6385 B1                   or      c
+ 56++ 6386 20 F4                jr      nz, .p126_dbit_clear_loop
+ 57++ 6388 3A F4 63             ld      a, (p126_ipc_last_status)
+ 58++ 638B 37                   scf
+ 59++ 638C C9                   ret
+ 60++ 638D              .p126_dbit_clear_ready:
+ 61++ 638D 3A F4 63             ld      a, (p126_ipc_last_status)
+ 62++ 6390 B7                   or      a
+ 63++ 6391 C9                   ret
+ 64++ 6392
+ 65++ 6392              p126_ipc_wait_dbit_set:
+ 65++ 6392
+ 66++ 6392 01 FF FF             ld      bc, P126_IPC_TIMEOUT
+ 67++ 6395              .p126_dbit_set_loop:
+ 68++ 6395 CD 5A 63             call    p126_ipc_read_status
+ 69++ 6398 CB 7F                bit     P126_DBIT, a
+ 70++ 639A 20 0A                jr      nz, .p126_dbit_set_ready
+ 71++ 639C 0B                   dec     bc
+ 72++ 639D 78                   ld      a, b
+ 73++ 639E B1                   or      c
+ 74++ 639F 20 F4                jr      nz, .p126_dbit_set_loop
+ 75++ 63A1 3A F4 63             ld      a, (p126_ipc_last_status)
+ 76++ 63A4 37                   scf
+ 77++ 63A5 C9                   ret
+ 78++ 63A6              .p126_dbit_set_ready:
+ 79++ 63A6 3A F4 63             ld      a, (p126_ipc_last_status)
+ 80++ 63A9 B7                   or      a
+ 81++ 63AA C9                   ret
+ 82++ 63AB
+ 83++ 63AB              ; -------------------------------------------------------------------------
+ 84++ 63AB              ; Send one command through GSCOM.
+ 85++ 63AB              ; IN : A=command.
+ 86++ 63AB              ; OUT: Carry clear after NeoGS clears CBIT; carry set on timeout.
+ 87++ 63AB              ; -------------------------------------------------------------------------
+ 88++ 63AB              p126_ipc_send_command:
+ 88++ 63AB
+ 89++ 63AB 32 F5 63             ld      (p126_ipc_tx_byte), a
+ 90++ 63AE 3A F5 63             ld      a, (p126_ipc_tx_byte)
+ 91++ 63B1 D3 BB                out     (P126_GSCOM), a
+ 92++ 63B3 C3 60 63             jp      p126_ipc_wait_cbit_clear
+ 93++ 63B6
+ 94++ 63B6              ; -------------------------------------------------------------------------
+ 95++ 63B6              ; Preload one data byte before issuing a command.
+ 96++ 63B6              ; This ordering is required by the stock GS105a #13/#14 command ABI.
+ 97++ 63B6              ; IN : A=argument.
+ 98++ 63B6              ; OUT: Carry clear after GSDAT write; carry set if the data slot is busy.
+ 99++ 63B6              ; -------------------------------------------------------------------------
+100++ 63B6              p126_ipc_send_argument:
+100++ 63B6
+101++ 63B6 32 F5 63             ld      (p126_ipc_tx_byte), a
+102++ 63B9 CD 79 63             call    p126_ipc_wait_dbit_clear
+103++ 63BC D8                   ret     c
+104++ 63BD 3A F5 63             ld      a, (p126_ipc_tx_byte)
+105++ 63C0 D3 B3                out     (P126_GSDAT), a
+106++ 63C2 B7                   or      a
+107++ 63C3 C9                   ret
+108++ 63C4
+109++ 63C4              ; -------------------------------------------------------------------------
+110++ 63C4              ; Send a data byte and wait until NeoGS consumes it (DBIT clears).
+111++ 63C4              ; IN : A=data.
+112++ 63C4              ; OUT: Carry clear on consumption; carry set on timeout.
+113++ 63C4              ; -------------------------------------------------------------------------
+114++ 63C4              p126_ipc_send_byte:
+114++ 63C4
+115++ 63C4 32 F5 63             ld      (p126_ipc_tx_byte), a
+116++ 63C7 CD 79 63             call    p126_ipc_wait_dbit_clear
+117++ 63CA D8                   ret     c
+118++ 63CB 3A F5 63             ld      a, (p126_ipc_tx_byte)
+119++ 63CE D3 B3                out     (P126_GSDAT), a
+120++ 63D0 C3 79 63             jp      p126_ipc_wait_dbit_clear
+121++ 63D3
+122++ 63D3              ; -------------------------------------------------------------------------
+123++ 63D3              ; Receive one byte published by NeoGS.
+124++ 63D3              ; OUT: A=data; carry clear. Carry set on timeout.
+125++ 63D3              ; Reading GSDAT acknowledges the byte and clears DBIT in the host view.
+126++ 63D3              ; -------------------------------------------------------------------------
+127++ 63D3              p126_ipc_receive_byte:
+127++ 63D3
+128++ 63D3 CD 92 63             call    p126_ipc_wait_dbit_set
+129++ 63D6 D8                   ret     c
+130++ 63D7 DB B3                in      a, (P126_GSDAT)
+131++ 63D9 32 F6 63             ld      (p126_ipc_rx_byte), a
+132++ 63DC B7                   or      a
+133++ 63DD C9                   ret
+134++ 63DE
+135++ 63DE              ; -------------------------------------------------------------------------
+136++ 63DE              ; Emit a build/runtime identity to ATM's independent debug port #EF.
+137++ 63DE              ; Preserves AF, BC and HL.
+138++ 63DE              ; -------------------------------------------------------------------------
+139++ 63DE              p126_ipc_emit_version:
+139++ 63DE
+140++ 63DE F5                   push    af
+141++ 63DF C5                   push    bc
+142++ 63E0 E5                   push    hl
+143++ 63E1 21 F7 63             ld      hl, p126_ipc_version_text
+144++ 63E4 01 EF 00             ld      bc, #00EF
+145++ 63E7              .p126_version_loop:
+146++ 63E7 7E                   ld      a, (hl)
+147++ 63E8 23                   inc     hl
+148++ 63E9 B7                   or      a
+149++ 63EA 28 04                jr      z, .p126_version_done
+150++ 63EC ED 79                out     (c), a
+151++ 63EE 18 F7                jr      .p126_version_loop
+152++ 63F0              .p126_version_done:
+153++ 63F0 E1                   pop     hl
+154++ 63F1 C1                   pop     bc
+155++ 63F2 F1                   pop     af
+156++ 63F3 C9                   ret
+157++ 63F4
+158++ 63F4              ; Driver state is private to this module. Callers must not modify it.
+159++ 63F4 00           p126_ipc_last_status: db 0
+160++ 63F5 00           p126_ipc_tx_byte:     db 0
+161++ 63F6 00           p126_ipc_rx_byte:     db 0
+162++ 63F7
+163++ 63F7              p126_ipc_version_text:
+164++ 63F7 5B 50 31 32          db "[P126 ATM_IPC v0.1.0]", 13, 10, 0
+164++ 63FB 36 20 41 54
+164++ 63FF 4D 5F 49 50
+164++ 6403 43 20 76 30
+164++ 6407 2E 31 2E 30
+164++ 640B 5D 0D 0A 00
+165++ 640F
 # file closed: neogs_ipc.asm
- 80+  6175
- 81+  6175              ; Project125-derived ATM-native text console, relocated to window 2.
- 82+  6175              ; Its renderer maps video pages only for each write and restores host pages.
- 83+  6175                      PAGE 0
- 84+  6175                      ORG #A000
- 85+  A000                      INCLUDE "atm_host/p126_screen_console.asm"
+155+  640F
+156+  640F              ; Project125-derived ATM-native text console, relocated to window 2.
+157+  640F              ; Its renderer maps video pages only for each write and restores host pages.
+158+  640F                      PAGE 0
+159+  640F                      ORG #A000
+160+  A000                      INCLUDE "atm_host/p126_screen_console.asm"
 # file opened: p126_screen_console.asm
   1++ A000              ; =========================================================================
   2++ A000              ; PROJECT126 — ATM TURBO 2+ native 80x25 text console
@@ -1134,234 +1657,212 @@
 682++ A560 00           bios_dbg_print_col:   db 0
 683++ A561
 # file closed: p126_screen_console.asm
- 86+  A561
- 87+  A561              p126_host_program_end:
- 88+  A561                      ASSERT p126_host_program_start = P126_HOST_LOAD_ADDRESS
- 89+  A561                      ASSERT p126_host_entry = P126_HOST_ENTRY_POINT
- 90+  A561                      ASSERT p126_host_program_end <= #A800
- 91+  A561
+161+  A561
+162+  A561              p126_host_program_end:
+163+  A561                      ASSERT p126_host_program_start = P126_HOST_LOAD_ADDRESS
+164+  A561                      ASSERT p126_host_entry = P126_HOST_ENTRY_POINT
+165+  A561                      ASSERT p126_host_program_end <= #A800
+166+  A561
 # file closed: project126_main.asm
  23   A561
  24   A561                      ASSERT p126_host_program_start = P126_HOST_LOAD_ADDRESS
  25   A561                      ASSERT p126_host_entry = P126_HOST_ENTRY_POINT
  26   A561                      ASSERT p126_host_program_end <= #A800
- 27   A561                      SAVETRD "disk_A.trd", "PROJ126.C", P126_HOST_LOAD_ADDRESS, p126_host_program_end-P126_HOST_LOAD_ADDRESS
+ 27   A561                      SAVETRD "disk_A.trd", "proj126.C", P126_HOST_LOAD_ADDRESS, p126_host_program_end-P126_HOST_LOAD_ADDRESS
  28   A561
  29   A561              ; -------------------------------------------------------------------------
  30   A561              ; TR-DOS BASIC boot program.
  31   A561              ; -------------------------------------------------------------------------
  32   A561                      PAGE 0
  33   A561                      ORG #E000
- 34   E000                      INCLUDE "atm_host/boot_loader.asm"
-# file opened: boot_loader.asm
+ 34   E000                      INCLUDE "atm_host/boot_loader.generated.asm"
+# file opened: boot_loader.generated.asm
   1+  E000              ; =========================================================================
-  2+  E000              ; PROJECT126 — TR-DOS BASIC boot loader
-  3+  E000              ; Version: P126_TRDOS_BOOT v0.1.0
-  4+  E000              ;
-  5+  E000              ; Adapted from the proven Project125 boot.B loader without changing its
-  6+  E000              ; TR-DOS startup trampoline or CLEAR barrier.
-  7+  E000              ; Loads PROJ126.C at 24576 and transfers control to 24585.
-  8+  E000              ; =========================================================================
-  9+  E000
- 10+  E000              CLEAR       EQU     $FD
- 11+  E000              LOAD        EQU     $EF
- 12+  E000              CODE        EQU     $AF
- 13+  E000              RANDOMIZE   EQU     $F9
- 14+  E000              USR         EQU     $C0
- 15+  E000              REM         EQU     $EA
- 16+  E000              VAL         EQU     $B0
- 17+  E000              OUT_CMD     EQU     $DF
- 18+  E000
- 19+  E000              BASIC_START:
- 20+  E000              p126_basic_loader:
- 21+  E000                      ; 10 OUT 239,1:CLEAR 24000
- 22+  E000 00 0A                DB      0, 10
- 23+  E002 20 00                DW      P126_LINE10_END-P126_LINE10
- 24+  E004              P126_LINE10:
- 25+  E004 DF                   DB      OUT_CMD
- 26+  E005 32 33 39 0E          DB      "239", $0E, $00, $00, $EF, $00, $00
- 26+  E009 00 00 EF 00
- 26+  E00D 00
- 27+  E00E 2C                   DB      ","
- 28+  E00F 31 0E 00 00          DB      "1", $0E, $00, $00, $01, $00, $00
- 28+  E013 01 00 00
- 29+  E016 3A                   DB      ":"
- 30+  E017 FD                   DB      CLEAR
- 31+  E018 32 34 30 30          DB      "24000", $0E, $00, $00, $5D, $C0, $00
- 31+  E01C 30 0E 00 00
- 31+  E020 5D C0 00
- 32+  E023 0D                   DB      $0D
- 33+  E024              P126_LINE10_END:
- 34+  E024
- 35+  E024                      ; 11 OUT 239, VAL "50": ... "P126 START" on debug port #EF.
- 36+  E024 00 0B                DB      0, 11
- 37+  E026 EE 00                DW      P126_LINE11_END-P126_LINE11
- 38+  E028              P126_LINE11:
- 39+  E028 DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "50", 34, ":"
- 39+  E02C 33 39 22 2C
- 39+  E030 B0 22 35 30
- 39+  E034 22 3A
- 40+  E036 DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "31", 34, ":"
- 40+  E03A 33 39 22 2C
- 40+  E03E B0 22 33 31
- 40+  E042 22 3A
- 41+  E044 DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "32", 34, ":"
- 41+  E048 33 39 22 2C
- 41+  E04C B0 22 33 32
- 41+  E050 22 3A
- 42+  E052 DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "34", 34, ":"
- 42+  E056 33 39 22 2C
- 42+  E05A B0 22 33 34
- 42+  E05E 22 3A
- 43+  E060 DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "32", 34, ":"
- 43+  E064 33 39 22 2C
- 43+  E068 B0 22 33 32
- 43+  E06C 22 3A
- 44+  E06E DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "80", 34, ":"
- 44+  E072 33 39 22 2C
- 44+  E076 B0 22 38 30
- 44+  E07A 22 3A
- 45+  E07C DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "49", 34, ":"
- 45+  E080 33 39 22 2C
- 45+  E084 B0 22 34 39
- 45+  E088 22 3A
- 46+  E08A DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "50", 34, ":"
- 46+  E08E 33 39 22 2C
- 46+  E092 B0 22 35 30
- 46+  E096 22 3A
- 47+  E098 DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "54", 34, ":"
- 47+  E09C 33 39 22 2C
- 47+  E0A0 B0 22 35 34
- 47+  E0A4 22 3A
- 48+  E0A6 DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "32", 34, ":"
- 48+  E0AA 33 39 22 2C
- 48+  E0AE B0 22 33 32
- 48+  E0B2 22 3A
- 49+  E0B4 DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "83", 34, ":"
- 49+  E0B8 33 39 22 2C
- 49+  E0BC B0 22 38 33
- 49+  E0C0 22 3A
- 50+  E0C2 DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "84", 34, ":"
- 50+  E0C6 33 39 22 2C
- 50+  E0CA B0 22 38 34
- 50+  E0CE 22 3A
- 51+  E0D0 DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "65", 34, ":"
- 51+  E0D4 33 39 22 2C
- 51+  E0D8 B0 22 36 35
- 51+  E0DC 22 3A
- 52+  E0DE DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "82", 34, ":"
- 52+  E0E2 33 39 22 2C
- 52+  E0E6 B0 22 38 32
- 52+  E0EA 22 3A
- 53+  E0EC DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "84", 34, ":"
- 53+  E0F0 33 39 22 2C
- 53+  E0F4 B0 22 38 34
- 53+  E0F8 22 3A
- 54+  E0FA DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "13", 34, ":"
- 54+  E0FE 33 39 22 2C
- 54+  E102 B0 22 31 33
- 54+  E106 22 3A
- 55+  E108 DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "10", 34
- 55+  E10C 33 39 22 2C
- 55+  E110 B0 22 31 30
- 55+  E114 22
- 56+  E115 0D                   DB      $0D
- 57+  E116              P126_LINE11_END:
- 58+  E116
- 59+  E116                      ; 20 RANDOMIZE USR 15619:REM:LOAD "proj126" CODE 24576
- 60+  E116                      ; Keep the Project125 TR-DOS entry trampoline unchanged.
- 61+  E116 00 14                DB      0, 20
- 62+  E118 2A 00                DW      P126_LINE20_END-P126_LINE20
- 63+  E11A              P126_LINE20:
- 64+  E11A F9                   DB      RANDOMIZE
- 65+  E11B C0 31 35 36          DB      USR, "15619", $0E, 0, 0
- 65+  E11F 31 39 0E 00
- 65+  E123 00
- 66+  E124 03 3D                DW      15619
- 67+  E126 00                   DB      0
- 68+  E127 3A EA 3A             DB      $3A, REM, $3A
- 69+  E12A 4C 4F 41 44          DB      "LOAD ", 34, "proj126", 34, " CODE 24576", $0D
- 69+  E12E 20 22 70 72
- 69+  E132 6F 6A 31 32
- 69+  E136 36 22 20 43
- 69+  E13A 4F 44 45 20
- 69+  E13E 32 34 35 37
- 69+  E142 36 0D
- 70+  E144              P126_LINE20_END:
- 71+  E144
- 72+  E144                      ; 21 LOADED marker, emitted only after TR-DOS loads PROJ126.C.
- 73+  E144 00 15                DB      0, 21
- 74+  E146 70 00                DW      P126_LINE21_END-P126_LINE21
- 75+  E148              P126_LINE21:
- 76+  E148 DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "76", 34, ":"
- 76+  E14C 33 39 22 2C
- 76+  E150 B0 22 37 36
- 76+  E154 22 3A
- 77+  E156 DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "79", 34, ":"
- 77+  E15A 33 39 22 2C
- 77+  E15E B0 22 37 39
- 77+  E162 22 3A
- 78+  E164 DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "65", 34, ":"
- 78+  E168 33 39 22 2C
- 78+  E16C B0 22 36 35
- 78+  E170 22 3A
- 79+  E172 DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "68", 34, ":"
- 79+  E176 33 39 22 2C
- 79+  E17A B0 22 36 38
- 79+  E17E 22 3A
- 80+  E180 DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "69", 34, ":"
- 80+  E184 33 39 22 2C
- 80+  E188 B0 22 36 39
- 80+  E18C 22 3A
- 81+  E18E DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "68", 34, ":"
- 81+  E192 33 39 22 2C
- 81+  E196 B0 22 36 38
- 81+  E19A 22 3A
- 82+  E19C DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "13", 34, ":"
- 82+  E1A0 33 39 22 2C
- 82+  E1A4 B0 22 31 33
- 82+  E1A8 22 3A
- 83+  E1AA DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "10", 34
- 83+  E1AE 33 39 22 2C
- 83+  E1B2 B0 22 31 30
- 83+  E1B6 22
- 84+  E1B7 0D                   DB      $0D
- 85+  E1B8              P126_LINE21_END:
- 86+  E1B8
- 87+  E1B8                      ; 30 OUT 239,2:RANDOMIZE USR VAL "24585"
- 88+  E1B8 00 1E                DB      0, 30
- 89+  E1BA 1E 00                DW      P126_LINE30_END-P126_LINE30
- 90+  E1BC              P126_LINE30:
- 91+  E1BC DF                   DB      OUT_CMD
- 92+  E1BD 32 33 39 0E          DB      "239", $0E, $00, $00, $EF, $00, $00
- 92+  E1C1 00 00 EF 00
- 92+  E1C5 00
- 93+  E1C6 2C                   DB      ","
- 94+  E1C7 32 0E 00 00          DB      "2", $0E, $00, $00, $02, $00, $00
- 94+  E1CB 02 00 00
- 95+  E1CE 3A                   DB      ":"
- 96+  E1CF F9                   DB      RANDOMIZE
- 97+  E1D0 C0                   DB      USR
- 98+  E1D1 B0                   DB      VAL
- 99+  E1D2 22                   DB      34
-100+  E1D3 32 34 35 38          DEFM    "24585"
-100+  E1D7 35
-101+  E1D8 22                   DB      34
-102+  E1D9 0D                   DB      $0D
-103+  E1DA              P126_LINE30_END:
-104+  E1DA
-105+  E1DA 80                   DB      $80
-106+  E1DB
-107+  E1DB              BASIC_END:
-108+  E1DB
-# file closed: boot_loader.asm
- 35   E1DB                      SAVETRD "disk_A.trd", "BOOT.B", BASIC_START, BASIC_END-BASIC_START
- 36   E1DB
- 37   E1DB              ; -------------------------------------------------------------------------
- 38   E1DB              ; NeoGS x86 module. Stored as a standalone CODE file on the TR-DOS disk.
- 39   E1DB              ; -------------------------------------------------------------------------
- 40   E1DB                      PAGE 1
- 41   E1DB                      ORG #C000
+  2+  E000              ; FILE: zx_main/boot_loader.asm
+  3+  E000              ; =========================================================================
+  4+  E000              ; PROJECT 125 ??? TR-DOS BASIC BOOTLOADER (???????????? ???????????????? ?????? ??????????????)
+  5+  E000              ; ????????????????: ?????????????????? ???????????? CLEAR ?????? ???????????????????????????? ?????????? ?????????????????? ????????????????????
+  6+  E000              ; =========================================================================
+  7+  E000
+  8+  E000              CLEAR       EQU     $FD
+  9+  E000              LOAD        EQU     $EF
+ 10+  E000              CODE        EQU     $AF
+ 11+  E000              RANDOMIZE   EQU     $F9
+ 12+  E000              USR         EQU     $C0
+ 13+  E000              REM         EQU     $EA
+ 14+  E000              VAL         EQU     $B0
+ 15+  E000              OUT_CMD     EQU     $DF             ; ?????????? ?????????????? OUT ($DF) ???? ?????????? ??????
+ 16+  E000
+ 17+  E000              BASIC_START:
+ 18+  E000              basic_loader:
+ 19+  E000                      ; --- ???????????? 10: OUT 239,1: CLEAR 24000 ---
+ 20+  E000                      ; ???? ????????: ???????????????? ?????????????? CLEAR ???? 24000, ?????????????? ?????? ?????????????? ???????????? ?? ???????????? 24576
+ 21+  E000 00 0A                DB      0, 10
+ 22+  E002 20 00                DW      LINE10_END-LINE10
+ 23+  E004              LINE10:
+ 24+  E004 DF                   DB      OUT_CMD                 ; OUT
+ 25+  E005 32 33 39 0E          DB      "239", $0E, $00, $00, $EF, $00, $00 ; ???????????????? ???????????? ?????????? 239
+ 25+  E009 00 00 EF 00
+ 25+  E00D 00
+ 26+  E00E 2C                   DB      ","
+ 27+  E00F 31 0E 00 00          DB      "1", $0E, $00, $00, $01, $00, $00   ; ???????????????? ???????????? ?????????? 1
+ 27+  E013 01 00 00
+ 28+  E016 3A                   DB      ":"
+ 29+  E017 FD                   DB      CLEAR                   ; CLEAR
+ 30+  E018 32 34 30 30          DB      "24000", $0E, $00, $00, $5D, $C0, $00 ; ???????????????? ???????????? ?????????? 24000 (#5DC0)
+ 30+  E01C 30 0E 00 00
+ 30+  E020 5D C0 00
+ 31+  E023 0D                   DB      $0D
+ 32+  E024              LINE10_END:
+ 33+  E024
+ 34+  E024                      ; --- ???????????? 11: ?????????? ?????????????????????? "P125 START" ?? ???????? ?????????????? #EF ---
+ 35+  E024 00 0B                DB      0, 11
+ 36+  E026 A8 00                DW      LINE11_END-LINE11
+ 37+  E028              LINE11:
+ 38+  E028 DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "50", 34, ":"
+ 38+  E02C 33 39 22 2C
+ 38+  E030 B0 22 35 30
+ 38+  E034 22 3A
+ 39+  E036 DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "31", 34, ":"
+ 39+  E03A 33 39 22 2C
+ 39+  E03E B0 22 33 31
+ 39+  E042 22 3A
+ 40+  E044 DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "32", 34, ":"
+ 40+  E048 33 39 22 2C
+ 40+  E04C B0 22 33 32
+ 40+  E050 22 3A
+ 41+  E052 DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "34", 34, ":"
+ 41+  E056 33 39 22 2C
+ 41+  E05A B0 22 33 34
+ 41+  E05E 22 3A
+ 42+  E060 DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "32", 34, ":"
+ 42+  E064 33 39 22 2C
+ 42+  E068 B0 22 33 32
+ 42+  E06C 22 3A
+ 43+  E06E DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "83", 34, ":"
+ 43+  E072 33 39 22 2C
+ 43+  E076 B0 22 38 33
+ 43+  E07A 22 3A
+ 44+  E07C DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "84", 34, ":"
+ 44+  E080 33 39 22 2C
+ 44+  E084 B0 22 38 34
+ 44+  E088 22 3A
+ 45+  E08A DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "65", 34, ":"
+ 45+  E08E 33 39 22 2C
+ 45+  E092 B0 22 36 35
+ 45+  E096 22 3A
+ 46+  E098 DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "82", 34, ":"
+ 46+  E09C 33 39 22 2C
+ 46+  E0A0 B0 22 38 32
+ 46+  E0A4 22 3A
+ 47+  E0A6 DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "84", 34, ":"
+ 47+  E0AA 33 39 22 2C
+ 47+  E0AE B0 22 38 34
+ 47+  E0B2 22 3A
+ 48+  E0B4 DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "13", 34, ":"
+ 48+  E0B8 33 39 22 2C
+ 48+  E0BC B0 22 31 33
+ 48+  E0C0 22 3A
+ 49+  E0C2 DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "10", 34
+ 49+  E0C6 33 39 22 2C
+ 49+  E0CA B0 22 31 30
+ 49+  E0CE 22
+ 50+  E0CF 0D                   DB      $0D
+ 51+  E0D0              LINE11_END:
+ 52+  E0D0
+ 53+  E0D0                      ; --- ???????????? 20: RANDOMIZE USR 15619 : REM : LOAD "proj126" CODE 24576 ---
+ 54+  E0D0 00 14                DB      0, 20
+ 55+  E0D2 2A 00                DW      LINE20_END-LINE20
+ 56+  E0D4              LINE20:
+ 57+  E0D4 F9                   DB      RANDOMIZE               ; RANDOMIZE
+ 58+  E0D5 C0 31 35 36          DB      USR, "15619", $0E, 0, 0 ; USR 15619
+ 58+  E0D9 31 39 0E 00
+ 58+  E0DD 00
+ 59+  E0DE 03 3D                DW      15619
+ 60+  E0E0 00                   DB      0
+ 61+  E0E1 3A EA 3A             DB      $3A, REM, $3A
+ 62+  E0E4 4C 4F 41 44          DB      "LOAD ", 34, "proj126", 34, " CODE 24576", $0D
+ 62+  E0E8 20 22 70 72
+ 62+  E0EC 6F 6A 31 32
+ 62+  E0F0 36 22 20 43
+ 62+  E0F4 4F 44 45 20
+ 62+  E0F8 32 34 35 37
+ 62+  E0FC 36 0D
+ 63+  E0FE              LINE20_END:
+ 64+  E0FE
+ 65+  E0FE                      ; --- ???????????? 21: ?????????? ?????????? "LOADED" ?? ???????? ?????????????? #EF ?????????? ???????????? ?????????? ---
+ 66+  E0FE 00 15                DB      0, 21
+ 67+  E100 70 00                DW      LINE21_END-LINE21
+ 68+  E102              LINE21:
+ 69+  E102 DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "76", 34, ":"
+ 69+  E106 33 39 22 2C
+ 69+  E10A B0 22 37 36
+ 69+  E10E 22 3A
+ 70+  E110 DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "79", 34, ":"
+ 70+  E114 33 39 22 2C
+ 70+  E118 B0 22 37 39
+ 70+  E11C 22 3A
+ 71+  E11E DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "65", 34, ":"
+ 71+  E122 33 39 22 2C
+ 71+  E126 B0 22 36 35
+ 71+  E12A 22 3A
+ 72+  E12C DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "68", 34, ":"
+ 72+  E130 33 39 22 2C
+ 72+  E134 B0 22 36 38
+ 72+  E138 22 3A
+ 73+  E13A DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "69", 34, ":"
+ 73+  E13E 33 39 22 2C
+ 73+  E142 B0 22 36 39
+ 73+  E146 22 3A
+ 74+  E148 DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "68", 34, ":"
+ 74+  E14C 33 39 22 2C
+ 74+  E150 B0 22 36 38
+ 74+  E154 22 3A
+ 75+  E156 DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "13", 34, ":"
+ 75+  E15A 33 39 22 2C
+ 75+  E15E B0 22 31 33
+ 75+  E162 22 3A
+ 76+  E164 DF B0 22 32          DB      OUT_CMD, VAL, 34, "239", 34, ",", VAL, 34, "10", 34
+ 76+  E168 33 39 22 2C
+ 76+  E16C B0 22 31 30
+ 76+  E170 22
+ 77+  E171 0D                   DB      $0D
+ 78+  E172              LINE21_END:
+ 79+  E172
+ 80+  E172                      ; --- ???????????? 30: OUT 239,2: RANDOMIZE USR VAL "24585" ---
+ 81+  E172 00 1E                DB      0, 30
+ 82+  E174 1E 00                DW      LINE30_END-LINE30
+ 83+  E176              LINE30:
+ 84+  E176 DF                   DB      OUT_CMD                 ; OUT
+ 85+  E177 32 33 39 0E          DB      "239", $0E, $00, $00, $EF, $00, $00 ; ???????????????? ???????????? ?????????? 239
+ 85+  E17B 00 00 EF 00
+ 85+  E17F 00
+ 86+  E180 2C                   DB      ","
+ 87+  E181 32 0E 00 00          DB      "2", $0E, $00, $00, $02, $00, $00   ; ???????????????? ???????????? ?????????? 2
+ 87+  E185 02 00 00
+ 88+  E188 3A                   DB      ":"
+ 89+  E189 F9                   DB      RANDOMIZE               ; RANDOMIZE
+ 90+  E18A C0                   DB      USR                     ; USR ($C0)
+ 91+  E18B B0                   DB      VAL                     ; VAL ($B0)
+ 92+  E18C 22                   DB      34
+ 93+  E18D 32 34 35 38          DEFM    "24585"                 ; ?????????????? ???? Init_Z80_System
+ 93+  E191 35
+ 94+  E192 22                   DB      34
+ 95+  E193 0D                   DB      $0D
+ 96+  E194              LINE30_END:
+ 97+  E194
+ 98+  E194 80                   DB      $80                     ; ?????????????????? ???????????? ?????????? BASIC-??????????????????
+ 99+  E195
+100+  E195              BASIC_END:
+101+  E195
+# file closed: boot_loader.generated.asm
+ 35   E195                      SAVETRD "disk_A.trd", "boot.B", BASIC_START, BASIC_END-BASIC_START
+ 36   E195
+ 37   E195              ; -------------------------------------------------------------------------
+ 38   E195              ; NeoGS x86 module. Stored as a standalone CODE file on the TR-DOS disk.
+ 39   E195              ; -------------------------------------------------------------------------
+ 40   E195                      PAGE 1
+ 41   E195                      ORG #C000
  42   C000              p126_x86_core_file_start:
  43   C000                      INCBIN "build/x86_cpu_state.bin"
  44   C483              p126_x86_core_file_end:
@@ -1371,11 +1872,12 @@
  48   C483
  49   C483                      PAGE 0
  50   C483
-# file closed: project126_disk.asm
+# file closed: project126_disk.generated.asm
 
 Value    Label
 ------ - -----------------------------------------------------------
-0xE1DB X BASIC_END
+0xE195 X BASIC_END
+0xE000 X basic_loader
 0xE000 X BASIC_START
 0xA55A   bios_dbg_attr
 0xA556   bios_dbg_char
@@ -1417,12 +1919,67 @@ Value    Label
 0x00AF X CODE
 0xA000   Console_X
 0xA001   Console_Y
+0x634F   ds12887_available
+0x6350   ds12887_backend
+0x624E   DS12887_CLOSE
+0x625C   ds12887_close_done
+0x62C6   DS12887_CONVERT_HOUR
+0x6321   ds12887_decimal_ones
+0x6318   ds12887_decimal_tens
+0x6344   ds12887_hex_digit_ready
+0x62F7   ds12887_hour_24
+0x62EF   ds12887_hour_am
+0x6359   ds12887_hour_binary
+0x6358   ds12887_hour_pm
+0x6357   ds12887_hours
+0x6356   ds12887_minutes
+0x6233   DS12887_OPEN
+0x624B   ds12887_open_done
+0x6244   ds12887_open_smuc
+0x6347   DS12887_PRINT_CHAR
+0x632C   DS12887_PRINT_HEX8
+0x633A   DS12887_PRINT_NIBBLE
+0x6203 X DS12887_PRINT_STATUS
+0x6140   DS12887_PROBE
+0x618E   ds12887_probe_done
+0x6183   ds12887_probe_invalid
+0x618A   ds12887_probe_read_error
+0x616F   ds12887_probe_status_ready
+0x625F   DS12887_READ_REG
+0x6274   ds12887_read_smuc
+0x627E   DS12887_READ_SNAPSHOT
+0x61EA   DS12887_READ_STATUS
+0x6355   ds12887_seconds
+0x6351   ds12887_smuc_control
+0x6280   ds12887_snapshot_retry
+0x62AC   ds12887_snapshot_stable
+0x6352   ds12887_status_a
+0x6353   ds12887_status_b
+0x6354   ds12887_status_d
+0x6231   ds12887_status_invalid
+0x61E2   ds12887_time_done
+0x61CE   ds12887_time_unknown
+0x62FB   DS12887_TO_BINARY
+0x6316   DS12887_TO_DECIMAL
+0x62C1   ds12887_uip_busy
+0x62B5   ds12887_uip_loop
+0x621F   DS12887_VALIDATE_STATUS
+0x62B2   DS12887_WAIT_UIP
+0xE004   LINE10
+0xE024   LINE10_END
+0xE028   LINE11
+0xE0D0   LINE11_END
+0xE0D4   LINE20
+0xE0FE   LINE20_END
+0xE102   LINE21
+0xE172   LINE21_END
+0xE176   LINE30
+0xE194   LINE30_END
 0x00EF X LOAD
 0x00DF   OUT_CMD
 0xA026   p126_atm_ports_open_done
 0xA002   p126_atm_video_init
 0xA05A   p126_atm_video_mode_ready
-0xE000 X p126_basic_loader
 0x0000   P126_CBIT
 0x0007   P126_DBIT
 0x0020 X P126_GS_LED
@@ -1432,53 +1989,46 @@ Value    Label
 0x0033 X P126_GSCTR
 0x00B3   P126_GSDAT
 0x00BB   P126_GSSTAT
-0x602B   p126_host_console_string
-0x6096   p126_host_debug_string
-0x60A4   p126_host_debug_string.p126_host_debug_done
-0x609B   p126_host_debug_string.p126_host_debug_loop
+0x603B   p126_host_console_string
+0x60A6   p126_host_debug_string
+0x60B7   p126_host_debug_string.p126_host_debug_done
+0x60AE   p126_host_debug_string.p126_host_debug_loop
 0x6009   p126_host_entry
 0x6009   P126_HOST_ENTRY_POINT
-0x6028   p126_host_idle
+0x6038   p126_host_idle
 0x6000   P126_HOST_LOAD_ADDRESS
+0x60BA   p126_host_log_prefix
+0x6107   p126_host_log_prefix.p126_time_close
+0x60F5   p126_host_log_prefix.p126_time_unknown
 0x007F   P126_HOST_PAGE0
 0x007A   P126_HOST_PAGE5
 0xA561   p126_host_program_end
 0x6000   p126_host_program_start
 0xAFFF   P126_HOST_STACK_TOP
-0x6034   p126_host_ui_log
-0x60A7   p126_host_version_text
-0x6144   p126_ipc_emit_version
-0x6156   p126_ipc_emit_version.p126_version_done
-0x614D   p126_ipc_emit_version.p126_version_loop
-0x615A   p126_ipc_last_status
-0x60C0   p126_ipc_read_status
-0x6139 X p126_ipc_receive_byte
-0x615C   p126_ipc_rx_byte
-0x611C X p126_ipc_send_argument
-0x612A X p126_ipc_send_byte
-0x6111 X p126_ipc_send_command
+0x6044   p126_host_ui_log
+0x6127   p126_host_version_text
+0x63DE   p126_ipc_emit_version
+0x63F0   p126_ipc_emit_version.p126_version_done
+0x63E7   p126_ipc_emit_version.p126_version_loop
+0x63F4   p126_ipc_last_status
+0x635A   p126_ipc_read_status
+0x63D3 X p126_ipc_receive_byte
+0x63F6   p126_ipc_rx_byte
+0x63B6 X p126_ipc_send_argument
+0x63C4 X p126_ipc_send_byte
+0x63AB X p126_ipc_send_command
 0xFFFF   P126_IPC_TIMEOUT
-0x615B   p126_ipc_tx_byte
-0x615D   p126_ipc_version_text
-0x60C6   p126_ipc_wait_cbit_clear
-0x60C9   p126_ipc_wait_cbit_clear.p126_cbit_loop
-0x60DA   p126_ipc_wait_cbit_clear.p126_cbit_ready
-0x60DF   p126_ipc_wait_dbit_clear
-0x60E2   p126_ipc_wait_dbit_clear.p126_dbit_clear_loop
-0x60F3   p126_ipc_wait_dbit_clear.p126_dbit_clear_ready
-0x60F8   p126_ipc_wait_dbit_set
-0x60FB   p126_ipc_wait_dbit_set.p126_dbit_set_loop
-0x610C   p126_ipc_wait_dbit_set.p126_dbit_set_ready
-0xE004   P126_LINE10
-0xE024   P126_LINE10_END
-0xE028   P126_LINE11
-0xE116   P126_LINE11_END
-0xE11A   P126_LINE20
-0xE144   P126_LINE20_END
-0xE148   P126_LINE21
-0xE1B8   P126_LINE21_END
-0xE1BC   P126_LINE30
-0xE1DA   P126_LINE30_END
+0x63F5   p126_ipc_tx_byte
+0x63F7   p126_ipc_version_text
+0x6360   p126_ipc_wait_cbit_clear
+0x6363   p126_ipc_wait_cbit_clear.p126_cbit_loop
+0x6374   p126_ipc_wait_cbit_clear.p126_cbit_ready
+0x6379   p126_ipc_wait_dbit_clear
+0x637C   p126_ipc_wait_dbit_clear.p126_dbit_clear_loop
+0x638D   p126_ipc_wait_dbit_clear.p126_dbit_clear_ready
+0x6392   p126_ipc_wait_dbit_set
+0x6395   p126_ipc_wait_dbit_set.p126_dbit_set_loop
+0x63A6   p126_ipc_wait_dbit_set.p126_dbit_set_ready
 0x0001 X P126_M_CBIT
 0x0080 X P126_M_DBIT
 0xA357   p126_screen_map_video_pages
@@ -1506,6 +2056,7 @@ Value    Label
 0xC483   p126_x86_core_file_end
 0xC000   p126_x86_core_file_start
 0x00F9   RANDOMIZE
+0x6196   READ_CURRENT_TIME
 0x00EA   REM
 0x00C0   USR
 0x00B0   VAL
