@@ -9,7 +9,7 @@ This document records actual artifacts and their verification state; it is not a
 - Existing bounded CBIT/DBIT polling, GSCOM command and legacy GSDAT byte helpers remain available. GSDAT helpers are compatibility/bootstrap primitives, not the application payload transport.
 - Added ATM CRC-16/CCITT-FALSE byte-update routine and executable standard-vector self-test (123456789 → 29B1h). Startup does not call the self-test yet.
 - ATM assembly origin remains image-relative `ORG 0000h`; final host load address is not assigned.
-- Historical BUILD PASS for v0.1.0 is not evidence for v0.2.0. Fresh CI build is required. No live Project126 DMA/IPC hardware test has been performed.
+- **BUILD PASS for ATM IPC v0.2.0:** GitHub Actions run [42303249684](https://github.com/JTCyborg/Project126/actions/runs/42303249684), commit `27416c290b7d3f95b3cf98f8825c860e7c3abcef`; SjASMPlus assembly and TR-DOS packaging completed successfully. The CI build assembles the CRC routine and emits the updated ATM binary/listing/map. No live Project126 DMA/IPC hardware test has been performed.
 
 ## Unified DMA/IPC ABI 1.0
 
@@ -19,7 +19,7 @@ This document records actual artifacts and their verification state; it is not a
 - Added ATM-side CRC update and standard test-vector routine in `atm_host/neogs_ipc.asm`.
 - **IN PROGRESS:** only the contract and ATM CRC primitive are implemented. Complete frame encode/decode, DMA send/receive, session negotiation, sequence state, NeoGS endpoint, fragment reassembly and service dispatch remain unimplemented.
 - **OPEN / MUST NOT GUESS:** final ATM and NeoGS staging-buffer addresses, NeoGS 4 MiB resident memory reservations, ATM paging/buffer placement and final DMA window integration. Project125 physical addresses/layout are reference material, not Project126 allocations.
-- **Verification:** no fresh build for ABI 1.0 has yet been recorded; CRC self-test has not run on target hardware. No DMA direction is claimed as Project126 HARDWARE PASS.
+- **Verification:** BUILD PASS for the ATM-side v0.2.0 source is recorded in run [42303249684](https://github.com/JTCyborg/Project126/actions/runs/42303249684). The CRC self-test routine is assembled but has not been executed on target hardware. Complete DMA directions and frame transport are not implemented and are not claimed as Project126 HARDWARE PASS.
 
 ## Build pipeline and address-placement audit
 
