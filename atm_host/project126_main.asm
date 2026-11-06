@@ -32,17 +32,26 @@ p126_host_entry:
         di
         ld      sp, P126_HOST_STACK_TOP
 
+<<<<<<< HEAD
         ld      hl, p126_host_version_text
         ; Probe the proven Project125 DS12887 RTC backend before normal logs.
+=======
+        ; TR-DOS file access is complete. Activate ATM shadow ports and
+        ; native video mapping before touching the DS12887 CMOS ports.
+        ; This follows Project125: #EFF7 reset, #7FFD setup, TR-DOS #3D2F
+        ; trampoline for #0177, then #3FF7/#7FF7/#FFF7 shadow registers.
+        call    p126_atm_video_init
+
+        ; The DS12887 DFF7/BFF7 interface is accessible only after the
+        ; ATM shadow-port decoder has been opened by p126_atm_video_init.
+>>>>>>> 9ea799140cb5bbb3c165c7265a48218b8724278b
         call    DS12887_PROBE
+
         ld      hl, p126_host_version_text
         call    p126_host_debug_string
         call    p126_host_log_prefix
         call    p126_ipc_emit_version
 
-        ; TR-DOS file access is complete. Bring up the ATM Turbo 2+ native
-        ; 80x25 text display only now, after the BASIC/TR-DOS loader returned.
-        call    p126_atm_video_init
         call    BIOS_DebugConsole_Init
         call    BIOS_DebugConsole_Clear
         call    BIOS_DebugConsole_DrawInterface
