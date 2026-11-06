@@ -57,153 +57,167 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
  32+  6010 F3                   di
  33+  6011 31 FF AF             ld      sp, P126_HOST_STACK_TOP
  34+  6014
- 35+  6014 21 27 61             ld      hl, p126_host_version_text
- 36+  6017                      ; Probe the proven Project125 DS12887 RTC backend before normal logs.
- 37+  6017 CD 40 61             call    DS12887_PROBE
- 38+  601A 21 27 61             ld      hl, p126_host_version_text
- 39+  601D CD A6 60             call    p126_host_debug_string
- 40+  6020 CD BA 60             call    p126_host_log_prefix
- 41+  6023 CD E4 63             call    p126_ipc_emit_version
- 42+  6026
- 43+  6026                      ; TR-DOS file access is complete. Bring up the ATM Turbo 2+ native
- 44+  6026                      ; 80x25 text display only now, after the BASIC/TR-DOS loader returned.
- 45+  6026 CD 02 A0             call    p126_atm_video_init
- 46+  6029 CD 6D A0             call    BIOS_DebugConsole_Init
- 47+  602C CD 7D A0             call    BIOS_DebugConsole_Clear
- 48+  602F CD 03 A1             call    BIOS_DebugConsole_DrawInterface
- 49+  6032 21 44 60             ld      hl, p126_host_ui_log
- 50+  6035 CD 3B 60             call    p126_host_console_string
- 51+  6038
- 52+  6038              p126_host_idle:
- 53+  6038 76                   halt
- 54+  6039 18 FD                jr      p126_host_idle
- 55+  603B
- 56+  603B              ; IN: HL=zero-terminated string. Writes to the lower on-screen log.
- 57+  603B              p126_host_console_string:
- 58+  603B 7E                   ld      a, (hl)
- 59+  603C B7                   or      a
- 60+  603D C8                   ret     z
- 61+  603E CD B7 A1             call    BIOS_DebugConsole_PrintChar
- 62+  6041 23                   inc     hl
- 63+  6042 18 F7                jr      p126_host_console_string
- 64+  6044
- 65+  6044              p126_host_ui_log:
- 66+  6044 41 54 4D 20          db "ATM HOST SHELL INITIALIZED", 13, 10
- 66+  6048 48 4F 53 54
- 66+  604C 20 53 48 45
- 66+  6050 4C 4C 20 49
- 66+  6054 4E 49 54 49
- 66+  6058 41 4C 49 5A
- 66+  605C 45 44 0D 0A
- 67+  6060 4E 65 6F 47          db "NeoGS firmware upload: NOT IMPLEMENTED", 13, 10
- 67+  6064 53 20 66 69
- 67+  6068 72 6D 77 61
- 67+  606C 72 65 20 75
- 67+  6070 70 6C 6F 61
- 67+  6074 64 3A 20 4E
- 67+  6078 4F 54 20 49
- 67+  607C 4D 50 4C 45
- 67+  6080 4D 45 4E 54
- 67+  6084 45 44 0D 0A
- 68+  6088 38 30 38 36          db "8086 execution: NOT STARTED", 13, 10, 0
- 68+  608C 20 65 78 65
- 68+  6090 63 75 74 69
- 68+  6094 6F 6E 3A 20
- 68+  6098 4E 4F 54 20
- 68+  609C 53 54 41 52
- 68+  60A0 54 45 44 0D
- 68+  60A4 0A 00
- 69+  60A6
- 70+  60A6              ; ATM debug output is independent of NeoGS debug output.
- 71+  60A6              p126_host_debug_string:
- 72+  60A6 CD BA 60             call    p126_host_log_prefix
- 73+  60A9 F5                   push    af
- 74+  60AA C5                   push    bc
- 75+  60AB 01 EF 00             ld      bc, #00EF
- 76+  60AE              .p126_host_debug_loop:
- 77+  60AE 7E                   ld      a, (hl)
- 78+  60AF 23                   inc     hl
- 79+  60B0 B7                   or      a
- 80+  60B1 28 04                jr      z, .p126_host_debug_done
- 81+  60B3 ED 79                out     (c), a
- 82+  60B5 18 F7                jr      .p126_host_debug_loop
- 83+  60B7              .p126_host_debug_done:
- 84+  60B7 C1                   pop     bc
- 85+  60B8 F1                   pop     af
- 86+  60B9 C9                   ret
- 87+  60BA
- 88+  60BA
- 89+  60BA              ; Prefix every ATM-originated #EF message with the host RTC timestamp.
- 90+  60BA              ; NeoGS output must bypass this routine and use the independent [NGS] path.
- 91+  60BA              p126_host_log_prefix:
- 92+  60BA F5                   push    af
- 93+  60BB C5                   push    bc
- 94+  60BC E5                   push    hl
- 95+  60BD 01 EF 00             ld      bc, #00EF
- 96+  60C0 3E 5B                ld      a, '['
- 97+  60C2 ED 79                out     (c), a
- 98+  60C4 3A 55 63             ld      a, (ds12887_available)
- 99+  60C7 B7                   or      a
-100+  60C8 28 2B                jr      z, .p126_time_unknown
-101+  60CA CD 96 61             call    READ_CURRENT_TIME
-102+  60CD 3A 4F 63             ld      a, (txt_hour)
-103+  60D0 ED 79                out     (c), a
-104+  60D2 3A 50 63             ld      a, (txt_hour+1)
-105+  60D5 ED 79                out     (c), a
-106+  60D7 3E 3A                ld      a, ':'
-107+  60D9 ED 79                out     (c), a
-108+  60DB 3A 51 63             ld      a, (txt_min)
-109+  60DE ED 79                out     (c), a
-110+  60E0 3A 52 63             ld      a, (txt_min+1)
-111+  60E3 ED 79                out     (c), a
-112+  60E5 3E 3A                ld      a, ':'
-113+  60E7 ED 79                out     (c), a
-114+  60E9 3A 53 63             ld      a, (txt_sec)
-115+  60EC ED 79                out     (c), a
-116+  60EE 3A 54 63             ld      a, (txt_sec+1)
-117+  60F1 ED 79                out     (c), a
-118+  60F3 18 12                jr     .p126_time_close
-119+  60F5              .p126_time_unknown:
-120+  60F5 3E 3F                ld      a, '?'
-121+  60F7 ED 79                out     (c), a
-122+  60F9 ED 79                out     (c), a
-123+  60FB ED 79                out     (c), a
-124+  60FD ED 79                out     (c), a
-125+  60FF ED 79                out     (c), a
-126+  6101 ED 79                out     (c), a
-127+  6103 ED 79                out     (c), a
-128+  6105 ED 79                out     (c), a
-129+  6107              .p126_time_close:
-130+  6107 3E 5D                ld      a, ']'
-131+  6109 ED 79                out     (c), a
-132+  610B                      ; ATM tag is emitted as individual bytes below.
-133+  610B 3E 5B                ld      a, '['
-134+  610D ED 79                out     (c), a
-135+  610F 3E 41                ld      a, 'A'
-136+  6111 ED 79                out     (c), a
-137+  6113 3E 54                ld      a, 'T'
-138+  6115 ED 79                out     (c), a
-139+  6117 3E 4D                ld      a, 'M'
-140+  6119 ED 79                out     (c), a
-141+  611B 3E 5D                ld      a, ']'
-142+  611D ED 79                out     (c), a
-143+  611F 3E 20                ld      a, ' '
-144+  6121 ED 79                out     (c), a
-145+  6123 E1                   pop     hl
-146+  6124 C1                   pop     bc
-147+  6125 F1                   pop     af
-148+  6126 C9                   ret
-149+  6127
-150+  6127              p126_host_version_text:
-151+  6127 5B 50 31 32          db "[P126 ATM HOST v0.1.0]", 13, 10, 0
-151+  612B 36 20 41 54
-151+  612F 4D 20 48 4F
-151+  6133 53 54 20 76
-151+  6137 30 2E 31 2E
-151+  613B 30 5D 0D 0A
-151+  613F 00
-152+  6140
-153+  6140                      INCLUDE "atm_host/ds12887_rtc.asm"
+project126_main.asm(35): error: Invalid character at start of labelname: <<<<<<<
+ 35+  6014              <<<<<<< HEAD
+ 36+  6014 21 27 61             ld      hl, p126_host_version_text
+ 37+  6017                      ; Probe the proven Project125 DS12887 RTC backend before normal logs.
+project126_main.asm(38): error: Expression error: ======
+project126_main.asm(38): error: Unexpected: ======
+project126_main.asm(38): error: Invalid (blank) labelname
+ 38+  6017              =======
+ 39+  6017                      ; TR-DOS file access is complete. Activate ATM shadow ports and
+ 40+  6017                      ; native video mapping before touching the DS12887 CMOS ports.
+ 41+  6017                      ; This follows Project125: #EFF7 reset, #7FFD setup, TR-DOS #3D2F
+ 42+  6017                      ; trampoline for #0177, then #3FF7/#7FF7/#FFF7 shadow registers.
+ 43+  6017 CD 02 A0             call    p126_atm_video_init
+ 44+  601A
+ 45+  601A                      ; The DS12887 DFF7/BFF7 interface is accessible only after the
+ 46+  601A                      ; ATM shadow-port decoder has been opened by p126_atm_video_init.
+project126_main.asm(47): error: Invalid character at start of labelname: >>>>>>
+ 47+  601A              >>>>>> 9ea799140cb5bbb3c165c7265a48218b8724278b
+ 48+  601A CD 40 61             call    DS12887_PROBE
+ 49+  601D
+ 50+  601D 21 27 61             ld      hl, p126_host_version_text
+ 51+  6020 CD A6 60             call    p126_host_debug_string
+ 52+  6023 CD BA 60             call    p126_host_log_prefix
+ 53+  6026 CD E4 63             call    p126_ipc_emit_version
+ 54+  6029
+ 55+  6029 CD 6D A0             call    BIOS_DebugConsole_Init
+ 56+  602C CD 7D A0             call    BIOS_DebugConsole_Clear
+ 57+  602F CD 03 A1             call    BIOS_DebugConsole_DrawInterface
+ 58+  6032 21 44 60             ld      hl, p126_host_ui_log
+ 59+  6035 CD 3B 60             call    p126_host_console_string
+ 60+  6038
+ 61+  6038              p126_host_idle:
+ 62+  6038 76                   halt
+ 63+  6039 18 FD                jr      p126_host_idle
+ 64+  603B
+ 65+  603B              ; IN: HL=zero-terminated string. Writes to the lower on-screen log.
+ 66+  603B              p126_host_console_string:
+ 67+  603B 7E                   ld      a, (hl)
+ 68+  603C B7                   or      a
+ 69+  603D C8                   ret     z
+ 70+  603E CD B7 A1             call    BIOS_DebugConsole_PrintChar
+ 71+  6041 23                   inc     hl
+ 72+  6042 18 F7                jr      p126_host_console_string
+ 73+  6044
+ 74+  6044              p126_host_ui_log:
+ 75+  6044 41 54 4D 20          db "ATM HOST SHELL INITIALIZED", 13, 10
+ 75+  6048 48 4F 53 54
+ 75+  604C 20 53 48 45
+ 75+  6050 4C 4C 20 49
+ 75+  6054 4E 49 54 49
+ 75+  6058 41 4C 49 5A
+ 75+  605C 45 44 0D 0A
+ 76+  6060 4E 65 6F 47          db "NeoGS firmware upload: NOT IMPLEMENTED", 13, 10
+ 76+  6064 53 20 66 69
+ 76+  6068 72 6D 77 61
+ 76+  606C 72 65 20 75
+ 76+  6070 70 6C 6F 61
+ 76+  6074 64 3A 20 4E
+ 76+  6078 4F 54 20 49
+ 76+  607C 4D 50 4C 45
+ 76+  6080 4D 45 4E 54
+ 76+  6084 45 44 0D 0A
+ 77+  6088 38 30 38 36          db "8086 execution: NOT STARTED", 13, 10, 0
+ 77+  608C 20 65 78 65
+ 77+  6090 63 75 74 69
+ 77+  6094 6F 6E 3A 20
+ 77+  6098 4E 4F 54 20
+ 77+  609C 53 54 41 52
+ 77+  60A0 54 45 44 0D
+ 77+  60A4 0A 00
+ 78+  60A6
+ 79+  60A6              ; ATM debug output is independent of NeoGS debug output.
+ 80+  60A6              p126_host_debug_string:
+ 81+  60A6 CD BA 60             call    p126_host_log_prefix
+ 82+  60A9 F5                   push    af
+ 83+  60AA C5                   push    bc
+ 84+  60AB 01 EF 00             ld      bc, #00EF
+ 85+  60AE              .p126_host_debug_loop:
+ 86+  60AE 7E                   ld      a, (hl)
+ 87+  60AF 23                   inc     hl
+ 88+  60B0 B7                   or      a
+ 89+  60B1 28 04                jr      z, .p126_host_debug_done
+ 90+  60B3 ED 79                out     (c), a
+ 91+  60B5 18 F7                jr      .p126_host_debug_loop
+ 92+  60B7              .p126_host_debug_done:
+ 93+  60B7 C1                   pop     bc
+ 94+  60B8 F1                   pop     af
+ 95+  60B9 C9                   ret
+ 96+  60BA
+ 97+  60BA
+ 98+  60BA              ; Prefix every ATM-originated #EF message with the host RTC timestamp.
+ 99+  60BA              ; NeoGS output must bypass this routine and use the independent [NGS] path.
+100+  60BA              p126_host_log_prefix:
+101+  60BA F5                   push    af
+102+  60BB C5                   push    bc
+103+  60BC E5                   push    hl
+104+  60BD 01 EF 00             ld      bc, #00EF
+105+  60C0 3E 5B                ld      a, '['
+106+  60C2 ED 79                out     (c), a
+107+  60C4 3A 55 63             ld      a, (ds12887_available)
+108+  60C7 B7                   or      a
+109+  60C8 28 2B                jr      z, .p126_time_unknown
+110+  60CA CD 96 61             call    READ_CURRENT_TIME
+111+  60CD 3A 4F 63             ld      a, (txt_hour)
+112+  60D0 ED 79                out     (c), a
+113+  60D2 3A 50 63             ld      a, (txt_hour+1)
+114+  60D5 ED 79                out     (c), a
+115+  60D7 3E 3A                ld      a, ':'
+116+  60D9 ED 79                out     (c), a
+117+  60DB 3A 51 63             ld      a, (txt_min)
+118+  60DE ED 79                out     (c), a
+119+  60E0 3A 52 63             ld      a, (txt_min+1)
+120+  60E3 ED 79                out     (c), a
+121+  60E5 3E 3A                ld      a, ':'
+122+  60E7 ED 79                out     (c), a
+123+  60E9 3A 53 63             ld      a, (txt_sec)
+124+  60EC ED 79                out     (c), a
+125+  60EE 3A 54 63             ld      a, (txt_sec+1)
+126+  60F1 ED 79                out     (c), a
+127+  60F3 18 12                jr     .p126_time_close
+128+  60F5              .p126_time_unknown:
+129+  60F5 3E 3F                ld      a, '?'
+130+  60F7 ED 79                out     (c), a
+131+  60F9 ED 79                out     (c), a
+132+  60FB ED 79                out     (c), a
+133+  60FD ED 79                out     (c), a
+134+  60FF ED 79                out     (c), a
+135+  6101 ED 79                out     (c), a
+136+  6103 ED 79                out     (c), a
+137+  6105 ED 79                out     (c), a
+138+  6107              .p126_time_close:
+139+  6107 3E 5D                ld      a, ']'
+140+  6109 ED 79                out     (c), a
+141+  610B                      ; ATM tag is emitted as individual bytes below.
+142+  610B 3E 5B                ld      a, '['
+143+  610D ED 79                out     (c), a
+144+  610F 3E 41                ld      a, 'A'
+145+  6111 ED 79                out     (c), a
+146+  6113 3E 54                ld      a, 'T'
+147+  6115 ED 79                out     (c), a
+148+  6117 3E 4D                ld      a, 'M'
+149+  6119 ED 79                out     (c), a
+150+  611B 3E 5D                ld      a, ']'
+151+  611D ED 79                out     (c), a
+152+  611F 3E 20                ld      a, ' '
+153+  6121 ED 79                out     (c), a
+154+  6123 E1                   pop     hl
+155+  6124 C1                   pop     bc
+156+  6125 F1                   pop     af
+157+  6126 C9                   ret
+158+  6127
+159+  6127              p126_host_version_text:
+160+  6127 5B 50 31 32          db "[P126 ATM HOST v0.1.0]", 13, 10, 0
+160+  612B 36 20 41 54
+160+  612F 4D 20 48 4F
+160+  6133 53 54 20 76
+160+  6137 30 2E 31 2E
+160+  613B 30 5D 0D 0A
+160+  613F 00
+161+  6140
+162+  6140                      INCLUDE "atm_host/ds12887_rtc.asm"
 # file opened: ds12887_rtc.asm
   1++ 6140              ; =========================================================================
   2++ 6140              ; PROJECT125 — Dallas DS12887 RTC driver for ATM Turbo 2+
@@ -642,7 +656,7 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
 433++ 635F 00           ds12887_hour_binary: defb 0
 434++ 6360
 # file closed: ds12887_rtc.asm
-154+  6360                      INCLUDE "atm_host/neogs_ipc.asm"
+163+  6360                      INCLUDE "atm_host/neogs_ipc.asm"
 # file opened: neogs_ipc.asm
   1++ 6360              ; =========================================================================
   2++ 6360              ; PROJECT126 — ATM Turbo 2+ / NeoGS host-side IPC driver
@@ -868,12 +882,12 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
 164++ 6411 5D 0D 0A 00
 165++ 6415
 # file closed: neogs_ipc.asm
-155+  6415
-156+  6415              ; Project125-derived ATM-native text console, relocated to window 2.
-157+  6415              ; Its renderer maps video pages only for each write and restores host pages.
-158+  6415                      PAGE 0
-159+  6415                      ORG #A000
-160+  A000                      INCLUDE "atm_host/p126_screen_console.asm"
+164+  6415
+165+  6415              ; Project125-derived ATM-native text console, relocated to window 2.
+166+  6415              ; Its renderer maps video pages only for each write and restores host pages.
+167+  6415                      PAGE 0
+168+  6415                      ORG #A000
+169+  A000                      INCLUDE "atm_host/p126_screen_console.asm"
 # file opened: p126_screen_console.asm
   1++ A000              ; =========================================================================
   2++ A000              ; PROJECT126 — ATM TURBO 2+ native 80x25 text console
@@ -1648,12 +1662,12 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
 682++ A560 00           bios_dbg_print_col:   db 0
 683++ A561
 # file closed: p126_screen_console.asm
-161+  A561
-162+  A561              p126_host_program_end:
-163+  A561                      ASSERT p126_host_program_start = P126_HOST_LOAD_ADDRESS
-164+  A561                      ASSERT p126_host_entry = P126_HOST_ENTRY_POINT
-165+  A561                      ASSERT p126_host_program_end <= #A800
-166+  A561
+170+  A561
+171+  A561              p126_host_program_end:
+172+  A561                      ASSERT p126_host_program_start = P126_HOST_LOAD_ADDRESS
+173+  A561                      ASSERT p126_host_entry = P126_HOST_ENTRY_POINT
+174+  A561                      ASSERT p126_host_program_end <= #A800
+175+  A561
 # file closed: project126_main.asm
  23   A561
  24   A561                      ASSERT p126_host_program_start = P126_HOST_LOAD_ADDRESS
