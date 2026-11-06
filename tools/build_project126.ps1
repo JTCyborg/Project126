@@ -1,3 +1,10 @@
+param(
+    [ValidatePattern('^[A-Za-z0-9_-]{1,8}$')]
+    [string]$HostName = "proj126",
+    [ValidatePattern('^[A-Za-z0-9_-]{1,8}$')]
+    [string]$BootName = "boot"
+)
+
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 $assembler = Join-Path $root "tools/sjasmplus.exe"
@@ -81,8 +88,25 @@ try {
         throw "TR-DOS disk assembly source is missing: $diskAssembly"
     }
 
+    # Generate assembly inputs from the checked-in templates so the BASIC
+    # LOAD command and TR-DOS directory entries always use the same names.
+    $loaderTemplate = Get-Content -Raw (Join-Path $root "atm_host/boot_loader.asm")
+    $loaderGenerated = $loaderTemplate.Replace("proj125", $HostName)
+    $generatedLoaderPath = Join-Path $root "atm_host/boot_loader.generated.asm"
+    Set-Content -Path $generatedLoaderPath -Value $loaderGenerated -Encoding ASCII
+
+    $diskTemplate = Get-Content -Raw (Join-Path $root $diskAssembly)
+    $diskGenerated = $diskTemplate.Replace("@@HOST_NAME@@", $HostName).Replace("@@BOOT_NAME@@", $BootName)
+    $generatedDiskPath = Join-Path $root "project126_disk.generated.asm"
+    Set-Content -Path $generatedDiskPath -Value $diskGenerated -Encoding ASCII
+
+    Write-Host "[BUILD] Host program: $HostName.C"
+    Write-Host "[BUILD] TR-DOS boot file: $BootName.B"
+    if ($BootName -cne "boot") {
+        Write-Warning "TR-DOS automatic startup requires boot.B (lower-case boot). The selected boot file will need manual launching."
+    }
     Write-Host "[BUILD] Creating TR-DOS disk image disk_A.trd"
-    & $assembler --msg=all "--lst=build/ATM_DISK.lst" --lstlab=sort "--sym=build/ATM_DISK.map" $diskAssembly
+    & $assembler --msg=all "--lst=build/ATM_DISK.lst" --lstlab=sort "--sym=build/ATM_DISK.map" $generatedDiskPath
     if ($LASTEXITCODE -ne 0) {
         throw "TR-DOS image assembly failed with exit code $LASTEXITCODE"
     }
@@ -100,8 +124,8 @@ try {
 
     [byte[]]$disk = [System.IO.File]::ReadAllBytes($diskImage)
     $requiredEntries = @(
-        @{ Name = "BOOT    B"; Label = "BOOT.B" },
-        @{ Name = "PROJ126 C"; Label = "PROJ126.C" },
+        @{ Name = ($BootName.PadRight(8) + "B"); Label = "$BootName.B" },
+        @{ Name = ($HostName.PadRight(8) + "C"); Label = "$HostName.C" },
         @{ Name = "X86CORE C"; Label = "X86CORE.C" }
     )
 
