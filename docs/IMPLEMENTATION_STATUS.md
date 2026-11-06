@@ -95,3 +95,37 @@ A committed source file is not automatically a successful runtime or hardware te
 - This is a diagnostic marker only; it does not alter `BOOT.B`, its TR-DOS startup trampoline, `CLEAR 24000`, `LOAD`, or the `USR 24585` transfer address.
 - Expected runtime sequence: loader's `02` marker, then `>`, then `[P126 ATM HOST v0.1.0]`. Absence of `>` means control did not reach `6009h`, or the ATM #EF output path is not displaying application writes. Presence of `>` but absence of the banner localizes the failure after entry, before/during the string output.
 - This diagnostic is not a claim of hardware runtime validation.
+
+
+## ATM TR-DOS catalogue and BIOS file staging
+
+- Source: `atm_host/p126_disk_catalog.asm`; integration: `atm_host/project126_main.asm`.
+- Implemented in source: select TR-DOS drive A, request the directory sectors through the TR-DOS ROM gateway `#3D13`, scan up to 128 directory descriptors, filter supported TR-DOS file types (`B/C/D/#`), display nine rows, maintain a selected entry and scroll the list using the Project125 CAPS SHIFT+7 / CAPS SHIFT+6 matrix combinations.
+- Disk image source `atm_host/project126_disk.asm` adds three 8 KiB BIOS files under TR-DOS-compatible names: `BIOS1.C`, `BIOS2.C`, and `COMPAQ.C`. The build script checks that these entries exist and have the expected 8 KiB size.
+- **Source implementation committed; BUILD PASS not yet established for this catalogue/BIOS-image revision.** No ATM hardware/runtime directory read has been confirmed. The user's latest runtime report showed only the host and IPC banners and an empty catalogue; therefore directory access and rendering remain **HARDWARE TEST PENDING / FUNCTIONALITY NOT CONFIRMED**.
+- Cursor navigation is implemented in source but has not been confirmed on the user's physical keyboard. The current scan is the Spectrum matrix CAPS SHIFT+7/6 convention; it is not yet verified as native PS/2 arrow-key input.
+- BIOS selection with Enter and loading the selected BIOS into NeoGS are **NOT IMPLEMENTED**.
+
+## ATM startup and TR-DOS catalogue diagnostics
+
+- Added ATM `#EF` stage messages in `atm_host/project126_main.asm` and `atm_host/p126_disk_catalog.asm`.
+- Startup markers identify video initialization begin/end, RTC probe return, console initialization begin/end, and catalogue initialization return.
+- Catalogue markers identify entry to catalogue initialization, disk-read entry, drive-select return, directory-read call/return, VG93 idle, I/O success/error, read result, directory scan completion, drawing begin/end, and detected cursor input.
+- Latest diagnostic commits: `7bb87ac204bd7a32d4bc62eb0465664482ad6de3` (catalogue stages) and `f03c7999ff3b8f3ae27edfe5a856691c816d5da2` (startup stages).
+- These messages are instrumentation only. They do not prove that the TR-DOS read succeeded. The current markers do not yet print the numeric TR-DOS error bytes or the valid-entry count; those values should be added if the next log still does not isolate the cause.
+- **Verification state:** source committed; assembly/build and ATM runtime not yet tested for these diagnostic commits. The next required evidence is the complete `#EF` log from a fresh build/run, including the last emitted marker.
+
+## Current work queue (2026-11-06)
+
+| Area | State | Notes |
+|---|---|---|
+| ATM host entry and version output | IMPLEMENTED IN SOURCE; prior runtime banner observed | User log confirms host and IPC banners. |
+| DS12887 RTC integration | IMPLEMENTED IN SOURCE; runtime timestamp previously observed | Uses ATM shadow-port activation and Project125-derived RTC driver. |
+| ATM 80x25 status console | IMPLEMENTED IN SOURCE; hardware display validation pending | Catalogue screen currently appears empty per latest user report. |
+| TR-DOS directory read | IN PROGRESS / UNVERIFIED | Must inspect stage log and numeric ROM/VG93 error status; no successful directory data confirmed. |
+| Directory filtering and nine-row rendering | IMPLEMENTED IN SOURCE; runtime unverified | Depends on successful directory read and correct buffer contents. |
+| Cursor navigation | IMPLEMENTED IN SOURCE; runtime unverified | CAPS SHIFT+7/6 matrix combinations. |
+| BIOS files in TR-DOS image | IMPLEMENTED IN SOURCE; build verification pending | BIOS1.C, BIOS2.C, COMPAQ.C, each expected 8192 bytes. |
+| BIOS selection and transfer to NeoGS | PLANNED | Not implemented; wait until catalogue is proven. |
+| NeoGS BIOS receiver / x86 BIOS launch | PLANNED | Requires a defined and tested upload/launch path. |
+
