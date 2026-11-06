@@ -1,0 +1,284 @@
+# file opened: neogs_ipc_assemble.asm
+  1   0000              ; =========================================================================
+  2   0000              ; PROJECT126 — ATM host IPC assembly translation unit v0.1.0
+  3   0000              ; ORG 0000h is a relocatable image offset, not the final ATM load address.
+  4   0000              ; The module placement is exported to ATM.lst / ATM.map for audit.
+  5   0000              ; =========================================================================
+  6   0000
+  7   0000                      ORG     0
+  8   0000
+  9   0000              p126_atm_ipc_module_start:
+ 10   0000                      INCLUDE "atm_host/neogs_ipc.asm"
+# file opened: neogs_ipc.asm
+  1+  0000              ; =========================================================================
+  2+  0000              ; PROJECT126 — ATM Turbo 2+ / NeoGS host-side IPC driver
+  3+  0000              ; Version: P126_ATM_IPC v0.1.0
+  4+  0000              ;
+  5+  0000              ; This is ATM Z80 code. It runs on the 7 MHz host CPU.
+  6+  0000              ; NeoGS is an independent Z80 and has its own private debug port #EF.
+  7+  0000              ;
+  8+  0000              ; The implementation follows the proven Project125 host transport v2
+  9+  0000              ; handshake semantics. It intentionally contains no NeoGS-local IN/OUT
+ 10+  0000              ; and does not program DMA_MOD/HAD/MAD/LAD/CST from the ATM side.
+ 11+  0000              ; =========================================================================
+ 12+  0000
+ 13+  0000                      INCLUDE "atm_host/neogs_ipc.inc"
+# file opened: neogs_ipc.inc
+  1++ 0000              ; =========================================================================
+  2++ 0000              ; PROJECT126 — ATM / NeoGS IPC public interface
+  3++ 0000              ; Version: P126_ATM_IPC_API v0.1.0
+  4++ 0000              ;
+  5++ 0000              ; Include this file in ATM-side Z80 modules that call neogs_ipc.asm.
+  6++ 0000              ; Physical transport: GSCOM/GSSTAT (#BB), GSDAT (#B3), GSCTR (#33).
+  7++ 0000              ; The ATM-side driver never accesses NeoGS-local DMA registers.
+  8++ 0000              ; =========================================================================
+  9++ 0000
+ 10++ 0000              P126_GSCOM          EQU #BB
+ 11++ 0000              P126_GSSTAT         EQU #BB
+ 12++ 0000              P126_GSDAT          EQU #B3
+ 13++ 0000              P126_GSCTR          EQU #33
+ 14++ 0000
+ 15++ 0000              P126_CBIT           EQU 0
+ 16++ 0000              P126_DBIT           EQU 7
+ 17++ 0000              P126_M_CBIT         EQU #01
+ 18++ 0000              P126_M_DBIT         EQU #80
+ 19++ 0000
+ 20++ 0000              P126_GS_RESET       EQU #80
+ 21++ 0000              P126_GS_NMI         EQU #40
+ 22++ 0000              P126_GS_LED         EQU #20
+ 23++ 0000
+ 24++ 0000              ; Driver result convention:
+ 25++ 0000              ;   Carry clear = operation completed.
+ 26++ 0000              ;   Carry set   = timeout.
+ 27++ 0000              ;   A           = last observed GSSTAT on timeout / final status on wait.
+ 28++ 0000              ;   p126_ipc_last_status always contains the last sampled GSSTAT byte.
+ 29++ 0000
+ 30++ 0000              ; Public entry points (see docs/ATM_HOST_INTERFACE.md):
+ 31++ 0000              ;   p126_ipc_read_status
+ 32++ 0000              ;   p126_ipc_wait_cbit_clear
+ 33++ 0000              ;   p126_ipc_wait_dbit_clear
+ 34++ 0000              ;   p126_ipc_wait_dbit_set
+ 35++ 0000              ;   p126_ipc_send_command       A=command
+ 36++ 0000              ;   p126_ipc_send_argument      A=argument; preloads GSDAT before GSCOM
+ 37++ 0000              ;   p126_ipc_send_byte          A=data; waits for consumption
+ 38++ 0000              ;   p126_ipc_receive_byte       returns A=data
+ 39++ 0000              ;   p126_ipc_emit_version
+ 40++ 0000
+ 41++ 0000              P126_IPC_TIMEOUT    EQU #FFFF
+ 42++ 0000
+# file closed: neogs_ipc.inc
+ 14+  0000
+ 15+  0000              ; -------------------------------------------------------------------------
+ 16+  0000              ; Read the current hardware handshake state.
+ 17+  0000              ; OUT: A=status; p126_ipc_last_status updated.
+ 18+  0000              ; -------------------------------------------------------------------------
+ 19+  0000              p126_ipc_read_status:
+ 19+  0000
+ 20+  0000 DB BB                in      a, (P126_GSSTAT)
+ 21+  0002 32 9A 00             ld      (p126_ipc_last_status), a
+ 22+  0005 C9                   ret
+ 23+  0006
+ 24+  0006              ; -------------------------------------------------------------------------
+ 25+  0006              ; Wait routines. Every wait is bounded by P126_IPC_TIMEOUT.
+ 26+  0006              ; OUT: Carry clear on requested state; carry set on timeout.
+ 27+  0006              ;      A=last sampled GSSTAT. BC is clobbered.
+ 28+  0006              ; -------------------------------------------------------------------------
+ 29+  0006              p126_ipc_wait_cbit_clear:
+ 29+  0006
+ 30+  0006 01 FF FF             ld      bc, P126_IPC_TIMEOUT
+ 31+  0009              .p126_cbit_loop:
+ 32+  0009 CD 00 00             call    p126_ipc_read_status
+ 33+  000C CB 47                bit     P126_CBIT, a
+ 34+  000E 28 0A                jr      z, .p126_cbit_ready
+ 35+  0010 0B                   dec     bc
+ 36+  0011 78                   ld      a, b
+ 37+  0012 B1                   or      c
+ 38+  0013 20 F4                jr      nz, .p126_cbit_loop
+ 39+  0015 3A 9A 00             ld      a, (p126_ipc_last_status)
+ 40+  0018 37                   scf
+ 41+  0019 C9                   ret
+ 42+  001A              .p126_cbit_ready:
+ 43+  001A 3A 9A 00             ld      a, (p126_ipc_last_status)
+ 44+  001D B7                   or      a
+ 45+  001E C9                   ret
+ 46+  001F
+ 47+  001F              p126_ipc_wait_dbit_clear:
+ 47+  001F
+ 48+  001F 01 FF FF             ld      bc, P126_IPC_TIMEOUT
+ 49+  0022              .p126_dbit_clear_loop:
+ 50+  0022 CD 00 00             call    p126_ipc_read_status
+ 51+  0025 CB 7F                bit     P126_DBIT, a
+ 52+  0027 28 0A                jr      z, .p126_dbit_clear_ready
+ 53+  0029 0B                   dec     bc
+ 54+  002A 78                   ld      a, b
+ 55+  002B B1                   or      c
+ 56+  002C 20 F4                jr      nz, .p126_dbit_clear_loop
+ 57+  002E 3A 9A 00             ld      a, (p126_ipc_last_status)
+ 58+  0031 37                   scf
+ 59+  0032 C9                   ret
+ 60+  0033              .p126_dbit_clear_ready:
+ 61+  0033 3A 9A 00             ld      a, (p126_ipc_last_status)
+ 62+  0036 B7                   or      a
+ 63+  0037 C9                   ret
+ 64+  0038
+ 65+  0038              p126_ipc_wait_dbit_set:
+ 65+  0038
+ 66+  0038 01 FF FF             ld      bc, P126_IPC_TIMEOUT
+ 67+  003B              .p126_dbit_set_loop:
+ 68+  003B CD 00 00             call    p126_ipc_read_status
+ 69+  003E CB 7F                bit     P126_DBIT, a
+ 70+  0040 20 0A                jr      nz, .p126_dbit_set_ready
+ 71+  0042 0B                   dec     bc
+ 72+  0043 78                   ld      a, b
+ 73+  0044 B1                   or      c
+ 74+  0045 20 F4                jr      nz, .p126_dbit_set_loop
+ 75+  0047 3A 9A 00             ld      a, (p126_ipc_last_status)
+ 76+  004A 37                   scf
+ 77+  004B C9                   ret
+ 78+  004C              .p126_dbit_set_ready:
+ 79+  004C 3A 9A 00             ld      a, (p126_ipc_last_status)
+ 80+  004F B7                   or      a
+ 81+  0050 C9                   ret
+ 82+  0051
+ 83+  0051              ; -------------------------------------------------------------------------
+ 84+  0051              ; Send one command through GSCOM.
+ 85+  0051              ; IN : A=command.
+ 86+  0051              ; OUT: Carry clear after NeoGS clears CBIT; carry set on timeout.
+ 87+  0051              ; -------------------------------------------------------------------------
+ 88+  0051              p126_ipc_send_command:
+ 88+  0051
+ 89+  0051 32 9B 00             ld      (p126_ipc_tx_byte), a
+ 90+  0054 3A 9B 00             ld      a, (p126_ipc_tx_byte)
+ 91+  0057 D3 BB                out     (P126_GSCOM), a
+ 92+  0059 C3 06 00             jp      p126_ipc_wait_cbit_clear
+ 93+  005C
+ 94+  005C              ; -------------------------------------------------------------------------
+ 95+  005C              ; Preload one data byte before issuing a command.
+ 96+  005C              ; This ordering is required by the stock GS105a #13/#14 command ABI.
+ 97+  005C              ; IN : A=argument.
+ 98+  005C              ; OUT: Carry clear after GSDAT write; carry set if the data slot is busy.
+ 99+  005C              ; -------------------------------------------------------------------------
+100+  005C              p126_ipc_send_argument:
+100+  005C
+101+  005C 32 9B 00             ld      (p126_ipc_tx_byte), a
+102+  005F CD 1F 00             call    p126_ipc_wait_dbit_clear
+103+  0062 D8                   ret     c
+104+  0063 3A 9B 00             ld      a, (p126_ipc_tx_byte)
+105+  0066 D3 B3                out     (P126_GSDAT), a
+106+  0068 B7                   or      a
+107+  0069 C9                   ret
+108+  006A
+109+  006A              ; -------------------------------------------------------------------------
+110+  006A              ; Send a data byte and wait until NeoGS consumes it (DBIT clears).
+111+  006A              ; IN : A=data.
+112+  006A              ; OUT: Carry clear on consumption; carry set on timeout.
+113+  006A              ; -------------------------------------------------------------------------
+114+  006A              p126_ipc_send_byte:
+114+  006A
+115+  006A 32 9B 00             ld      (p126_ipc_tx_byte), a
+116+  006D CD 1F 00             call    p126_ipc_wait_dbit_clear
+117+  0070 D8                   ret     c
+118+  0071 3A 9B 00             ld      a, (p126_ipc_tx_byte)
+119+  0074 D3 B3                out     (P126_GSDAT), a
+120+  0076 C3 1F 00             jp      p126_ipc_wait_dbit_clear
+121+  0079
+122+  0079              ; -------------------------------------------------------------------------
+123+  0079              ; Receive one byte published by NeoGS.
+124+  0079              ; OUT: A=data; carry clear. Carry set on timeout.
+125+  0079              ; Reading GSDAT acknowledges the byte and clears DBIT in the host view.
+126+  0079              ; -------------------------------------------------------------------------
+127+  0079              p126_ipc_receive_byte:
+127+  0079
+128+  0079 CD 38 00             call    p126_ipc_wait_dbit_set
+129+  007C D8                   ret     c
+130+  007D DB B3                in      a, (P126_GSDAT)
+131+  007F 32 9C 00             ld      (p126_ipc_rx_byte), a
+132+  0082 B7                   or      a
+133+  0083 C9                   ret
+134+  0084
+135+  0084              ; -------------------------------------------------------------------------
+136+  0084              ; Emit a build/runtime identity to ATM's independent debug port #EF.
+137+  0084              ; Preserves AF, BC and HL.
+138+  0084              ; -------------------------------------------------------------------------
+139+  0084              p126_ipc_emit_version:
+139+  0084
+140+  0084 F5                   push    af
+141+  0085 C5                   push    bc
+142+  0086 E5                   push    hl
+143+  0087 21 9D 00             ld      hl, p126_ipc_version_text
+144+  008A 01 EF 00             ld      bc, #00EF
+145+  008D              .p126_version_loop:
+146+  008D 7E                   ld      a, (hl)
+147+  008E 23                   inc     hl
+148+  008F B7                   or      a
+149+  0090 28 04                jr      z, .p126_version_done
+150+  0092 ED 79                out     (c), a
+151+  0094 18 F7                jr      .p126_version_loop
+152+  0096              .p126_version_done:
+153+  0096 E1                   pop     hl
+154+  0097 C1                   pop     bc
+155+  0098 F1                   pop     af
+156+  0099 C9                   ret
+157+  009A
+158+  009A              ; Driver state is private to this module. Callers must not modify it.
+159+  009A 00           p126_ipc_last_status: db 0
+160+  009B 00           p126_ipc_tx_byte:     db 0
+161+  009C 00           p126_ipc_rx_byte:     db 0
+162+  009D
+163+  009D              p126_ipc_version_text:
+164+  009D 5B 50 31 32          db "[P126 ATM_IPC v0.1.0]", 13, 10, 0
+164+  00A1 36 20 41 54
+164+  00A5 4D 5F 49 50
+164+  00A9 43 20 76 30
+164+  00AD 2E 31 2E 30
+164+  00B1 5D 0D 0A 00
+165+  00B5
+# file closed: neogs_ipc.asm
+ 11   00B5              p126_atm_ipc_module_end:
+ 12   00B5
+ 13   00B5                  DISPLAY "P126_ATM_IPC_START=", /H, p126_atm_ipc_module_start
+ 14   00B5                  DISPLAY "P126_ATM_IPC_END=", /H, p126_atm_ipc_module_end
+ 15   00B5                  DISPLAY "P126_ATM_IPC_SIZE=", /D, p126_atm_ipc_module_end-p126_atm_ipc_module_start
+ 16   00B5
+ 17   00B5                  ASSERT p126_atm_ipc_module_end > p126_atm_ipc_module_start
+ 18   00B5                  ASSERT p126_atm_ipc_module_end <= #10000
+ 19   00B5
+# file closed: neogs_ipc_assemble.asm
+
+Value    Label
+------ - -----------------------------------------------------------
+0x00B5   p126_atm_ipc_module_end
+0x0000   p126_atm_ipc_module_start
+0x0000   P126_CBIT
+0x0007   P126_DBIT
+0x0020 X P126_GS_LED
+0x0040 X P126_GS_NMI
+0x0080 X P126_GS_RESET
+0x00BB   P126_GSCOM
+0x0033 X P126_GSCTR
+0x00B3   P126_GSDAT
+0x00BB   P126_GSSTAT
+0x0084 X p126_ipc_emit_version
+0x0096   p126_ipc_emit_version.p126_version_done
+0x008D   p126_ipc_emit_version.p126_version_loop
+0x009A   p126_ipc_last_status
+0x0000   p126_ipc_read_status
+0x0079 X p126_ipc_receive_byte
+0x009C   p126_ipc_rx_byte
+0x005C X p126_ipc_send_argument
+0x006A X p126_ipc_send_byte
+0x0051 X p126_ipc_send_command
+0xFFFF   P126_IPC_TIMEOUT
+0x009B   p126_ipc_tx_byte
+0x009D   p126_ipc_version_text
+0x0006   p126_ipc_wait_cbit_clear
+0x0009   p126_ipc_wait_cbit_clear.p126_cbit_loop
+0x001A   p126_ipc_wait_cbit_clear.p126_cbit_ready
+0x001F   p126_ipc_wait_dbit_clear
+0x0022   p126_ipc_wait_dbit_clear.p126_dbit_clear_loop
+0x0033   p126_ipc_wait_dbit_clear.p126_dbit_clear_ready
+0x0038   p126_ipc_wait_dbit_set
+0x003B   p126_ipc_wait_dbit_set.p126_dbit_set_loop
+0x004C   p126_ipc_wait_dbit_set.p126_dbit_set_ready
+0x0001 X P126_M_CBIT
+0x0080 X P126_M_DBIT
