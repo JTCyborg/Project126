@@ -32,10 +32,26 @@ p126_host_entry:
         di
         ld      sp, P126_HOST_STACK_TOP
 
-        ; TR-DOS file access is complete. Activate ATM shadow ports and
-        ; native video mapping before touching the DS12887 CMOS ports.
-        ; This follows Project125: #EFF7 reset, #7FFD setup, TR-DOS #3D2F
-        ; trampoline for #0177, then #3FF7/#7FF7/#FFF7 shadow registers.
+        ; Match Project125's proven TR-DOS startup mapping exactly.
+        ; All disk access must finish before ATM shadow-port/video setup.
+        ld      a, #10
+        ld      bc, #7FFD
+        out     (c), a
+        ld      (#5C3B), a
+        xor     a
+        ld      bc, #EFF7
+        out     (c), a
+
+        ld      hl, p126_log_trdos_begin
+        call    p126_host_debug_string
+        call    p126_catalog_read_disk
+        ld      a, 1
+        ld      (p126_catalog_preloaded), a
+        ld      hl, p126_log_trdos_done
+        call    p126_host_debug_string
+
+        ; Only after the TR-DOS directory read is complete may ATM video
+        ; paging and shadow-port decoding be enabled.
         ld      hl, p126_log_video_begin
         call    p126_host_debug_string
         call    p126_atm_video_init
@@ -165,6 +181,8 @@ p126_host_log_prefix:
         pop     af
         ret
 
+p126_log_trdos_begin:   db "[BOOT] TRDOS DIRECTORY READ BEGIN",13,10,0
+p126_log_trdos_done:    db "[BOOT] TRDOS DIRECTORY READ RETURN",13,10,0
 p126_log_video_begin:   db "[BOOT] ATM VIDEO INIT BEGIN",13,10,0
 p126_log_video_done:    db "[BOOT] ATM VIDEO INIT DONE",13,10,0
 p126_log_rtc_done:      db "[BOOT] RTC PROBE RETURN",13,10,0
