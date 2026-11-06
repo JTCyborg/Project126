@@ -74,3 +74,12 @@ The system BIOS slot is 256 KiB but the current guest-visible reset mapping is 8
 The initial VGA aperture backend maps the guest's 128 KiB A0000–BFFFF range linearly to the first eight pages of the 256 KiB VRAM allocation. This is an explicit staging implementation, not VGA-compatible plane addressing. Sequencer/GC registers, latches, plane masks, read/write modes and scanout remain unimplemented.
 
 The common API is `x86_guest_mem_read8` and `x86_guest_mem_write8`. ROM writes fail with carry set. The selector's page-bias constants are asserted in the shared NeoGS map. All accesses use the WIN3 page-select port 23h; the runtime placement constraints described above still apply.
+
+
+### Verification — unified guest memory dispatcher
+
+- **BUILD PASS:** GitHub Actions run [42306662917](https://github.com/JTCyborg/Project126/actions/runs/42306662917), source commit `b4b21ff7dcc4a161c9912d03162487e02dc542fb`.
+- SjASMPlus 1.23.1 assembled the NeoGS unit with 0 errors and 0 warnings. The x86 state module is 842 bytes; combined x86 state/ALU image is 1,616 bytes. ATM IPC (246 bytes) and NeoGS IPC (65 bytes) also assembled with 0 errors and 0 warnings.
+- TR-DOS image generated at 655,360 bytes. `X86CORE.C` is 1,616 bytes / 7 sectors; BIOS1.C, BIOS2.C and COMPAQ.C are each 8,192 bytes / 32 sectors. Listings, maps and disk artifact were published.
+- The disk assembler retains one pre-existing generated-path backslash warning; the NeoGS and IPC assembly units report no warnings.
+- **Not verified:** actual WIN3 paging/read/write on target hardware, ROM contents in physical slots, guest BIOS POST, VGA plane semantics or scanout. This is BUILD PASS only.

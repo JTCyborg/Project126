@@ -464,3 +464,12 @@ This stage must be built and then exercised on NeoGS with boundary and data-rete
 - All physical slots are accessed through WIN3 (C000h–FFFFh) using the page-select port 23h. Page-bias constants are defined and asserted in `shared/p126_neogs_memory_map.inc`.
 - The generic selector uses the 20-bit guest address to select a 16 KiB page and return the in-window offset. WIN3 remains volatile; resident code, data, stack and interrupt handlers must remain in WIN0–WIN2.
 - **Verification boundary:** build-time assembly and map checks can validate encoding and image placement only. No hardware page switching, ROM image contents, VGA rendering or full VGA semantics are claimed.
+
+
+### Verification — unified guest memory dispatcher
+
+- **BUILD PASS:** GitHub Actions run [42306662917](https://github.com/JTCyborg/Project126/actions/runs/42306662917), source commit `b4b21ff7dcc4a161c9912d03162487e02dc542fb`.
+- SjASMPlus 1.23.1 assembled the NeoGS unit with 0 errors and 0 warnings. The x86 state module is 842 bytes; combined x86 state/ALU image is 1,616 bytes. ATM IPC (246 bytes) and NeoGS IPC (65 bytes) also assembled with 0 errors and 0 warnings.
+- TR-DOS image generated at 655,360 bytes. `X86CORE.C` is 1,616 bytes / 7 sectors; BIOS1.C, BIOS2.C and COMPAQ.C are each 8,192 bytes / 32 sectors. Listings, maps and disk artifact were published.
+- The disk assembler retains one pre-existing generated-path backslash warning; the NeoGS and IPC assembly units report no warnings.
+- **Not verified:** actual WIN3 paging/read/write on target hardware, ROM contents in physical slots, guest BIOS POST, VGA plane semantics or scanout. This is BUILD PASS only.
