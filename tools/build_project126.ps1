@@ -91,7 +91,7 @@ try {
     # Generate assembly inputs from the checked-in templates so the BASIC
     # LOAD command and TR-DOS directory entries always use the same names.
     $loaderTemplate = Get-Content -Raw (Join-Path $root "atm_host/boot_loader.asm")
-    $loaderGenerated = $loaderTemplate.Replace("@@HOST_NAME@@", $HostName)
+    $loaderGenerated = $loaderTemplate.Replace("proj125", $HostName)
     $generatedLoaderPath = Join-Path $root "atm_host/boot_loader.generated.asm"
     Set-Content -Path $generatedLoaderPath -Value $loaderGenerated -Encoding ASCII
 
