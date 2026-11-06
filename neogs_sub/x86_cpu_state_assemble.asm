@@ -6,6 +6,20 @@
 
         ORG     0
 
+; Physical NeoGS RAM allocation contract (separate from guest x86 map).
+        INCLUDE "shared/p126_neogs_memory_map.inc"
+
+        DISPLAY "P126_NGS_RAM_BYTES=", /H, P126_NGS_RAM_SIZE
+        DISPLAY "P126_NGS_KERNEL_BASE=", /H, P126_NGS_KERNEL_BASE
+        DISPLAY "P126_NGS_SYSBIOS_BASE=", /H, P126_NGS_SYSBIOS_BASE
+        DISPLAY "P126_NGS_VGABIOS_BASE=", /H, P126_NGS_VGABIOS_BASE
+        DISPLAY "P126_NGS_VRAM_BASE=", /H, P126_NGS_VRAM_BASE
+        DISPLAY "P126_NGS_FRAME_BASE=", /H, P126_NGS_FRAME_BASE
+        DISPLAY "P126_NGS_DMA_BASE=", /H, P126_NGS_DMA_BASE
+        DISPLAY "P126_NGS_IPC_BASE=", /H, P126_NGS_IPC_BASE
+        DISPLAY "P126_NGS_GUEST_RAM_BASE=", /H, P126_NGS_GUEST_RAM_BASE
+        DISPLAY "P126_NGS_RESERVED_BASE=", /H, P126_NGS_RESERVED_BASE
+
 x86_cpu_state_module_start:
         INCLUDE "neogs_sub/x86_cpu_state.asm"
 x86_cpu_state_module_end:

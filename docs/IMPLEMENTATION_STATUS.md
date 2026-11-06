@@ -148,3 +148,12 @@ A committed source file is not automatically a successful runtime or hardware te
 - Replaced one `C=5, B=8` call with eight individual `C=5, B=1` calls. Each call reloads D/E/HL and clears/checks `#5D0F/#5D10`.
 - Directory buffer: `#C800..#CFFF`; parsing, display and keyboard navigation run in the later UI phase.
 - **Verification:** commits `94c7436a258ccab48182f72446609738ec7e80ca`, `591c00eed1227bc89ecbf9658942297ac6867193`, and `ea916953044349e68ef3cc8af93fc8f5020b483e`. GitHub Actions run [42302005699](https://github.com/JTCyborg/Project126/actions/runs/42302005699) completed successfully. The user subsequently confirmed the catalogue stage on physical ATM hardware.
+
+
+## NeoGS physical RAM allocation v0.1
+
+- Normative map: docs/P126_NEOGS_MEMORY_MAP.md; machine-readable constants/assertions: shared/p126_neogs_memory_map.inc.
+- Allocation: 256 physical pages × 16 KiB = 4 MiB. Pages 00–0F resident kernel (256 KiB); 10–1F system BIOS slot (256 KiB); 20–2F separate VGA BIOS slot (256 KiB); 30–3F VGA VRAM (256 KiB); 40–41 ATM presentation frame (32 KiB); 42 DMA backing page (16 KiB); 43 IPC scratch (16 KiB); 44–83 guest RAM backing (1 MiB); 84–FF unassigned reserve (1.9375 MiB).
+- This is a physical RAM allocation only. It does not assign guest x86 logical ROM/RAM/device addresses, NeoGS logical Z80 windows, ATM staging addresses or DMA register encoding.
+- Build integration: the NeoGS assembly translation unit includes the map constants and checks all region boundaries, adjacency, capacities and the 4 MiB limit with assembler ASSERTs. Existing NEOGS.lst/NEOGS.map therefore include the allocation symbols.
+- Physical paging and DMA hardware tests are not claimed. BUILD PASS is pending CI for this commit.
