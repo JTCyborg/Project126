@@ -31,7 +31,7 @@
 ; -------------------------------------------------------------------------
         PAGE 0
         ORG #E000
-        INCLUDE "build/boot_loader.generated.asm"
+        INCLUDE "atm_host/boot_loader.generated.asm"
         SAVETRD "disk_A.trd", "@@BOOT_NAME@@.B", BASIC_START, BASIC_END-BASIC_START
 
 ; -------------------------------------------------------------------------
