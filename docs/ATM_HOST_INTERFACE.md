@@ -15,6 +15,9 @@ ATM and NeoGS retain independent debug channels at port #EF.
 - `atm_host/neogs_ipc_assemble.asm` — relocatable assembly unit and placement labels.
 - `build/ATM_IPC.bin` — assembled ATM transport module.
 - `build/ATM.lst`, `build/ATM.map` — listing and symbol/address map.
+- `shared/p126_ipc_protocol.inc` — shared DMA/IPC ABI constants imported by both processors.
+- `neogs_sub/p126_ipc.asm` and `neogs_sub/p126_ipc_assemble.asm` — NeoGS-side CRC primitive and independent assembly/audit unit.
+- `build/P126_NGS_IPC.bin`, `build/NEOGS_IPC.lst`, `build/NEOGS_IPC.map` — NeoGS IPC primitive build products.
 
 The current assembly origin is `ORG 0000h`, used only to produce auditable image-relative offsets. It does not assign a final physical ATM load address. That address depends on the ATM memory map and integration with the TR-DOS/host program, which are not yet fixed.
 
