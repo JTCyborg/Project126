@@ -129,3 +129,13 @@ A committed source file is not automatically a successful runtime or hardware te
 | BIOS selection and transfer to NeoGS | PLANNED | Not implemented; wait until catalogue is proven. |
 | NeoGS BIOS receiver / x86 BIOS launch | PLANNED | Requires a defined and tested upload/launch path. |
 
+
+
+## TR-DOS access ordering correction (2026-11-06)
+
+- Compared Project126 catalogue access with the working Project125 startup and BIOS sector loader.
+- Corrected startup ordering: Project126 now selects the legacy TR-DOS paging state (7FFD=#10, 5C3B=#10, EFF7=0) and reads the directory before ATM video/shadow-port initialization.
+- Removed the standalone C=1 drive-select call. It was not part of Project125's proven file-access sequence and was the exact point where the user's runtime log stopped.
+- Changed directory reading from one C=5, B=8 call to eight individual C=5, B=1 calls, following Project125's documented one-sector contract. Each call reloads D/E/HL and clears/checks 5D0F/5D10.
+- The directory buffer remains at #C800; catalogue parsing, display and keyboard navigation remain in the later UI phase.
+- **Verification:** source changes committed. No local SjASMPlus build or ATM hardware run was available for this edit; BUILD PASS and HARDWARE PASS remain unclaimed. Expected log order: TR-DOS DIRECTORY READ BEGIN/RETURN before ATM VIDEO INIT BEGIN.
