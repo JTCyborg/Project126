@@ -229,7 +229,16 @@ BIOS_DebugConsole_DrawInterface::
         ld      a, 6
         ld      c, 1
         call    BIOS_DebugConsole_PrintAt
+        ; Reflect the result of DS12887_PROBE instead of showing a
+        ; permanent NOT INITIALIZED placeholder.
+        ld      a, (ds12887_available)
+        or      a
+        jr      z, .p126_draw_rtc_unavailable
+        ld      hl, p126_ui_line7_ready
+        jr      .p126_draw_rtc_line
+.p126_draw_rtc_unavailable:
         ld      hl, p126_ui_line7
+.p126_draw_rtc_line:
         ld      a, 7
         ld      c, 1
         call    BIOS_DebugConsole_PrintAt
@@ -661,7 +670,8 @@ p126_ui_line3:  db "HOST CPU      : Z80 / ATM TURBO 2+", 0
 p126_ui_line4:  db "GUEST CPU     : 8086 REAL MODE / NeoGS (IDLE)", 0
 p126_ui_line5:  db "BIOS          : NOT LOADED", 0
 p126_ui_line6:  db "VIDEO         : ATM TEXT 80x25 ACTIVE", 0
-p126_ui_line7:  db "REAL TIME CLK : NOT INITIALIZED", 0
+p126_ui_line7:       db "REAL TIME CLK : NOT INITIALIZED", 0
+p126_ui_line7_ready: db "REAL TIME CLK : DS12887 ONLINE", 0
 p126_ui_line9:  db "NEOGS / IPC", 0
 p126_ui_line10: db "DEBUG STREAM  : ATM #EF / NEOGS IPC IDLE", 0
 p126_ui_line11: db "Z80 LOG       : HOST STARTED; GUEST NOT STARTED", 0
