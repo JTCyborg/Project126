@@ -392,6 +392,83 @@ p126_neogs_read_next_sector:
         or      a
         ret
 
+; ATM-side diagnostic for the three bytes returned by GS105a #20.
+; Format: [time][ATM] [NGS ROM] RAM24=HH:MM:LL
+; This is intentionally emitted by ATM: Project126's NeoGS bootstrap is not
+; executing yet while the stock ROM handles the #20 probe.
+p126_neogs_log_ram_size:
+        push    af
+        push    bc
+        push    de
+        push    hl
+        call    p126_host_log_prefix
+        ld      hl,p126_neogs_ram_log_text
+        call    p126_neogs_log_text
+        ld      a,(p126_neogs_ram_size+2)
+        call    p126_neogs_log_hex_byte
+        ld      a,':'
+        ld      bc,#00EF
+        out     (c),a
+        ld      a,(p126_neogs_ram_size+1)
+        call    p126_neogs_log_hex_byte
+        ld      a,':'
+        ld      bc,#00EF
+        out     (c),a
+        ld      a,(p126_neogs_ram_size)
+        call    p126_neogs_log_hex_byte
+        ld      a,13
+        ld      bc,#00EF
+        out     (c),a
+        ld      a,10
+        out     (c),a
+        pop     hl
+        pop     de
+        pop     bc
+        pop     af
+        ret
+
+p126_neogs_log_text:
+        push    bc
+        ld      bc,#00EF
+.p126_neogs_log_text_loop:
+        ld      a,(hl)
+        inc     hl
+        or      a
+        jr      z,.p126_neogs_log_text_done
+        out     (c),a
+        jr      .p126_neogs_log_text_loop
+.p126_neogs_log_text_done:
+        pop     bc
+        ret
+
+; IN A=byte; writes two uppercase hexadecimal digits to ATM #EF.
+p126_neogs_log_hex_byte:
+        push    bc
+        ld      c,#EF
+        ld      b,a
+        rrca
+        rrca
+        rrca
+        rrca
+        and     #0F
+        call    p126_neogs_log_hex_nibble
+        ld      a,b
+        and     #0F
+        call    p126_neogs_log_hex_nibble
+        pop     bc
+        ret
+
+p126_neogs_log_hex_nibble:
+        cp      10
+        jr      c,.p126_neogs_log_hex_digit
+        add     'A'-10
+        jr      .p126_neogs_log_hex_out
+.p126_neogs_log_hex_digit:
+        add     '0'
+.p126_neogs_log_hex_out:
+        out     (c),a
+        ret
+
  ; Query the stock ROM for its 24-bit RAM size. Project126 requires 4 MiB.
 p126_neogs_probe_rom_ram:
         ld      a,'C'                 ; C: send #20 and wait for CBIT
@@ -416,6 +493,9 @@ p126_neogs_probe_rom_ram:
         ld      (p126_neogs_ram_size+2),a
         ld      a,'G'                 ; G: validate reported 24-bit RAM size
         ld      (p126_neogs_startup_stage),a
+        ; At this point the stock GS105a ROM still owns the NeoGS CPU.
+        ; Capture the exact response on the ATM's independent #EF channel.
+        call    p126_neogs_log_ram_size
         ld      a,(p126_neogs_ram_size+2)
         cp      #40
         jr      c,.p126_neogs_ram_probe_bad
@@ -547,6 +627,7 @@ p126_neogs_buffer_ptr: dw #C000
 p126_neogs_buffer_remaining: dw 0
 p126_neogs_saved_sp: dw 0
 p126_neogs_ram_size: db 0,0,0
+p126_neogs_ram_log_text: db "[NGS ROM] RAM24=",0
 p126_neogs_file_sectors_left: db 0
 p126_neogs_file_sector: db 0
 p126_neogs_file_track: db 0

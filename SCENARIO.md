@@ -584,3 +584,11 @@ The startup failure character now identifies the last GS105a operation entered:
 - `H`: retrying cold restart after the first RAM probe failed.
 
 This is diagnostic instrumentation; the next ATM log must report the letter after `NGS FAIL STAGE=` so the failed handshake can be isolated without guessing.
+
+
+## GS105a #20 raw RAM-size diagnostics (2026-11-07)
+
+- When the three response bytes have been received, ATM emits their exact value as `[HH:MM:SS][ATM] [NGS ROM] RAM24=HH:MM:LL` through the ATM processor's own #EF port. The byte order in the printed value is high, middle, low.
+- The 4 MiB threshold is unchanged. The raw response is logged before validation so the next target run distinguishes an undersized report from a byte-order/transport interpretation problem.
+- During this stage the NeoGS CPU is still executing the stock GS105a ROM. Project126's NeoGS bootstrap has not yet been uploaded or entered, so it cannot truthfully emit a Project126 `[NGS]` message for the #20 exchange. Its independent #EF diagnostics become available only after the #14 upload and #13 jump.
+- This change adds observability only; no hardware result is claimed until the updated TR-DOS image is run on the target.

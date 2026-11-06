@@ -293,3 +293,11 @@ The ATM log `DMA SMOKE FRAME SENT` means the transport handshake completed; it i
 - A=initial #F4/CBIT; B=RAM probe entry; C=#20/CBIT; D/E/F=RAM-size bytes 0/1/2; G=4 MiB threshold validation; H=retry #F4.
 - The next target run must report the letter after `NGS FAIL STAGE=`; this identifies the last operation entered, not a claim that the operation completed.
 - No hardware runtime result is inferred from this instrumentation.
+
+
+## GS105a #20 raw RAM-size diagnostics (2026-11-07)
+
+- Added ATM-side HEX output of all three bytes returned by the stock ROM's `#20` RAM-size command: `[NGS ROM] RAM24=HH:MM:LL`. The message is written directly by ATM to its own #EF channel and is emitted before the 4 MiB threshold check.
+- Kept the Project126 minimum at 4 MiB; no threshold relaxation or inferred RAM-size correction was made.
+- At this point the stock GS105a ROM, not Project126 firmware, owns the NeoGS CPU. Therefore a Project126 `[NGS]` message cannot be produced during this exchange. NeoGS-side diagnostics are independent and begin only after Project126 bootstrap is uploaded and entered.
+- **Verification:** source change pending CI and target run. The raw byte values and whether the threshold passes remain unknown until the user tests the new TR-DOS image.
