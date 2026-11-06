@@ -33,6 +33,9 @@ p126_host_entry:
         ld      sp, P126_HOST_STACK_TOP
 
         ld      hl, p126_host_version_text
+        ; Probe the proven Project125 DS12887 RTC backend before normal logs.
+        call    DS12887_PROBE
+        ld      hl, p126_host_version_text
         call    p126_host_debug_string
         call    p126_ipc_emit_version
 
@@ -65,6 +68,7 @@ p126_host_ui_log:
 
 ; ATM debug output is independent of NeoGS debug output.
 p126_host_debug_string:
+        call    p126_host_log_prefix
         push    af
         push    bc
         ld      bc, #00EF
@@ -80,9 +84,72 @@ p126_host_debug_string:
         pop     af
         ret
 
+
+; Prefix every ATM-originated #EF message with the host RTC timestamp.
+; NeoGS output must bypass this routine and use the independent [NGS] path.
+p126_host_log_prefix:
+        push    af
+        push    bc
+        push    hl
+        ld      bc, #00EF
+        ld      a, '['
+        out     (c), a
+        ld      a, (ds12887_available)
+        or      a
+        jr      z, .p126_time_unknown
+        call    READ_CURRENT_TIME
+        ld      a, (txt_hour)
+        out     (c), a
+        ld      a, (txt_hour+1)
+        out     (c), a
+        ld      a, ':'
+        out     (c), a
+        ld      a, (txt_min)
+        out     (c), a
+        ld      a, (txt_min+1)
+        out     (c), a
+        ld      a, ':'
+        out     (c), a
+        ld      a, (txt_sec)
+        out     (c), a
+        ld      a, (txt_sec+1)
+        out     (c), a
+        jr     .p126_time_close
+.p126_time_unknown:
+        ld      a, '?'
+        out     (c), a
+        out     (c), a
+        out     (c), a
+        out     (c), a
+        out     (c), a
+        out     (c), a
+        out     (c), a
+        out     (c), a
+.p126_time_close:
+        ld      a, ']'
+        out     (c), a
+        ; ATM tag is emitted as individual bytes below.
+        ld      a, '['
+        out     (c), a
+        ld      a, 'A'
+        out     (c), a
+        ld      a, 'T'
+        out     (c), a
+        ld      a, 'M'
+        out     (c), a
+        ld      a, ']'
+        out     (c), a
+        ld      a, ' '
+        out     (c), a
+        pop     hl
+        pop     bc
+        pop     af
+        ret
+
 p126_host_version_text:
         db "[P126 ATM HOST v0.1.0]", 13, 10, 0
 
+        INCLUDE "atm_host/ds12887_rtc.asm"
         INCLUDE "atm_host/neogs_ipc.asm"
 
 ; Project125-derived ATM-native text console, relocated to window 2.
