@@ -32,7 +32,8 @@ p126_host_entry:
         di
         ld      sp, P126_HOST_STACK_TOP
 
-        ; Initialize the Dallas DS12887 RTC before any timestamped log.
+        ld      hl, p126_host_version_text
+        ; Probe the proven Project125 DS12887 RTC backend before normal logs.
         call    DS12887_PROBE
         ld      hl, p126_host_version_text
         call    p126_host_debug_string

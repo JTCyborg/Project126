@@ -414,6 +414,12 @@ DS12887_PRINT_CHAR:
         ret
 
 
+; ASCII timestamp buffers used by the ATM log prefix.
+; Kept in this module so the RTC driver is self-contained in disk assembly.
+txt_hour:            defb "00"
+txt_min:             defb "00"
+txt_sec:             defb "00"
+
 ds12887_available:   defb 0
 ds12887_backend:     defb 0
 ds12887_smuc_control: defb 0
@@ -425,8 +431,3 @@ ds12887_minutes:     defb 0
 ds12887_hours:       defb 0
 ds12887_hour_pm:     defb 0
 ds12887_hour_binary: defb 0
-
-; ASCII timestamp buffers used by the ATM log prefix.
-txt_hour:            defb "00"
-txt_min:             defb "00"
-txt_sec:             defb "00"
