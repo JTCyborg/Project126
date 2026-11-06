@@ -19,12 +19,19 @@ P126_B_ERROR EQU #E1
 
 p126_bootstrap_start:
         di
+        ; Match the proven Project125 bootstrap entry sequence: establish a
+        ; temporary stack before any CALL, stop ZX DMA, and allow the DMA
+        ; control write to settle before switching to the DBIT byte channel.
+        ld      sp,#3FFF
         ld      hl,p126_boot_msg_enter
         call    p126_boot_log
         ld      a,1
         out     (P126_B_DMA_MOD),a
         xor     a
         out     (P126_B_DMA_CST),a
+        ld      b,0
+.p126_boot_dma_disable_settle:
+        djnz    .p126_boot_dma_disable_settle
         in      a,(P126_B_GSCFG0)
         and     #FD
         or      #09
@@ -37,6 +44,7 @@ p126_bootstrap_start:
         out     (P126_B_MPAGE),a
         ld      a,#01
         out     (P126_B_MPAGEEX),a
+        ; Install the operational temporary stack only after WIN3 is mapped.
         ld      sp,#FFFE
         ld      bc,#FF02
         in      a,(c)

@@ -541,8 +541,13 @@ p126_neogs_send_command:
         ret
 
 p126_neogs_send_argument:
+        ; GS105a #13/#14 consume their first argument byte before command
+        ; dispatch. The DBIT wait clobbers A with GSSTAT, so preserve the
+        ; argument exactly as Project125's gs_boot_write_command_argument does.
+        ld      (p126_neogs_tx_byte),a
         call    p126_neogs_wait_dbit_clear
         ret     c
+        ld      a,(p126_neogs_tx_byte)
         out     (P126_NGS_GSDAT),a
         or      a
         ret
