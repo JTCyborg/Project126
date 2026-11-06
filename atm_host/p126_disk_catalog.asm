@@ -12,21 +12,35 @@ P126_CATALOG_FIRST_ROW    EQU 2
 
 ; Called after the ATM screen and DS12887 initialization.
 p126_catalog_initialize::
+        ld      hl, p126_log_catalog_enter
+        call    p126_catalog_log
         xor     a
         ld      (p126_catalog_enabled), a
         ld      (p126_catalog_selected), a
         ld      (p126_catalog_scroll), a
 
+        ld      hl, p126_log_read_begin
+        call    p126_catalog_log
         call    p126_catalog_read_disk
         jr      c, .catalog_read_failed
 
+        ld      hl, p126_log_read_ok
+        call    p126_catalog_log
         call    p126_catalog_count_files
+        ld      hl, p126_log_count_done
+        call    p126_catalog_log
         ld      a, 1
         ld      (p126_catalog_enabled), a
+        ld      hl, p126_log_draw_begin
+        call    p126_catalog_log
         call    p126_catalog_draw
+        ld      hl, p126_log_draw_done
+        call    p126_catalog_log
         ret
 
 .catalog_read_failed:
+        ld      hl, p126_log_read_failed
+        call    p126_catalog_log
         ld      hl, p126_catalog_error_text
         ld      a, P126_CATALOG_FIRST_ROW
         ld      c, 1
@@ -44,6 +58,8 @@ p126_catalog_poll_keyboard::
         or      a
         ret     z
         ld      (p126_catalog_key), a
+        ld      hl, p126_log_key_seen
+        call    p126_catalog_log
         call    p126_catalog_wait_release
 
         ld      a, (p126_catalog_key)
@@ -176,6 +192,8 @@ p126_catalog_wait_release:
 ;   C=5, B=8, D=0, E=0, HL=#C800 — read the 8 catalogue sectors.
 ; -------------------------------------------------------------------------
 p126_catalog_read_disk:
+        ld      hl, p126_log_disk_enter
+        call    p126_catalog_log
         push    af
         push    bc
         push    de
@@ -221,6 +239,8 @@ p126_catalog_read_disk:
         xor     a
         call    #3D13
 
+        ld      hl, p126_log_drive_selected
+        call    p126_catalog_log
         ld      a, (#5D0F)
         ld      b, a
         ld      a, (#5D10)
@@ -235,7 +255,11 @@ p126_catalog_read_disk:
         ld      (#5D0F), a
         ld      (#5D10), a
         ld      (#5D11), a
+        ld      hl, p126_log_sector_read_call
+        call    p126_catalog_log
         call    #3D13
+        ld      hl, p126_log_sector_read_return
+        call    p126_catalog_log
 
         ; Wait for the TR-DOS/VG93 command flag to return to idle.
         ld      bc, #FFFF
@@ -258,6 +282,8 @@ p126_catalog_read_disk:
 
         xor     a
         ld      (p126_catalog_io_result), a
+        ld      hl, p126_log_vg93_idle
+        call    p126_catalog_log
         jr      .catalog_restore_stack
 
 .catalog_io_error:
@@ -285,8 +311,15 @@ p126_catalog_read_disk:
 
         ld      a, (p126_catalog_io_result)
         or      a
-        ret     z
+        jr      z, .catalog_read_return_ok
+        ld      hl, p126_log_io_error
+        call    p126_catalog_log
         scf
+        ret
+.catalog_read_return_ok:
+        ld      hl, p126_log_io_success
+        call    p126_catalog_log
+        or      a
         ret
 
 ; -------------------------------------------------------------------------
@@ -467,6 +500,34 @@ p126_catalog_draw:
         pop     bc
         pop     af
         ret
+
+p126_catalog_log:
+        push    af
+        push    bc
+        push    de
+        push    hl
+        call    p126_host_debug_string
+        pop     hl
+        pop     de
+        pop     bc
+        pop     af
+        ret
+
+p126_log_catalog_enter:       db "[CAT] initialize ENTER",13,10,0
+p126_log_read_begin:           db "[CAT] read_disk BEGIN",13,10,0
+p126_log_disk_enter:           db "[CAT] TRDOS routine ENTER",13,10,0
+p126_log_drive_selected:       db "[CAT] drive-select RETURN",13,10,0
+p126_log_sector_read_call:     db "[CAT] directory READ CALL C=5 B=8",13,10,0
+p126_log_sector_read_return:   db "[CAT] directory READ RETURN",13,10,0
+p126_log_vg93_idle:            db "[CAT] VG93 IDLE",13,10,0
+p126_log_io_error:             db "[CAT] IO RESULT=ERROR",13,10,0
+p126_log_io_success:           db "[CAT] IO RESULT=OK",13,10,0
+p126_log_read_ok:              db "[CAT] read_disk OK",13,10,0
+p126_log_read_failed:          db "[CAT] read_disk CARRY=1",13,10,0
+p126_log_count_done:           db "[CAT] directory COUNT DONE",13,10,0
+p126_log_draw_begin:           db "[CAT] DRAW BEGIN",13,10,0
+p126_log_draw_done:            db "[CAT] DRAW DONE",13,10,0
+p126_log_key_seen:             db "[CAT] CURSOR KEY DETECTED",13,10,0
 
 p126_catalog_enabled:  db 0
 p126_catalog_selected: db 0
