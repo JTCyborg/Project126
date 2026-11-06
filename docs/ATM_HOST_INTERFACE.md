@@ -62,7 +62,7 @@ Wait routines clobber BC. The byte routines use private module storage and are n
 
 The normative ABI is specified in [P126_DMA_IPC_PROTOCOL.md](P126_DMA_IPC_PROTOCOL.md), version 1.0. All application payloads use the same framed ZX DMA transport. GSCOM/CBIT is the control-plane doorbell and READY/end handshake; DBIT/GSDAT remains only a low-level compatibility primitive for stock-ROM/bootstrap work and is not an application payload channel.
 
-The ATM public include imports common constants from `shared/p126_ipc_protocol.inc`. The common definitions include frame layout, message types, flags, service IDs, status codes, control command IDs and CRC parameters. The ATM driver now contains a CRC-16/CCITT-FALSE byte-update routine and the standard 123456789 → 29B1h self-test routine.
+The ATM and NeoGS modules import common constants from `shared/p126_ipc_protocol.inc`. The common definitions include frame layout, message types, flags, service IDs, status codes, control command IDs and CRC parameters. CRC-16/CCITT-FALSE byte-update and standard 123456789 → 29B1h self-test routines now exist on both processors (`atm_host/neogs_ipc.asm` and `neogs_sub/p126_ipc.asm`).
 
 The current ATM driver still does not implement complete frame send/receive, DMA-window transfers, sequence/session handling or error recovery. The NeoGS endpoint, staging buffers and final ATM/NeoGS memory placement are not implemented. In particular, ATM code must never access NeoGS-local DMA ports #1B..#1F.
 
@@ -70,7 +70,7 @@ The current ATM driver still does not implement complete frame send/receive, DMA
 
 - ATM source version: `P126 ATM_IPC v0.2.0`; shared application ABI: `P126 DMA/IPC ABI 1.0`.
 - The assembly unit continues to generate `build/ATM_IPC.bin`, `build/ATM.lst` and `build/ATM.map`.
-- The CRC self-test is present as executable target-side code but is not yet called by startup and has not been run on ATM hardware.
+- The CRC self-tests are present as executable code on both processors but are not yet called by startup and have not been run on target hardware.
 - **BUILD PASS for v0.2.0:** GitHub Actions run [42303249684](https://github.com/JTCyborg/Project126/actions/runs/42303249684), commit `27416c290b7d3f95b3cf98f8825c860e7c3abcef`; ATM/NeoGS assembly and TR-DOS packaging completed successfully.
 - Assembly success will prove syntax and image-boundary assertions only; live DMA/IPC requires separate deterministic hardware tests.
 
