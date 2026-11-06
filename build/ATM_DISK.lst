@@ -69,9 +69,9 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
  44+  6024
  45+  6024 21 71 61             ld      hl, p126_log_trdos_begin
  46+  6027 CD F0 60             call    p126_host_debug_string
- 47+  602A CD 6E 66             call    p126_catalog_read_disk
+ 47+  602A CD AF 66             call    p126_catalog_read_disk
  48+  602D 3E 01                ld      a, 1
- 49+  602F 32 81 69             ld      (p126_catalog_preloaded), a
+ 49+  602F 32 C2 69             ld      (p126_catalog_preloaded), a
  50+  6032 21 95 61             ld      hl, p126_log_trdos_done
  51+  6035 CD F0 60             call    p126_host_debug_string
  52+  6038
@@ -93,7 +93,7 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
  68+  6050 21 63 62             ld      hl, p126_host_version_text
  69+  6053 CD F0 60             call    p126_host_debug_string
  70+  6056 CD 04 61             call    p126_host_log_prefix
- 71+  6059 CD 20 65             call    p126_ipc_emit_version
+ 71+  6059 CD 61 65             call    p126_ipc_emit_version
  72+  605C
  73+  605C 21 0F 62             ld      hl, p126_log_console_begin
  74+  605F CD F0 60             call    p126_host_debug_string
@@ -104,12 +104,12 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
  79+  606E CD 85 60             call    p126_host_console_string
  80+  6071 21 2B 62             ld      hl, p126_log_console_done
  81+  6074 CD F0 60             call    p126_host_debug_string
- 82+  6077 CD 51 65             call    p126_catalog_initialize
+ 82+  6077 CD 92 65             call    p126_catalog_initialize
  83+  607A 21 46 62             ld      hl, p126_log_catalog_return
  84+  607D CD F0 60             call    p126_host_debug_string
  85+  6080
  86+  6080              p126_host_idle:
- 87+  6080 CD AA 65             call    p126_catalog_poll_keyboard
+ 87+  6080 CD EB 65             call    p126_catalog_poll_keyboard
  88+  6083 18 FB                jr      p126_host_idle
  89+  6085
  90+  6085              ; IN: HL=zero-terminated string. Writes to the lower on-screen log.
@@ -759,46 +759,141 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
 # file opened: neogs_ipc.inc
   1+++649C              ; =========================================================================
   2+++649C              ; PROJECT126 — ATM / NeoGS IPC public interface
-  3+++649C              ; Version: P126_ATM_IPC_API v0.1.0
+  3+++649C              ; Version: P126_ATM_IPC_API v0.2.0
   4+++649C              ;
   5+++649C              ; Include this file in ATM-side Z80 modules that call neogs_ipc.asm.
   6+++649C              ; Physical transport: GSCOM/GSSTAT (#BB), GSDAT (#B3), GSCTR (#33).
   7+++649C              ; The ATM-side driver never accesses NeoGS-local DMA registers.
   8+++649C              ; =========================================================================
-  9+++649C
- 10+++649C              P126_GSCOM          EQU #BB
- 11+++649C              P126_GSSTAT         EQU #BB
- 12+++649C              P126_GSDAT          EQU #B3
- 13+++649C              P126_GSCTR          EQU #33
+  9+++649C                      INCLUDE "shared/p126_ipc_protocol.inc"
+# file opened: p126_ipc_protocol.inc
+  1+++649C              ; =========================================================================
+  2+++649C              ; PROJECT126 — shared DMA/IPC ABI constants
+  3+++649C              ; Version: P126 DMA/IPC ABI 1.0
+  4+++649C              ; This file contains protocol constants only; no host or NeoGS port I/O.
+  5+++649C              ; =========================================================================
+  6+++649C
+  7+++649C              P126_IPC_MAJOR             EQU 1
+  8+++649C              P126_IPC_MINOR             EQU 0
+  9+++649C              P126_IPC_HEADER_SIZE       EQU 18
+ 10+++649C              P126_IPC_MAX_FRAME_SIZE    EQU #4000
+ 11+++649C              P126_IPC_MAX_PAYLOAD       EQU P126_IPC_MAX_FRAME_SIZE-P126_IPC_HEADER_SIZE
+ 12+++649C              P126_IPC_FRAGMENT_HEADER   EQU 10
+ 13+++649C              P126_IPC_MAX_FRAGMENT_DATA EQU P126_IPC_MAX_PAYLOAD-P126_IPC_FRAGMENT_HEADER
  14+++649C
- 15+++649C              P126_CBIT           EQU 0
- 16+++649C              P126_DBIT           EQU 7
- 17+++649C              P126_M_CBIT         EQU #01
- 18+++649C              P126_M_DBIT         EQU #80
- 19+++649C
- 20+++649C              P126_GS_RESET       EQU #80
- 21+++649C              P126_GS_NMI         EQU #40
- 22+++649C              P126_GS_LED         EQU #20
- 23+++649C
- 24+++649C              ; Driver result convention:
- 25+++649C              ;   Carry clear = operation completed.
- 26+++649C              ;   Carry set   = timeout.
- 27+++649C              ;   A           = last observed GSSTAT on timeout / final status on wait.
- 28+++649C              ;   p126_ipc_last_status always contains the last sampled GSSTAT byte.
- 29+++649C
- 30+++649C              ; Public entry points (see docs/ATM_HOST_INTERFACE.md):
- 31+++649C              ;   p126_ipc_read_status
- 32+++649C              ;   p126_ipc_wait_cbit_clear
- 33+++649C              ;   p126_ipc_wait_dbit_clear
- 34+++649C              ;   p126_ipc_wait_dbit_set
- 35+++649C              ;   p126_ipc_send_command       A=command
- 36+++649C              ;   p126_ipc_send_argument      A=argument; preloads GSDAT before GSCOM
- 37+++649C              ;   p126_ipc_send_byte          A=data; waits for consumption
- 38+++649C              ;   p126_ipc_receive_byte       returns A=data
- 39+++649C              ;   p126_ipc_emit_version
- 40+++649C
- 41+++649C              P126_IPC_TIMEOUT    EQU #FFFF
+ 15+++649C              ; Fixed header offsets.
+ 16+++649C              P126_IPC_OFF_MAGIC        EQU 0
+ 17+++649C              P126_IPC_OFF_MAJOR        EQU 4
+ 18+++649C              P126_IPC_OFF_MINOR        EQU 5
+ 19+++649C              P126_IPC_OFF_TYPE         EQU 6
+ 20+++649C              P126_IPC_OFF_SERVICE      EQU 7
+ 21+++649C              P126_IPC_OFF_OPERATION    EQU 8
+ 22+++649C              P126_IPC_OFF_FLAGS        EQU 9
+ 23+++649C              P126_IPC_OFF_SEQUENCE     EQU 10
+ 24+++649C              P126_IPC_OFF_LENGTH       EQU 12
+ 25+++649C              P126_IPC_OFF_STATUS       EQU 14
+ 26+++649C              P126_IPC_OFF_CRC          EQU 16
+ 27+++649C
+ 28+++649C              ; Message types.
+ 29+++649C              P126_MSG_REQUEST          EQU #01
+ 30+++649C              P126_MSG_RESPONSE         EQU #02
+ 31+++649C              P126_MSG_EVENT            EQU #03
+ 32+++649C              P126_MSG_CANCEL           EQU #04
+ 33+++649C
+ 34+++649C              ; Header flags.
+ 35+++649C              P126_FLAG_ACK_REQUIRED    EQU #01
+ 36+++649C              P126_FLAG_FRAGMENT        EQU #02
+ 37+++649C              P126_FLAG_IDEMPOTENT      EQU #04
+ 38+++649C              P126_FLAG_VALID_MASK      EQU #07
+ 39+++649C
+ 40+++649C              ; GSCOM control-plane commands. Valid only under Project126 resident firmware.
+ 41+++649C              P126_CMD_HOST_FRAME       EQU #E0
+ 42+++649C              P126_CMD_NGS_FRAME        EQU #E1
+ 43+++649C              P126_CMD_RESYNC           EQU #E2
+ 44+++649C              P126_CMD_CAPABILITIES     EQU #E3
+ 45+++649C              P126_CMD_DMA_END          EQU #FF
+ 46+++649C
+ 47+++649C              ; Service IDs.
+ 48+++649C              P126_SERVICE_SESSION      EQU #00
+ 49+++649C              P126_SERVICE_INPUT        EQU #01
+ 50+++649C              P126_SERVICE_VIDEO        EQU #02
+ 51+++649C              P126_SERVICE_STORAGE      EQU #03
+ 52+++649C              P126_SERVICE_CLOCK        EQU #04
+ 53+++649C              P126_SERVICE_DIAGNOSTICS  EQU #05
+ 54+++649C              P126_SERVICE_CONFIG       EQU #06
+ 55+++649C              P126_SERVICE_IMAGE        EQU #07
+ 56+++649C
+ 57+++649C              ; Initial operation IDs.
+ 58+++649C              P126_OP_HELLO             EQU #00
+ 59+++649C              P126_OP_CAPABILITIES      EQU #01
+ 60+++649C              P126_OP_RESYNC            EQU #02
+ 61+++649C              P126_OP_DIAGNOSTIC        EQU #00
+ 62+++649C              P126_OP_IMAGE_BEGIN       EQU #00
+ 63+++649C              P126_OP_IMAGE_FRAGMENT    EQU #01
+ 64+++649C              P126_OP_IMAGE_FINISH      EQU #02
+ 65+++649C              P126_OP_IMAGE_RESULT      EQU #03
+ 66+++649C
+ 67+++649C              ; Response status codes (16-bit values).
+ 68+++649C              P126_STATUS_OK            EQU #0000
+ 69+++649C              P126_STATUS_BAD_MAGIC     EQU #0001
+ 70+++649C              P126_STATUS_BAD_VERSION   EQU #0002
+ 71+++649C              P126_STATUS_BAD_FRAME     EQU #0003
+ 72+++649C              P126_STATUS_CRC_ERROR     EQU #0004
+ 73+++649C              P126_STATUS_SEQUENCE      EQU #0005
+ 74+++649C              P126_STATUS_NO_SERVICE    EQU #0006
+ 75+++649C              P126_STATUS_NO_OPERATION  EQU #0007
+ 76+++649C              P126_STATUS_NO_BUFFER     EQU #0008
+ 77+++649C              P126_STATUS_HOST_IO       EQU #0009
+ 78+++649C              P126_STATUS_TIMEOUT       EQU #000A
+ 79+++649C              P126_STATUS_CANCELLED     EQU #000B
+ 80+++649C              P126_STATUS_ADDRESS_RANGE EQU #000C
+ 81+++649C              P126_STATUS_BUSY          EQU #000D
+ 82+++649C              P126_STATUS_RESET_REQUIRED EQU #000E
+ 83+++649C              P126_STATUS_BAD_FRAGMENT  EQU #000F
+ 84+++649C
+ 85+++649C              ; CRC-16/CCITT-FALSE.
+ 86+++649C              P126_CRC16_POLY           EQU #1021
+ 87+++649C              P126_CRC16_INITIAL_H      EQU #FF
+ 88+++649C              P126_CRC16_INITIAL_L      EQU #FF
+ 89+++649C              P126_CRC16_CHECK_H        EQU #29
+ 90+++649C              P126_CRC16_CHECK_L        EQU #B1
+ 91+++649C
+# file closed: p126_ipc_protocol.inc
+ 10+++649C
+ 11+++649C              P126_GSCOM          EQU #BB
+ 12+++649C              P126_GSSTAT         EQU #BB
+ 13+++649C              P126_GSDAT          EQU #B3
+ 14+++649C              P126_GSCTR          EQU #33
+ 15+++649C
+ 16+++649C              P126_CBIT           EQU 0
+ 17+++649C              P126_DBIT           EQU 7
+ 18+++649C              P126_M_CBIT         EQU #01
+ 19+++649C              P126_M_DBIT         EQU #80
+ 20+++649C
+ 21+++649C              P126_GS_RESET       EQU #80
+ 22+++649C              P126_GS_NMI         EQU #40
+ 23+++649C              P126_GS_LED         EQU #20
+ 24+++649C
+ 25+++649C              ; Driver result convention:
+ 26+++649C              ;   Carry clear = operation completed.
+ 27+++649C              ;   Carry set   = timeout.
+ 28+++649C              ;   A           = last observed GSSTAT on timeout / final status on wait.
+ 29+++649C              ;   p126_ipc_last_status always contains the last sampled GSSTAT byte.
+ 30+++649C
+ 31+++649C              ; Public entry points (see docs/ATM_HOST_INTERFACE.md):
+ 32+++649C              ;   p126_ipc_read_status
+ 33+++649C              ;   p126_ipc_wait_cbit_clear
+ 34+++649C              ;   p126_ipc_wait_dbit_clear
+ 35+++649C              ;   p126_ipc_wait_dbit_set
+ 36+++649C              ;   p126_ipc_send_command       A=command
+ 37+++649C              ;   p126_ipc_send_argument      A=argument; preloads GSDAT before GSCOM
+ 38+++649C              ;   p126_ipc_send_byte          A=data; waits for consumption
+ 39+++649C              ;   p126_ipc_receive_byte       returns A=data
+ 40+++649C              ;   p126_ipc_emit_version
+ 41+++649C              ; ABI 1.0 constants are imported from shared/p126_ipc_protocol.inc.
  42+++649C
+ 43+++649C              P126_IPC_TIMEOUT    EQU #FFFF
+ 44+++649C
 # file closed: neogs_ipc.inc
  14++ 649C
  15++ 649C              ; -------------------------------------------------------------------------
@@ -808,7 +903,7 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
  19++ 649C              p126_ipc_read_status:
  19++ 649C
  20++ 649C DB BB                in      a, (P126_GSSTAT)
- 21++ 649E 32 36 65             ld      (p126_ipc_last_status), a
+ 21++ 649E 32 77 65             ld      (p126_ipc_last_status), a
  22++ 64A1 C9                   ret
  23++ 64A2
  24++ 64A2              ; -------------------------------------------------------------------------
@@ -827,11 +922,11 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
  36++ 64AD 78                   ld      a, b
  37++ 64AE B1                   or      c
  38++ 64AF 20 F4                jr      nz, .p126_cbit_loop
- 39++ 64B1 3A 36 65             ld      a, (p126_ipc_last_status)
+ 39++ 64B1 3A 77 65             ld      a, (p126_ipc_last_status)
  40++ 64B4 37                   scf
  41++ 64B5 C9                   ret
  42++ 64B6              .p126_cbit_ready:
- 43++ 64B6 3A 36 65             ld      a, (p126_ipc_last_status)
+ 43++ 64B6 3A 77 65             ld      a, (p126_ipc_last_status)
  44++ 64B9 B7                   or      a
  45++ 64BA C9                   ret
  46++ 64BB
@@ -846,11 +941,11 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
  54++ 64C6 78                   ld      a, b
  55++ 64C7 B1                   or      c
  56++ 64C8 20 F4                jr      nz, .p126_dbit_clear_loop
- 57++ 64CA 3A 36 65             ld      a, (p126_ipc_last_status)
+ 57++ 64CA 3A 77 65             ld      a, (p126_ipc_last_status)
  58++ 64CD 37                   scf
  59++ 64CE C9                   ret
  60++ 64CF              .p126_dbit_clear_ready:
- 61++ 64CF 3A 36 65             ld      a, (p126_ipc_last_status)
+ 61++ 64CF 3A 77 65             ld      a, (p126_ipc_last_status)
  62++ 64D2 B7                   or      a
  63++ 64D3 C9                   ret
  64++ 64D4
@@ -865,11 +960,11 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
  72++ 64DF 78                   ld      a, b
  73++ 64E0 B1                   or      c
  74++ 64E1 20 F4                jr      nz, .p126_dbit_set_loop
- 75++ 64E3 3A 36 65             ld      a, (p126_ipc_last_status)
+ 75++ 64E3 3A 77 65             ld      a, (p126_ipc_last_status)
  76++ 64E6 37                   scf
  77++ 64E7 C9                   ret
  78++ 64E8              .p126_dbit_set_ready:
- 79++ 64E8 3A 36 65             ld      a, (p126_ipc_last_status)
+ 79++ 64E8 3A 77 65             ld      a, (p126_ipc_last_status)
  80++ 64EB B7                   or      a
  81++ 64EC C9                   ret
  82++ 64ED
@@ -880,8 +975,8 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
  87++ 64ED              ; -------------------------------------------------------------------------
  88++ 64ED              p126_ipc_send_command:
  88++ 64ED
- 89++ 64ED 32 37 65             ld      (p126_ipc_tx_byte), a
- 90++ 64F0 3A 37 65             ld      a, (p126_ipc_tx_byte)
+ 89++ 64ED 32 78 65             ld      (p126_ipc_tx_byte), a
+ 90++ 64F0 3A 78 65             ld      a, (p126_ipc_tx_byte)
  91++ 64F3 D3 BB                out     (P126_GSCOM), a
  92++ 64F5 C3 A2 64             jp      p126_ipc_wait_cbit_clear
  93++ 64F8
@@ -893,10 +988,10 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
  99++ 64F8              ; -------------------------------------------------------------------------
 100++ 64F8              p126_ipc_send_argument:
 100++ 64F8
-101++ 64F8 32 37 65             ld      (p126_ipc_tx_byte), a
+101++ 64F8 32 78 65             ld      (p126_ipc_tx_byte), a
 102++ 64FB CD BB 64             call    p126_ipc_wait_dbit_clear
 103++ 64FE D8                   ret     c
-104++ 64FF 3A 37 65             ld      a, (p126_ipc_tx_byte)
+104++ 64FF 3A 78 65             ld      a, (p126_ipc_tx_byte)
 105++ 6502 D3 B3                out     (P126_GSDAT), a
 106++ 6504 B7                   or      a
 107++ 6505 C9                   ret
@@ -908,10 +1003,10 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
 113++ 6506              ; -------------------------------------------------------------------------
 114++ 6506              p126_ipc_send_byte:
 114++ 6506
-115++ 6506 32 37 65             ld      (p126_ipc_tx_byte), a
+115++ 6506 32 78 65             ld      (p126_ipc_tx_byte), a
 116++ 6509 CD BB 64             call    p126_ipc_wait_dbit_clear
 117++ 650C D8                   ret     c
-118++ 650D 3A 37 65             ld      a, (p126_ipc_tx_byte)
+118++ 650D 3A 78 65             ld      a, (p126_ipc_tx_byte)
 119++ 6510 D3 B3                out     (P126_GSDAT), a
 120++ 6512 C3 BB 64             jp      p126_ipc_wait_dbit_clear
 121++ 6515
@@ -925,683 +1020,744 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
 128++ 6515 CD D4 64             call    p126_ipc_wait_dbit_set
 129++ 6518 D8                   ret     c
 130++ 6519 DB B3                in      a, (P126_GSDAT)
-131++ 651B 32 38 65             ld      (p126_ipc_rx_byte), a
+131++ 651B 32 79 65             ld      (p126_ipc_rx_byte), a
 132++ 651E B7                   or      a
 133++ 651F C9                   ret
 134++ 6520
 135++ 6520              ; -------------------------------------------------------------------------
-136++ 6520              ; Emit a build/runtime identity to ATM's independent debug port #EF.
-137++ 6520              ; Preserves AF, BC and HL.
-138++ 6520              ; -------------------------------------------------------------------------
-139++ 6520              p126_ipc_emit_version:
-139++ 6520
-140++ 6520 F5                   push    af
-141++ 6521 C5                   push    bc
-142++ 6522 E5                   push    hl
-143++ 6523 21 39 65             ld      hl, p126_ipc_version_text
-144++ 6526 01 EF 00             ld      bc, #00EF
-145++ 6529              .p126_version_loop:
-146++ 6529 7E                   ld      a, (hl)
-147++ 652A 23                   inc     hl
-148++ 652B B7                   or      a
-149++ 652C 28 04                jr      z, .p126_version_done
-150++ 652E ED 79                out     (c), a
-151++ 6530 18 F7                jr      .p126_version_loop
-152++ 6532              .p126_version_done:
-153++ 6532 E1                   pop     hl
-154++ 6533 C1                   pop     bc
-155++ 6534 F1                   pop     af
-156++ 6535 C9                   ret
-157++ 6536
-158++ 6536              ; Driver state is private to this module. Callers must not modify it.
-159++ 6536 00           p126_ipc_last_status: db 0
-160++ 6537 00           p126_ipc_tx_byte:     db 0
-161++ 6538 00           p126_ipc_rx_byte:     db 0
-162++ 6539
-163++ 6539              p126_ipc_version_text:
-164++ 6539 5B 50 31 32          db "[P126 ATM_IPC v0.1.0]", 13, 10, 0
-164++ 653D 36 20 41 54
-164++ 6541 4D 5F 49 50
-164++ 6545 43 20 76 30
-164++ 6549 2E 31 2E 30
-164++ 654D 5D 0D 0A 00
-165++ 6551
+136++ 6520              ; CRC-16/CCITT-FALSE byte update for the shared P126 DMA/IPC frame ABI.
+137++ 6520              ; IN : HL=current CRC, A=next byte.
+138++ 6520              ; OUT: HL=updated CRC. BC and DE are preserved.
+139++ 6520              ; The caller initializes HL to #FFFF and processes header[0..15]
+140++ 6520              ; followed by exactly payload_length bytes.
+141++ 6520              ; -------------------------------------------------------------------------
+142++ 6520              p126_ipc_crc16_update:
+142++ 6520
+143++ 6520 C5                   push    bc
+144++ 6521 AC                   xor     h
+145++ 6522 67                   ld      h, a
+146++ 6523 06 08                ld      b, 8
+147++ 6525              .p126_crc_bit:
+148++ 6525 29                   add     hl, hl
+149++ 6526 30 08                jr      nc, .p126_crc_no_xor
+150++ 6528 7C                   ld      a, h
+151++ 6529 EE 10                xor     #10
+152++ 652B 67                   ld      h, a
+153++ 652C 7D                   ld      a, l
+154++ 652D EE 21                xor     #21
+155++ 652F 6F                   ld      l, a
+156++ 6530              .p126_crc_no_xor:
+157++ 6530 10 F3                djnz    .p126_crc_bit
+158++ 6532 C1                   pop     bc
+159++ 6533 C9                   ret
+160++ 6534
+161++ 6534              ; Standard CRC-16/CCITT-FALSE regression vector.
+162++ 6534              ; OUT: Carry clear and HL=#29B1 on pass; Carry set on failure.
+163++ 6534              p126_ipc_crc16_selftest:
+163++ 6534
+164++ 6534 C5                   push    bc
+165++ 6535 D5                   push    de
+166++ 6536 21 FF FF             ld      hl, #FFFF
+167++ 6539 11 58 65             ld      de, p126_ipc_crc16_test_vector
+168++ 653C 06 09                ld      b, 9
+169++ 653E              .p126_crc_test_loop:
+170++ 653E 1A                   ld      a, (de)
+171++ 653F 13                   inc     de
+172++ 6540 CD 20 65             call    p126_ipc_crc16_update
+173++ 6543 10 F9                djnz    .p126_crc_test_loop
+174++ 6545 11 B1 29             ld      de, #29B1
+175++ 6548 B7                   or      a
+176++ 6549 ED 52                sbc     hl, de
+177++ 654B 20 07                jr      nz, .p126_crc_test_failed
+178++ 654D D1                   pop     de
+179++ 654E C1                   pop     bc
+180++ 654F 21 B1 29             ld      hl, #29B1
+181++ 6552 B7                   or      a
+182++ 6553 C9                   ret
+183++ 6554              .p126_crc_test_failed:
+184++ 6554 D1                   pop     de
+185++ 6555 C1                   pop     bc
+186++ 6556 37                   scf
+187++ 6557 C9                   ret
+188++ 6558
+189++ 6558              p126_ipc_crc16_test_vector:
+190++ 6558 31 32 33 34          db "123456789"
+190++ 655C 35 36 37 38
+190++ 6560 39
+191++ 6561
+192++ 6561              ; -------------------------------------------------------------------------
+193++ 6561              ; Emit a build/runtime identity to ATM's independent debug port #EF.
+194++ 6561              ; Preserves AF, BC and HL.
+195++ 6561              ; -------------------------------------------------------------------------
+196++ 6561              p126_ipc_emit_version:
+196++ 6561
+197++ 6561 F5                   push    af
+198++ 6562 C5                   push    bc
+199++ 6563 E5                   push    hl
+200++ 6564 21 7A 65             ld      hl, p126_ipc_version_text
+201++ 6567 01 EF 00             ld      bc, #00EF
+202++ 656A              .p126_version_loop:
+203++ 656A 7E                   ld      a, (hl)
+204++ 656B 23                   inc     hl
+205++ 656C B7                   or      a
+206++ 656D 28 04                jr      z, .p126_version_done
+207++ 656F ED 79                out     (c), a
+208++ 6571 18 F7                jr      .p126_version_loop
+209++ 6573              .p126_version_done:
+210++ 6573 E1                   pop     hl
+211++ 6574 C1                   pop     bc
+212++ 6575 F1                   pop     af
+213++ 6576 C9                   ret
+214++ 6577
+215++ 6577              ; Driver state is private to this module. Callers must not modify it.
+216++ 6577 00           p126_ipc_last_status: db 0
+217++ 6578 00           p126_ipc_tx_byte:     db 0
+218++ 6579 00           p126_ipc_rx_byte:     db 0
+219++ 657A
+220++ 657A              p126_ipc_version_text:
+221++ 657A 5B 50 31 32          db "[P126 ATM_IPC v0.2.0]", 13, 10, 0
+221++ 657E 36 20 41 54
+221++ 6582 4D 5F 49 50
+221++ 6586 43 20 76 30
+221++ 658A 2E 32 2E 30
+221++ 658E 5D 0D 0A 00
+222++ 6592
 # file closed: neogs_ipc.asm
-198+  6551                      INCLUDE "atm_host/p126_disk_catalog.asm"
+198+  6592                      INCLUDE "atm_host/p126_disk_catalog.asm"
 # file opened: p126_disk_catalog.asm
-  1++ 6551              ; =========================================================================
-  2++ 6551              ; PROJECT126 — ATM-side TR-DOS directory browser
-  3++ 6551              ; Reads the native TR-DOS catalogue and allows cursor navigation.
-  4++ 6551              ; The directory is read from track 0 into the page-0 buffer at #C800.
-  5++ 6551              ; =========================================================================
-  6++ 6551
-  7++ 6551              P126_CATALOG_BUFFER       EQU #C800
-  8++ 6551              P126_CATALOG_ENTRY_COUNT  EQU 128
-  9++ 6551              P126_CATALOG_ENTRY_SIZE   EQU 16
- 10++ 6551              P126_CATALOG_VISIBLE_ROWS EQU 9
- 11++ 6551              P126_CATALOG_FIRST_ROW    EQU 2
- 12++ 6551
- 13++ 6551              ; Called after ATM video, RTC and console initialization.
- 14++ 6551              ; Disk I/O has already been completed during the legacy TR-DOS boot phase.
- 15++ 6551              p126_catalog_initialize:
- 15++ 6551
- 16++ 6551 21 FF 67             ld      hl, p126_log_catalog_enter
- 17++ 6554 CD F3 67             call    p126_catalog_log
- 18++ 6557 AF                   xor     a
- 19++ 6558 32 78 69             ld      (p126_catalog_enabled), a
- 20++ 655B 32 79 69             ld      (p126_catalog_selected), a
- 21++ 655E 32 7A 69             ld      (p126_catalog_scroll), a
- 22++ 6561
- 23++ 6561 3A 81 69             ld      a, (p126_catalog_preloaded)
- 24++ 6564 B7                   or      a
- 25++ 6565 20 08                jr      nz, .catalog_data_preloaded
- 26++ 6567                      ; Defensive fallback for standalone callers; normal startup preloads
- 27++ 6567                      ; the directory before ATM video initialization.
- 28++ 6567 CD 6E 66             call    p126_catalog_read_disk
- 29++ 656A 3E 01                ld      a, 1
- 30++ 656C 32 81 69             ld      (p126_catalog_preloaded), a
- 31++ 656F
- 32++ 656F              .catalog_data_preloaded:
- 33++ 656F 3A 80 69             ld      a, (p126_catalog_io_result)
- 34++ 6572 B7                   or      a
- 35++ 6573 20 24                jr      nz, .catalog_read_failed
- 36++ 6575
- 37++ 6575 21 EB 68             ld      hl, p126_log_read_ok
- 38++ 6578 CD F3 67             call    p126_catalog_log
- 39++ 657B CD 2E 67             call    p126_catalog_count_files
- 40++ 657E 21 1A 69             ld      hl, p126_log_count_done
- 41++ 6581 CD F3 67             call    p126_catalog_log
- 42++ 6584 3E 01                ld      a, 1
- 43++ 6586 32 78 69             ld      (p126_catalog_enabled), a
- 44++ 6589 21 37 69             ld      hl, p126_log_draw_begin
- 45++ 658C CD F3 67             call    p126_catalog_log
- 46++ 658F CD 6A 67             call    p126_catalog_draw
- 47++ 6592 21 4A 69             ld      hl, p126_log_draw_done
- 48++ 6595 CD F3 67             call    p126_catalog_log
- 49++ 6598 C9                   ret
- 50++ 6599
- 51++ 6599              .catalog_read_failed:
- 52++ 6599 21 00 69             ld      hl, p126_log_read_failed
- 53++ 659C CD F3 67             call    p126_catalog_log
- 54++ 659F 21 A4 69             ld      hl, p126_catalog_error_text
- 55++ 65A2 3E 02                ld      a, P126_CATALOG_FIRST_ROW
- 56++ 65A4 0E 01                ld      c, 1
- 57++ 65A6 CD 33 A1             call    BIOS_DebugConsole_PrintAt
- 58++ 65A9 C9                   ret
- 59++ 65AA
- 60++ 65AA              ; One key press produces one movement. Holding a key does not run the
- 61++ 65AA              ; selection continuously: the routine waits for its release before returning.
- 62++ 65AA              p126_catalog_poll_keyboard:
- 62++ 65AA
- 63++ 65AA 3A 78 69             ld      a, (p126_catalog_enabled)
- 64++ 65AD B7                   or      a
- 65++ 65AE C8                   ret     z
- 66++ 65AF
- 67++ 65AF CD 0C 66             call    p126_catalog_scan_keys
- 68++ 65B2 B7                   or      a
- 69++ 65B3 C8                   ret     z
- 70++ 65B4 32 7E 69             ld      (p126_catalog_key), a
- 71++ 65B7 21 5C 69             ld      hl, p126_log_key_seen
- 72++ 65BA CD F3 67             call    p126_catalog_log
- 73++ 65BD CD 67 66             call    p126_catalog_wait_release
- 74++ 65C0
- 75++ 65C0 3A 7E 69             ld      a, (p126_catalog_key)
- 76++ 65C3 CB 47                bit     0, a
- 77++ 65C5 20 05                jr      nz, .catalog_move_up
- 78++ 65C7 CB 4F                bit     1, a
- 79++ 65C9 20 19                jr      nz, .catalog_move_down
- 80++ 65CB C9                   ret
- 81++ 65CC
- 82++ 65CC              .catalog_move_up:
- 83++ 65CC 3A 79 69             ld      a, (p126_catalog_selected)
- 84++ 65CF B7                   or      a
- 85++ 65D0 C8                   ret     z
- 86++ 65D1 3D                   dec     a
- 87++ 65D2 32 79 69             ld      (p126_catalog_selected), a
- 88++ 65D5
- 89++ 65D5 47                   ld      b, a
- 90++ 65D6 3A 7A 69             ld      a, (p126_catalog_scroll)
- 91++ 65D9 B8                   cp      b
- 92++ 65DA 38 2C                jr      c, .catalog_redraw
- 93++ 65DC 28 2A                jr      z, .catalog_redraw
- 94++ 65DE 3D                   dec     a
- 95++ 65DF 32 7A 69             ld      (p126_catalog_scroll), a
- 96++ 65E2 18 24                jr      .catalog_redraw
- 97++ 65E4
- 98++ 65E4              .catalog_move_down:
- 99++ 65E4 3A 79 69             ld      a, (p126_catalog_selected)
-100++ 65E7 3C                   inc     a
-101++ 65E8 47                   ld      b, a
-102++ 65E9 3A 7B 69             ld      a, (p126_catalog_total)
-103++ 65EC B8                   cp      b
-104++ 65ED C8                   ret     z
-105++ 65EE D8                   ret     c
-106++ 65EF
-107++ 65EF 78                   ld      a, b
-108++ 65F0 32 79 69             ld      (p126_catalog_selected), a
-109++ 65F3
-110++ 65F3                      ; The last visible index is scroll + 8. This cannot overflow because
-111++ 65F3                      ; the catalogue contains at most 128 entries (indices 0..127).
-112++ 65F3 3A 7A 69             ld      a, (p126_catalog_scroll)
-113++ 65F6 C6 08                add     a, P126_CATALOG_VISIBLE_ROWS-1
-114++ 65F8 47                   ld      b, a
-115++ 65F9 3A 79 69             ld      a, (p126_catalog_selected)
-116++ 65FC B8                   cp      b
-117++ 65FD 38 09                jr      c, .catalog_redraw
-118++ 65FF 28 07                jr      z, .catalog_redraw
-119++ 6601 3A 7A 69             ld      a, (p126_catalog_scroll)
-120++ 6604 3C                   inc     a
-121++ 6605 32 7A 69             ld      (p126_catalog_scroll), a
-122++ 6608
-123++ 6608              .catalog_redraw:
-124++ 6608 CD 6A 67             call    p126_catalog_draw
-125++ 660B C9                   ret
-126++ 660C
-127++ 660C              ; -------------------------------------------------------------------------
-128++ 660C              ; Spectrum/ATM keyboard matrix cursor mapping:
-129++ 660C              ; CAPS SHIFT+7 = up, CAPS SHIFT+6 = down.
-130++ 660C              ; CAPS SHIFT+5 and CAPS SHIFT+8 are also sampled for left/right, although
-131++ 660C              ; this vertical file list only consumes up/down.
-132++ 660C              ; -------------------------------------------------------------------------
-133++ 660C              p126_catalog_scan_keys:
-134++ 660C C5                   push    bc
-135++ 660D D5                   push    de
-136++ 660E E5                   push    hl
-137++ 660F
-138++ 660F AF                   xor     a
-139++ 6610 32 7F 69             ld      (p126_catalog_scan_result), a
-140++ 6613
-141++ 6613                      ; CAPS SHIFT is bit 0 in the #FE row.
-142++ 6613 01 FE FE             ld      bc, #FEFE
-143++ 6616 ED 78                in      a, (c)
-144++ 6618 CB 47                bit     0, a
-145++ 661A 20 44                jr      nz, .catalog_keys_done
-146++ 661C
-147++ 661C                      ; Row #EF: key 7 (bit 3) = up, key 6 (bit 4) = down.
-148++ 661C 01 FE EF             ld      bc, #EFFE
-149++ 661F ED 78                in      a, (c)
-150++ 6621 CB 5F                bit     3, a
-151++ 6623 20 08                jr      nz, .catalog_check_down
-152++ 6625 3A 7F 69             ld      a, (p126_catalog_scan_result)
-153++ 6628 F6 01                or      1
-154++ 662A 32 7F 69             ld      (p126_catalog_scan_result), a
-155++ 662D
-156++ 662D              .catalog_check_down:
-157++ 662D 01 FE EF             ld      bc, #EFFE
-158++ 6630 ED 78                in      a, (c)
-159++ 6632 CB 67                bit     4, a
-160++ 6634 20 08                jr      nz, .catalog_check_other_arrows
-161++ 6636 3A 7F 69             ld      a, (p126_catalog_scan_result)
-162++ 6639 F6 02                or      2
-163++ 663B 32 7F 69             ld      (p126_catalog_scan_result), a
-164++ 663E
-165++ 663E              .catalog_check_other_arrows:
-166++ 663E                      ; Read the remaining cursor combinations to keep the matrix scan
-167++ 663E                      ; compatible with the Project125 ATM/Spectrum keyboard convention.
-168++ 663E 01 FE F7             ld      bc, #F7FE
-169++ 6641 ED 78                in      a, (c)
-170++ 6643 CB 67                bit     4, a
-171++ 6645 20 08                jr      nz, .catalog_check_right
-172++ 6647 3A 7F 69             ld      a, (p126_catalog_scan_result)
-173++ 664A F6 04                or      4
-174++ 664C 32 7F 69             ld      (p126_catalog_scan_result), a
-175++ 664F
-176++ 664F              .catalog_check_right:
-177++ 664F 01 FE EF             ld      bc, #EFFE
-178++ 6652 ED 78                in      a, (c)
-179++ 6654 CB 57                bit     2, a
-180++ 6656 20 08                jr      nz, .catalog_keys_done
-181++ 6658 3A 7F 69             ld      a, (p126_catalog_scan_result)
-182++ 665B F6 08                or      8
-183++ 665D 32 7F 69             ld      (p126_catalog_scan_result), a
-184++ 6660
-185++ 6660              .catalog_keys_done:
-186++ 6660 3A 7F 69             ld      a, (p126_catalog_scan_result)
-187++ 6663 E1                   pop     hl
-188++ 6664 D1                   pop     de
-189++ 6665 C1                   pop     bc
-190++ 6666 C9                   ret
-191++ 6667
-192++ 6667              p126_catalog_wait_release:
-193++ 6667 CD 0C 66             call    p126_catalog_scan_keys
-194++ 666A B7                   or      a
-195++ 666B 20 FA                jr      nz, p126_catalog_wait_release
-196++ 666D C9                   ret
-197++ 666E
-198++ 666E              ; -------------------------------------------------------------------------
-199++ 666E              ; TR-DOS directory read.
-200++ 666E              ; Executed before p126_atm_video_init, using Project125's legacy mapping.
-201++ 666E              ; C=5 reads exactly one 256-byte sector (B=1); eight calls stage the
-202++ 666E              ; 2 KiB directory at #C800..#CFFF.
-203++ 666E              ; -------------------------------------------------------------------------
-204++ 666E              p126_catalog_read_disk:
-205++ 666E 21 30 68             ld      hl, p126_log_disk_enter
-206++ 6671 CD F3 67             call    p126_catalog_log
-207++ 6674 F5                   push    af
-208++ 6675 C5                   push    bc
-209++ 6676 D5                   push    de
-210++ 6677 E5                   push    hl
-211++ 6678 DD E5                push    ix
-212++ 667A FD E5                push    iy
-213++ 667C
-214++ 667C D9                   exx
-215++ 667D C5                   push    bc
-216++ 667E D5                   push    de
-217++ 667F E5                   push    hl
-218++ 6680 D9                   exx
-219++ 6681 08                   ex      af, af'
-220++ 6682 F5                   push    af
-221++ 6683 08                   ex      af, af'
-222++ 6684
-223++ 6684 ED 73 85 69          ld      (p126_catalog_saved_sp), sp
-224++ 6688 31 FF BF             ld      sp, #BFFF
-225++ 668B
-226++ 668B AF                   xor     a
-227++ 668C 32 80 69             ld      (p126_catalog_io_result), a
-228++ 668F 32 82 69             ld      (p126_catalog_sector_index), a
-229++ 6692 3E C8                ld      a, #C8
-230++ 6694 32 84 69             ld      (p126_catalog_buffer_ptr+1), a
-231++ 6697 AF                   xor     a
-232++ 6698 32 83 69             ld      (p126_catalog_buffer_ptr), a
-233++ 669B
-234++ 669B              .catalog_read_sector:
-235++ 669B 3A 82 69             ld      a, (p126_catalog_sector_index)
-236++ 669E FE 08                cp      8
-237++ 66A0 30 34                jr      nc, .catalog_sectors_complete
-238++ 66A2
-239++ 66A2 3A 82 69             ld      a, (p126_catalog_sector_index)
-240++ 66A5 5F                   ld      e, a
-241++ 66A6 16 00                ld      d, 0
-242++ 66A8 2A 83 69             ld      hl, (p126_catalog_buffer_ptr)
-243++ 66AB 06 01                ld      b, 1
-244++ 66AD 0E 05                ld      c, 5
-245++ 66AF AF                   xor     a
-246++ 66B0 32 0F 5D             ld      (#5D0F), a
-247++ 66B3 32 10 5D             ld      (#5D10), a
-248++ 66B6 CD 13 3D             call    #3D13
-249++ 66B9
-250++ 66B9 3A 0F 5D             ld      a, (#5D0F)
-251++ 66BC 47                   ld      b, a
-252++ 66BD 3A 10 5D             ld      a, (#5D10)
-253++ 66C0 B0                   or      b
-254++ 66C1 20 19                jr      nz, .catalog_sector_error
-255++ 66C3
-256++ 66C3 2A 83 69             ld      hl, (p126_catalog_buffer_ptr)
-257++ 66C6 11 00 01             ld      de, #0100
-258++ 66C9 19                   add     hl, de
-259++ 66CA 22 83 69             ld      (p126_catalog_buffer_ptr), hl
-260++ 66CD 3A 82 69             ld      a, (p126_catalog_sector_index)
-261++ 66D0 3C                   inc     a
-262++ 66D1 32 82 69             ld      (p126_catalog_sector_index), a
-263++ 66D4 18 C5                jr      .catalog_read_sector
-264++ 66D6
-265++ 66D6              .catalog_sectors_complete:
-266++ 66D6 AF                   xor     a
-267++ 66D7 32 80 69             ld      (p126_catalog_io_result), a
-268++ 66DA 18 05                jr      .catalog_restore_stack
-269++ 66DC
-270++ 66DC              .catalog_sector_error:
-271++ 66DC 3E 01                ld      a, 1
-272++ 66DE 32 80 69             ld      (p126_catalog_io_result), a
-273++ 66E1
-274++ 66E1              .catalog_restore_stack:
-275++ 66E1 ED 7B 85 69          ld      sp, (p126_catalog_saved_sp)
-276++ 66E5
-277++ 66E5 08                   ex      af, af'
-278++ 66E6 F1                   pop     af
-279++ 66E7 08                   ex      af, af'
-280++ 66E8 D9                   exx
-281++ 66E9 E1                   pop     hl
-282++ 66EA D1                   pop     de
-283++ 66EB C1                   pop     bc
-284++ 66EC D9                   exx
-285++ 66ED
-286++ 66ED FD E1                pop     iy
-287++ 66EF DD E1                pop     ix
-288++ 66F1 E1                   pop     hl
-289++ 66F2 D1                   pop     de
-290++ 66F3 C1                   pop     bc
-291++ 66F4 F1                   pop     af
-292++ 66F5
-293++ 66F5 3A 80 69             ld      a, (p126_catalog_io_result)
-294++ 66F8 B7                   or      a
-295++ 66F9 28 08                jr      z, .catalog_read_return_ok
-296++ 66FB 21 BE 68             ld      hl, p126_log_io_error
-297++ 66FE CD F3 67             call    p126_catalog_log
-298++ 6701 37                   scf
-299++ 6702 C9                   ret
-300++ 6703              .catalog_read_return_ok:
-301++ 6703 21 D6 68             ld      hl, p126_log_io_success
-302++ 6706 CD F3 67             call    p126_catalog_log
-303++ 6709 B7                   or      a
-304++ 670A C9                   ret
-305++ 670B
-306++ 670B              ; -------------------------------------------------------------------------
-307++ 670B              ; A directory descriptor is valid when its first byte is neither 00h nor
-308++ 670B              ; 01h and its TR-DOS type byte is B, C, D or #.
-309++ 670B              ; IN: HL=16-byte descriptor. OUT: carry clear if valid, set if unused.
-310++ 670B              ; HL and BC are preserved.
-311++ 670B              ; -------------------------------------------------------------------------
-312++ 670B              p126_catalog_entry_valid:
-313++ 670B 7E                   ld      a, (hl)
-314++ 670C B7                   or      a
-315++ 670D 28 1B                jr      z, .catalog_entry_invalid
-316++ 670F FE 01                cp      1
-317++ 6711 28 17                jr      z, .catalog_entry_invalid
-318++ 6713
-319++ 6713 E5                   push    hl
-320++ 6714 11 08 00             ld      de, 8
-321++ 6717 19                   add     hl, de
-322++ 6718 7E                   ld      a, (hl)
-323++ 6719 E1                   pop     hl
-324++ 671A
-325++ 671A FE 42                cp      'B'
-326++ 671C 28 0E                jr      z, .catalog_entry_valid
-327++ 671E FE 43                cp      'C'
-328++ 6720 28 0A                jr      z, .catalog_entry_valid
-329++ 6722 FE 44                cp      'D'
-330++ 6724 28 06                jr      z, .catalog_entry_valid
-331++ 6726 FE 23                cp      '#'
-332++ 6728 28 02                jr      z, .catalog_entry_valid
-333++ 672A
-334++ 672A              .catalog_entry_invalid:
-335++ 672A 37                   scf
-336++ 672B C9                   ret
-337++ 672C
-338++ 672C              .catalog_entry_valid:
-339++ 672C B7                   or      a
-340++ 672D C9                   ret
-341++ 672E
-342++ 672E              ; Count valid entries in the 128-entry TR-DOS directory.
-343++ 672E              p126_catalog_count_files:
-344++ 672E AF                   xor     a
-345++ 672F 32 7B 69             ld      (p126_catalog_total), a
-346++ 6732 21 00 C8             ld      hl, P126_CATALOG_BUFFER
-347++ 6735 06 80                ld      b, P126_CATALOG_ENTRY_COUNT
-348++ 6737
-349++ 6737              .catalog_count_loop:
-350++ 6737 CD 0B 67             call    p126_catalog_entry_valid
-351++ 673A 38 07                jr      c, .catalog_count_next
-352++ 673C 3A 7B 69             ld      a, (p126_catalog_total)
-353++ 673F 3C                   inc     a
-354++ 6740 32 7B 69             ld      (p126_catalog_total), a
-355++ 6743
-356++ 6743              .catalog_count_next:
-357++ 6743 11 10 00             ld      de, P126_CATALOG_ENTRY_SIZE
-358++ 6746 19                   add     hl, de
-359++ 6747 10 EE                djnz    .catalog_count_loop
-360++ 6749 C9                   ret
-361++ 674A
-362++ 674A              ; IN: A=zero-based index among valid files.
-363++ 674A              ; OUT: HL=descriptor, carry clear; carry set when index is out of range.
-364++ 674A              p126_catalog_find_index:
-365++ 674A 32 7C 69             ld      (p126_catalog_target), a
-366++ 674D 21 00 C8             ld      hl, P126_CATALOG_BUFFER
-367++ 6750 06 80                ld      b, P126_CATALOG_ENTRY_COUNT
-368++ 6752 0E 00                ld      c, 0
-369++ 6754
-370++ 6754              .catalog_find_loop:
-371++ 6754 CD 0B 67             call    p126_catalog_entry_valid
-372++ 6757 38 07                jr      c, .catalog_find_next
-373++ 6759
-374++ 6759 3A 7C 69             ld      a, (p126_catalog_target)
-375++ 675C B9                   cp      c
-376++ 675D 28 09                jr      z, .catalog_find_found
-377++ 675F 0C                   inc     c
-378++ 6760
-379++ 6760              .catalog_find_next:
-380++ 6760 11 10 00             ld      de, P126_CATALOG_ENTRY_SIZE
-381++ 6763 19                   add     hl, de
-382++ 6764 10 EE                djnz    .catalog_find_loop
-383++ 6766 37                   scf
-384++ 6767 C9                   ret
-385++ 6768
-386++ 6768              .catalog_find_found:
-387++ 6768 B7                   or      a
-388++ 6769 C9                   ret
-389++ 676A
-390++ 676A              ; Draw nine visible entries. A leading '>' marks the current selection.
-391++ 676A              p126_catalog_draw:
-392++ 676A F5                   push    af
-393++ 676B C5                   push    bc
-394++ 676C D5                   push    de
-395++ 676D E5                   push    hl
-396++ 676E
-397++ 676E 3A 7B 69             ld      a, (p126_catalog_total)
-398++ 6771 B7                   or      a
-399++ 6772 20 0C                jr      nz, .catalog_draw_rows
-400++ 6774 21 94 69             ld      hl, p126_catalog_empty_text
-401++ 6777 3E 02                ld      a, P126_CATALOG_FIRST_ROW
-402++ 6779 0E 01                ld      c, 1
-403++ 677B CD 33 A1             call    BIOS_DebugConsole_PrintAt
-404++ 677E 18 6E                jr      .catalog_draw_done
-405++ 6780
-406++ 6780              .catalog_draw_rows:
-407++ 6780 AF                   xor     a
-408++ 6781 32 7D 69             ld      (p126_catalog_row), a
-409++ 6784
-410++ 6784              .catalog_draw_loop:
-411++ 6784                      ; Logical file index = scroll offset + visible row.
-412++ 6784 3A 7A 69             ld      a, (p126_catalog_scroll)
-413++ 6787 47                   ld      b, a
-414++ 6788 3A 7D 69             ld      a, (p126_catalog_row)
-415++ 678B 80                   add     a, b
-416++ 678C 32 7C 69             ld      (p126_catalog_target), a
-417++ 678F
-418++ 678F                      ; Start with a blank fixed-width line so old text is erased on scroll.
-419++ 678F 21 87 69             ld      hl, p126_catalog_line
-420++ 6792 06 0C                ld      b, 12
-421++ 6794 3E 20                ld      a, ' '
-422++ 6796              .catalog_clear_line:
-423++ 6796 77                   ld      (hl), a
-424++ 6797 23                   inc     hl
-425++ 6798 10 FC                djnz    .catalog_clear_line
-426++ 679A AF                   xor     a
-427++ 679B 77                   ld      (hl), a
-428++ 679C 3E 2E                ld      a, '.'
-429++ 679E 32 90 69             ld      (p126_catalog_line+9), a
-430++ 67A1
-431++ 67A1 3A 7C 69             ld      a, (p126_catalog_target)
-432++ 67A4 47                   ld      b, a
-433++ 67A5 3A 7B 69             ld      a, (p126_catalog_total)
-434++ 67A8 B8                   cp      b
-435++ 67A9 38 2A                jr      c, .catalog_print_line
-436++ 67AB 28 28                jr      z, .catalog_print_line
-437++ 67AD
-438++ 67AD 3A 7C 69             ld      a, (p126_catalog_target)
-439++ 67B0 CD 4A 67             call    p126_catalog_find_index
-440++ 67B3 38 20                jr      c, .catalog_print_line
-441++ 67B5
-442++ 67B5                      ; Selection marker.
-443++ 67B5 3A 7C 69             ld      a, (p126_catalog_target)
-444++ 67B8 47                   ld      b, a
-445++ 67B9 3A 79 69             ld      a, (p126_catalog_selected)
-446++ 67BC B8                   cp      b
-447++ 67BD 3E 20                ld      a, ' '
-448++ 67BF 20 02                jr      nz, .catalog_store_marker
-449++ 67C1 3E 3E                ld      a, '>'
-450++ 67C3              .catalog_store_marker:
-451++ 67C3 32 87 69             ld      (p126_catalog_line), a
-452++ 67C6
-453++ 67C6                      ; Copy the eight-character TR-DOS filename and its one-byte type.
-454++ 67C6 11 88 69             ld      de, p126_catalog_line+1
-455++ 67C9 06 08                ld      b, 8
-456++ 67CB              .catalog_copy_name:
-457++ 67CB 7E                   ld      a, (hl)
-458++ 67CC 12                   ld      (de), a
-459++ 67CD 23                   inc     hl
-460++ 67CE 13                   inc     de
-461++ 67CF 10 FA                djnz    .catalog_copy_name
-462++ 67D1 7E                   ld      a, (hl)
-463++ 67D2 32 91 69             ld      (p126_catalog_line+10), a
-464++ 67D5
-465++ 67D5              .catalog_print_line:
-466++ 67D5 21 87 69             ld      hl, p126_catalog_line
-467++ 67D8 3A 7D 69             ld      a, (p126_catalog_row)
-468++ 67DB C6 02                add     a, P126_CATALOG_FIRST_ROW
-469++ 67DD 0E 01                ld      c, 1
-470++ 67DF CD 33 A1             call    BIOS_DebugConsole_PrintAt
-471++ 67E2
-472++ 67E2 3A 7D 69             ld      a, (p126_catalog_row)
-473++ 67E5 3C                   inc     a
-474++ 67E6 32 7D 69             ld      (p126_catalog_row), a
-475++ 67E9 FE 09                cp      P126_CATALOG_VISIBLE_ROWS
-476++ 67EB C2 84 67             jp      nz, .catalog_draw_loop
-477++ 67EE
-478++ 67EE              .catalog_draw_done:
-479++ 67EE E1                   pop     hl
-480++ 67EF D1                   pop     de
-481++ 67F0 C1                   pop     bc
-482++ 67F1 F1                   pop     af
-483++ 67F2 C9                   ret
-484++ 67F3
-485++ 67F3              p126_catalog_log:
-486++ 67F3 F5                   push    af
-487++ 67F4 C5                   push    bc
-488++ 67F5 D5                   push    de
-489++ 67F6 E5                   push    hl
-490++ 67F7 CD F0 60             call    p126_host_debug_string
-491++ 67FA E1                   pop     hl
-492++ 67FB D1                   pop     de
-493++ 67FC C1                   pop     bc
-494++ 67FD F1                   pop     af
-495++ 67FE C9                   ret
-496++ 67FF
-497++ 67FF 5B 43 41 54  p126_log_catalog_enter:       db "[CAT] initialize ENTER",13,10,0
-497++ 6803 5D 20 69 6E
-497++ 6807 69 74 69 61
-497++ 680B 6C 69 7A 65
-497++ 680F 20 45 4E 54
-497++ 6813 45 52 0D 0A
-497++ 6817 00
-498++ 6818 5B 43 41 54  p126_log_read_begin:           db "[CAT] read_disk BEGIN",13,10,0
-498++ 681C 5D 20 72 65
-498++ 6820 61 64 5F 64
-498++ 6824 69 73 6B 20
-498++ 6828 42 45 47 49
-498++ 682C 4E 0D 0A 00
-499++ 6830 5B 43 41 54  p126_log_disk_enter:           db "[CAT] TRDOS routine ENTER",13,10,0
-499++ 6834 5D 20 54 52
-499++ 6838 44 4F 53 20
-499++ 683C 72 6F 75 74
-499++ 6840 69 6E 65 20
-499++ 6844 45 4E 54 45
-499++ 6848 52 0D 0A 00
-500++ 684C 5B 43 41 54  p126_log_drive_selected:       db "[CAT] drive-select RETURN",13,10,0
-500++ 6850 5D 20 64 72
-500++ 6854 69 76 65 2D
-500++ 6858 73 65 6C 65
-500++ 685C 63 74 20 52
-500++ 6860 45 54 55 52
-500++ 6864 4E 0D 0A 00
-501++ 6868 5B 43 41 54  p126_log_sector_read_call:     db "[CAT] directory READ CALL C=5 B=1",13,10,0
-501++ 686C 5D 20 64 69
-501++ 6870 72 65 63 74
-501++ 6874 6F 72 79 20
-501++ 6878 52 45 41 44
-501++ 687C 20 43 41 4C
-501++ 6880 4C 20 43 3D
-501++ 6884 35 20 42 3D
-501++ 6888 31 0D 0A 00
-502++ 688C 5B 43 41 54  p126_log_sector_read_return:   db "[CAT] directory SECTOR RETURN",13,10,0
-502++ 6890 5D 20 64 69
-502++ 6894 72 65 63 74
-502++ 6898 6F 72 79 20
-502++ 689C 53 45 43 54
-502++ 68A0 4F 52 20 52
-502++ 68A4 45 54 55 52
-502++ 68A8 4E 0D 0A 00
-503++ 68AC 5B 43 41 54  p126_log_vg93_idle:            db "[CAT] VG93 IDLE",13,10,0
-503++ 68B0 5D 20 56 47
-503++ 68B4 39 33 20 49
-503++ 68B8 44 4C 45 0D
-503++ 68BC 0A 00
-504++ 68BE 5B 43 41 54  p126_log_io_error:             db "[CAT] IO RESULT=ERROR",13,10,0
-504++ 68C2 5D 20 49 4F
-504++ 68C6 20 52 45 53
-504++ 68CA 55 4C 54 3D
-504++ 68CE 45 52 52 4F
-504++ 68D2 52 0D 0A 00
-505++ 68D6 5B 43 41 54  p126_log_io_success:           db "[CAT] IO RESULT=OK",13,10,0
-505++ 68DA 5D 20 49 4F
-505++ 68DE 20 52 45 53
-505++ 68E2 55 4C 54 3D
-505++ 68E6 4F 4B 0D 0A
-505++ 68EA 00
-506++ 68EB 5B 43 41 54  p126_log_read_ok:              db "[CAT] read_disk OK",13,10,0
-506++ 68EF 5D 20 72 65
-506++ 68F3 61 64 5F 64
-506++ 68F7 69 73 6B 20
-506++ 68FB 4F 4B 0D 0A
-506++ 68FF 00
-507++ 6900 5B 43 41 54  p126_log_read_failed:          db "[CAT] read_disk CARRY=1",13,10,0
-507++ 6904 5D 20 72 65
-507++ 6908 61 64 5F 64
-507++ 690C 69 73 6B 20
-507++ 6910 43 41 52 52
-507++ 6914 59 3D 31 0D
-507++ 6918 0A 00
-508++ 691A 5B 43 41 54  p126_log_count_done:           db "[CAT] directory COUNT DONE",13,10,0
-508++ 691E 5D 20 64 69
-508++ 6922 72 65 63 74
-508++ 6926 6F 72 79 20
-508++ 692A 43 4F 55 4E
-508++ 692E 54 20 44 4F
-508++ 6932 4E 45 0D 0A
-508++ 6936 00
-509++ 6937 5B 43 41 54  p126_log_draw_begin:           db "[CAT] DRAW BEGIN",13,10,0
-509++ 693B 5D 20 44 52
-509++ 693F 41 57 20 42
-509++ 6943 45 47 49 4E
-509++ 6947 0D 0A 00
-510++ 694A 5B 43 41 54  p126_log_draw_done:            db "[CAT] DRAW DONE",13,10,0
-510++ 694E 5D 20 44 52
-510++ 6952 41 57 20 44
-510++ 6956 4F 4E 45 0D
-510++ 695A 0A 00
-511++ 695C 5B 43 41 54  p126_log_key_seen:             db "[CAT] CURSOR KEY DETECTED",13,10,0
-511++ 6960 5D 20 43 55
-511++ 6964 52 53 4F 52
-511++ 6968 20 4B 45 59
-511++ 696C 20 44 45 54
-511++ 6970 45 43 54 45
-511++ 6974 44 0D 0A 00
-512++ 6978
-513++ 6978 00           p126_catalog_enabled:  db 0
-514++ 6979 00           p126_catalog_selected: db 0
-515++ 697A 00           p126_catalog_scroll:   db 0
-516++ 697B 00           p126_catalog_total:    db 0
-517++ 697C 00           p126_catalog_target:   db 0
-518++ 697D 00           p126_catalog_row:      db 0
-519++ 697E 00           p126_catalog_key:      db 0
-520++ 697F 00           p126_catalog_scan_result: db 0
-521++ 6980 00           p126_catalog_io_result: db 0
-522++ 6981 00           p126_catalog_preloaded: db 0
-523++ 6982 00           p126_catalog_sector_index: db 0
-524++ 6983 00 C8        p126_catalog_buffer_ptr: dw P126_CATALOG_BUFFER
-525++ 6985 00 00        p126_catalog_saved_sp: dw 0
-526++ 6987 20 20 20 20  p126_catalog_line:     db "            ", 0
-526++ 698B 20 20 20 20
-526++ 698F 20 20 20 20
-526++ 6993 00
-527++ 6994 4E 4F 20 54  p126_catalog_empty_text: db "NO TR-DOS FILES", 0
-527++ 6998 52 2D 44 4F
-527++ 699C 53 20 46 49
-527++ 69A0 4C 45 53 00
-528++ 69A4 54 52 2D 44  p126_catalog_error_text: db "TR-DOS DIRECTORY READ ERROR", 0
-528++ 69A8 4F 53 20 44
-528++ 69AC 49 52 45 43
-528++ 69B0 54 4F 52 59
-528++ 69B4 20 52 45 41
-528++ 69B8 44 20 45 52
-528++ 69BC 52 4F 52 00
-529++ 69C0
+  1++ 6592              ; =========================================================================
+  2++ 6592              ; PROJECT126 — ATM-side TR-DOS directory browser
+  3++ 6592              ; Reads the native TR-DOS catalogue and allows cursor navigation.
+  4++ 6592              ; The directory is read from track 0 into the page-0 buffer at #C800.
+  5++ 6592              ; =========================================================================
+  6++ 6592
+  7++ 6592              P126_CATALOG_BUFFER       EQU #C800
+  8++ 6592              P126_CATALOG_ENTRY_COUNT  EQU 128
+  9++ 6592              P126_CATALOG_ENTRY_SIZE   EQU 16
+ 10++ 6592              P126_CATALOG_VISIBLE_ROWS EQU 9
+ 11++ 6592              P126_CATALOG_FIRST_ROW    EQU 2
+ 12++ 6592
+ 13++ 6592              ; Called after ATM video, RTC and console initialization.
+ 14++ 6592              ; Disk I/O has already been completed during the legacy TR-DOS boot phase.
+ 15++ 6592              p126_catalog_initialize:
+ 15++ 6592
+ 16++ 6592 21 40 68             ld      hl, p126_log_catalog_enter
+ 17++ 6595 CD 34 68             call    p126_catalog_log
+ 18++ 6598 AF                   xor     a
+ 19++ 6599 32 B9 69             ld      (p126_catalog_enabled), a
+ 20++ 659C 32 BA 69             ld      (p126_catalog_selected), a
+ 21++ 659F 32 BB 69             ld      (p126_catalog_scroll), a
+ 22++ 65A2
+ 23++ 65A2 3A C2 69             ld      a, (p126_catalog_preloaded)
+ 24++ 65A5 B7                   or      a
+ 25++ 65A6 20 08                jr      nz, .catalog_data_preloaded
+ 26++ 65A8                      ; Defensive fallback for standalone callers; normal startup preloads
+ 27++ 65A8                      ; the directory before ATM video initialization.
+ 28++ 65A8 CD AF 66             call    p126_catalog_read_disk
+ 29++ 65AB 3E 01                ld      a, 1
+ 30++ 65AD 32 C2 69             ld      (p126_catalog_preloaded), a
+ 31++ 65B0
+ 32++ 65B0              .catalog_data_preloaded:
+ 33++ 65B0 3A C1 69             ld      a, (p126_catalog_io_result)
+ 34++ 65B3 B7                   or      a
+ 35++ 65B4 20 24                jr      nz, .catalog_read_failed
+ 36++ 65B6
+ 37++ 65B6 21 2C 69             ld      hl, p126_log_read_ok
+ 38++ 65B9 CD 34 68             call    p126_catalog_log
+ 39++ 65BC CD 6F 67             call    p126_catalog_count_files
+ 40++ 65BF 21 5B 69             ld      hl, p126_log_count_done
+ 41++ 65C2 CD 34 68             call    p126_catalog_log
+ 42++ 65C5 3E 01                ld      a, 1
+ 43++ 65C7 32 B9 69             ld      (p126_catalog_enabled), a
+ 44++ 65CA 21 78 69             ld      hl, p126_log_draw_begin
+ 45++ 65CD CD 34 68             call    p126_catalog_log
+ 46++ 65D0 CD AB 67             call    p126_catalog_draw
+ 47++ 65D3 21 8B 69             ld      hl, p126_log_draw_done
+ 48++ 65D6 CD 34 68             call    p126_catalog_log
+ 49++ 65D9 C9                   ret
+ 50++ 65DA
+ 51++ 65DA              .catalog_read_failed:
+ 52++ 65DA 21 41 69             ld      hl, p126_log_read_failed
+ 53++ 65DD CD 34 68             call    p126_catalog_log
+ 54++ 65E0 21 E5 69             ld      hl, p126_catalog_error_text
+ 55++ 65E3 3E 02                ld      a, P126_CATALOG_FIRST_ROW
+ 56++ 65E5 0E 01                ld      c, 1
+ 57++ 65E7 CD 33 A1             call    BIOS_DebugConsole_PrintAt
+ 58++ 65EA C9                   ret
+ 59++ 65EB
+ 60++ 65EB              ; One key press produces one movement. Holding a key does not run the
+ 61++ 65EB              ; selection continuously: the routine waits for its release before returning.
+ 62++ 65EB              p126_catalog_poll_keyboard:
+ 62++ 65EB
+ 63++ 65EB 3A B9 69             ld      a, (p126_catalog_enabled)
+ 64++ 65EE B7                   or      a
+ 65++ 65EF C8                   ret     z
+ 66++ 65F0
+ 67++ 65F0 CD 4D 66             call    p126_catalog_scan_keys
+ 68++ 65F3 B7                   or      a
+ 69++ 65F4 C8                   ret     z
+ 70++ 65F5 32 BF 69             ld      (p126_catalog_key), a
+ 71++ 65F8 21 9D 69             ld      hl, p126_log_key_seen
+ 72++ 65FB CD 34 68             call    p126_catalog_log
+ 73++ 65FE CD A8 66             call    p126_catalog_wait_release
+ 74++ 6601
+ 75++ 6601 3A BF 69             ld      a, (p126_catalog_key)
+ 76++ 6604 CB 47                bit     0, a
+ 77++ 6606 20 05                jr      nz, .catalog_move_up
+ 78++ 6608 CB 4F                bit     1, a
+ 79++ 660A 20 19                jr      nz, .catalog_move_down
+ 80++ 660C C9                   ret
+ 81++ 660D
+ 82++ 660D              .catalog_move_up:
+ 83++ 660D 3A BA 69             ld      a, (p126_catalog_selected)
+ 84++ 6610 B7                   or      a
+ 85++ 6611 C8                   ret     z
+ 86++ 6612 3D                   dec     a
+ 87++ 6613 32 BA 69             ld      (p126_catalog_selected), a
+ 88++ 6616
+ 89++ 6616 47                   ld      b, a
+ 90++ 6617 3A BB 69             ld      a, (p126_catalog_scroll)
+ 91++ 661A B8                   cp      b
+ 92++ 661B 38 2C                jr      c, .catalog_redraw
+ 93++ 661D 28 2A                jr      z, .catalog_redraw
+ 94++ 661F 3D                   dec     a
+ 95++ 6620 32 BB 69             ld      (p126_catalog_scroll), a
+ 96++ 6623 18 24                jr      .catalog_redraw
+ 97++ 6625
+ 98++ 6625              .catalog_move_down:
+ 99++ 6625 3A BA 69             ld      a, (p126_catalog_selected)
+100++ 6628 3C                   inc     a
+101++ 6629 47                   ld      b, a
+102++ 662A 3A BC 69             ld      a, (p126_catalog_total)
+103++ 662D B8                   cp      b
+104++ 662E C8                   ret     z
+105++ 662F D8                   ret     c
+106++ 6630
+107++ 6630 78                   ld      a, b
+108++ 6631 32 BA 69             ld      (p126_catalog_selected), a
+109++ 6634
+110++ 6634                      ; The last visible index is scroll + 8. This cannot overflow because
+111++ 6634                      ; the catalogue contains at most 128 entries (indices 0..127).
+112++ 6634 3A BB 69             ld      a, (p126_catalog_scroll)
+113++ 6637 C6 08                add     a, P126_CATALOG_VISIBLE_ROWS-1
+114++ 6639 47                   ld      b, a
+115++ 663A 3A BA 69             ld      a, (p126_catalog_selected)
+116++ 663D B8                   cp      b
+117++ 663E 38 09                jr      c, .catalog_redraw
+118++ 6640 28 07                jr      z, .catalog_redraw
+119++ 6642 3A BB 69             ld      a, (p126_catalog_scroll)
+120++ 6645 3C                   inc     a
+121++ 6646 32 BB 69             ld      (p126_catalog_scroll), a
+122++ 6649
+123++ 6649              .catalog_redraw:
+124++ 6649 CD AB 67             call    p126_catalog_draw
+125++ 664C C9                   ret
+126++ 664D
+127++ 664D              ; -------------------------------------------------------------------------
+128++ 664D              ; Spectrum/ATM keyboard matrix cursor mapping:
+129++ 664D              ; CAPS SHIFT+7 = up, CAPS SHIFT+6 = down.
+130++ 664D              ; CAPS SHIFT+5 and CAPS SHIFT+8 are also sampled for left/right, although
+131++ 664D              ; this vertical file list only consumes up/down.
+132++ 664D              ; -------------------------------------------------------------------------
+133++ 664D              p126_catalog_scan_keys:
+134++ 664D C5                   push    bc
+135++ 664E D5                   push    de
+136++ 664F E5                   push    hl
+137++ 6650
+138++ 6650 AF                   xor     a
+139++ 6651 32 C0 69             ld      (p126_catalog_scan_result), a
+140++ 6654
+141++ 6654                      ; CAPS SHIFT is bit 0 in the #FE row.
+142++ 6654 01 FE FE             ld      bc, #FEFE
+143++ 6657 ED 78                in      a, (c)
+144++ 6659 CB 47                bit     0, a
+145++ 665B 20 44                jr      nz, .catalog_keys_done
+146++ 665D
+147++ 665D                      ; Row #EF: key 7 (bit 3) = up, key 6 (bit 4) = down.
+148++ 665D 01 FE EF             ld      bc, #EFFE
+149++ 6660 ED 78                in      a, (c)
+150++ 6662 CB 5F                bit     3, a
+151++ 6664 20 08                jr      nz, .catalog_check_down
+152++ 6666 3A C0 69             ld      a, (p126_catalog_scan_result)
+153++ 6669 F6 01                or      1
+154++ 666B 32 C0 69             ld      (p126_catalog_scan_result), a
+155++ 666E
+156++ 666E              .catalog_check_down:
+157++ 666E 01 FE EF             ld      bc, #EFFE
+158++ 6671 ED 78                in      a, (c)
+159++ 6673 CB 67                bit     4, a
+160++ 6675 20 08                jr      nz, .catalog_check_other_arrows
+161++ 6677 3A C0 69             ld      a, (p126_catalog_scan_result)
+162++ 667A F6 02                or      2
+163++ 667C 32 C0 69             ld      (p126_catalog_scan_result), a
+164++ 667F
+165++ 667F              .catalog_check_other_arrows:
+166++ 667F                      ; Read the remaining cursor combinations to keep the matrix scan
+167++ 667F                      ; compatible with the Project125 ATM/Spectrum keyboard convention.
+168++ 667F 01 FE F7             ld      bc, #F7FE
+169++ 6682 ED 78                in      a, (c)
+170++ 6684 CB 67                bit     4, a
+171++ 6686 20 08                jr      nz, .catalog_check_right
+172++ 6688 3A C0 69             ld      a, (p126_catalog_scan_result)
+173++ 668B F6 04                or      4
+174++ 668D 32 C0 69             ld      (p126_catalog_scan_result), a
+175++ 6690
+176++ 6690              .catalog_check_right:
+177++ 6690 01 FE EF             ld      bc, #EFFE
+178++ 6693 ED 78                in      a, (c)
+179++ 6695 CB 57                bit     2, a
+180++ 6697 20 08                jr      nz, .catalog_keys_done
+181++ 6699 3A C0 69             ld      a, (p126_catalog_scan_result)
+182++ 669C F6 08                or      8
+183++ 669E 32 C0 69             ld      (p126_catalog_scan_result), a
+184++ 66A1
+185++ 66A1              .catalog_keys_done:
+186++ 66A1 3A C0 69             ld      a, (p126_catalog_scan_result)
+187++ 66A4 E1                   pop     hl
+188++ 66A5 D1                   pop     de
+189++ 66A6 C1                   pop     bc
+190++ 66A7 C9                   ret
+191++ 66A8
+192++ 66A8              p126_catalog_wait_release:
+193++ 66A8 CD 4D 66             call    p126_catalog_scan_keys
+194++ 66AB B7                   or      a
+195++ 66AC 20 FA                jr      nz, p126_catalog_wait_release
+196++ 66AE C9                   ret
+197++ 66AF
+198++ 66AF              ; -------------------------------------------------------------------------
+199++ 66AF              ; TR-DOS directory read.
+200++ 66AF              ; Executed before p126_atm_video_init, using Project125's legacy mapping.
+201++ 66AF              ; C=5 reads exactly one 256-byte sector (B=1); eight calls stage the
+202++ 66AF              ; 2 KiB directory at #C800..#CFFF.
+203++ 66AF              ; -------------------------------------------------------------------------
+204++ 66AF              p126_catalog_read_disk:
+205++ 66AF 21 71 68             ld      hl, p126_log_disk_enter
+206++ 66B2 CD 34 68             call    p126_catalog_log
+207++ 66B5 F5                   push    af
+208++ 66B6 C5                   push    bc
+209++ 66B7 D5                   push    de
+210++ 66B8 E5                   push    hl
+211++ 66B9 DD E5                push    ix
+212++ 66BB FD E5                push    iy
+213++ 66BD
+214++ 66BD D9                   exx
+215++ 66BE C5                   push    bc
+216++ 66BF D5                   push    de
+217++ 66C0 E5                   push    hl
+218++ 66C1 D9                   exx
+219++ 66C2 08                   ex      af, af'
+220++ 66C3 F5                   push    af
+221++ 66C4 08                   ex      af, af'
+222++ 66C5
+223++ 66C5 ED 73 C6 69          ld      (p126_catalog_saved_sp), sp
+224++ 66C9 31 FF BF             ld      sp, #BFFF
+225++ 66CC
+226++ 66CC AF                   xor     a
+227++ 66CD 32 C1 69             ld      (p126_catalog_io_result), a
+228++ 66D0 32 C3 69             ld      (p126_catalog_sector_index), a
+229++ 66D3 3E C8                ld      a, #C8
+230++ 66D5 32 C5 69             ld      (p126_catalog_buffer_ptr+1), a
+231++ 66D8 AF                   xor     a
+232++ 66D9 32 C4 69             ld      (p126_catalog_buffer_ptr), a
+233++ 66DC
+234++ 66DC              .catalog_read_sector:
+235++ 66DC 3A C3 69             ld      a, (p126_catalog_sector_index)
+236++ 66DF FE 08                cp      8
+237++ 66E1 30 34                jr      nc, .catalog_sectors_complete
+238++ 66E3
+239++ 66E3 3A C3 69             ld      a, (p126_catalog_sector_index)
+240++ 66E6 5F                   ld      e, a
+241++ 66E7 16 00                ld      d, 0
+242++ 66E9 2A C4 69             ld      hl, (p126_catalog_buffer_ptr)
+243++ 66EC 06 01                ld      b, 1
+244++ 66EE 0E 05                ld      c, 5
+245++ 66F0 AF                   xor     a
+246++ 66F1 32 0F 5D             ld      (#5D0F), a
+247++ 66F4 32 10 5D             ld      (#5D10), a
+248++ 66F7 CD 13 3D             call    #3D13
+249++ 66FA
+250++ 66FA 3A 0F 5D             ld      a, (#5D0F)
+251++ 66FD 47                   ld      b, a
+252++ 66FE 3A 10 5D             ld      a, (#5D10)
+253++ 6701 B0                   or      b
+254++ 6702 20 19                jr      nz, .catalog_sector_error
+255++ 6704
+256++ 6704 2A C4 69             ld      hl, (p126_catalog_buffer_ptr)
+257++ 6707 11 00 01             ld      de, #0100
+258++ 670A 19                   add     hl, de
+259++ 670B 22 C4 69             ld      (p126_catalog_buffer_ptr), hl
+260++ 670E 3A C3 69             ld      a, (p126_catalog_sector_index)
+261++ 6711 3C                   inc     a
+262++ 6712 32 C3 69             ld      (p126_catalog_sector_index), a
+263++ 6715 18 C5                jr      .catalog_read_sector
+264++ 6717
+265++ 6717              .catalog_sectors_complete:
+266++ 6717 AF                   xor     a
+267++ 6718 32 C1 69             ld      (p126_catalog_io_result), a
+268++ 671B 18 05                jr      .catalog_restore_stack
+269++ 671D
+270++ 671D              .catalog_sector_error:
+271++ 671D 3E 01                ld      a, 1
+272++ 671F 32 C1 69             ld      (p126_catalog_io_result), a
+273++ 6722
+274++ 6722              .catalog_restore_stack:
+275++ 6722 ED 7B C6 69          ld      sp, (p126_catalog_saved_sp)
+276++ 6726
+277++ 6726 08                   ex      af, af'
+278++ 6727 F1                   pop     af
+279++ 6728 08                   ex      af, af'
+280++ 6729 D9                   exx
+281++ 672A E1                   pop     hl
+282++ 672B D1                   pop     de
+283++ 672C C1                   pop     bc
+284++ 672D D9                   exx
+285++ 672E
+286++ 672E FD E1                pop     iy
+287++ 6730 DD E1                pop     ix
+288++ 6732 E1                   pop     hl
+289++ 6733 D1                   pop     de
+290++ 6734 C1                   pop     bc
+291++ 6735 F1                   pop     af
+292++ 6736
+293++ 6736 3A C1 69             ld      a, (p126_catalog_io_result)
+294++ 6739 B7                   or      a
+295++ 673A 28 08                jr      z, .catalog_read_return_ok
+296++ 673C 21 FF 68             ld      hl, p126_log_io_error
+297++ 673F CD 34 68             call    p126_catalog_log
+298++ 6742 37                   scf
+299++ 6743 C9                   ret
+300++ 6744              .catalog_read_return_ok:
+301++ 6744 21 17 69             ld      hl, p126_log_io_success
+302++ 6747 CD 34 68             call    p126_catalog_log
+303++ 674A B7                   or      a
+304++ 674B C9                   ret
+305++ 674C
+306++ 674C              ; -------------------------------------------------------------------------
+307++ 674C              ; A directory descriptor is valid when its first byte is neither 00h nor
+308++ 674C              ; 01h and its TR-DOS type byte is B, C, D or #.
+309++ 674C              ; IN: HL=16-byte descriptor. OUT: carry clear if valid, set if unused.
+310++ 674C              ; HL and BC are preserved.
+311++ 674C              ; -------------------------------------------------------------------------
+312++ 674C              p126_catalog_entry_valid:
+313++ 674C 7E                   ld      a, (hl)
+314++ 674D B7                   or      a
+315++ 674E 28 1B                jr      z, .catalog_entry_invalid
+316++ 6750 FE 01                cp      1
+317++ 6752 28 17                jr      z, .catalog_entry_invalid
+318++ 6754
+319++ 6754 E5                   push    hl
+320++ 6755 11 08 00             ld      de, 8
+321++ 6758 19                   add     hl, de
+322++ 6759 7E                   ld      a, (hl)
+323++ 675A E1                   pop     hl
+324++ 675B
+325++ 675B FE 42                cp      'B'
+326++ 675D 28 0E                jr      z, .catalog_entry_valid
+327++ 675F FE 43                cp      'C'
+328++ 6761 28 0A                jr      z, .catalog_entry_valid
+329++ 6763 FE 44                cp      'D'
+330++ 6765 28 06                jr      z, .catalog_entry_valid
+331++ 6767 FE 23                cp      '#'
+332++ 6769 28 02                jr      z, .catalog_entry_valid
+333++ 676B
+334++ 676B              .catalog_entry_invalid:
+335++ 676B 37                   scf
+336++ 676C C9                   ret
+337++ 676D
+338++ 676D              .catalog_entry_valid:
+339++ 676D B7                   or      a
+340++ 676E C9                   ret
+341++ 676F
+342++ 676F              ; Count valid entries in the 128-entry TR-DOS directory.
+343++ 676F              p126_catalog_count_files:
+344++ 676F AF                   xor     a
+345++ 6770 32 BC 69             ld      (p126_catalog_total), a
+346++ 6773 21 00 C8             ld      hl, P126_CATALOG_BUFFER
+347++ 6776 06 80                ld      b, P126_CATALOG_ENTRY_COUNT
+348++ 6778
+349++ 6778              .catalog_count_loop:
+350++ 6778 CD 4C 67             call    p126_catalog_entry_valid
+351++ 677B 38 07                jr      c, .catalog_count_next
+352++ 677D 3A BC 69             ld      a, (p126_catalog_total)
+353++ 6780 3C                   inc     a
+354++ 6781 32 BC 69             ld      (p126_catalog_total), a
+355++ 6784
+356++ 6784              .catalog_count_next:
+357++ 6784 11 10 00             ld      de, P126_CATALOG_ENTRY_SIZE
+358++ 6787 19                   add     hl, de
+359++ 6788 10 EE                djnz    .catalog_count_loop
+360++ 678A C9                   ret
+361++ 678B
+362++ 678B              ; IN: A=zero-based index among valid files.
+363++ 678B              ; OUT: HL=descriptor, carry clear; carry set when index is out of range.
+364++ 678B              p126_catalog_find_index:
+365++ 678B 32 BD 69             ld      (p126_catalog_target), a
+366++ 678E 21 00 C8             ld      hl, P126_CATALOG_BUFFER
+367++ 6791 06 80                ld      b, P126_CATALOG_ENTRY_COUNT
+368++ 6793 0E 00                ld      c, 0
+369++ 6795
+370++ 6795              .catalog_find_loop:
+371++ 6795 CD 4C 67             call    p126_catalog_entry_valid
+372++ 6798 38 07                jr      c, .catalog_find_next
+373++ 679A
+374++ 679A 3A BD 69             ld      a, (p126_catalog_target)
+375++ 679D B9                   cp      c
+376++ 679E 28 09                jr      z, .catalog_find_found
+377++ 67A0 0C                   inc     c
+378++ 67A1
+379++ 67A1              .catalog_find_next:
+380++ 67A1 11 10 00             ld      de, P126_CATALOG_ENTRY_SIZE
+381++ 67A4 19                   add     hl, de
+382++ 67A5 10 EE                djnz    .catalog_find_loop
+383++ 67A7 37                   scf
+384++ 67A8 C9                   ret
+385++ 67A9
+386++ 67A9              .catalog_find_found:
+387++ 67A9 B7                   or      a
+388++ 67AA C9                   ret
+389++ 67AB
+390++ 67AB              ; Draw nine visible entries. A leading '>' marks the current selection.
+391++ 67AB              p126_catalog_draw:
+392++ 67AB F5                   push    af
+393++ 67AC C5                   push    bc
+394++ 67AD D5                   push    de
+395++ 67AE E5                   push    hl
+396++ 67AF
+397++ 67AF 3A BC 69             ld      a, (p126_catalog_total)
+398++ 67B2 B7                   or      a
+399++ 67B3 20 0C                jr      nz, .catalog_draw_rows
+400++ 67B5 21 D5 69             ld      hl, p126_catalog_empty_text
+401++ 67B8 3E 02                ld      a, P126_CATALOG_FIRST_ROW
+402++ 67BA 0E 01                ld      c, 1
+403++ 67BC CD 33 A1             call    BIOS_DebugConsole_PrintAt
+404++ 67BF 18 6E                jr      .catalog_draw_done
+405++ 67C1
+406++ 67C1              .catalog_draw_rows:
+407++ 67C1 AF                   xor     a
+408++ 67C2 32 BE 69             ld      (p126_catalog_row), a
+409++ 67C5
+410++ 67C5              .catalog_draw_loop:
+411++ 67C5                      ; Logical file index = scroll offset + visible row.
+412++ 67C5 3A BB 69             ld      a, (p126_catalog_scroll)
+413++ 67C8 47                   ld      b, a
+414++ 67C9 3A BE 69             ld      a, (p126_catalog_row)
+415++ 67CC 80                   add     a, b
+416++ 67CD 32 BD 69             ld      (p126_catalog_target), a
+417++ 67D0
+418++ 67D0                      ; Start with a blank fixed-width line so old text is erased on scroll.
+419++ 67D0 21 C8 69             ld      hl, p126_catalog_line
+420++ 67D3 06 0C                ld      b, 12
+421++ 67D5 3E 20                ld      a, ' '
+422++ 67D7              .catalog_clear_line:
+423++ 67D7 77                   ld      (hl), a
+424++ 67D8 23                   inc     hl
+425++ 67D9 10 FC                djnz    .catalog_clear_line
+426++ 67DB AF                   xor     a
+427++ 67DC 77                   ld      (hl), a
+428++ 67DD 3E 2E                ld      a, '.'
+429++ 67DF 32 D1 69             ld      (p126_catalog_line+9), a
+430++ 67E2
+431++ 67E2 3A BD 69             ld      a, (p126_catalog_target)
+432++ 67E5 47                   ld      b, a
+433++ 67E6 3A BC 69             ld      a, (p126_catalog_total)
+434++ 67E9 B8                   cp      b
+435++ 67EA 38 2A                jr      c, .catalog_print_line
+436++ 67EC 28 28                jr      z, .catalog_print_line
+437++ 67EE
+438++ 67EE 3A BD 69             ld      a, (p126_catalog_target)
+439++ 67F1 CD 8B 67             call    p126_catalog_find_index
+440++ 67F4 38 20                jr      c, .catalog_print_line
+441++ 67F6
+442++ 67F6                      ; Selection marker.
+443++ 67F6 3A BD 69             ld      a, (p126_catalog_target)
+444++ 67F9 47                   ld      b, a
+445++ 67FA 3A BA 69             ld      a, (p126_catalog_selected)
+446++ 67FD B8                   cp      b
+447++ 67FE 3E 20                ld      a, ' '
+448++ 6800 20 02                jr      nz, .catalog_store_marker
+449++ 6802 3E 3E                ld      a, '>'
+450++ 6804              .catalog_store_marker:
+451++ 6804 32 C8 69             ld      (p126_catalog_line), a
+452++ 6807
+453++ 6807                      ; Copy the eight-character TR-DOS filename and its one-byte type.
+454++ 6807 11 C9 69             ld      de, p126_catalog_line+1
+455++ 680A 06 08                ld      b, 8
+456++ 680C              .catalog_copy_name:
+457++ 680C 7E                   ld      a, (hl)
+458++ 680D 12                   ld      (de), a
+459++ 680E 23                   inc     hl
+460++ 680F 13                   inc     de
+461++ 6810 10 FA                djnz    .catalog_copy_name
+462++ 6812 7E                   ld      a, (hl)
+463++ 6813 32 D2 69             ld      (p126_catalog_line+10), a
+464++ 6816
+465++ 6816              .catalog_print_line:
+466++ 6816 21 C8 69             ld      hl, p126_catalog_line
+467++ 6819 3A BE 69             ld      a, (p126_catalog_row)
+468++ 681C C6 02                add     a, P126_CATALOG_FIRST_ROW
+469++ 681E 0E 01                ld      c, 1
+470++ 6820 CD 33 A1             call    BIOS_DebugConsole_PrintAt
+471++ 6823
+472++ 6823 3A BE 69             ld      a, (p126_catalog_row)
+473++ 6826 3C                   inc     a
+474++ 6827 32 BE 69             ld      (p126_catalog_row), a
+475++ 682A FE 09                cp      P126_CATALOG_VISIBLE_ROWS
+476++ 682C C2 C5 67             jp      nz, .catalog_draw_loop
+477++ 682F
+478++ 682F              .catalog_draw_done:
+479++ 682F E1                   pop     hl
+480++ 6830 D1                   pop     de
+481++ 6831 C1                   pop     bc
+482++ 6832 F1                   pop     af
+483++ 6833 C9                   ret
+484++ 6834
+485++ 6834              p126_catalog_log:
+486++ 6834 F5                   push    af
+487++ 6835 C5                   push    bc
+488++ 6836 D5                   push    de
+489++ 6837 E5                   push    hl
+490++ 6838 CD F0 60             call    p126_host_debug_string
+491++ 683B E1                   pop     hl
+492++ 683C D1                   pop     de
+493++ 683D C1                   pop     bc
+494++ 683E F1                   pop     af
+495++ 683F C9                   ret
+496++ 6840
+497++ 6840 5B 43 41 54  p126_log_catalog_enter:       db "[CAT] initialize ENTER",13,10,0
+497++ 6844 5D 20 69 6E
+497++ 6848 69 74 69 61
+497++ 684C 6C 69 7A 65
+497++ 6850 20 45 4E 54
+497++ 6854 45 52 0D 0A
+497++ 6858 00
+498++ 6859 5B 43 41 54  p126_log_read_begin:           db "[CAT] read_disk BEGIN",13,10,0
+498++ 685D 5D 20 72 65
+498++ 6861 61 64 5F 64
+498++ 6865 69 73 6B 20
+498++ 6869 42 45 47 49
+498++ 686D 4E 0D 0A 00
+499++ 6871 5B 43 41 54  p126_log_disk_enter:           db "[CAT] TRDOS routine ENTER",13,10,0
+499++ 6875 5D 20 54 52
+499++ 6879 44 4F 53 20
+499++ 687D 72 6F 75 74
+499++ 6881 69 6E 65 20
+499++ 6885 45 4E 54 45
+499++ 6889 52 0D 0A 00
+500++ 688D 5B 43 41 54  p126_log_drive_selected:       db "[CAT] drive-select RETURN",13,10,0
+500++ 6891 5D 20 64 72
+500++ 6895 69 76 65 2D
+500++ 6899 73 65 6C 65
+500++ 689D 63 74 20 52
+500++ 68A1 45 54 55 52
+500++ 68A5 4E 0D 0A 00
+501++ 68A9 5B 43 41 54  p126_log_sector_read_call:     db "[CAT] directory READ CALL C=5 B=1",13,10,0
+501++ 68AD 5D 20 64 69
+501++ 68B1 72 65 63 74
+501++ 68B5 6F 72 79 20
+501++ 68B9 52 45 41 44
+501++ 68BD 20 43 41 4C
+501++ 68C1 4C 20 43 3D
+501++ 68C5 35 20 42 3D
+501++ 68C9 31 0D 0A 00
+502++ 68CD 5B 43 41 54  p126_log_sector_read_return:   db "[CAT] directory SECTOR RETURN",13,10,0
+502++ 68D1 5D 20 64 69
+502++ 68D5 72 65 63 74
+502++ 68D9 6F 72 79 20
+502++ 68DD 53 45 43 54
+502++ 68E1 4F 52 20 52
+502++ 68E5 45 54 55 52
+502++ 68E9 4E 0D 0A 00
+503++ 68ED 5B 43 41 54  p126_log_vg93_idle:            db "[CAT] VG93 IDLE",13,10,0
+503++ 68F1 5D 20 56 47
+503++ 68F5 39 33 20 49
+503++ 68F9 44 4C 45 0D
+503++ 68FD 0A 00
+504++ 68FF 5B 43 41 54  p126_log_io_error:             db "[CAT] IO RESULT=ERROR",13,10,0
+504++ 6903 5D 20 49 4F
+504++ 6907 20 52 45 53
+504++ 690B 55 4C 54 3D
+504++ 690F 45 52 52 4F
+504++ 6913 52 0D 0A 00
+505++ 6917 5B 43 41 54  p126_log_io_success:           db "[CAT] IO RESULT=OK",13,10,0
+505++ 691B 5D 20 49 4F
+505++ 691F 20 52 45 53
+505++ 6923 55 4C 54 3D
+505++ 6927 4F 4B 0D 0A
+505++ 692B 00
+506++ 692C 5B 43 41 54  p126_log_read_ok:              db "[CAT] read_disk OK",13,10,0
+506++ 6930 5D 20 72 65
+506++ 6934 61 64 5F 64
+506++ 6938 69 73 6B 20
+506++ 693C 4F 4B 0D 0A
+506++ 6940 00
+507++ 6941 5B 43 41 54  p126_log_read_failed:          db "[CAT] read_disk CARRY=1",13,10,0
+507++ 6945 5D 20 72 65
+507++ 6949 61 64 5F 64
+507++ 694D 69 73 6B 20
+507++ 6951 43 41 52 52
+507++ 6955 59 3D 31 0D
+507++ 6959 0A 00
+508++ 695B 5B 43 41 54  p126_log_count_done:           db "[CAT] directory COUNT DONE",13,10,0
+508++ 695F 5D 20 64 69
+508++ 6963 72 65 63 74
+508++ 6967 6F 72 79 20
+508++ 696B 43 4F 55 4E
+508++ 696F 54 20 44 4F
+508++ 6973 4E 45 0D 0A
+508++ 6977 00
+509++ 6978 5B 43 41 54  p126_log_draw_begin:           db "[CAT] DRAW BEGIN",13,10,0
+509++ 697C 5D 20 44 52
+509++ 6980 41 57 20 42
+509++ 6984 45 47 49 4E
+509++ 6988 0D 0A 00
+510++ 698B 5B 43 41 54  p126_log_draw_done:            db "[CAT] DRAW DONE",13,10,0
+510++ 698F 5D 20 44 52
+510++ 6993 41 57 20 44
+510++ 6997 4F 4E 45 0D
+510++ 699B 0A 00
+511++ 699D 5B 43 41 54  p126_log_key_seen:             db "[CAT] CURSOR KEY DETECTED",13,10,0
+511++ 69A1 5D 20 43 55
+511++ 69A5 52 53 4F 52
+511++ 69A9 20 4B 45 59
+511++ 69AD 20 44 45 54
+511++ 69B1 45 43 54 45
+511++ 69B5 44 0D 0A 00
+512++ 69B9
+513++ 69B9 00           p126_catalog_enabled:  db 0
+514++ 69BA 00           p126_catalog_selected: db 0
+515++ 69BB 00           p126_catalog_scroll:   db 0
+516++ 69BC 00           p126_catalog_total:    db 0
+517++ 69BD 00           p126_catalog_target:   db 0
+518++ 69BE 00           p126_catalog_row:      db 0
+519++ 69BF 00           p126_catalog_key:      db 0
+520++ 69C0 00           p126_catalog_scan_result: db 0
+521++ 69C1 00           p126_catalog_io_result: db 0
+522++ 69C2 00           p126_catalog_preloaded: db 0
+523++ 69C3 00           p126_catalog_sector_index: db 0
+524++ 69C4 00 C8        p126_catalog_buffer_ptr: dw P126_CATALOG_BUFFER
+525++ 69C6 00 00        p126_catalog_saved_sp: dw 0
+526++ 69C8 20 20 20 20  p126_catalog_line:     db "            ", 0
+526++ 69CC 20 20 20 20
+526++ 69D0 20 20 20 20
+526++ 69D4 00
+527++ 69D5 4E 4F 20 54  p126_catalog_empty_text: db "NO TR-DOS FILES", 0
+527++ 69D9 52 2D 44 4F
+527++ 69DD 53 20 46 49
+527++ 69E1 4C 45 53 00
+528++ 69E5 54 52 2D 44  p126_catalog_error_text: db "TR-DOS DIRECTORY READ ERROR", 0
+528++ 69E9 4F 53 20 44
+528++ 69ED 49 52 45 43
+528++ 69F1 54 4F 52 59
+528++ 69F5 20 52 45 41
+528++ 69F9 44 20 45 52
+528++ 69FD 52 4F 52 00
+529++ 6A01
 # file closed: p126_disk_catalog.asm
-199+  69C0
-200+  69C0              ; Project125-derived ATM-native text console, relocated to window 2.
-201+  69C0              ; Its renderer maps video pages only for each write and restores host pages.
-202+  69C0                      PAGE 0
-203+  69C0                      ORG #A000
+199+  6A01
+200+  6A01              ; Project125-derived ATM-native text console, relocated to window 2.
+201+  6A01              ; Its renderer maps video pages only for each write and restores host pages.
+202+  6A01                      PAGE 0
+203+  6A01                      ORG #A000
 204+  A000                      INCLUDE "atm_host/p126_screen_console.asm"
 # file opened: p126_screen_console.asm
   1++ A000              ; =========================================================================
@@ -2671,66 +2827,80 @@ Value    Label
 0xE000   p126_bios3_file_end
 0xC000   p126_bios3_file_start
 0xC800   P126_CATALOG_BUFFER
-0x6983   p126_catalog_buffer_ptr
-0x672E   p126_catalog_count_files
-0x6737   p126_catalog_count_files.catalog_count_loop
-0x6743   p126_catalog_count_files.catalog_count_next
-0x676A   p126_catalog_draw
-0x6796   p126_catalog_draw.catalog_clear_line
-0x67CB   p126_catalog_draw.catalog_copy_name
-0x67EE   p126_catalog_draw.catalog_draw_done
-0x6784   p126_catalog_draw.catalog_draw_loop
-0x6780   p126_catalog_draw.catalog_draw_rows
-0x67D5   p126_catalog_draw.catalog_print_line
-0x67C3   p126_catalog_draw.catalog_store_marker
-0x6994   p126_catalog_empty_text
-0x6978   p126_catalog_enabled
+0x69C4   p126_catalog_buffer_ptr
+0x676F   p126_catalog_count_files
+0x6778   p126_catalog_count_files.catalog_count_loop
+0x6784   p126_catalog_count_files.catalog_count_next
+0x67AB   p126_catalog_draw
+0x67D7   p126_catalog_draw.catalog_clear_line
+0x680C   p126_catalog_draw.catalog_copy_name
+0x682F   p126_catalog_draw.catalog_draw_done
+0x67C5   p126_catalog_draw.catalog_draw_loop
+0x67C1   p126_catalog_draw.catalog_draw_rows
+0x6816   p126_catalog_draw.catalog_print_line
+0x6804   p126_catalog_draw.catalog_store_marker
+0x69D5   p126_catalog_empty_text
+0x69B9   p126_catalog_enabled
 0x0080   P126_CATALOG_ENTRY_COUNT
 0x0010   P126_CATALOG_ENTRY_SIZE
-0x670B   p126_catalog_entry_valid
-0x672A   p126_catalog_entry_valid.catalog_entry_invalid
-0x672C   p126_catalog_entry_valid.catalog_entry_valid
-0x69A4   p126_catalog_error_text
-0x674A   p126_catalog_find_index
-0x6768   p126_catalog_find_index.catalog_find_found
-0x6754   p126_catalog_find_index.catalog_find_loop
-0x6760   p126_catalog_find_index.catalog_find_next
+0x674C   p126_catalog_entry_valid
+0x676B   p126_catalog_entry_valid.catalog_entry_invalid
+0x676D   p126_catalog_entry_valid.catalog_entry_valid
+0x69E5   p126_catalog_error_text
+0x678B   p126_catalog_find_index
+0x67A9   p126_catalog_find_index.catalog_find_found
+0x6795   p126_catalog_find_index.catalog_find_loop
+0x67A1   p126_catalog_find_index.catalog_find_next
 0x0002   P126_CATALOG_FIRST_ROW
-0x6551   p126_catalog_initialize
-0x656F   p126_catalog_initialize.catalog_data_preloaded
-0x6599   p126_catalog_initialize.catalog_read_failed
-0x6980   p126_catalog_io_result
-0x697E   p126_catalog_key
-0x6987   p126_catalog_line
-0x67F3   p126_catalog_log
-0x65AA   p126_catalog_poll_keyboard
-0x65E4   p126_catalog_poll_keyboard.catalog_move_down
-0x65CC   p126_catalog_poll_keyboard.catalog_move_up
-0x6608   p126_catalog_poll_keyboard.catalog_redraw
-0x6981   p126_catalog_preloaded
-0x666E   p126_catalog_read_disk
-0x6703   p126_catalog_read_disk.catalog_read_return_ok
-0x669B   p126_catalog_read_disk.catalog_read_sector
-0x66E1   p126_catalog_read_disk.catalog_restore_stack
-0x66DC   p126_catalog_read_disk.catalog_sector_error
-0x66D6   p126_catalog_read_disk.catalog_sectors_complete
-0x697D   p126_catalog_row
-0x6985   p126_catalog_saved_sp
-0x660C   p126_catalog_scan_keys
-0x662D   p126_catalog_scan_keys.catalog_check_down
-0x663E   p126_catalog_scan_keys.catalog_check_other_arrows
-0x664F   p126_catalog_scan_keys.catalog_check_right
-0x6660   p126_catalog_scan_keys.catalog_keys_done
-0x697F   p126_catalog_scan_result
-0x697A   p126_catalog_scroll
-0x6982   p126_catalog_sector_index
-0x6979   p126_catalog_selected
-0x697C   p126_catalog_target
-0x697B   p126_catalog_total
+0x6592   p126_catalog_initialize
+0x65B0   p126_catalog_initialize.catalog_data_preloaded
+0x65DA   p126_catalog_initialize.catalog_read_failed
+0x69C1   p126_catalog_io_result
+0x69BF   p126_catalog_key
+0x69C8   p126_catalog_line
+0x6834   p126_catalog_log
+0x65EB   p126_catalog_poll_keyboard
+0x6625   p126_catalog_poll_keyboard.catalog_move_down
+0x660D   p126_catalog_poll_keyboard.catalog_move_up
+0x6649   p126_catalog_poll_keyboard.catalog_redraw
+0x69C2   p126_catalog_preloaded
+0x66AF   p126_catalog_read_disk
+0x6744   p126_catalog_read_disk.catalog_read_return_ok
+0x66DC   p126_catalog_read_disk.catalog_read_sector
+0x6722   p126_catalog_read_disk.catalog_restore_stack
+0x671D   p126_catalog_read_disk.catalog_sector_error
+0x6717   p126_catalog_read_disk.catalog_sectors_complete
+0x69BE   p126_catalog_row
+0x69C6   p126_catalog_saved_sp
+0x664D   p126_catalog_scan_keys
+0x666E   p126_catalog_scan_keys.catalog_check_down
+0x667F   p126_catalog_scan_keys.catalog_check_other_arrows
+0x6690   p126_catalog_scan_keys.catalog_check_right
+0x66A1   p126_catalog_scan_keys.catalog_keys_done
+0x69C0   p126_catalog_scan_result
+0x69BB   p126_catalog_scroll
+0x69C3   p126_catalog_sector_index
+0x69BA   p126_catalog_selected
+0x69BD   p126_catalog_target
+0x69BC   p126_catalog_total
 0x0009   P126_CATALOG_VISIBLE_ROWS
-0x6667   p126_catalog_wait_release
+0x66A8   p126_catalog_wait_release
 0x0000   P126_CBIT
+0x00E3 X P126_CMD_CAPABILITIES
+0x00FF X P126_CMD_DMA_END
+0x00E0 X P126_CMD_HOST_FRAME
+0x00E1 X P126_CMD_NGS_FRAME
+0x00E2 X P126_CMD_RESYNC
+0x0029 X P126_CRC16_CHECK_H
+0x00B1 X P126_CRC16_CHECK_L
+0x00FF X P126_CRC16_INITIAL_H
+0x00FF X P126_CRC16_INITIAL_L
+0x1021 X P126_CRC16_POLY
 0x0007   P126_DBIT
+0x0001 X P126_FLAG_ACK_REQUIRED
+0x0002 X P126_FLAG_FRAGMENT
+0x0004 X P126_FLAG_IDEMPOTENT
+0x0007 X P126_FLAG_VALID_MASK
 0x0020 X P126_GS_LED
 0x0040 X P126_GS_NMI
 0x0080 X P126_GS_RESET
@@ -2756,19 +2926,44 @@ Value    Label
 0xAFFF   P126_HOST_STACK_TOP
 0x608E   p126_host_ui_log
 0x6263   p126_host_version_text
-0x6520   p126_ipc_emit_version
-0x6532   p126_ipc_emit_version.p126_version_done
-0x6529   p126_ipc_emit_version.p126_version_loop
-0x6536   p126_ipc_last_status
+0x6534 X p126_ipc_crc16_selftest
+0x6554   p126_ipc_crc16_selftest.p126_crc_test_failed
+0x653E   p126_ipc_crc16_selftest.p126_crc_test_loop
+0x6558   p126_ipc_crc16_test_vector
+0x6520   p126_ipc_crc16_update
+0x6525   p126_ipc_crc16_update.p126_crc_bit
+0x6530   p126_ipc_crc16_update.p126_crc_no_xor
+0x6561   p126_ipc_emit_version
+0x6573   p126_ipc_emit_version.p126_version_done
+0x656A   p126_ipc_emit_version.p126_version_loop
+0x000A   P126_IPC_FRAGMENT_HEADER
+0x0012   P126_IPC_HEADER_SIZE
+0x6577   p126_ipc_last_status
+0x0001 X P126_IPC_MAJOR
+0x3FE4 X P126_IPC_MAX_FRAGMENT_DATA
+0x4000   P126_IPC_MAX_FRAME_SIZE
+0x3FEE   P126_IPC_MAX_PAYLOAD
+0x0000 X P126_IPC_MINOR
+0x0010 X P126_IPC_OFF_CRC
+0x0009 X P126_IPC_OFF_FLAGS
+0x000C X P126_IPC_OFF_LENGTH
+0x0000 X P126_IPC_OFF_MAGIC
+0x0004 X P126_IPC_OFF_MAJOR
+0x0005 X P126_IPC_OFF_MINOR
+0x0008 X P126_IPC_OFF_OPERATION
+0x000A X P126_IPC_OFF_SEQUENCE
+0x0007 X P126_IPC_OFF_SERVICE
+0x000E X P126_IPC_OFF_STATUS
+0x0006 X P126_IPC_OFF_TYPE
 0x649C   p126_ipc_read_status
 0x6515 X p126_ipc_receive_byte
-0x6538   p126_ipc_rx_byte
+0x6579   p126_ipc_rx_byte
 0x64F8 X p126_ipc_send_argument
 0x6506 X p126_ipc_send_byte
 0x64ED X p126_ipc_send_command
 0xFFFF   P126_IPC_TIMEOUT
-0x6537   p126_ipc_tx_byte
-0x6539   p126_ipc_version_text
+0x6578   p126_ipc_tx_byte
+0x657A   p126_ipc_version_text
 0x64A2   p126_ipc_wait_cbit_clear
 0x64A5   p126_ipc_wait_cbit_clear.p126_cbit_loop
 0x64B6   p126_ipc_wait_cbit_clear.p126_cbit_ready
@@ -2778,31 +2973,43 @@ Value    Label
 0x64D4   p126_ipc_wait_dbit_set
 0x64D7   p126_ipc_wait_dbit_set.p126_dbit_set_loop
 0x64E8   p126_ipc_wait_dbit_set.p126_dbit_set_ready
-0x67FF   p126_log_catalog_enter
+0x6840   p126_log_catalog_enter
 0x6246   p126_log_catalog_return
 0x620F   p126_log_console_begin
 0x622B   p126_log_console_done
-0x691A   p126_log_count_done
-0x6830   p126_log_disk_enter
-0x6937   p126_log_draw_begin
-0x694A   p126_log_draw_done
-0x684C X p126_log_drive_selected
-0x68BE   p126_log_io_error
-0x68D6   p126_log_io_success
-0x695C   p126_log_key_seen
-0x6818 X p126_log_read_begin
-0x6900   p126_log_read_failed
-0x68EB   p126_log_read_ok
+0x695B   p126_log_count_done
+0x6871   p126_log_disk_enter
+0x6978   p126_log_draw_begin
+0x698B   p126_log_draw_done
+0x688D X p126_log_drive_selected
+0x68FF   p126_log_io_error
+0x6917   p126_log_io_success
+0x699D   p126_log_key_seen
+0x6859 X p126_log_read_begin
+0x6941   p126_log_read_failed
+0x692C   p126_log_read_ok
 0x61F5   p126_log_rtc_done
-0x6868 X p126_log_sector_read_call
-0x688C X p126_log_sector_read_return
+0x68A9 X p126_log_sector_read_call
+0x68CD X p126_log_sector_read_return
 0x6171   p126_log_trdos_begin
 0x6195   p126_log_trdos_done
-0x68AC X p126_log_vg93_idle
+0x68ED X p126_log_vg93_idle
 0x61BA   p126_log_video_begin
 0x61D8   p126_log_video_done
 0x0001 X P126_M_CBIT
 0x0080 X P126_M_DBIT
+0x0004 X P126_MSG_CANCEL
+0x0003 X P126_MSG_EVENT
+0x0001 X P126_MSG_REQUEST
+0x0002 X P126_MSG_RESPONSE
+0x0001 X P126_OP_CAPABILITIES
+0x0000 X P126_OP_DIAGNOSTIC
+0x0000 X P126_OP_HELLO
+0x0000 X P126_OP_IMAGE_BEGIN
+0x0002 X P126_OP_IMAGE_FINISH
+0x0001 X P126_OP_IMAGE_FRAGMENT
+0x0003 X P126_OP_IMAGE_RESULT
+0x0002 X P126_OP_RESYNC
 0xA31C   p126_screen_map_video_pages
 0xA32B   p126_screen_restore_host_pages
 0xA22C   p126_screen_write_char
@@ -2813,6 +3020,30 @@ Value    Label
 0xA314   p126_screen_write_guest_cell.guest_done
 0xA300   p126_screen_write_guest_cell.guest_odd
 0xA34F   P126_ScrollConsoleUp
+0x0004 X P126_SERVICE_CLOCK
+0x0006 X P126_SERVICE_CONFIG
+0x0005 X P126_SERVICE_DIAGNOSTICS
+0x0007 X P126_SERVICE_IMAGE
+0x0001 X P126_SERVICE_INPUT
+0x0000 X P126_SERVICE_SESSION
+0x0003 X P126_SERVICE_STORAGE
+0x0002 X P126_SERVICE_VIDEO
+0x000C X P126_STATUS_ADDRESS_RANGE
+0x000F X P126_STATUS_BAD_FRAGMENT
+0x0003 X P126_STATUS_BAD_FRAME
+0x0001 X P126_STATUS_BAD_MAGIC
+0x0002 X P126_STATUS_BAD_VERSION
+0x000D X P126_STATUS_BUSY
+0x000B X P126_STATUS_CANCELLED
+0x0004 X P126_STATUS_CRC_ERROR
+0x0009 X P126_STATUS_HOST_IO
+0x0008 X P126_STATUS_NO_BUFFER
+0x0007 X P126_STATUS_NO_OPERATION
+0x0006 X P126_STATUS_NO_SERVICE
+0x0000 X P126_STATUS_OK
+0x000E X P126_STATUS_RESET_REQUIRED
+0x0005 X P126_STATUS_SEQUENCE
+0x000A X P126_STATUS_TIMEOUT
 0xA3BE   p126_ui_line0
 0xA3ED   p126_ui_line1
 0xA409   p126_ui_line11
