@@ -4,12 +4,12 @@ This document records actual artifacts and their verification state; it is not a
 
 ## Build pipeline foundation
 
-- Assembler: repository-pinned `tools/sjasmplus.exe`.
-- Translation unit: `neogs_sub/x86_cpu_state_assemble.asm`.
+- Assembler: repository-pinned `tools/sjasmplus.exe` (SjASMPlus 1.23.1).
+- Translation unit: `neogs_sub/x86_cpu_state_assemble.asm`; it assembles the architectural-state and ALU modules.
 - CI: `.github/workflows/neogs-assembly.yml`.
-- The translation unit assembles the architectural-state and 8-bit ALU modules only. It is deliberately not a runtime image: no NeoGS load address, startup entrypoint, stack placement or memory-bank mapping has been assumed.
 - CI checks assembler exit status and the independent 256 KiB NeoGS firmware size ceiling, then publishes the assembled binary and symbol table.
-- Status: BUILD PASS for commit `f06816b8a0cc1d2433dca4722b8b66f5ea768cb3`; GitHub Actions run `42272422427` completed successfully with SjASMPlus 1.23.1, 0 assembler errors, 721-byte output and the 256 KiB limit check passed. The run emitted one non-fatal source-path separator warning; the workflow path is being normalized to remove it. This is an assembly pass only, not a NeoGS runtime or hardware pass.
+- Status: **BUILD PASS** for commit `0c435104164dfa1bffbb6239050845408e4b12b8`; GitHub Actions run `42272784210` completed successfully: 674 source lines, 0 assembler errors, 0 warnings, 1155-byte output, and the 256 KiB size check passed.
+- This is an assembly pass only. The translation unit is not a runtime image and defines no NeoGS load address, startup entrypoint, stack placement or memory-bank mapping. No NeoGS runtime or hardware pass is claimed.
 
 ## PCem reference integrity tooling
 
@@ -22,20 +22,20 @@ This document records actual artifacts and their verification state; it is not a
 
 - Source: `neogs_sub/x86_cpu_state.asm`
 - Assembly unit: `neogs_sub/x86_cpu_state_assemble.asm`
-- Runtime version emitter: `x86_cpu_emit_version`, string `[P126 X86_CPU_STATE v0.1.0]` (startup call is not wired yet because the Project126 firmware entry point does not exist).
+- Runtime version emitter: `x86_cpu_emit_version`, string `[P126 X86_CPU_STATE v0.1.0]`. Startup call is not wired because the Project126 firmware entry point and NeoGS memory map are not yet defined.
 - PCem comparison points: `PCem/808x.c:resetx86()`, `PCem/cpu.h:CPU_8086`.
 - Implemented in source: deterministic register reset, 8086 reset vector FFFF:0000, FLAGS=0002h, 20-bit segment:offset physical-address calculation and target-side self-test vectors.
-- Status: source committed; address test vectors independently checked against 20-bit arithmetic; not yet assembled or executed on NeoGS.
+- Status: source successfully assembled in CI run `42272784210`; address test vectors independently checked against 20-bit arithmetic. The target-side self-test has not been executed on NeoGS.
 - Not implemented by this module: instruction decoding/execution, memory-region mapping, interrupt delivery, timing or device models.
 
-## x86 8-bit ALU foundation
+## x86 ALU foundation
 
 - Source: `neogs_sub/x86_alu.asm`, version `P126 / X86_ALU v0.2.0`.
 - PCem comparison points: `PCem/808x.c:setadd8()`, `setsub8()` and adjacent flag helpers.
 - Implemented in source: 8-bit and 16-bit ADD/SUB; CF, PF, AF, ZF, SF and OF translation into guest FLAGS; preservation of non-arithmetic flags. A runtime version emitter reports the ALU component on NeoGS #EF.
 - Included target-side regression vectors: 8-bit and 16-bit signed overflow, carry/borrow, auxiliary carry/borrow, zero, sign, parity and preservation of TF/IF/DF.
-- First CI build: failed on six out-of-range conditional JR branches to the distant self-test failure label. The branches have been changed to JP; corrected CI result is pending. The tests are present in source but are not yet a passing runtime test.
+- Status: assembled successfully in CI run `42272784210`; regression vectors are present in source but have not yet been executed on NeoGS. An independent arithmetic-equation cross-check covered 65,536 operand combinations for each 8-bit operation and 200,000 randomized operand pairs for each 16-bit operation; this does not substitute for executing the assembled routines.
 
 ## Verification policy
 
-A committed source file is not automatically a successful build or runtime test. Record source review, build result, emulator/target result and hardware result separately. Do not promote the CPU-state component to BUILD PASS until the Project126 build assembles it, or to HARDWARE PASS until its self-test runs on the target NeoGS.
+A committed source file is not automatically a successful runtime or hardware test. Keep assembly, emulator, NeoGS runtime and ATM hardware results separate. The current CPU-state and ALU modules have BUILD PASS only; they do not yet constitute an executable x86 CPU.
