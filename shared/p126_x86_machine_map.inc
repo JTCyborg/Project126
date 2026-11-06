@@ -50,7 +50,8 @@ P126_X86_IO_VGA_MONO_BASE       EQU #03B0
 P126_X86_IO_VGA_COLOR_BASE      EQU #03D0
 P126_X86_IO_VGA_SIZE            EQU #0030
 P126_X86_IO_FDC_BASE            EQU #03F0
-P126_X86_IO_FDC_SIZE            EQU #0008
+P126_X86_IO_FDC_SIZE            EQU #0006
+P126_X86_IO_FDC_DIR             EQU #03F7
 P126_X86_IO_IDE_CTRL            EQU #03F6
 
 ; Compile-time guest map integrity.

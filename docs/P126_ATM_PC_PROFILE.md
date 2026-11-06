@@ -65,10 +65,10 @@ The profile reserves the following PC/XT-style interfaces. They are guest-visibl
 | 0080–0083 | DMA page registers | Reserved decode; implementation pending |
 | 01F0–01F7 | Primary ATA-compatible guest disk task file | Software device; requests forwarded to ATM/NEMO IDE through IPC |
 | 03B0–03DF | IBM VGA register interfaces | VGA implementation pending |
-| 03F0–03F7 | 765-compatible floppy controller | Reserved; whether floppy service is enabled remains a separate device decision |
+| 03F0–03F5, 03F7 | 765-compatible floppy controller (3F7 status/direction) | Reserved; whether floppy service is enabled remains a separate device decision |
 | 03F6 | Primary ATA control register | Software device; requests forwarded to ATM through IPC |
 
-The RTC ports are a deliberate custom extension; the physical DS12887/time source remains on ATM. This does not grant NeoGS direct access to a physical RTC.
+Port 03F6 is assigned to the ATA control register and is intentionally excluded from the floppy-controller register set (the legacy PC/XT decode shares this neighborhood). The RTC ports are a deliberate custom extension; the physical DS12887/time source remains on ATM. This does not grant NeoGS direct access to a physical RTC.
 
 Unknown or unimplemented guest ports return FFh on reads and ignore writes in this initial profile. They must never be forwarded as physical NeoGS port operations.
 

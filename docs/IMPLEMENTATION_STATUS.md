@@ -19,7 +19,7 @@ This document records actual artifacts and their verification state; it is not a
 - Added shared constants in `shared/p126_ipc_protocol.inc`, imported by the ATM IPC public include.
 - Added CRC update and standard test-vector routines on both endpoints: `atm_host/neogs_ipc.asm` and `neogs_sub/p126_ipc.asm`.
 - **IN PROGRESS:** the contract and CRC primitives on both processors are implemented in source. Complete frame encode/decode, DMA send/receive, session negotiation, sequence state, resident NeoGS command endpoint, fragment reassembly and service dispatch remain unimplemented.
-- **OPEN / MUST NOT GUESS:** final ATM and NeoGS staging-buffer addresses, NeoGS 4 MiB resident memory reservations, ATM paging/buffer placement and final DMA window integration. Project125 physical addresses/layout are reference material, not Project126 allocations.
+- **OPEN / MUST NOT GUESS:** ATM staging-buffer addresses, ATM paging/buffer placement and final DMA window integration. The NeoGS 4 MiB physical allocation is now assigned in docs/P126_NEOGS_MEMORY_MAP.md; NeoGS logical 64 KiB windows and hardware page selection remain open. Project125 physical addresses/layout are reference material, not Project126 allocations.
 - **Verification:** BUILD PASS for both CRC primitives and all three assembly units is recorded in run [42303465405](https://github.com/JTCyborg/Project126/actions/runs/42303465405). CRC self-test routines are assembled but have not been executed on target hardware. Complete DMA directions and frame transport are not implemented and are not claimed as Project126 HARDWARE PASS.
 
 ## Build pipeline and address-placement audit
@@ -32,10 +32,10 @@ This document records actual artifacts and their verification state; it is not a
   - `build/ATM_IPC.bin`, `build/ATM.lst`, `build/ATM.map`;
   - `build/P126_NGS_IPC.bin`, `build/NEOGS_IPC.lst`, `build/NEOGS_IPC.map`.
 - The script deletes stale outputs before assembling and fails if any product is missing.
-- NeoGS assembly translation unit: `neogs_sub/x86_cpu_state_assemble.asm`, version v0.5.0. It exports explicit start/end labels for the CPU-state and ALU modules and displays each module's start, end and size, plus the complete image end and size.
+- NeoGS assembly translation unit: `neogs_sub/x86_cpu_state_assemble.asm`, version v0.6.0. It exports explicit start/end labels for the CPU-state and ALU modules and displays each module's start, end and size, plus the complete image end and size.
 - NeoGS assembly-time assertions enforce non-empty modules, contiguous placement (ALU begins exactly at CPU-state end), and total image size no greater than 256 KiB.
 - ATM assembly translation unit exports the IPC module start/end/size and asserts a non-empty image no larger than 64 KiB.
-- **Address-space qualification:** both assembly origins are image-relative offsets, not final physical NeoGS/ATM load addresses. Runtime memory maps and the ATM integration/load point remain to be fixed.
+- **Address-space qualification:** both assembly origins are image-relative offsets, not final physical NeoGS/ATM load addresses. The guest x86 decode map and NeoGS physical allocation are now specified; the NeoGS logical 64 KiB window mapping, final physical load address and ATM integration/load point remain to be fixed.
 - CI publishes all three binaries, listings and maps plus the TR-DOS disk image in one audit artifact.
 
 ## Latest verified assembly
