@@ -128,7 +128,6 @@ p126_host_log_prefix:
 .p126_time_close:
         ld      a, ']'
         out     (c), a
-        ld      a, '[ '
         ; ATM tag is emitted as individual bytes below.
         ld      a, '['
         out     (c), a
