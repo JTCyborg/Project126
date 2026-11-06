@@ -480,3 +480,9 @@ This stage must be built and then exercised on NeoGS with boundary and data-rete
 - Added ATM and NeoGS byte-buffer validators for the fixed 18-byte frame header, magic `P126`, major/minor version, message type, reserved flag bits, exact declared frame size and CRC-16/CCITT-FALSE.
 - Both validators return carry clear with A=0 for a valid frame; on failure carry is set and A contains the ABI status code. The functions are non-reentrant and use private module scratch.
 - These routines validate a frame already present in local memory. They do not arm DMA, receive a hardware frame, maintain session/sequence state, or dispatch services.
+
+
+### ABI 1.0 validator branch-range follow-up
+
+- The first range correction converted the branches to generic BAD_FRAME exits, but CI run `42307162663` showed five remaining relative branches to the MAGIC/VERSION exits were still out of range.
+- Converted the remaining ATM validator branches to absolute `JP`. The failed runs `42306957900` and `42307162663` remain BUILD FAIL; a subsequent CI run is required to establish BUILD PASS.

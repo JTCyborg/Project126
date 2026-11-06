@@ -220,3 +220,9 @@ A committed source file is not automatically a successful runtime or hardware te
 - Validation covers minimum header length, P126 magic, ABI major/minor, legal message type, reserved flags, exact 18+payload length and full CRC-16/CCITT-FALSE.
 - Return convention: carry clear/A=0 valid; carry set/A=ABI status code invalid. Validators are non-reentrant.
 - Hardware DMA endpoint, transaction lifecycle, sequence/session state and BIOS service dispatch remain pending. This milestone alone does not claim DMA transport.
+
+
+## ABI 1.0 validator branch-range follow-up
+
+- CI run `42307162663` still failed at five ATM validator relative branches targeting the shared BAD_MAGIC/BAD_VERSION exits. The earlier correction did not cover those destinations.
+- Converted those remaining branches to absolute `JP`; validation semantics are unchanged. Build verification is pending on this commit. Do not treat either prior failed run as BUILD PASS.

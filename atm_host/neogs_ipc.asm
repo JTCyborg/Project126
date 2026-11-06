@@ -176,22 +176,22 @@ p126_ipc_validate_frame::
         pop     ix
         ld      a,(ix+0)
         cp      'P'
-        jr      nz,.p126_frame_magic
+        jp      nz,.p126_frame_magic
         ld      a,(ix+1)
         cp      '1'
-        jr      nz,.p126_frame_magic
+        jp      nz,.p126_frame_magic
         ld      a,(ix+2)
         cp      '2'
-        jr      nz,.p126_frame_magic
+        jp      nz,.p126_frame_magic
         ld      a,(ix+3)
         cp      '6'
-        jr      nz,.p126_frame_magic
+        jp      nz,.p126_frame_magic
         ld      a,(ix+4)
         cp      P126_IPC_MAJOR
-        jr      nz,.p126_frame_version
+        jp      nz,.p126_frame_version
         ld      a,(ix+5)
         cp      P126_IPC_MINOR
-        jr      nz,.p126_frame_version
+        jp      nz,.p126_frame_version
         ld      a,(ix+6)
         cp      P126_MSG_REQUEST
         jr      z,.p126_frame_type
