@@ -5,13 +5,13 @@ set "BUILD_RESULT=0"
 
 echo.
 echo ================================================================
-echo PROJECT 126 - ATM / NeoGS Z80 assembly build
+echo PROJECT 126 - ATM / NeoGS / TR-DOS disk build
 echo ================================================================
 echo.
-echo [BUILD] Starting Project126 assembly...
+echo [BUILD] Starting complete Project126 build...
 echo [DEBUG] Build script: tools\build_project126.ps1
-echo [DEBUG] NeoGS listing/map: build\NEOGS.lst / build\NEOGS.map
-echo [DEBUG] ATM listing/map: build\ATM.lst / build\ATM.map
+echo [DEBUG] TR-DOS image: disk_A.trd
+echo [DEBUG] Build copy: build\disk_A.trd
 echo.
 
 if not exist "tools\build_project126.ps1" (
@@ -21,13 +21,9 @@ if not exist "tools\build_project126.ps1" (
 )
 
 powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "tools\build_project126.ps1"
-if errorlevel 1 (
-    set "BUILD_RESULT=%ERRORLEVEL%"
-    if "%BUILD_RESULT%"=="0" set "BUILD_RESULT=1"
-    goto :failed
-)
+if errorlevel 1 goto :failed
 
-for %%F in ("build\NEOGS.lst" "build\NEOGS.map" "build\x86_cpu_state.bin" "build\ATM.lst" "build\ATM.map" "build\ATM_IPC.bin") do (
+for %%F in ("build\NEOGS.lst" "build\NEOGS.map" "build\x86_cpu_state.bin" "build\ATM.lst" "build\ATM.map" "build\ATM_IPC.bin" "build\ATM_DISK.lst" "build\ATM_DISK.map" "disk_A.trd" "build\disk_A.trd") do (
     if not exist "%%~F" (
         echo ERROR: Required build output missing: %%~F
         set "BUILD_RESULT=1"
@@ -37,10 +33,12 @@ for %%F in ("build\NEOGS.lst" "build\NEOGS.map" "build\x86_cpu_state.bin" "build
 
 echo.
 echo BUILD COMPLETED.
-dir "build\NEOGS.lst" "build\NEOGS.map" "build\x86_cpu_state.bin" "build\ATM.lst" "build\ATM.map" "build\ATM_IPC.bin"
+dir "disk_A.trd" "build\disk_A.trd" "build\ATM_DISK.lst" "build\ATM_DISK.map"
 goto :finish
 
 :failed
+set "BUILD_RESULT=%ERRORLEVEL%"
+if "%BUILD_RESULT%"=="0" set "BUILD_RESULT=1"
 echo.
 echo BUILD FAILED. Exit code: %BUILD_RESULT%
 

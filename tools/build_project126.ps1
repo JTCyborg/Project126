@@ -2,6 +2,8 @@ $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 $assembler = Join-Path $root "tools/sjasmplus.exe"
 $build = Join-Path $root "build"
+$diskImage = Join-Path $root "disk_A.trd"
+$diskAssembly = "atm_host/project126_disk.asm"
 
 $units = @(
     @{
@@ -14,7 +16,7 @@ $units = @(
         MaxBytes = 262144
     },
     @{
-        Name = "ATM"
+        Name = "ATM IPC"
         Source = "atm_host/neogs_ipc_assemble.asm"
         Binary = "ATM_IPC.bin"
         Listing = "ATM.lst"
@@ -41,7 +43,6 @@ try {
             throw "Assembly translation unit not found: $source"
         }
 
-        # Delete all stale products for this unit before invoking the assembler.
         Remove-Item -Force -ErrorAction SilentlyContinue $binary, $listing, $map
 
         Write-Host "[BUILD] Project126 $($unit.Name) assembly"
@@ -67,8 +68,80 @@ try {
         Write-Host "[BUILD] $($unit.Version) bytes=$size"
         Write-Host "[BUILD] Listing bytes=$((Get-Item $listing).Length)"
         Write-Host "[BUILD] Symbol map bytes=$((Get-Item $map).Length)"
-        Write-Host "[BUILD] Placement audit: build/$($unit.Listing) ; build/$($unit.Map)"
     }
+
+    # The TR-DOS image is always rebuilt from scratch. Never keep an old disk
+    # image if the assembler or a required project file fails.
+    Remove-Item -Force -ErrorAction SilentlyContinue $diskImage
+    $diskListing = Join-Path $build "ATM_DISK.lst"
+    $diskMap = Join-Path $build "ATM_DISK.map"
+    Remove-Item -Force -ErrorAction SilentlyContinue $diskListing, $diskMap
+
+    if (-not (Test-Path (Join-Path $root $diskAssembly))) {
+        throw "TR-DOS disk assembly source is missing: $diskAssembly"
+    }
+
+    Write-Host "[BUILD] Creating TR-DOS disk image disk_A.trd"
+    & $assembler --msg=all "--lst=build/ATM_DISK.lst" --lstlab=sort "--sym=build/ATM_DISK.map" $diskAssembly
+    if ($LASTEXITCODE -ne 0) {
+        throw "TR-DOS image assembly failed with exit code $LASTEXITCODE"
+    }
+
+    foreach ($path in @($diskImage, $diskListing, $diskMap)) {
+        if (-not (Test-Path $path)) {
+            throw "Required TR-DOS output was not produced: $path"
+        }
+    }
+
+    $diskBytes = (Get-Item $diskImage).Length
+    if ($diskBytes -ne 655360) {
+        throw "Unexpected TR-DOS image size: $diskBytes bytes (expected 655360-byte 80-track, 2-side, 16-sector TRD)."
+    }
+
+    [byte[]]$disk = [System.IO.File]::ReadAllBytes($diskImage)
+    $requiredEntries = @(
+        @{ Name = "BOOT    B"; Label = "BOOT.B" },
+        @{ Name = "PROJ126 C"; Label = "PROJ126.C" },
+        @{ Name = "X86CORE C"; Label = "X86CORE.C" }
+    )
+
+    foreach ($required in $requiredEntries) {
+        [byte[]]$entryName = [System.Text.Encoding]::ASCII.GetBytes($required.Name)
+        $found = $false
+        for ($offset = 0; $offset -lt (128 * 16); $offset += 16) {
+            $match = $true
+            for ($i = 0; $i -lt $entryName.Length; $i++) {
+                if ($disk[$offset + $i] -ne $entryName[$i]) {
+                    $match = $false
+                    break
+                }
+            }
+            if ($match) {
+                $found = $true
+                $sectors = [int]$disk[$offset + 13]
+                $length = [int]$disk[$offset + 11] + ([int]$disk[$offset + 12] -shl 8)
+                if ($sectors -lt 1 -or $length -lt 1) {
+                    throw ("TR-DOS entry {0} has invalid length/sector metadata." -f $required.Label)
+                }
+                Write-Host ("[TRD] {0}: {1} bytes, {2} sectors" -f $required.Label, $length, $sectors)
+                break
+            }
+        }
+        if (-not $found) {
+            throw ("Required TR-DOS directory entry is missing: {0}" -f $required.Label)
+        }
+    }
+
+    $buildDisk = Join-Path $build "disk_A.trd"
+    Copy-Item -Force $diskImage $buildDisk
+    if ((Get-Item $buildDisk).Length -ne 655360) {
+        throw "Copied build/disk_A.trd failed size verification."
+    }
+
+    Write-Host "[BUILD] P126_TRDOS_IMAGE v0.1.0 bytes=$diskBytes"
+    Write-Host "[BUILD] Disk listing bytes=$((Get-Item $diskListing).Length)"
+    Write-Host "[BUILD] Disk map bytes=$((Get-Item $diskMap).Length)"
+    Write-Host "[BUILD] TR-DOS image: build/disk_A.trd"
 }
 finally {
     Pop-Location
