@@ -1,0 +1,49 @@
+name: NeoGS Z80 assembly
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "neogs_sub/**"
+      - "tools/sjasmplus.exe"
+      - ".github/workflows/neogs-assembly.yml"
+  pull_request:
+    paths:
+      - "neogs_sub/**"
+      - "tools/sjasmplus.exe"
+      - ".github/workflows/neogs-assembly.yml"
+  workflow_dispatch:
+
+jobs:
+  assemble-x86-state:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare output directory
+        shell: pwsh
+        run: New-Item -ItemType Directory -Force build | Out-Null
+
+      - name: Assemble x86 CPU state module
+        shell: pwsh
+        run: |
+          & .\tools\sjasmplus.exe --raw=build\x86_cpu_state.bin --sym=build\x86_cpu_state.sym neogs_sub\x86_cpu_state_assemble.asm
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Enforce NeoGS firmware size limit
+        shell: pwsh
+        run: |
+          $size = (Get-Item build\x86_cpu_state.bin).Length
+          Write-Host "[BUILD] X86_CPU_STATE_ASSEMBLY v0.1.0 bytes=$size"
+          if ($size -le 0 -or $size -gt 262144) {
+            throw "Invalid module size: $size (expected 1..262144 bytes)"
+          }
+
+      - name: Publish assembly artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: project126-x86-state-assembly
+          path: |
+            build/x86_cpu_state.bin
+            build/x86_cpu_state.sym
