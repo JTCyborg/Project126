@@ -60,10 +60,11 @@ These commands are valid only while the Project126 resident firmware owns GSCOM.
 
 1. ATM sends E1h through GSCOM.
 2. NeoGS validates command/state, selects ZX DMA, programs its own source address and enables DMA, then clears CBIT to signal READY.
-3. ATM waits for CBIT=0, discards exactly one dummy aperture read, then reads exactly the announced frame byte count into its destination buffer.
-4. ATM sends FFh through GSCOM.
-5. NeoGS observes CBIT=1, disables DMA and clears CBIT to acknowledge completion.
-6. ATM waits for CBIT=0 before releasing the destination buffer.
+3. ATM waits for CBIT=0, discards exactly one dummy aperture read, then reads the fixed 18-byte header first.
+4. ATM validates magic/version/type/flags and checks that 18 + payload_length fits the 16 KiB aperture and destination capacity. If invalid, it terminates the DMA transaction immediately with FFh and discards the frame.
+5. For a valid header, ATM reads exactly payload_length more bytes; it then sends FFh through GSCOM.
+6. NeoGS observes CBIT=1, disables DMA and clears CBIT to acknowledge completion.
+7. ATM waits for CBIT=0 before releasing the destination buffer, then validates the complete frame CRC before dispatch.
 
 A receiver validates the fixed header and declared payload length before copying into a final service buffer. It may DMA first into a bounded staging buffer; the staging address is not yet assigned.
 
