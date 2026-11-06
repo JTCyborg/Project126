@@ -1,11 +1,11 @@
 # Project126 — NeoGS physical RAM map
 
-**Revision:** 0.1 (initial implementation allocation)  
+**Revision:** 0.2 (guest RAM bank-window access contract)  
 **Status:** build-time allocation contract; physical paging/DMA access still requires hardware validation.
 
 ## Scope
 
-This document assigns byte ranges in the NeoGS 4 MiB physical RAM. It does not define the Z80's 64 KiB logical window mapping, DMA register encoding, ATM host buffer addresses, or the guest 8086 1 MiB address map. Those are separate contracts.
+This document assigns byte ranges in the NeoGS 4 MiB physical RAM. It defines the logical window contract needed by the first guest-RAM memory backend. DMA register encoding and ATM host buffer addresses remain separate contracts.
 
 The allocation unit is a 16 KiB physical page. There are 256 pages (00–FF), total 0x400000 bytes. All ranges are half-open: start included, limit excluded.
 
@@ -23,6 +23,12 @@ The allocation unit is a 16 KiB physical page. There are 256 pages (00–FF), to
 | 44–83 | 110000–20FFFF | 1 MiB | Guest x86 RAM backing store. This is a physical NeoGS allocation, not the guest logical address map. |
 | 84–FF | 210000–3FFFFF | 1.9375 MiB | Unassigned expansion reserve. No subsystem may consume it without updating this map and its assertions. |
 
+## NeoGS logical window contract
+
+The resident memory backend reserves logical window WIN3 (C000h–FFFFh) as a banked physical-RAM aperture. The page is selected by writing the physical 16 KiB page number to NeoGS port 23h (WIN3). Guest RAM physical pages 44h–83h are therefore reachable as a sequence of bank selections. The CPU code, resident data and stack used while this backend is active must remain in WIN0–WIN2. WIN3 is volatile and is not restored after a memory access; it is exclusively owned by the memory backend. Interrupt handlers that can run during a banked access must also reside outside WIN3 and must not use WIN3 as their own data window.
+
+This is a logical execution contract, not a claim that the whole resident kernel fits in three windows. Kernel paging/banking beyond the fixed resident entry and memory-access critical section remains a separate linker/runtime design task. The implementation must not switch WIN0–WIN2 while executing code from those windows.
+
 ## Ownership and rules
 
 1. The kernel region is the resident code/data/stack budget. Its 256 KiB ceiling is hard; the system BIOS slot is independent.
@@ -31,7 +37,7 @@ The allocation unit is a 16 KiB physical page. There are 256 pages (00–FF), to
 4. ABI 1.0 uses a maximum 16 KiB DMA frame. Page 42 is the NeoGS-side DMA backing page. Larger payloads use ABI fragmentation.
 5. The IPC scratch page is reserved RAM and must not be exposed as a second concurrent DMA transaction.
 6. Guest RAM backing is a full 1 MiB allocation. The guest 8086 decoder may map RAM, ROM overlays, VGA apertures and devices differently; this does not imply the conventional IBM PC 640 KiB + UMA layout.
-7. ATM-side DMA source/destination placement remains open. ATM paging and the actual DMA aperture must be verified before assigning an address.
+7. The banked guest-RAM helper accesses the guest backing linearly at physical offset 110000h + guest physical address. VGA/ROM overlays are dispatched before this helper; it deliberately rejects those regions. ATM-side DMA source/destination placement remains open. ATM paging and the actual DMA aperture must be verified before assigning an address.
 8. Physical page numbers are allocation identifiers only. Actual NeoGS logical windows and DMA register programming must follow hardware documentation; do not infer a direct Z80 address from a physical page number.
 
 ## Build enforcement
@@ -43,7 +49,7 @@ The build can prove internal consistency and fit within 4 MiB. It cannot prove p
 ## Deliberately unresolved
 
 - Guest x86 logical 1 MiB address map: RAM/ROM overlays, VGA apertures, option ROM and device windows.
-- NeoGS logical 64 KiB window arrangement and page-register values.
+- WIN3 is assigned as the banked memory aperture (page selected through port 23h); final resident kernel placement and WIN0–WIN2 paging policy remain to be linked and hardware-validated.
 - DMA register address encoding and exact DMA transaction setup.
 - ATM host staging-buffer addresses and host paging state.
 - Guest-visible system-board profile, I/O ports, PIC/PIT/keyboard/RTC.

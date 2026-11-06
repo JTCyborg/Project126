@@ -1,13 +1,18 @@
 ; PROJECT126 / X86_CPU_STATE v0.2.0
 ; PCem references: PCem/808x.c resetx86(), PCem/cpu.h CPU_8086.
 ; Intel 8086 Real Mode architectural state and 20-bit physical address helper.
-; This module does not decide the still-open guest memory-region map.
+; Guest physical decode and banked NeoGS guest-RAM access are implemented here.
 ;
 ; API:
 ;   x86_cpu_reset       Reset vector FFFF:0000, FLAGS=0002h.
 ;   x86_cpu_calc_phys   IN HL=segment, DE=offset.
 ;                       OUT x86_phys_addr[0..2], little endian; A=high nibble.
 ;                       Physical address wraps at 1 MiB (8086 bus, no A20).
+;   x86_mem_classify    IN x86_phys_addr[0..2], OUT A=region ID.
+;   x86_guest_ram_read8 IN x86_phys_addr[0..2], OUT A=byte, carry=error.
+;   x86_guest_ram_write8 IN x86_phys_addr[0..2], A=byte, carry=error.
+;                       Uses WIN3 (C000h..FFFFh) as a dedicated bank window.
+;                       Code, stack and interrupt handlers must remain WIN0..2.
 ;   x86_cpu_emit_version Emits the executing component version to NeoGS #EF.
 ;   x86_cpu_state_selftest Carry clear=pass, set=fail. Destructive reset test.
 
@@ -131,6 +136,77 @@ x86_mem_classify:
         ld      a,P126_X86_MEM_RAM_HIGH
         ret
 
+
+; -------------------------------------------------------------------------
+; Guest RAM backing access
+;
+; Guest RAM allocation starts at NeoGS physical page 44h.
+; Guest byte address maps linearly to physical offset 110000h + guest address.
+; WIN3 is a permanently reserved bank aperture; its current page is volatile.
+; These routines do not restore WIN3's previous page because the page port is
+; write-only and WIN3 is owned exclusively by this memory backend.
+;
+; Entry address: x86_phys_addr = low, middle, high-nibble.
+; Read returns byte in A, carry clear. Non-RAM overlay regions return carry.
+; Write takes byte in A, carry clear on success; non-RAM returns carry.
+; -------------------------------------------------------------------------
+
+x86_guest_ram_read8:
+        call    x86_mem_classify
+        cp      P126_X86_MEM_RAM_LOW
+        jr      z,.read_map
+        cp      P126_X86_MEM_RAM_HIGH
+        jr      nz,.read_reject
+.read_map:
+        call    x86_guest_ram_select_page
+        ld      a,(hl)
+        or      a
+        ret
+.read_reject:
+        scf
+        ret
+
+x86_guest_ram_write8:
+        ld      (x86_mem_data),a
+        call    x86_mem_classify
+        cp      P126_X86_MEM_RAM_LOW
+        jr      z,.write_map
+        cp      P126_X86_MEM_RAM_HIGH
+        jr      nz,.write_reject
+.write_map:
+        call    x86_guest_ram_select_page
+        ld      a,(x86_mem_data)
+        ld      (hl),a
+        or      a
+        ret
+.write_reject:
+        scf
+        ret
+
+; Select WIN3 physical page and return HL=C000h|(guest_address&3FFFh).
+; Physical page = 44h + guest_address[19:14].
+; Clobbers AF, BC, HL; does not touch DE or guest CPU registers.
+x86_guest_ram_select_page:
+        ld      a,(x86_phys_addr+2)
+        add     a,a
+        add     a,a
+        add     a,P126_NGS_GUEST_RAM_PAGE_BASE
+        ld      b,a
+        ld      a,(x86_phys_addr+1)
+        rrca
+        rrca
+        and     #03
+        add     a,b
+        out     (P126_NGS_BANK_WINDOW_PORT),a
+
+        ld      a,(x86_phys_addr+1)
+        and     #3F
+        or      #C0
+        ld      h,a
+        ld      a,(x86_phys_addr)
+        ld      l,a
+        ret
+
 ; Emit a runtime identity, not merely an assembler-time banner.
 x86_cpu_emit_version:
         push    af
@@ -149,7 +225,7 @@ x86_cpu_emit_version:
         ret
 
 x86_cpu_version_text:
-        defb    "[P126 X86_CPU_STATE v0.1.0]",13,10,0
+        defb    "[P126 X86_CPU_STATE v0.3.0]",13,10,0
 
 ; Executable target-side test vectors. Does not require BIOS, VGA or a
 ; selected memory-region map. It must be run before marking BUILD/HARDWARE PASS.
@@ -341,6 +417,7 @@ x86_halted:      db 0
 x86_pending_irq: db 0
 x86_pending_nmi: db 0
 x86_phys_addr: db 0,0,0
+x86_mem_data:  db 0
 
 x86_expected_zero:  db 0,0,0
 x86_expected_fffff: db #FF,#FF,#0F

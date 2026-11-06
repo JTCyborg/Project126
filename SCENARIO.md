@@ -438,3 +438,18 @@ Project126 не должен повторять практику, при кот�
 Профиль портов и совместимых устройств определён в docs/P126_ATM_PC_PROFILE.md, а машинные константы и проверки — в shared/p126_x86_machine_map.inc. Виртуальные порты обслуживаются программными моделями NeoGS; физические ресурсы ATM доступны только через DMA/IPC ABI 1.0. Неизвестные порты читаются как FFh и игнорируют запись.
 
 Карта и классификатор физического адреса подключены к NeoGS assembly audit unit. Runtime handlers памяти и устройств ещё не реализованы; аппаратный/эмуляторный PASS не заявляется.
+
+
+## 14. NeoGS guest-RAM bank window and first memory backend
+
+The first guest-RAM backend uses the physical allocation already assigned to guest RAM: NeoGS pages 44h–83h (1 MiB), corresponding linearly to guest physical address + 110000h. NeoGS logical WIN3, address C000h–FFFFh, is reserved as a 16 KiB banked aperture. The firmware selects a physical page by writing its page number to NeoGS WIN3 register port 23h. The helper computes page 44h + guest_address[19:14] and offset C000h + guest_address[13:0].
+
+WIN3 is volatile and owned exclusively by the guest memory backend. Resident code, data, stack and any interrupt handler that can run during a banked access must stay in WIN0–WIN2. The helper does not attempt to restore the prior WIN3 page because the page register is write-only. This logical-window contract is fixed for the initial backend; final kernel placement/linking across WIN0–WIN2 remains a later integration task.
+
+Implemented in `neogs_sub/x86_cpu_state.asm`:
+- `x86_guest_ram_read8`: reads one guest RAM byte; returns byte in A, carry clear on success.
+- `x86_guest_ram_write8`: writes A to one guest RAM byte; carry clear on success.
+- Both accept the 20-bit address in `x86_phys_addr[0..2]`, reject non-RAM decode regions, and use WIN3 bank switching.
+- The helpers do not yet implement ROM overlays, VGA aperture/VRAM banking, word/string access, DMA transfer, or runtime initialization of the WIN0–WIN2 kernel map.
+
+This stage must be built and then exercised on NeoGS with boundary and data-retention tests before it can be marked as emulator/hardware PASS.

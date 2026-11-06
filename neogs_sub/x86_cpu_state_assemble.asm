@@ -1,4 +1,4 @@
-; PROJECT126 / X86 ASSEMBLY UNIT v0.6.1
+; PROJECT126 / X86 ASSEMBLY UNIT v0.7.0
 ; Address-space audit unit, assembled at logical image origin 0000h.
 ; The listing and symbol map are mandatory build products.
 ; These offsets describe the assembled module image, not yet the final
@@ -15,6 +15,9 @@
         DISPLAY "P126_X86_VGABIOS=", /H, P126_X86_VGABIOS_BASE
         DISPLAY "P126_X86_RAM_HIGH=", /H, P126_X86_RAM_HIGH_BASE
         DISPLAY "P126_X86_SYSBIOS=", /H, P126_X86_SYSBIOS_BASE
+        DISPLAY "P126_NGS_BANK_WINDOW_BASE=", /H, P126_NGS_BANK_WINDOW_BASE
+        DISPLAY "P126_NGS_BANK_WINDOW_PORT=", /H, P126_NGS_BANK_WINDOW_PORT
+        DISPLAY "P126_NGS_GUEST_RAM_PAGE_BASE=", /H, P126_NGS_GUEST_RAM_PAGE_BASE
         DISPLAY "P126_NGS_RAM_BYTES=", /H, P126_NGS_RAM_SIZE
         DISPLAY "P126_NGS_KERNEL_BASE=", /H, P126_NGS_KERNEL_BASE
         DISPLAY "P126_NGS_SYSBIOS_BASE=", /H, P126_NGS_SYSBIOS_BASE

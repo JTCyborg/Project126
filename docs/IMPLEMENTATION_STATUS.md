@@ -176,3 +176,12 @@ A committed source file is not automatically a successful runtime or hardware te
 - ATM IPC and NeoGS IPC audit units also assembled successfully. TR-DOS disk packaging completed at 655,360 bytes; BIOS1.C, BIOS2.C and COMPAQ.C were each verified as 8,192 bytes / 32 sectors. Artifact: `project126-trdos-disk-and-build` (run 42305863741).
 - The disk packaging assembler emitted one pre-existing path-format warning for the generated source filename containing a backslash; no assembly errors occurred. GitHub runner Node.js deprecation notices are unrelated to project source.
 - The new classifier has target-side boundary test vectors in source, but the self-test has not yet been executed on NeoGS. No guest memory read/write runtime, BIOS POST, VGA output, emulator PASS or hardware PASS is claimed.
+
+
+## Guest RAM banked access layer v0.1
+
+- Assigned NeoGS logical WIN3 (C000h–FFFFh) as the dedicated 16 KiB physical RAM bank window, selected through port 23h. WIN0–WIN2 are reserved for executing resident code, data, stack and interrupt handlers during a banked access.
+- Added `x86_guest_ram_select_page`, `x86_guest_ram_read8` and `x86_guest_ram_write8` to the NeoGS x86 state module. Guest RAM backing is linear: NeoGS physical offset 110000h + 20-bit guest physical address, pages 44h–83h.
+- RAM helpers check the guest address decoder and reject VGA/ROM overlay regions rather than incorrectly treating them as RAM. They do not yet implement VGA/ROM access.
+- Updated `docs/P126_NEOGS_MEMORY_MAP.md` and `SCENARIO.md` with the WIN3 contract and execution constraints.
+- **Verification status:** source-level only until CI assembles this revision. No target-side page-switch, read/write retention, interrupt-safety or guest execution test is claimed. Final resident placement in WIN0–WIN2 remains an integration requirement.
