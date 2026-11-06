@@ -1,4 +1,4 @@
-; PROJECT126 / X86_CPU_STATE v0.1.0
+; PROJECT126 / X86_CPU_STATE v0.2.0
 ; PCem references: PCem/808x.c resetx86(), PCem/cpu.h CPU_8086.
 ; Intel 8086 Real Mode architectural state and 20-bit physical address helper.
 ; This module does not decide the still-open guest memory-region map.
@@ -88,6 +88,49 @@ x86_cpu_calc_phys:
         or      a                       ; return carry clear
         ret
 
+
+; Classify the 20-bit physical address already stored in x86_phys_addr.
+; IN:  x86_phys_addr = low byte, middle byte, high nibble.
+; OUT: A = P126_X86_MEM_* region ID.
+; The 8086 address helper masks to 20 bits, so all inputs are in range.
+x86_mem_classify:
+        ld      a,(x86_phys_addr+2)
+        cp      #0A
+        jr      c,.ram_low
+        cp      #0C
+        jr      c,.vga_aperture
+        cp      #0D
+        jr      z,.segment_c
+        cp      #0F
+        jr      c,.ram_high
+        jr      z,.segment_f
+        ; Defensive fallback; unreachable for a valid 20-bit address.
+        ld      a,P126_X86_MEM_RAM_LOW
+        ret
+.segment_c:
+        ld      a,(x86_phys_addr+1)
+        cp      #80
+        jr      c,.vga_bios
+        jr      .ram_high
+.segment_f:
+        ld      a,(x86_phys_addr+1)
+        cp      #E0
+        jr      c,.ram_high
+        ld      a,P126_X86_MEM_SYSBIOS
+        ret
+.ram_low:
+        ld      a,P126_X86_MEM_RAM_LOW
+        ret
+.vga_aperture:
+        ld      a,P126_X86_MEM_VGA_APERTURE
+        ret
+.vga_bios:
+        ld      a,P126_X86_MEM_VGABIOS
+        ret
+.ram_high:
+        ld      a,P126_X86_MEM_RAM_HIGH
+        ret
+
 ; Emit a runtime identity, not merely an assembler-time banner.
 x86_cpu_emit_version:
         push    af
@@ -173,6 +216,79 @@ x86_cpu_state_selftest:
         call    x86_cpu_check_phys
         jr      nz,.fail
 
+        ; Guest memory decode boundary tests.
+        ld      hl,x86_test_9ffff
+        ld      de,x86_phys_addr
+        ld      bc,3
+        ldir
+        call    x86_mem_classify
+        cp      P126_X86_MEM_RAM_LOW
+        jr      nz,.fail
+
+        ld      hl,x86_test_a0000
+        ld      de,x86_phys_addr
+        ld      bc,3
+        ldir
+        call    x86_mem_classify
+        cp      P126_X86_MEM_VGA_APERTURE
+        jr      nz,.fail
+
+        ld      hl,x86_test_bffff
+        ld      de,x86_phys_addr
+        ld      bc,3
+        ldir
+        call    x86_mem_classify
+        cp      P126_X86_MEM_VGA_APERTURE
+        jr      nz,.fail
+
+        ld      hl,x86_test_c0000
+        ld      de,x86_phys_addr
+        ld      bc,3
+        ldir
+        call    x86_mem_classify
+        cp      P126_X86_MEM_VGABIOS
+        jr      nz,.fail
+
+        ld      hl,x86_test_c7fff
+        ld      de,x86_phys_addr
+        ld      bc,3
+        ldir
+        call    x86_mem_classify
+        cp      P126_X86_MEM_VGABIOS
+        jr      nz,.fail
+
+        ld      hl,x86_test_c8000
+        ld      de,x86_phys_addr
+        ld      bc,3
+        ldir
+        call    x86_mem_classify
+        cp      P126_X86_MEM_RAM_HIGH
+        jr      nz,.fail
+
+        ld      hl,x86_test_fdfff
+        ld      de,x86_phys_addr
+        ld      bc,3
+        ldir
+        call    x86_mem_classify
+        cp      P126_X86_MEM_RAM_HIGH
+        jr      nz,.fail
+
+        ld      hl,x86_test_fe000
+        ld      de,x86_phys_addr
+        ld      bc,3
+        ldir
+        call    x86_mem_classify
+        cp      P126_X86_MEM_SYSBIOS
+        jr      nz,.fail
+
+        ld      hl,x86_test_fffff
+        ld      de,x86_phys_addr
+        ld      bc,3
+        ldir
+        call    x86_mem_classify
+        cp      P126_X86_MEM_SYSBIOS
+        jr      nz,.fail
+
         pop     hl
         pop     de
         pop     bc
@@ -230,3 +346,14 @@ x86_expected_zero:  db 0,0,0
 x86_expected_fffff: db #FF,#FF,#0F
 x86_expected_179b8: db #B8,#79,#01
 x86_expected_ffff0: db #F0,#FF,#0F
+
+; Physical address boundary vectors: low, middle, high-nibble bytes.
+x86_test_9ffff:  db #FF,#FF,#09
+x86_test_a0000:  db #00,#00,#0A
+x86_test_bffff:  db #FF,#FF,#0B
+x86_test_c0000:  db #00,#00,#0C
+x86_test_c7fff:  db #FF,#7F,#0C
+x86_test_c8000:  db #00,#80,#0C
+x86_test_fdfff:  db #FF,#DF,#0F
+x86_test_fe000:  db #00,#E0,#0F
+x86_test_fffff:  db #FF,#FF,#0F

@@ -1,4 +1,4 @@
-; PROJECT126 / X86 ASSEMBLY UNIT v0.5.1
+; PROJECT126 / X86 ASSEMBLY UNIT v0.6.0
 ; Address-space audit unit, assembled at logical image origin 0000h.
 ; The listing and symbol map are mandatory build products.
 ; These offsets describe the assembled module image, not yet the final
@@ -6,9 +6,15 @@
 
         ORG     0
 
-; Physical NeoGS RAM allocation contract (separate from guest x86 map).
+; Physical NeoGS and guest x86 memory allocation contracts.
+        INCLUDE "shared/p126_x86_machine_map.inc"
         INCLUDE "shared/p126_neogs_memory_map.inc"
 
+        DISPLAY "P126_X86_RAM_BYTES=", /H, P126_X86_RAM_BACKING_SIZE
+        DISPLAY "P126_X86_VGA_APERTURE=", /H, P126_X86_VGA_APERTURE_BASE
+        DISPLAY "P126_X86_VGABIOS=", /H, P126_X86_VGABIOS_BASE
+        DISPLAY "P126_X86_RAM_HIGH=", /H, P126_X86_RAM_HIGH_BASE
+        DISPLAY "P126_X86_SYSBIOS=", /H, P126_X86_SYSBIOS_BASE
         DISPLAY "P126_NGS_RAM_BYTES=", /H, P126_NGS_RAM_SIZE
         DISPLAY "P126_NGS_KERNEL_BASE=", /H, P126_NGS_KERNEL_BASE
         DISPLAY "P126_NGS_SYSBIOS_BASE=", /H, P126_NGS_SYSBIOS_BASE

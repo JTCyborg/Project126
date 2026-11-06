@@ -157,3 +157,14 @@ A committed source file is not automatically a successful runtime or hardware te
 - This is a physical RAM allocation only. It does not assign guest x86 logical ROM/RAM/device addresses, NeoGS logical Z80 windows, ATM staging addresses or DMA register encoding.
 - Build integration: the NeoGS assembly translation unit includes the map constants and checks all region boundaries, adjacency, capacities and the 4 MiB limit with assembler ASSERTs. Existing NEOGS.lst/NEOGS.map therefore include the allocation symbols.
 - Physical paging and DMA hardware tests are not claimed. BUILD PASS is pending CI for this commit.
+
+
+## Guest 8086 memory map and ATM-PC/XT hybrid profile v0.1
+
+- Profile: docs/P126_ATM_PC_PROFILE.md; machine-readable guest map and port constants: shared/p126_x86_machine_map.inc.
+- Guest physical space: 1 MiB, 20-bit wrap, no A20. Full 1 MiB NeoGS guest-RAM backing remains allocated. Read/write decode at reset: 00000–9FFFF RAM (640 KiB); A0000–BFFFF VGA aperture (128 KiB); C0000–C7FFF VGA BIOS ROM (32 KiB); C8000–FDFFF upper RAM (216 KiB); FE000–FFFFF system BIOS ROM (8 KiB). Exposed guest RAM total: 856 KiB.
+- This is a custom ATM-PC/XT hybrid. The 216 KiB C8000–FDFFF region is intentionally RAM, not a conventional PC option-ROM/UMA reservation. VGA aperture follows PCem VGA GC register 6 mapping; 256 KiB VRAM is separate backing.
+- The current 8 KiB XT-compatible system BIOS images map at FE000–FFFFF; reset vector FFFF0 is image offset 1FF0. The 256 KiB NeoGS BIOS slot is storage capacity, not a linear guest ROM aperture. Images larger than 8 KiB need a separate banking/window policy.
+- Added x86_mem_classify and target-side boundary vectors for low RAM, VGA aperture, VGA BIOS, upper RAM and system BIOS. Runtime memory handlers are not implemented.
+- I/O decode profile reserves PC/XT-style DMA/PIC/PIT/PPI/VGA/FDC and ATA task-file ranges; DS12887-compatible 70h/71h is a custom extension with ATM as the physical time source. All guest I/O remains software-modeled; no direct NeoGS physical IN/OUT.
+- BUILD PASS pending CI for the current commit; target execution of the new classifier and any guest BIOS POST/boot are not claimed.
