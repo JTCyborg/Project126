@@ -26,10 +26,10 @@ p126_neogs_startup::
         ld      hl,(p126_neogs_file_length)
         ld      a,h
         or      a
-        jr      nz,p126_neogs_boot_file_bad
+        jp      nz,p126_neogs_boot_file_bad
         ld      a,l
         or      a
-        jr      z,p126_neogs_boot_file_bad
+        jp      z,p126_neogs_boot_file_bad
 
         ; Reset NeoGS into the stock GS105a ROM before #20/#14/#13.
         ld      a,#80
