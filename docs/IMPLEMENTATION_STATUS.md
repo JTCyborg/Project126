@@ -168,3 +168,11 @@ A committed source file is not automatically a successful runtime or hardware te
 - Added x86_mem_classify and target-side boundary vectors for low RAM, VGA aperture, VGA BIOS, upper RAM and system BIOS. Runtime memory handlers are not implemented.
 - I/O decode profile reserves PC/XT-style DMA/PIC/PIT/PPI/VGA/FDC and ATA task-file ranges; DS12887-compatible 70h/71h is a custom extension with ATM as the physical time source. All guest I/O remains software-modeled; no direct NeoGS physical IN/OUT.
 - BUILD PASS pending CI for the current commit; target execution of the new classifier and any guest BIOS POST/boot are not claimed.
+
+
+### Verification — guest memory map and ATM-PC/XT hybrid profile
+
+- **BUILD PASS:** GitHub Actions run [42305863741](https://github.com/JTCyborg/Project126/actions/runs/42305863741), source commit `4e4edf3bbe25f6ffbe2e71cb6d51f411f546b440`. NeoGS assembly completed with 0 errors and 0 warnings; the new memory map constants and classifier assembled into `build/x86_cpu_state.bin` (1,416 bytes), with updated `NEOGS.lst` and `NEOGS.map`.
+- ATM IPC and NeoGS IPC audit units also assembled successfully. TR-DOS disk packaging completed at 655,360 bytes; BIOS1.C, BIOS2.C and COMPAQ.C were each verified as 8,192 bytes / 32 sectors. Artifact: `project126-trdos-disk-and-build` (run 42305863741).
+- The disk packaging assembler emitted one pre-existing path-format warning for the generated source filename containing a backslash; no assembly errors occurred. GitHub runner Node.js deprecation notices are unrelated to project source.
+- The new classifier has target-side boundary test vectors in source, but the self-test has not yet been executed on NeoGS. No guest memory read/write runtime, BIOS POST, VGA output, emulator PASS or hardware PASS is claimed.
