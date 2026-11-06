@@ -1,0 +1,185 @@
+# file opened: p126_bootstrap_assemble.asm
+  1   0000              ; =========================================================================
+  2   0000              ; PROJECT126 — stage-0 bootstrap assembly unit, executable at 4000h.
+  3   0000              ; =========================================================================
+  4   0000                      DEVICE ZXSPECTRUM128
+  5   0000                      ORG #4000
+  6   4000                      INCLUDE "neogs_sub/p126_bootstrap.asm"
+# file opened: p126_bootstrap.asm
+  1+  4000              ; =========================================================================
+  2+  4000              ; PROJECT126 — GS105a stage-0 bootstrap
+  3+  4000              ; Loaded at 4000h by ROM command #14, entered by ROM command #13.
+  4+  4000              ; Receives one bounded resident image over the legacy DBIT byte channel.
+  5+  4000              ; DBIT/GSDAT are used here only for ROM/bootstrap compatibility; ABI 1.0
+  6+  4000              ; application payloads use DMA after the resident image has started.
+  7+  4000              ; =========================================================================
+  8+  4000              P126_B_ZXSTAT EQU #04
+  9+  4000              P126_B_ZXDATRD EQU #02
+ 10+  4000              P126_B_ZXDATWR EQU #03
+ 11+  4000              P126_B_DMA_MOD EQU #1B
+ 12+  4000              P126_B_DMA_CST EQU #1F
+ 13+  4000              P126_B_GSCFG0 EQU #0F
+ 14+  4000              P126_B_MPAGE EQU #00
+ 15+  4000              P126_B_MPAGEEX EQU #10
+ 16+  4000              P126_B_READY EQU #A1
+ 17+  4000              P126_B_LENGTH_ACK EQU #A3
+ 18+  4000              P126_B_ERROR EQU #E1
+ 19+  4000
+ 20+  4000              p126_bootstrap_start:
+ 21+  4000 F3                   di
+ 22+  4001 3E 42                ld      a,'B'
+ 23+  4003 D3 EF                out     (#EF),a
+ 24+  4005 3E 01                ld      a,1
+ 25+  4007 D3 1B                out     (P126_B_DMA_MOD),a
+ 26+  4009 AF                   xor     a
+ 27+  400A D3 1F                out     (P126_B_DMA_CST),a
+ 28+  400C DB 0F                in      a,(P126_B_GSCFG0)
+ 29+  400E E6 FD                and     #FD
+ 30+  4010 F6 09                or      #09
+ 31+  4012 D3 0F                out     (P126_B_GSCFG0),a
+ 32+  4014 AF                   xor     a
+ 33+  4015 D3 20                out     (#20),a                ; WIN0 -> physical page 00
+ 34+  4017 3E 80                ld      a,#80
+ 35+  4019 D3 00                out     (P126_B_MPAGE),a
+ 36+  401B 3E 01                ld      a,#01
+ 37+  401D D3 10                out     (P126_B_MPAGEEX),a
+ 38+  401F 31 FE FF             ld      sp,#FFFE
+ 39+  4022 01 02 FF             ld      bc,#FF02
+ 40+  4025 ED 78                in      a,(c)
+ 41+  4027 3E A1                ld      a,P126_B_READY
+ 42+  4029 CD 70 40             call    p126_boot_send_byte
+ 43+  402C CD 9C 40             call    p126_boot_receive_byte
+ 44+  402F 5F                   ld      e,a
+ 45+  4030 CD 9C 40             call    p126_boot_receive_byte
+ 46+  4033 57                   ld      d,a
+ 47+  4034 7A                   ld      a,d
+ 48+  4035 B3                   or      e
+ 49+  4036 CA 67 40             jp      z,p126_bootstrap_error
+ 50+  4039 7A                   ld      a,d
+ 51+  403A FE 40                cp      #40
+ 52+  403C 38 08                jr      c,p126_bootstrap_length_ok
+ 53+  403E C2 67 40             jp      nz,p126_bootstrap_error
+ 54+  4041 7B                   ld      a,e
+ 55+  4042 B7                   or      a
+ 56+  4043 C2 67 40             jp      nz,p126_bootstrap_error
+ 57+  4046              p126_bootstrap_length_ok:
+ 58+  4046 C5                   push    bc
+ 59+  4047 01 00 04             ld      bc,#0400
+ 60+  404A              p126_bootstrap_turnaround:
+ 61+  404A 0B                   dec     bc
+ 62+  404B 78                   ld      a,b
+ 63+  404C B1                   or      c
+ 64+  404D 20 FB                jr      nz,p126_bootstrap_turnaround
+ 65+  404F C1                   pop     bc
+ 66+  4050 3E A3                ld      a,P126_B_LENGTH_ACK
+ 67+  4052 CD 70 40             call    p126_boot_send_byte
+ 68+  4055 21 00 00             ld      hl,0
+ 69+  4058              p126_bootstrap_copy:
+ 70+  4058 7A                   ld      a,d
+ 71+  4059 B3                   or      e
+ 72+  405A 28 08                jr      z,p126_bootstrap_enter
+ 73+  405C CD 9C 40             call    p126_boot_receive_byte
+ 74+  405F 77                   ld      (hl),a
+ 75+  4060 23                   inc     hl
+ 76+  4061 1B                   dec     de
+ 77+  4062 18 F4                jr      p126_bootstrap_copy
+ 78+  4064              p126_bootstrap_enter:
+ 79+  4064 C3 00 00             jp      0
+ 80+  4067              p126_bootstrap_error:
+ 81+  4067 3E E1                ld      a,P126_B_ERROR
+ 82+  4069 CD 70 40             call    p126_boot_send_byte
+ 83+  406C              p126_bootstrap_halt:
+ 84+  406C F3                   di
+ 85+  406D 76                   halt
+ 86+  406E 18 FC                jr      p126_bootstrap_halt
+ 87+  4070
+ 88+  4070              p126_boot_send_byte:
+ 89+  4070 32 B1 40             ld      (p126_boot_tx),a
+ 90+  4073 01 FF FF             ld      bc,#FFFF
+ 91+  4076              p126_boot_send_wait_free:
+ 92+  4076 DB 04                in      a,(P126_B_ZXSTAT)
+ 93+  4078 CB 7F                bit     7,a
+ 94+  407A 28 08                jr      z,p126_boot_send_free
+ 95+  407C 0B                   dec     bc
+ 96+  407D 78                   ld      a,b
+ 97+  407E B1                   or      c
+ 98+  407F 20 F5                jr      nz,p126_boot_send_wait_free
+ 99+  4081 C3 6C 40             jp      p126_bootstrap_halt
+100+  4084              p126_boot_send_free:
+101+  4084 3A B1 40             ld      a,(p126_boot_tx)
+102+  4087 D3 03                out     (P126_B_ZXDATWR),a
+103+  4089 01 FF FF             ld      bc,#FFFF
+104+  408C              p126_boot_send_wait_read:
+105+  408C DB 04                in      a,(P126_B_ZXSTAT)
+106+  408E CB 7F                bit     7,a
+107+  4090 28 08                jr      z,p126_boot_send_done
+108+  4092 0B                   dec     bc
+109+  4093 78                   ld      a,b
+110+  4094 B1                   or      c
+111+  4095 20 F5                jr      nz,p126_boot_send_wait_read
+112+  4097 C3 6C 40             jp      p126_bootstrap_halt
+113+  409A              p126_boot_send_done:
+114+  409A B7                   or      a
+115+  409B C9                   ret
+116+  409C
+117+  409C              p126_boot_receive_byte:
+118+  409C 01 FF FF             ld      bc,#FFFF
+119+  409F              p126_boot_receive_wait:
+120+  409F DB 04                in      a,(P126_B_ZXSTAT)
+121+  40A1 CB 7F                bit     7,a
+122+  40A3 20 08                jr      nz,p126_boot_receive_ready
+123+  40A5 0B                   dec     bc
+124+  40A6 78                   ld      a,b
+125+  40A7 B1                   or      c
+126+  40A8 20 F5                jr      nz,p126_boot_receive_wait
+127+  40AA C3 6C 40             jp      p126_bootstrap_halt
+128+  40AD              p126_boot_receive_ready:
+129+  40AD DB 02                in      a,(P126_B_ZXDATRD)
+130+  40AF B7                   or      a
+131+  40B0 C9                   ret
+132+  40B1
+133+  40B1 00           p126_boot_tx: db 0
+134+  40B2              p126_bootstrap_end:
+135+  40B2
+# file closed: p126_bootstrap.asm
+  7   40B2                      ASSERT p126_bootstrap_start = #4000
+  8   40B2                      ASSERT p126_bootstrap_end > p126_bootstrap_start
+  9   40B2                      ASSERT p126_bootstrap_end <= #4100
+ 10   40B2                      ASSERT p126_bootstrap_end-p126_bootstrap_start <= #0100
+ 11   40B2                      DISPLAY "P126_BOOTSTRAP_START=",/H,p126_bootstrap_start
+ 12   40B2                      DISPLAY "P126_BOOTSTRAP_END=",/H,p126_bootstrap_end
+ 13   40B2                      DISPLAY "P126_BOOTSTRAP_SIZE=",/D,p126_bootstrap_end-p126_bootstrap_start
+ 14   40B2                      SAVEBIN "build/P126_BOOTSTRAP.bin",p126_bootstrap_start,p126_bootstrap_end-p126_bootstrap_start
+ 15   40B2
+# file closed: p126_bootstrap_assemble.asm
+
+Value    Label
+------ - -----------------------------------------------------------
+0x001F   P126_B_DMA_CST
+0x001B   P126_B_DMA_MOD
+0x00E1   P126_B_ERROR
+0x000F   P126_B_GSCFG0
+0x00A3   P126_B_LENGTH_ACK
+0x0000   P126_B_MPAGE
+0x0010   P126_B_MPAGEEX
+0x00A1   P126_B_READY
+0x0002   P126_B_ZXDATRD
+0x0003   P126_B_ZXDATWR
+0x0004   P126_B_ZXSTAT
+0x409C   p126_boot_receive_byte
+0x40AD   p126_boot_receive_ready
+0x409F   p126_boot_receive_wait
+0x4070   p126_boot_send_byte
+0x409A   p126_boot_send_done
+0x4084   p126_boot_send_free
+0x4076   p126_boot_send_wait_free
+0x408C   p126_boot_send_wait_read
+0x40B1   p126_boot_tx
+0x4058   p126_bootstrap_copy
+0x40B2   p126_bootstrap_end
+0x4064   p126_bootstrap_enter
+0x4067   p126_bootstrap_error
+0x406C   p126_bootstrap_halt
+0x4046   p126_bootstrap_length_ok
+0x4000   p126_bootstrap_start
+0x404A   p126_bootstrap_turnaround

@@ -5,10 +5,8 @@
 ; Produces disk_A.trd containing:
 ;   BOOT.B     BASIC boot loader
 ;   proj126.C  ATM host program
-;   X86CORE.C  current NeoGS x86 CPU-state/ALU module image
-;
-; The x86 module is packaged as a disk file, but is not yet auto-uploaded:
-; the NeoGS resident command receiver/startup protocol is not implemented.
+;   P126BOOT.C GS105a stage-0 bootstrap
+;   X86CORE.C  resident entry, IPC dispatcher and x86 core image
 ; =========================================================================
 
         DEVICE ZXSPECTRUM128
@@ -35,7 +33,19 @@
         SAVETRD "disk_A.trd", "boot.B", BASIC_START, BASIC_END-BASIC_START
 
 ; -------------------------------------------------------------------------
-; NeoGS x86 module. Stored as a standalone CODE file on the TR-DOS disk.
+; NeoGS stage-0 bootstrap, stored as a standalone TR-DOS CODE file.
+; -------------------------------------------------------------------------
+        PAGE 5
+        ORG #C000
+p126_bootstrap_file_start:
+        INCBIN "build/P126_BOOTSTRAP.bin"
+p126_bootstrap_file_end:
+        ASSERT p126_bootstrap_file_end > p126_bootstrap_file_start
+        ASSERT p126_bootstrap_file_end-p126_bootstrap_file_start <= #0100
+        SAVETRD "disk_A.trd", "P126BOOT.C", #C000, p126_bootstrap_file_end-p126_bootstrap_file_start
+
+; -------------------------------------------------------------------------
+; NeoGS resident/x86 core image, loaded into physical WIN0 by P126BOOT.
 ; -------------------------------------------------------------------------
         PAGE 1
         ORG #C000
