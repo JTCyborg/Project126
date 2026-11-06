@@ -20,7 +20,7 @@ if not exist "tools\build_project126.ps1" (
     goto :finish
 )
 
-powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "tools\build_project126.ps1"
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "tools\build_project126.ps1" %*
 if errorlevel 1 goto :failed
 
 for %%F in ("build\NEOGS.lst" "build\NEOGS.map" "build\x86_cpu_state.bin" "build\ATM.lst" "build\ATM.map" "build\ATM_IPC.bin" "build\ATM_DISK.lst" "build\ATM_DISK.map" "disk_A.trd" "build\disk_A.trd") do (
