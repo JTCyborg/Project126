@@ -285,3 +285,11 @@ The ATM log `DMA SMOKE FRAME SENT` means the transport handshake completed; it i
 - Added a `#0400` DBIT turnaround delay after each received ROM byte.
 - Preserved Project126's 4 MiB RAM requirement (`RAM size high byte >= #40`); Project125's 2 MiB threshold is not used.
 - Runtime outcome remains **NOT VERIFIED** until the updated TR-DOS image is run on the target ATM. Required next evidence: stage 3 clears and the log reaches stage 4 or later.
+
+
+## Stage-3 diagnostic subdivision (2026-11-07)
+
+- Replaced the single stage-3 marker with operation-level markers A-H, preserving the existing failure reporting mechanism.
+- A=initial #F4/CBIT; B=RAM probe entry; C=#20/CBIT; D/E/F=RAM-size bytes 0/1/2; G=4 MiB threshold validation; H=retry #F4.
+- The next target run must report the letter after `NGS FAIL STAGE=`; this identifies the last operation entered, not a claim that the operation completed.
+- No hardware runtime result is inferred from this instrumentation.
