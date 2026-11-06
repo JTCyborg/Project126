@@ -17,10 +17,10 @@ This document records actual artifacts and their verification state; it is not a
 - Normative specification: `docs/P126_DMA_IPC_PROTOCOL.md`; architecture reference: `SCENARIO.md` section 7.1.1.
 - Fixed: control/data plane separation; ATM-facing DMA aperture contract; NeoGS-only DMA register ownership; GSCOM commands E0h..E3h and FFh end marker; 18-byte P126 frame header; little-endian fields; message types/flags; CRC-16/CCITT-FALSE; per-direction sequence rules; duplicate suppression; ordered fragmentation; status codes; initial service namespace; READY/end/CBIT completion lifecycle.
 - Added shared constants in `shared/p126_ipc_protocol.inc`, imported by the ATM IPC public include.
-- Added ATM-side CRC update and standard test-vector routine in `atm_host/neogs_ipc.asm`.
+- Added CRC update and standard test-vector routines on both endpoints: `atm_host/neogs_ipc.asm` and `neogs_sub/p126_ipc.asm`.
 - **IN PROGRESS:** the contract and CRC primitives on both processors are implemented in source. Complete frame encode/decode, DMA send/receive, session negotiation, sequence state, resident NeoGS command endpoint, fragment reassembly and service dispatch remain unimplemented.
 - **OPEN / MUST NOT GUESS:** final ATM and NeoGS staging-buffer addresses, NeoGS 4 MiB resident memory reservations, ATM paging/buffer placement and final DMA window integration. Project125 physical addresses/layout are reference material, not Project126 allocations.
-- **Verification:** BUILD PASS for the ATM-side v0.2.0 source is recorded in run [42303249684](https://github.com/JTCyborg/Project126/actions/runs/42303249684). The CRC self-test routine is assembled but has not been executed on target hardware. Complete DMA directions and frame transport are not implemented and are not claimed as Project126 HARDWARE PASS.
+- **Verification:** BUILD PASS for both CRC primitives and all three assembly units is recorded in run [42303465405](https://github.com/JTCyborg/Project126/actions/runs/42303465405). CRC self-test routines are assembled but have not been executed on target hardware. Complete DMA directions and frame transport are not implemented and are not claimed as Project126 HARDWARE PASS.
 
 ## Build pipeline and address-placement audit
 
@@ -130,6 +130,7 @@ A committed source file is not automatically a successful runtime or hardware te
 | DS12887 RTC integration | HARDWARE CONFIRMED IN PRIOR RUN | ATM shadow-port activation and Project125-derived read-only RTC path; valid timestamp was previously observed. |
 | ATM 80x25 status console | HARDWARE CONFIRMED FOR CURRENT CATALOGUE UI | The catalogue interface is displayed on the target ATM. |
 | TR-DOS directory read | HARDWARE PASS | Early read before ATM video init; eight individual C=5, B=1 sector reads. User confirmed operation. |
+| Unified DMA/IPC ABI 1.0 | IN PROGRESS; BUILD PASS for CRC primitives | Contract, common constants and ATM/NeoGS CRC routines assembled; frame codec, DMA endpoints, session/sequence handling and hardware tests remain. |
 | Directory filtering, rendering and scrolling | HARDWARE PASS | Nine-row catalogue and CAPS SHIFT+7/6 navigation confirmed by user. |
 | BIOS images in TR-DOS disk | BUILD PASS | BIOS1.C, BIOS2.C and COMPAQ.C, each 8192 bytes; included in successful disk build. |
 | BIOS choice on ENTER | PLANNED | ENTER is the proposed confirmation key only; no selection/confirmation handler implemented yet. |
