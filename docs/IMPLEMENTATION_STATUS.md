@@ -5,10 +5,10 @@ This document records actual artifacts and their verification state; it is not a
 ## Build pipeline foundation
 
 - Assembler: repository-pinned `tools/sjasmplus.exe` (SjASMPlus 1.23.1).
-- Translation unit: `neogs_sub/x86_cpu_state_assemble.asm`; it assembles the architectural-state and ALU modules.
+- Translation unit: `neogs_sub/x86_cpu_state_assemble.asm` (unit version v0.4.0); it assembles the architectural-state and ALU modules.
 - CI: `.github/workflows/neogs-assembly.yml`.
 - CI checks assembler exit status and the independent 256 KiB NeoGS firmware size ceiling, then publishes the assembled binary and symbol table.
-- Status: **BUILD PASS** for commit `0c435104164dfa1bffbb6239050845408e4b12b8`; GitHub Actions run `42272784210` completed successfully: 674 source lines, 0 assembler errors, 0 warnings, 1155-byte output, and the 256 KiB size check passed.
+- Status: **BUILD PASS** for current build commit `0e53ce36bb4a6a4052aac8e3886f62546861b52b`; GitHub Actions run `42273068373` completed successfully: SjASMPlus 1.23.1, 674 source lines, 0 assembler errors, 0 warnings, 1155-byte output, and the 256 KiB size check passed.
 - This is an assembly pass only. The translation unit is not a runtime image and defines no NeoGS load address, startup entrypoint, stack placement or memory-bank mapping. No NeoGS runtime or hardware pass is claimed.
 
 ## PCem reference integrity tooling
