@@ -164,17 +164,17 @@ x86_cpu_state_selftest:
         ld      de,#FFFF
         or      a
         sbc     hl,de
-        jr      nz,.fail
+        jp      nz,.fail
         ld      hl,(x86_reg_ip)
         ld      de,0
         or      a
         sbc     hl,de
-        jr      nz,.fail
+        jp      nz,.fail
         ld      hl,(x86_reg_flags)
         ld      de,X86_FLAGS_RESET
         or      a
         sbc     hl,de
-        jr      nz,.fail
+        jp      nz,.fail
 
         ; 0000:0000 = 00000h
         ld      hl,0
@@ -182,7 +182,7 @@ x86_cpu_state_selftest:
         call    x86_cpu_calc_phys
         ld      hl,x86_expected_zero
         call    x86_cpu_check_phys
-        jr      nz,.fail
+        jp      nz,.fail
 
         ; FFFF:000F = FFFFFh
         ld      hl,#FFFF
@@ -190,7 +190,7 @@ x86_cpu_state_selftest:
         call    x86_cpu_calc_phys
         ld      hl,x86_expected_fffff
         call    x86_cpu_check_phys
-        jr      nz,.fail
+        jp      nz,.fail
 
         ; FFFF:0010 wraps to 00000h on the 20-bit bus.
         ld      hl,#FFFF
@@ -198,7 +198,7 @@ x86_cpu_state_selftest:
         call    x86_cpu_calc_phys
         ld      hl,x86_expected_zero
         call    x86_cpu_check_phys
-        jr      nz,.fail
+        jp      nz,.fail
 
         ; 1234:5678 = 179B8h
         ld      hl,#1234
@@ -206,7 +206,7 @@ x86_cpu_state_selftest:
         call    x86_cpu_calc_phys
         ld      hl,x86_expected_179b8
         call    x86_cpu_check_phys
-        jr      nz,.fail
+        jp      nz,.fail
 
         ; F000:FFF0 = FFFF0h, the reset-vector physical address.
         ld      hl,#F000
@@ -214,7 +214,7 @@ x86_cpu_state_selftest:
         call    x86_cpu_calc_phys
         ld      hl,x86_expected_ffff0
         call    x86_cpu_check_phys
-        jr      nz,.fail
+        jp      nz,.fail
 
         ; Guest memory decode boundary tests.
         ld      hl,x86_test_9ffff
@@ -223,7 +223,7 @@ x86_cpu_state_selftest:
         ldir
         call    x86_mem_classify
         cp      P126_X86_MEM_RAM_LOW
-        jr      nz,.fail
+        jp      nz,.fail
 
         ld      hl,x86_test_a0000
         ld      de,x86_phys_addr
@@ -231,7 +231,7 @@ x86_cpu_state_selftest:
         ldir
         call    x86_mem_classify
         cp      P126_X86_MEM_VGA_APERTURE
-        jr      nz,.fail
+        jp      nz,.fail
 
         ld      hl,x86_test_bffff
         ld      de,x86_phys_addr
@@ -239,7 +239,7 @@ x86_cpu_state_selftest:
         ldir
         call    x86_mem_classify
         cp      P126_X86_MEM_VGA_APERTURE
-        jr      nz,.fail
+        jp      nz,.fail
 
         ld      hl,x86_test_c0000
         ld      de,x86_phys_addr
@@ -247,7 +247,7 @@ x86_cpu_state_selftest:
         ldir
         call    x86_mem_classify
         cp      P126_X86_MEM_VGABIOS
-        jr      nz,.fail
+        jp      nz,.fail
 
         ld      hl,x86_test_c7fff
         ld      de,x86_phys_addr
@@ -255,7 +255,7 @@ x86_cpu_state_selftest:
         ldir
         call    x86_mem_classify
         cp      P126_X86_MEM_VGABIOS
-        jr      nz,.fail
+        jp      nz,.fail
 
         ld      hl,x86_test_c8000
         ld      de,x86_phys_addr
@@ -263,7 +263,7 @@ x86_cpu_state_selftest:
         ldir
         call    x86_mem_classify
         cp      P126_X86_MEM_RAM_HIGH
-        jr      nz,.fail
+        jp      nz,.fail
 
         ld      hl,x86_test_fdfff
         ld      de,x86_phys_addr
@@ -271,7 +271,7 @@ x86_cpu_state_selftest:
         ldir
         call    x86_mem_classify
         cp      P126_X86_MEM_RAM_HIGH
-        jr      nz,.fail
+        jp      nz,.fail
 
         ld      hl,x86_test_fe000
         ld      de,x86_phys_addr
@@ -279,7 +279,7 @@ x86_cpu_state_selftest:
         ldir
         call    x86_mem_classify
         cp      P126_X86_MEM_SYSBIOS
-        jr      nz,.fail
+        jp      nz,.fail
 
         ld      hl,x86_test_fffff
         ld      de,x86_phys_addr
@@ -287,7 +287,7 @@ x86_cpu_state_selftest:
         ldir
         call    x86_mem_classify
         cp      P126_X86_MEM_SYSBIOS
-        jr      nz,.fail
+        jp      nz,.fail
 
         pop     hl
         pop     de
