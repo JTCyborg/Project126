@@ -324,3 +324,10 @@ The ATM log `DMA SMOKE FRAME SENT` means the transport handshake completed; it i
 - `neogs_sub/p126_bootstrap.asm` now emits `[NGS] BOOTSTRAP ENTER` directly to NeoGS #EF and `[NGS] NOROM ENABLED` after writing GSCFG0 with NOROM/EXPAG bits. ATM does not synthesize these messages.
 - Expected NeoGS diagnostics after target run: BOOTSTRAP ENTER -> NOROM ENABLED -> P126 RESIDENT v0.1.0 -> ABI CRC16 PASS. These are separate from the ATM #EF stream.
 - **Status:** source changes committed; CI/build and one-sector bootstrap size verification pending; target hardware verification pending. The actual 4 MiB page test is not implemented by this diagnostic change.
+
+
+### Follow-up: stage-7 failure and bootstrap stack initialization
+
+- The current ATM loader sets startup stage `'7'` immediately before sending the low address argument and GS105a `#13` jump command for stage-0 at `4000h`; it then waits for bootstrap `A1h`. `NGS FAIL STAGE=7` therefore localizes the failure to the jump/initial bootstrap-ready handshake, not to the removed stock-ROM #20 RAM-size gate.
+- Inspection found the newly added bootstrap logger was called before Project126 established its own stack. The bootstrap now initializes `SP=#FFFE` immediately after `DI`, before any `CALL`/`PUSH`; the old later initialization was removed.
+- This source correction is committed, but no assembly build or hardware pass is claimed yet. On the next target run, `[NGS] BOOTSTRAP ENTER` is the decisive marker for successful execution of the first Project126 bootstrap instructions.
