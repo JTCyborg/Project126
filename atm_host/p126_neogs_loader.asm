@@ -35,33 +35,22 @@ p126_neogs_startup::
         or      a
         jp      z,p126_neogs_boot_file_bad
 
-        ; Reset NeoGS into the stock GS105a ROM before #20/#14/#13.
+        ; Use the proven GS105a ROM cold-restart path (#F4), not a
+        ; raw GSCTR reset. Retry once if a stale DMA transaction consumes
+        ; the first restart command as its end marker.
         ld      a,'3'
         ld      (p126_neogs_startup_stage),a
-        ld      a,#80
-        out     (P126_NGS_GSCTR),a
-        ld      bc,#FFFF
-.p126_neogs_reset_delay:
-        dec     bc
-        ld      a,b
-        or      c
-        jr      nz,.p126_neogs_reset_delay
-
-        ld      a,P126_NGS_CMD_RAM
-        call    p126_neogs_send_command
-        ret     c
-        call    p126_neogs_receive_byte
-        ret     c
-        ld      (p126_neogs_ram_size),a
-        call    p126_neogs_receive_byte
-        ret     c
-        ld      (p126_neogs_ram_size+1),a
-        call    p126_neogs_receive_byte
-        ret     c
-        ld      (p126_neogs_ram_size+2),a
-        ld      a,(p126_neogs_ram_size+2)
-        cp      #40
+        ld      a,#F4
+        call    p126_neogs_send_command_long
         jp      c,p126_neogs_ram_bad
+        call    p126_neogs_probe_rom_ram
+        jr      nc,.p126_neogs_stock_rom_ready
+        ld      a,#F4
+        call    p126_neogs_send_command_long
+        jp      c,p126_neogs_ram_bad
+        call    p126_neogs_probe_rom_ram
+        jp      c,p126_neogs_ram_bad
+.p126_neogs_stock_rom_ready:
 
         ; GS105a #14 receives P126BOOT at logical 4000h.
         ld      a,'4'
@@ -397,6 +386,56 @@ p126_neogs_read_next_sector:
         or      a
         ret
 
+ ; Query the stock ROM for its 24-bit RAM size. Project126 requires 4 MiB.
+p126_neogs_probe_rom_ram:
+        ld      a,P126_NGS_CMD_RAM
+        call    p126_neogs_send_command_long
+        ret     c
+        call    p126_neogs_receive_byte
+        ret     c
+        ld      (p126_neogs_ram_size),a
+        call    p126_neogs_receive_byte
+        ret     c
+        ld      (p126_neogs_ram_size+1),a
+        call    p126_neogs_receive_byte
+        ret     c
+        ld      (p126_neogs_ram_size+2),a
+        ld      a,(p126_neogs_ram_size+2)
+        cp      #40
+        jr      c,.p126_neogs_ram_probe_bad
+        or      a
+        ret
+.p126_neogs_ram_probe_bad:
+        scf
+        ret
+
+; Extended CBIT wait based on the known-working Project125 GS105a driver.
+p126_neogs_send_command_long:
+        ld      (p126_neogs_tx_byte),a
+        ld      a,(p126_neogs_tx_byte)
+        out     (P126_NGS_GSCOM),a
+        push    de
+        ld      d,16
+.p126_neogs_command_long_outer:
+        ld      bc,#FFFF
+.p126_neogs_command_long_inner:
+        in      a,(P126_NGS_GSSTAT)
+        bit     P126_NGS_CBIT,a
+        jr      z,.p126_neogs_command_long_done
+        dec     bc
+        ld      a,b
+        or      c
+        jr      nz,.p126_neogs_command_long_inner
+        dec     d
+        jr      nz,.p126_neogs_command_long_outer
+        pop     de
+        scf
+        ret
+.p126_neogs_command_long_done:
+        pop     de
+        or      a
+        ret
+
 ; Stock GS105a command/data primitives. Application payloads do not use these.
 p126_neogs_send_command:
         ld      (p126_neogs_tx_byte),a
@@ -436,6 +475,17 @@ p126_neogs_receive_byte:
         call    p126_neogs_wait_dbit_set
         ret     c
         in      a,(P126_NGS_GSDAT)
+        ; Give the GS105a sender time to observe DBIT being cleared.
+        push    af
+        push    bc
+        ld      bc,#0400
+.p126_neogs_receive_turnaround:
+        dec     bc
+        ld      a,b
+        or      c
+        jr      nz,.p126_neogs_receive_turnaround
+        pop     bc
+        pop     af
         or      a
         ret
 

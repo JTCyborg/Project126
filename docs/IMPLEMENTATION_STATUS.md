@@ -276,3 +276,12 @@ The ATM log `DMA SMOKE FRAME SENT` means the transport handshake completed; it i
 - Added loader stage tracking and explicit `[BOOT] NGS FAIL STAGE=x`: 1 bootstrap file locate/read; 2 bootstrap metadata; 3 NeoGS reset/RAM probe; 4 ROM #14 upload; 5 resident file locate/read; 6 resident length validation; 7 ROM #13/A1h handshake; 8 resident length/A3h handshake; 9 resident stream/TR-DOS sector reads; 0 resident A2h/ready.
 - The existing generic failure message and startup order are retained. This change diagnoses rather than presumes the failing operation.
 - **Verification:** pending CI. No hardware fix or ROM/DMA runtime PASS is claimed. The next target log should include the stage character.
+
+
+## GS105a stage-3 cold-start recovery (2026-11-07)
+
+- Updated `atm_host/p126_neogs_loader.asm` to use GS105a ROM command `#F4` for cold restart, extended CBIT polling and the `#20` RAM-size probe.
+- Added one cold-restart/probe retry for the stale-DMA-end-marker case documented by the working Project125 driver.
+- Added a `#0400` DBIT turnaround delay after each received ROM byte.
+- Preserved Project126's 4 MiB RAM requirement (`RAM size high byte >= #40`); Project125's 2 MiB threshold is not used.
+- Runtime outcome remains **NOT VERIFIED** until the updated TR-DOS image is run on the target ATM. Required next evidence: stage 3 clears and the log reaches stage 4 or later.
