@@ -1,4 +1,4 @@
-; PROJECT126 / X86_ALU v0.1.0
+; PROJECT126 / X86_ALU v0.2.0
 ; 8-bit ADD/SUB flag semantics for the Intel 8086 guest.
 ; PCem reference: PCem/808x.c setadd8(), setsub8() and related helpers.
 ;
@@ -34,7 +34,7 @@ x86_alu_emit_version:
         ret
 
 x86_alu_version_text:
-        defb    "[P126 X86_ALU v0.1.0]",13,10,0
+        defb    "[P126 X86_ALU v0.2.0]",13,10,0
 
 x86_alu_add8:
         ld      (x86_alu_lhs),a
@@ -68,6 +68,101 @@ x86_alu_sub8:
         ld      (x86_alu_z80_flags),a
         call    x86_alu_merge_flags
         ld      a,(x86_alu_result)
+        ret
+
+; 16-bit arithmetic uses the low-byte operation to capture AF and the
+; high-byte ADC/SBC to capture full-word CF, SF and OF. Guest PF is the
+; parity of the low result byte, as on the 8086.
+
+x86_alu_add16:
+        ld      (x86_alu_word_lhs),hl
+        ld      (x86_alu_word_rhs),de
+        ld      a,l
+        ld      c,e
+        add     a,c
+        ld      (x86_alu_word_result),a
+        push    af
+        pop     bc
+        ld      a,c
+        ld      (x86_alu_low_flags),a
+        ld      a,h
+        ld      c,d
+        adc     a,c
+        ld      (x86_alu_word_result+1),a
+        push    af
+        pop     bc
+        ld      a,c
+        ld      (x86_alu_high_flags),a
+        ld      hl,(x86_alu_word_result)
+        call    x86_alu_merge_word_flags
+        ret
+
+x86_alu_sub16:
+        ld      (x86_alu_word_lhs),hl
+        ld      (x86_alu_word_rhs),de
+        ld      a,l
+        ld      c,e
+        sub     c
+        ld      (x86_alu_word_result),a
+        push    af
+        pop     bc
+        ld      a,c
+        ld      (x86_alu_low_flags),a
+        ld      a,h
+        ld      c,d
+        sbc     a,c
+        ld      (x86_alu_word_result+1),a
+        push    af
+        pop     bc
+        ld      a,c
+        ld      (x86_alu_high_flags),a
+        ld      hl,(x86_alu_word_result)
+        call    x86_alu_merge_word_flags
+        ret
+
+x86_alu_merge_word_flags:
+        ld      hl,(x86_reg_flags)
+        ld      a,l
+        and     X86_ALU_KEEP_FLAGS_LO
+        ld      l,a
+        ld      a,h
+        and     X86_ALU_KEEP_FLAGS_HI
+        ld      h,a
+        set     1,l
+
+        ld      a,(x86_alu_high_flags)
+        bit     0,a
+        jr      z,.word_no_cf
+        set     0,l
+.word_no_cf:
+        ld      a,(x86_alu_low_flags)
+        bit     4,a
+        jr      z,.word_no_af
+        set     4,l
+.word_no_af:
+        ld      a,(x86_alu_high_flags)
+        bit     7,a
+        jr      z,.word_no_sf
+        set     7,l
+.word_no_sf:
+        bit     2,a
+        jr      z,.word_no_of
+        set     3,h
+.word_no_of:
+        ld      a,(x86_alu_word_result)
+        or      a
+        jr      nz,.word_no_zf
+        ld      a,(x86_alu_word_result+1)
+        or      a
+        jr      nz,.word_no_zf
+        set     6,l
+.word_no_zf:
+        ld      a,(x86_alu_word_result)
+        and     a
+        jp      po,.word_no_pf
+        set     2,l
+.word_no_pf:
+        ld      (x86_reg_flags),hl
         ret
 
 ; Translate Z80 ADD/SUB result flags to the corresponding 8086 flags.
@@ -218,6 +313,93 @@ x86_alu_selftest:
         bit     6,l
         jp      nz,.fail
 
+        ; 7FFF + 0001 = 8000: 16-bit signed overflow.
+        ld      hl,#7FFF
+        ld      de,#0001
+        call    x86_alu_add16
+        ld      de,#8000
+        or      a
+        sbc     hl,de
+        jp      nz,.fail
+        ld      hl,(x86_reg_flags)
+        bit     3,h
+        jp      z,.fail
+        bit     7,l
+        jp      z,.fail
+        bit     4,l
+        jp      z,.fail
+        bit     2,l
+        jp      z,.fail
+        bit     0,l
+        jp      nz,.fail
+        bit     6,l
+        jp      nz,.fail
+
+        ; FFFF + 0001 = 0000: carry, AF, ZF and PF.
+        ld      hl,#FFFF
+        ld      de,#0001
+        call    x86_alu_add16
+        ld      a,h
+        or      l
+        jp      nz,.fail
+        ld      hl,(x86_reg_flags)
+        bit     0,l
+        jp      z,.fail
+        bit     4,l
+        jp      z,.fail
+        bit     6,l
+        jp      z,.fail
+        bit     2,l
+        jp      z,.fail
+        bit     3,h
+        jp      nz,.fail
+        bit     7,l
+        jp      nz,.fail
+
+        ; 8000 - 0001 = 7FFF: signed overflow and auxiliary borrow.
+        ld      hl,#8000
+        ld      de,#0001
+        call    x86_alu_sub16
+        ld      de,#7FFF
+        or      a
+        sbc     hl,de
+        jp      nz,.fail
+        ld      hl,(x86_reg_flags)
+        bit     3,h
+        jp      z,.fail
+        bit     4,l
+        jp      z,.fail
+        bit     2,l
+        jp      z,.fail
+        bit     0,l
+        jp      nz,.fail
+        bit     7,l
+        jp      nz,.fail
+        bit     6,l
+        jp      nz,.fail
+
+        ; 0000 - 0001 = FFFF: borrow, sign, AF and even parity.
+        ld      hl,#0000
+        ld      de,#0001
+        call    x86_alu_sub16
+        ld      de,#FFFF
+        or      a
+        sbc     hl,de
+        jp      nz,.fail
+        ld      hl,(x86_reg_flags)
+        bit     0,l
+        jp      z,.fail
+        bit     4,l
+        jp      z,.fail
+        bit     7,l
+        jp      z,.fail
+        bit     2,l
+        jp      z,.fail
+        bit     3,h
+        jp      nz,.fail
+        bit     6,l
+        jp      nz,.fail
+
         ld      hl,(x86_alu_saved_flags)
         ld      (x86_reg_flags),hl
         pop     hl
@@ -241,3 +423,8 @@ x86_alu_rhs:         db 0
 x86_alu_result:      db 0
 x86_alu_z80_flags:   db 0
 x86_alu_saved_flags: dw 0
+x86_alu_word_lhs:    dw 0
+x86_alu_word_rhs:    dw 0
+x86_alu_word_result: dw 0
+x86_alu_low_flags:   db 0
+x86_alu_high_flags:  db 0

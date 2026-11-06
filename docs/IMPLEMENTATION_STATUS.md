@@ -30,10 +30,10 @@ This document records actual artifacts and their verification state; it is not a
 
 ## x86 8-bit ALU foundation
 
-- Source: `neogs_sub/x86_alu.asm`, version `P126 / X86_ALU v0.1.0`.
+- Source: `neogs_sub/x86_alu.asm`, version `P126 / X86_ALU v0.2.0`.
 - PCem comparison points: `PCem/808x.c:setadd8()`, `setsub8()` and adjacent flag helpers.
-- Implemented in source: 8-bit ADD and SUB result calculation; CF, PF, AF, ZF, SF and OF translation into guest FLAGS; preservation of non-arithmetic flags.
-- Included target-side regression vectors: signed overflow, carry/borrow, auxiliary carry/borrow, zero, sign and parity for ADD/SUB.
+- Implemented in source: 8-bit and 16-bit ADD/SUB; CF, PF, AF, ZF, SF and OF translation into guest FLAGS; preservation of non-arithmetic flags. A runtime version emitter reports the ALU component on NeoGS #EF.
+- Included target-side regression vectors: 8-bit and 16-bit signed overflow, carry/borrow, auxiliary carry/borrow, zero, sign, parity and preservation of TF/IF/DF.
 - First CI build: failed on six out-of-range conditional JR branches to the distant self-test failure label. The branches have been changed to JP; corrected CI result is pending. The tests are present in source but are not yet a passing runtime test.
 
 ## Verification policy
