@@ -64,6 +64,58 @@ p126_host_entry:
 p126_host_ngs_start_failed:
         ld      hl,p126_log_ngs_failed
         call    p126_host_debug_string
+        call    p126_host_log_prefix
+        ld      bc,#00EF
+        ld      a,'['
+        out     (c),a
+        ld      a,'B'
+        out     (c),a
+        ld      a,'O'
+        out     (c),a
+        ld      a,'O'
+        out     (c),a
+        ld      a,'T'
+        out     (c),a
+        ld      a,']'
+        out     (c),a
+        ld      a,' '
+        out     (c),a
+        ld      a,'N'
+        out     (c),a
+        ld      a,'G'
+        out     (c),a
+        ld      a,'S'
+        out     (c),a
+        ld      a,' '
+        out     (c),a
+        ld      a,'F'
+        out     (c),a
+        ld      a,'A'
+        out     (c),a
+        ld      a,'I'
+        out     (c),a
+        ld      a,'L'
+        out     (c),a
+        ld      a,' '
+        out     (c),a
+        ld      a,'S'
+        out     (c),a
+        ld      a,'T'
+        out     (c),a
+        ld      a,'A'
+        out     (c),a
+        ld      a,'G'
+        out     (c),a
+        ld      a,'E'
+        out     (c),a
+        ld      a,'='
+        out     (c),a
+        ld      a,(p126_neogs_startup_stage)
+        out     (c),a
+        ld      a,13
+        out     (c),a
+        ld      a,10
+        out     (c),a
 p126_host_ngs_start_done:
         ld      hl, p126_log_video_begin
         call    p126_host_debug_string

@@ -552,3 +552,12 @@ Expected independent logs:
 - ATM: `[BOOT] DMA SMOKE TEST FAILED` means the sender timed out or rejected the transaction.
 
 The smoke frame does not test reverse DMA, sequence/session enforcement, or any service handler. Hardware results must be reported separately from BUILD PASS.
+
+
+## NeoGS startup failure-stage diagnostics (2026-11-07)
+
+- The target reached the ATM catalogue but logged `NEOGS RESIDENT START FAILED`; ROM bootstrap, resident stream and DMA smoke test were not demonstrated.
+- Added persistent one-character startup stage tracking in `atm_host/p126_neogs_loader.asm`. The stage remains available when an existing carry-return exits the loader.
+- Stage meanings: `1` locate/read `P126BOOT.C`; `2` validate bootstrap metadata; `3` reset NeoGS and probe GS105a RAM; `4` ROM #14 bootstrap upload; `5` locate/read `X86CORE.C`; `6` validate resident image length; `7` ROM #13 jump and A1h stage-0 handshake; `8` resident length/A3h handshake; `9` resident byte stream and subsequent TR-DOS sector reads; `0` A2h received and resident ready.
+- On startup failure ATM emits `[BOOT] NGS FAIL STAGE=x`, retaining the original generic failure message.
+- This is instrumentation only; it does not claim to fix the underlying ROM/sector/DBIT failure. BUILD PASS and target runtime results remain separate.

@@ -268,3 +268,11 @@ A committed source file is not automatically a successful runtime or hardware te
 After resident startup and ATM video initialization, the host now builds an 18-byte ABI 1.0 diagnostics request (sequence 0001h, empty payload), calculates CRC-16/CCITT-FALSE with the production ATM routine and sends it through `p126_ipc_dma_send_frame`. This exercises E0h, READY/CBIT, the complete 18-byte DMA write, FFh and completion acknowledgement. The NeoGS resident independently validates the frame and logs either `DMA FRAME VALID` or `DMA FRAME REJECTED`.
 
 The ATM log `DMA SMOKE FRAME SENT` means the transport handshake completed; it is not by itself proof of receiver CRC acceptance. Compare it with the independent NeoGS #EF diagnostic. This is a target-side smoke test, not a build-time test.
+
+
+## NeoGS startup failure-stage diagnostics (2026-11-07)
+
+- The target log confirms TR-DOS directory access and ATM UI continue, but `p126_neogs_startup` returns carry before resident-ready acknowledgement. No DMA smoke frame is attempted in this state.
+- Added loader stage tracking and explicit `[BOOT] NGS FAIL STAGE=x`: 1 bootstrap file locate/read; 2 bootstrap metadata; 3 NeoGS reset/RAM probe; 4 ROM #14 upload; 5 resident file locate/read; 6 resident length validation; 7 ROM #13/A1h handshake; 8 resident length/A3h handshake; 9 resident stream/TR-DOS sector reads; 0 resident A2h/ready.
+- The existing generic failure message and startup order are retained. This change diagnoses rather than presumes the failing operation.
+- **Verification:** pending CI. No hardware fix or ROM/DMA runtime PASS is claimed. The next target log should include the stage character.
