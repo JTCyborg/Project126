@@ -87,7 +87,7 @@
 - Максимальный размер одного DMA-кадра — 16 KiB; максимальный payload — 16366 байт. Более крупные сообщения передаются фрагментами, каждый кадр проверяется отдельно.
 - Заданы общие команды управления E0h..E3h и FFh (DMA end), типы сообщений, service IDs, коды ошибок, правила sequence/duplicate, fragmentation и resynchronization.
 - В Project126 фиксируется один активный DMA transaction. Завершение подтверждается только после end marker, отключения DMA на NeoGS и финального CBIT acknowledgement.
-- Буферы и адреса staging, окончательная карта 4 MiB NeoGS, ATM source/destination placement и paging остаются открытыми. Адреса Project125 не переносятся автоматически.
+- Буферы и адреса staging, ATM source/destination placement и аппаратное paging требуют отдельной спецификации и проверки. Физическая карта NeoGS 4 MiB закреплена разделом 12 и docs/P126_NEOGS_MEMORY_MAP.md; адреса Project125 не переносятся автоматически.
 - Общие ABI constants находятся в `shared/p126_ipc_protocol.inc`; CRC-16/CCITT-FALSE byte update/self-test реализованы в исходниках ATM и NeoGS. Это частичная реализация ABI, не готовый транспорт.
 
 ### 7.2. Карта памяти и размещение ресурсов
@@ -592,3 +592,19 @@ This is diagnostic instrumentation; the next ATM log must report the letter afte
 - The 4 MiB threshold is unchanged. The raw response is logged before validation so the next target run distinguishes an undersized report from a byte-order/transport interpretation problem.
 - During this stage the NeoGS CPU is still executing the stock GS105a ROM. Project126's NeoGS bootstrap has not yet been uploaded or entered, so it cannot truthfully emit a Project126 `[NGS]` message for the #20 exchange. Its independent #EF diagnostics become available only after the #14 upload and #13 jump.
 - This change adds observability only; no hardware result is claimed until the updated TR-DOS image is run on the target.
+
+
+## 16. Самостоятельное управление NeoGS и отключение штатного ROM (архитектурное решение)
+
+- Штатное ROM NeoGS не является рабочей прошивкой Project126 и не должно задавать ограничения объёма доступной Project126 памяти.
+- Штатное GS105a ROM допускается использовать только как временный bootstrap-транспорт для первоначальной загрузки небольшого Project126 bootstrap через команды #14 (приём блока) и #13 (передача управления).
+- После получения управления Project126 bootstrap обязан включить режим NOROM через локальный регистр NeoGS GSCFG0 (порт #0F, бит NOROM = bit 0). Штатное ROM после этого не участвует в работе резидентной системы.
+- Фактическая реализация neogs_sub/p126_bootstrap.asm уже устанавливает бит NOROM (or #09 после маскирования GSCFG0); это должно быть сохранено и проверено. Также устанавливается EXPAG.
+- Команда GS105a #20 и её 24-битный ответ не являются обязательным критерием допуска к загрузке Project126. Текущая проверка ATM на RAM24 high byte >= #40, из-за которой запуск отвергается до загрузки собственного bootstrap, считается временной диагностической реализацией и подлежит удалению из загрузочного пути.
+- После отключения ROM собственная прошивка должна самостоятельно проверить физическую RAM NeoGS и определить доступность страниц, не используя ROM-таблицы/ответы как источник истины.
+- Целевой физический диапазон платы — 4 MiB: 256 страниц по 16 KiB, адреса 000000h–3FFFFFh. Project126 должен иметь возможность адресовать и использовать все реально установленные страницы. Текущая карта распределяет ресурсы до страницы 83h, а страницы 84h–FFh оставляет резервом; резерв означает отсутствие текущего владельца, а не запрет на использование или отсутствие физической RAM.
+- Проверка памяти должна охватывать все 256 страниц с тестовыми шаблонами/контролем целостности, не повреждая работающий код, стек, bootstrap, DMA/IPC и уже размещённые данные. Методика теста и безопасное временное размещение должны быть реализованы отдельно.
+- Ответ ROM #20 3F:40:00 (4,145,152 байта) фиксируется только как диагностическое наблюдение старого ROM и не доказывает физическое отсутствие последних трёх страниц. Он не является основанием уменьшать физическую карту или отказываться от запуска.
+- Версия штатного GS105a ROM не является архитектурным параметром и не должна запрашиваться как условие реализации/запуска Project126.
+
+Это решение отменяет прежнее требование проверять RAM size high byte >= #40 до передачи управления Project126. Исторические записи о GS105a #20 и пороге 4 MiB в журнале ниже отражают предыдущую реализацию, а не действующее архитектурное требование.
