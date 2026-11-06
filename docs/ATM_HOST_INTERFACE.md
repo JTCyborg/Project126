@@ -76,4 +76,5 @@ The module intentionally does not write NeoGS-local DMA registers (#1B..#1F), be
 
 - Source version: `P126 ATM_IPC v0.1.0`.
 - Listing and map are generated on every successful build alongside the NeoGS listing/map.
+- CI build PASS: run `42274548106`, SjASMPlus 1.23.1, 235 source lines, 0 errors, 0 warnings, binary size 181 bytes; listing 14,766 bytes; map 1,407 bytes. [Build artifact](https://github.com/JTCyborg/Project126/actions/runs/42274548106).
 - Assembly success proves syntax and image-boundary assertions only. It does not prove live ATM↔NeoGS handshake on hardware.

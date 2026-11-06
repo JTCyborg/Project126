@@ -11,7 +11,7 @@ This document records actual artifacts and their verification state; it is not a
 - ATM build outputs: `build/ATM_IPC.bin`, `build/ATM.lst`, `build/ATM.map`.
 - ATM assembly origin is image-relative `ORG 0000h`; the final host load address is not assigned.
 - Not yet implemented: application command schema, versioned request frames, sequence IDs, CRC, retry/deduplication, DMA aperture and host-service ABIs. These remain explicit interface work, not implied by successful assembly.
-- Status: source committed; build/runtime verification pending.
+- Status: **BUILD PASS** for ATM assembly in GitHub Actions run `42274548106` (commit `20f5945e47f118706821d6d47b237be8b9b160a3`); 235 source lines, 0 errors, 0 warnings, 181-byte binary, 14,766-byte listing and 1,407-byte symbol map. No live ATM↔NeoGS hardware test has been performed.
 
 ## Build pipeline and address-placement audit
 
@@ -28,10 +28,13 @@ This document records actual artifacts and their verification state; it is not a
 - **Address-space qualification:** both assembly origins are image-relative offsets, not final physical NeoGS/ATM load addresses. Runtime memory maps and the ATM integration/load point remain to be fixed.
 - CI publishes both binaries, listings and maps in one audit artifact.
 
-## Last verified assembly before listing/map integration
+## Latest verified assembly
 
-- GitHub Actions run `42273068373`, commit `0e53ce36bb4a6a4052aac8e3886f62546861b52b`: SjASMPlus 1.23.1, 674 source lines, 0 errors, 0 warnings, 1155-byte output, size limit passed.
-- The listing/map build changes and ATM module are newer and require their own CI pass. Do not treat the previous result as verification of the current sources.
+- GitHub Actions run `42274548106`, commit `20f5945e47f118706821d6d47b237be8b9b160a3`: SjASMPlus 1.23.1; both modules assembled with 0 errors and 0 warnings.
+- NeoGS: 695 source lines, `x86_cpu_state.bin` 1,155 bytes, `NEOGS.lst` 37,553 bytes, `NEOGS.map` 2,732 bytes.
+- ATM: 235 source lines, `ATM_IPC.bin` 181 bytes, `ATM.lst` 14,766 bytes, `ATM.map` 1,407 bytes.
+- Combined audit artifact `project126-atm-neogs-assembly-audit` uploaded successfully: [workflow run and artifact](https://github.com/JTCyborg/Project126/actions/runs/42274548106).
+- This is an assembly/build result only; the IPC handshake has not yet been exercised on physical ATM/NeoGS hardware.
 
 ## PCem reference integrity tooling
 
