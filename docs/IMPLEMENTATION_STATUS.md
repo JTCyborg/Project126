@@ -261,3 +261,10 @@ A committed source file is not automatically a successful runtime or hardware te
 - SjASMPlus 1.23.1: resident/core image 2,356 bytes; ATM IPC 519 bytes; standalone NeoGS IPC 414 bytes; stage-0 bootstrap 175 bytes. All assembly units completed with 0 errors and 0 warnings.
 - TR-DOS image: 655,360 bytes. `proj126.C` 17,517 bytes / 69 sectors; `X86CORE.C` 2,356 bytes / 10 sectors; `P126BOOT.C` 175 bytes / 1 sector; each BIOS image 8,192 bytes / 32 sectors. The disk assembly retains one pre-existing generated-path backslash warning.
 - **BUILD PASS only.** No emulator or hardware boot/DMA test has been run.
+
+
+## Automatic first-frame DMA smoke test
+
+After resident startup and ATM video initialization, the host now builds an 18-byte ABI 1.0 diagnostics request (sequence 0001h, empty payload), calculates CRC-16/CCITT-FALSE with the production ATM routine and sends it through `p126_ipc_dma_send_frame`. This exercises E0h, READY/CBIT, the complete 18-byte DMA write, FFh and completion acknowledgement. The NeoGS resident independently validates the frame and logs either `DMA FRAME VALID` or `DMA FRAME REJECTED`.
+
+The ATM log `DMA SMOKE FRAME SENT` means the transport handshake completed; it is not by itself proof of receiver CRC acceptance. Compare it with the independent NeoGS #EF diagnostic. This is a target-side smoke test, not a build-time test.

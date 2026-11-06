@@ -467,3 +467,24 @@ p126_neogs_file_track: db 0
 p126_neogs_io_error: db 0
 p126_neogs_tx_byte: db 0
 p126_neogs_startup_error: db 0
+
+
+; Build and send one valid 18-byte diagnostics request through the application
+; DMA transport. The NeoGS resident loop independently validates CRC and
+; emits DMA FRAME VALID / DMA FRAME REJECTED on its own #EF channel.
+p126_neogs_dma_smoke_test::
+        ld      hl,#FFFF
+        ld      de,p126_neogs_dma_test_frame
+        ld      b,16
+.p126_neogs_dma_crc_loop:
+        ld      a,(de)
+        inc     de
+        call    p126_ipc_crc16_update
+        djnz    .p126_neogs_dma_crc_loop
+        ld      (p126_neogs_dma_test_frame+16),hl
+        ld      hl,p126_neogs_dma_test_frame
+        ld      bc,18
+        jp      p126_ipc_dma_send_frame
+
+p126_neogs_dma_test_frame:
+        db      'P','1','2','6',1,0,1,5,0,0,1,0,0,0,0,0,0,0

@@ -96,6 +96,22 @@ p126_host_ngs_start_done:
         ld      hl, p126_log_catalog_return
         call    p126_host_debug_string
 
+        ; One deterministic ABI 1.0 DMA frame proves the complete ATM->NeoGS
+        ; command/READY/payload/FF/completion path after the resident is ready.
+        ld      a,(p126_host_ngs_ready)
+        or      a
+        jr      z,p126_host_idle
+        ld      hl,p126_log_dma_test_begin
+        call    p126_host_debug_string
+        call    p126_neogs_dma_smoke_test
+        jr      c,p126_host_dma_test_failed
+        ld      hl,p126_log_dma_test_sent
+        call    p126_host_debug_string
+        jr      p126_host_idle
+p126_host_dma_test_failed:
+        ld      hl,p126_log_dma_test_failed
+        call    p126_host_debug_string
+
 p126_host_idle:
         call    p126_catalog_poll_keyboard
         jr      p126_host_idle
@@ -199,6 +215,9 @@ p126_host_ngs_ready: db 0
 p126_log_ngs_begin: db "[BOOT] NEOGS RESIDENT START BEGIN",13,10,0
 p126_log_ngs_ready: db "[BOOT] NEOGS RESIDENT READY",13,10,0
 p126_log_ngs_failed: db "[BOOT] NEOGS RESIDENT START FAILED",13,10,0
+p126_log_dma_test_begin: db "[BOOT] DMA SMOKE TEST BEGIN",13,10,0
+p126_log_dma_test_sent: db "[BOOT] DMA SMOKE FRAME SENT",13,10,0
+p126_log_dma_test_failed: db "[BOOT] DMA SMOKE TEST FAILED",13,10,0
 p126_log_trdos_begin:   db "[BOOT] TRDOS DIRECTORY READ BEGIN",13,10,0
 p126_log_trdos_done:    db "[BOOT] TRDOS DIRECTORY READ RETURN",13,10,0
 p126_log_video_begin:   db "[BOOT] ATM VIDEO INIT BEGIN",13,10,0

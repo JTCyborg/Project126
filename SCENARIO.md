@@ -539,3 +539,16 @@ BUILD PASS proves assembly and TR-DOS packaging only. ROM boot and all DMA/pagin
 ### Build verification for resident startup
 
 GitHub Actions run [42309240393](https://github.com/JTCyborg/Project126/actions/runs/42309240393) completed **BUILD PASS** for commit `2375b849bd684087b9027262c277b097e46f408e`. The resident image is 2,356 bytes, stage-0 bootstrap 175 bytes, ATM host program 17,517 bytes, and generated TR-DOS image 655,360 bytes. The image contains `P126BOOT.C` (175 bytes / one sector) and `X86CORE.C` (2,356 bytes / ten sectors). This verifies assembly and packaging, not ROM execution, paging, or physical DMA.
+
+
+## 17. First automatic DMA smoke frame
+
+After the resident reports A2h and the ATM video/UI is initialized, the ATM sends one valid 18-byte ABI 1.0 diagnostics request with sequence 0001h and zero payload. CRC is calculated by the same production ATM CRC routine, and the frame is sent using the normal DMA sender. This is the first automatic exercise of E0h → CBIT READY → 18-byte DMA write → FFh → completion.
+
+Expected independent logs:
+- ATM: `[BOOT] DMA SMOKE FRAME SENT` means the sender completed the CBIT handshake.
+- NeoGS: `[NGS] DMA FRAME VALID` confirms the receiver accepted the complete frame and CRC.
+- NeoGS: `[NGS] DMA FRAME REJECTED` means the transport completed but receiver validation failed.
+- ATM: `[BOOT] DMA SMOKE TEST FAILED` means the sender timed out or rejected the transaction.
+
+The smoke frame does not test reverse DMA, sequence/session enforcement, or any service handler. Hardware results must be reported separately from BUILD PASS.
