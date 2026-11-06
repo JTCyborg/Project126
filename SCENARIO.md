@@ -88,7 +88,7 @@
 - Заданы общие команды управления E0h..E3h и FFh (DMA end), типы сообщений, service IDs, коды ошибок, правила sequence/duplicate, fragmentation и resynchronization.
 - В Project126 фиксируется один активный DMA transaction. Завершение подтверждается только после end marker, отключения DMA на NeoGS и финального CBIT acknowledgement.
 - Буферы и адреса staging, окончательная карта 4 MiB NeoGS, ATM source/destination placement и paging остаются открытыми. Адреса Project125 не переносятся автоматически.
-- В ATM source добавлены общие ABI constants и CRC-16/CCITT-FALSE byte update/self-test. Это частичная реализация ABI, не готовый транспорт.
+- Общие ABI constants находятся в `shared/p126_ipc_protocol.inc`; CRC-16/CCITT-FALSE byte update/self-test реализованы в исходниках ATM и NeoGS. Это частичная реализация ABI, не готовый транспорт.
 
 ### 7.2. Карта памяти и размещение ресурсов
 
