@@ -53,9 +53,10 @@ p126_host_entry:
         call    BIOS_DebugConsole_DrawInterface
         ld      hl, p126_host_ui_log
         call    p126_host_console_string
+        call    p126_catalog_initialize
 
 p126_host_idle:
-        halt
+        call    p126_catalog_poll_keyboard
         jr      p126_host_idle
 
 ; IN: HL=zero-terminated string. Writes to the lower on-screen log.
@@ -157,6 +158,7 @@ p126_host_version_text:
 
         INCLUDE "atm_host/ds12887_rtc.asm"
         INCLUDE "atm_host/neogs_ipc.asm"
+        INCLUDE "atm_host/p126_disk_catalog.asm"
 
 ; Project125-derived ATM-native text console, relocated to window 2.
 ; Its renderer maps video pages only for each write and restores host pages.
