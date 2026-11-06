@@ -46,5 +46,33 @@ p126_x86_core_file_end:
         ASSERT p126_x86_core_file_end-p126_x86_core_file_start <= #4000
         SAVETRD "disk_A.trd", "X86CORE.C", #C000, p126_x86_core_file_end-p126_x86_core_file_start
 
+; -------------------------------------------------------------------------
+; Three 8 KiB BIOS images, packaged under TR-DOS-compatible 8.3 names.
+; The long Compaq source filename is represented on disk as COMPAQ.C.
+; -------------------------------------------------------------------------
+        PAGE 2
+        ORG #C000
+p126_bios1_file_start:
+        INCBIN "bios/27c64d.bin"
+p126_bios1_file_end:
+        ASSERT p126_bios1_file_end-p126_bios1_file_start = #2000
+        SAVETRD "disk_A.trd", "BIOS1.C", #C000, #2000
+
+        PAGE 3
+        ORG #C000
+p126_bios2_file_start:
+        INCBIN "bios/Bios.bin"
+p126_bios2_file_end:
+        ASSERT p126_bios2_file_end-p126_bios2_file_start = #2000
+        SAVETRD "disk_A.trd", "BIOS2.C", #C000, #2000
+
+        PAGE 4
+        ORG #C000
+p126_bios3_file_start:
+        INCBIN "bios/Compaq Portable Plus 100666-001 Rev C.bin"
+p126_bios3_file_end:
+        ASSERT p126_bios3_file_end-p126_bios3_file_start = #2000
+        SAVETRD "disk_A.trd", "COMPAQ.C", #C000, #2000
+
         PAGE 0
 
