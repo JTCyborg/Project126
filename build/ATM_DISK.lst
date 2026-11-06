@@ -133,7 +133,7 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
 110+  60AE ED 79                out     (c),a
 111+  60B0 3E 3D                ld      a,'='
 112+  60B2 ED 79                out     (c),a
-113+  60B4 3A CF 6F             ld      a,(p126_neogs_startup_stage)
+113+  60B4 3A F7 6F             ld      a,(p126_neogs_startup_stage)
 114+  60B7 ED 79                out     (c),a
 115+  60B9 3E 0D                ld      a,13
 116+  60BB ED 79                out     (c),a
@@ -178,7 +178,7 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
 155+  610D 28 19                jr      z,p126_host_idle
 156+  610F 21 79 62             ld      hl,p126_log_dma_test_begin
 157+  6112 CD 90 61             call    p126_host_debug_string
-158+  6115 CD D0 6F             call    p126_neogs_dma_smoke_test
+158+  6115 CD F8 6F             call    p126_neogs_dma_smoke_test
 159+  6118 38 08                jr      c,p126_host_dma_test_failed
 160+  611A 21 97 62             ld      hl,p126_log_dma_test_sent
 161+  611D CD 90 61             call    p126_host_debug_string
@@ -2072,558 +2072,574 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
  22++ 6C75              p126_neogs_startup:
  22++ 6C75
  23++ 6C75 3E 31                ld      a,'1'
- 24++ 6C77 32 CF 6F             ld      (p126_neogs_startup_stage),a
- 25++ 6C7A 21 A8 6F             ld      hl,p126_neogs_boot_name
- 26++ 6C7D CD 0B 6E             call    p126_neogs_open_file
+ 24++ 6C77 32 F7 6F             ld      (p126_neogs_startup_stage),a
+ 25++ 6C7A 21 D0 6F             ld      hl,p126_neogs_boot_name
+ 26++ 6C7D CD 1A 6E             call    p126_neogs_open_file
  27++ 6C80 D8                   ret     c
  28++ 6C81 3E 32                ld      a,'2'
- 29++ 6C83 32 CF 6F             ld      (p126_neogs_startup_stage),a
- 30++ 6C86 2A BA 6F             ld      hl,(p126_neogs_file_length)
+ 29++ 6C83 32 F7 6F             ld      (p126_neogs_startup_stage),a
+ 30++ 6C86 2A E2 6F             ld      hl,(p126_neogs_file_length)
  31++ 6C89 7C                   ld      a,h
  32++ 6C8A B7                   or      a
- 33++ 6C8B C2 F8 6D             jp      nz,p126_neogs_boot_file_bad
+ 33++ 6C8B C2 07 6E             jp      nz,p126_neogs_boot_file_bad
  34++ 6C8E 7D                   ld      a,l
  35++ 6C8F B7                   or      a
- 36++ 6C90 CA F8 6D             jp      z,p126_neogs_boot_file_bad
+ 36++ 6C90 CA 07 6E             jp      z,p126_neogs_boot_file_bad
  37++ 6C93
  38++ 6C93                      ; Use the proven GS105a ROM cold-restart path (#F4), not a
  39++ 6C93                      ; raw GSCTR reset. Retry once if a stale DMA transaction consumes
  40++ 6C93                      ; the first restart command as its end marker.
- 41++ 6C93 3E 33                ld      a,'3'
- 42++ 6C95 32 CF 6F             ld      (p126_neogs_startup_stage),a
+ 41++ 6C93 3E 41                ld      a,'A'                 ; A: GS105a #F4 cold restart / CBIT wait
+ 42++ 6C95 32 F7 6F             ld      (p126_neogs_startup_stage),a
  43++ 6C98 3E F4                ld      a,#F4
- 44++ 6C9A CD 1D 6F             call    p126_neogs_send_command_long
- 45++ 6C9D DA 00 6E             jp      c,p126_neogs_ram_bad
- 46++ 6CA0 CD F7 6E             call    p126_neogs_probe_rom_ram
- 47++ 6CA3 30 0E                jr      nc,.p126_neogs_stock_rom_ready
- 48++ 6CA5 3E F4                ld      a,#F4
- 49++ 6CA7 CD 1D 6F             call    p126_neogs_send_command_long
- 50++ 6CAA DA 00 6E             jp      c,p126_neogs_ram_bad
- 51++ 6CAD CD F7 6E             call    p126_neogs_probe_rom_ram
- 52++ 6CB0 DA 00 6E             jp      c,p126_neogs_ram_bad
- 53++ 6CB3              .p126_neogs_stock_rom_ready:
- 54++ 6CB3
- 55++ 6CB3                      ; GS105a #14 receives P126BOOT at logical 4000h.
- 56++ 6CB3 3E 34                ld      a,'4'
- 57++ 6CB5 32 CF 6F             ld      (p126_neogs_startup_stage),a
- 58++ 6CB8 21 00 00             ld      hl,0
- 59++ 6CBB ED 5B BA 6F          ld      de,(p126_neogs_file_length)
- 60++ 6CBF B7                   or      a
- 61++ 6CC0 ED 52                sbc     hl,de
- 62++ 6CC2 22 BE 6F             ld      (p126_neogs_block_length),hl
- 63++ 6CC5 7D                   ld      a,l
- 64++ 6CC6 CD 59 6F             call    p126_neogs_send_argument
- 65++ 6CC9 D8                   ret     c
- 66++ 6CCA 3E 14                ld      a,P126_NGS_CMD_RECV
- 67++ 6CCC CD 3F 6F             call    p126_neogs_send_command
- 68++ 6CCF D8                   ret     c
- 69++ 6CD0 3A BF 6F             ld      a,(p126_neogs_block_length+1)
- 70++ 6CD3 CD 61 6F             call    p126_neogs_send_byte
- 71++ 6CD6 D8                   ret     c
- 72++ 6CD7 AF                   xor     a
- 73++ 6CD8 CD 61 6F             call    p126_neogs_send_byte
- 74++ 6CDB D8                   ret     c
- 75++ 6CDC 3E 40                ld      a,#40
- 76++ 6CDE CD 61 6F             call    p126_neogs_send_byte
- 77++ 6CE1 D8                   ret     c
- 78++ 6CE2 21 00 C0             ld      hl,#C000
- 79++ 6CE5 ED 5B BA 6F          ld      de,(p126_neogs_file_length)
- 80++ 6CE9              .p126_neogs_boot_stream:
- 81++ 6CE9 7A                   ld      a,d
- 82++ 6CEA B3                   or      e
- 83++ 6CEB 28 09                jr      z,.p126_neogs_boot_loaded
- 84++ 6CED 7E                   ld      a,(hl)
- 85++ 6CEE CD 61 6F             call    p126_neogs_send_byte
- 86++ 6CF1 D8                   ret     c
- 87++ 6CF2 23                   inc     hl
- 88++ 6CF3 1B                   dec     de
- 89++ 6CF4 18 F3                jr      .p126_neogs_boot_stream
- 90++ 6CF6              .p126_neogs_boot_loaded:
- 91++ 6CF6                      ; Read the first resident-image sector before starting stage-0.
- 92++ 6CF6 3E 35                ld      a,'5'
- 93++ 6CF8 32 CF 6F             ld      (p126_neogs_startup_stage),a
- 94++ 6CFB 21 B0 6F             ld      hl,p126_neogs_core_name
- 95++ 6CFE CD 0B 6E             call    p126_neogs_open_file
- 96++ 6D01 D8                   ret     c
- 97++ 6D02 3E 36                ld      a,'6'
- 98++ 6D04 32 CF 6F             ld      (p126_neogs_startup_stage),a
- 99++ 6D07 2A BA 6F             ld      hl,(p126_neogs_file_length)
-100++ 6D0A 7C                   ld      a,h
-101++ 6D0B FE 40                cp      #40
-102++ 6D0D 38 08                jr      c,.p126_neogs_core_size_low
-103++ 6D0F C2 FC 6D             jp      nz,p126_neogs_core_file_bad
-104++ 6D12 7D                   ld      a,l
-105++ 6D13 B7                   or      a
-106++ 6D14 C2 FC 6D             jp      nz,p126_neogs_core_file_bad
-107++ 6D17              .p126_neogs_core_size_low:
-108++ 6D17 7C                   ld      a,h
-109++ 6D18 B5                   or      l
-110++ 6D19 CA FC 6D             jp      z,p126_neogs_core_file_bad
-111++ 6D1C 2A BA 6F             ld      hl,(p126_neogs_file_length)
-112++ 6D1F 22 BC 6F             ld      (p126_neogs_core_length),hl
-113++ 6D22
-114++ 6D22                      ; Enter stage-0 at 4000h; it publishes A1h when ready.
-115++ 6D22 3E 37                ld      a,'7'
-116++ 6D24 32 CF 6F             ld      (p126_neogs_startup_stage),a
-117++ 6D27 AF                   xor     a
-118++ 6D28 CD 59 6F             call    p126_neogs_send_argument
-119++ 6D2B D8                   ret     c
-120++ 6D2C 3E 13                ld      a,P126_NGS_CMD_JUMP
-121++ 6D2E CD 3F 6F             call    p126_neogs_send_command
-122++ 6D31 D8                   ret     c
-123++ 6D32 3E 40                ld      a,#40
-124++ 6D34 CD 61 6F             call    p126_neogs_send_byte
-125++ 6D37 30 12                jr      nc,.p126_neogs_jump_tx_done
-126++ 6D39 DB BB                in      a,(P126_NGS_GSSTAT)
-127++ 6D3B CB 7F                bit     P126_NGS_DBIT,a
-128++ 6D3D CA 04 6E             jp      z,p126_neogs_transport_error
-129++ 6D40 CD 70 6F             call    p126_neogs_receive_byte
-130++ 6D43 D8                   ret     c
-131++ 6D44 FE A1                cp      P126_NGS_ACK_READY
-132++ 6D46 C2 04 6E             jp      nz,p126_neogs_transport_error
-133++ 6D49 18 09                jr      .p126_neogs_stage0_ready
-134++ 6D4B              .p126_neogs_jump_tx_done:
-135++ 6D4B CD 70 6F             call    p126_neogs_receive_byte
-136++ 6D4E D8                   ret     c
-137++ 6D4F FE A1                cp      P126_NGS_ACK_READY
-138++ 6D51 C2 04 6E             jp      nz,p126_neogs_transport_error
-139++ 6D54
-140++ 6D54              .p126_neogs_stage0_ready:
-141++ 6D54                      ; Length exchange; A3h confirms the resident image size.
-142++ 6D54 3E 38                ld      a,'8'
-143++ 6D56 32 CF 6F             ld      (p126_neogs_startup_stage),a
-144++ 6D59 2A BC 6F             ld      hl,(p126_neogs_core_length)
-145++ 6D5C 7D                   ld      a,l
-146++ 6D5D CD 61 6F             call    p126_neogs_send_byte
-147++ 6D60 D8                   ret     c
-148++ 6D61 7C                   ld      a,h
-149++ 6D62 CD 61 6F             call    p126_neogs_send_byte
-150++ 6D65 30 12                jr      nc,.p126_neogs_length_sent
-151++ 6D67 DB BB                in      a,(P126_NGS_GSSTAT)
-152++ 6D69 CB 7F                bit     P126_NGS_DBIT,a
-153++ 6D6B CA 04 6E             jp      z,p126_neogs_transport_error
-154++ 6D6E CD 70 6F             call    p126_neogs_receive_byte
-155++ 6D71 D8                   ret     c
-156++ 6D72 FE A3                cp      P126_NGS_ACK_LENGTH
-157++ 6D74 C2 04 6E             jp      nz,p126_neogs_transport_error
-158++ 6D77 18 09                jr      .p126_neogs_stream_begin
-159++ 6D79              .p126_neogs_length_sent:
-160++ 6D79 CD 70 6F             call    p126_neogs_receive_byte
-161++ 6D7C D8                   ret     c
-162++ 6D7D FE A3                cp      P126_NGS_ACK_LENGTH
-163++ 6D7F C2 04 6E             jp      nz,p126_neogs_transport_error
-164++ 6D82
-165++ 6D82              .p126_neogs_stream_begin:
-166++ 6D82 3E 39                ld      a,'9'
-167++ 6D84 32 CF 6F             ld      (p126_neogs_startup_stage),a
-168++ 6D87 21 00 C0             ld      hl,#C000
-169++ 6D8A 22 C0 6F             ld      (p126_neogs_buffer_ptr),hl
-170++ 6D8D 21 00 01             ld      hl,256
-171++ 6D90 22 C2 6F             ld      (p126_neogs_buffer_remaining),hl
-172++ 6D93 ED 5B BC 6F          ld      de,(p126_neogs_core_length)
-173++ 6D97              .p126_neogs_core_stream:
-174++ 6D97 7A                   ld      a,d
-175++ 6D98 B3                   or      e
-176++ 6D99 28 4D                jr      z,.p126_neogs_core_stream_done
-177++ 6D9B 2A C2 6F             ld      hl,(p126_neogs_buffer_remaining)
-178++ 6D9E 7C                   ld      a,h
-179++ 6D9F B5                   or      l
-180++ 6DA0 20 12                jr      nz,.p126_neogs_core_buffer_ready
-181++ 6DA2 D5                   push    de
-182++ 6DA3 CD 75 6E             call    p126_neogs_read_next_sector
-183++ 6DA6 D1                   pop     de
-184++ 6DA7 D8                   ret     c
-185++ 6DA8 21 00 C0             ld      hl,#C000
-186++ 6DAB 22 C0 6F             ld      (p126_neogs_buffer_ptr),hl
-187++ 6DAE 21 00 01             ld      hl,256
-188++ 6DB1 22 C2 6F             ld      (p126_neogs_buffer_remaining),hl
-189++ 6DB4              .p126_neogs_core_buffer_ready:
-190++ 6DB4 2A C0 6F             ld      hl,(p126_neogs_buffer_ptr)
-191++ 6DB7 7E                   ld      a,(hl)
-192++ 6DB8 CD 61 6F             call    p126_neogs_send_byte
-193++ 6DBB 30 1D                jr      nc,.p126_neogs_core_byte_sent
-194++ 6DBD                      ; The resident can publish A2h immediately after consuming the final
-195++ 6DBD                      ; byte. In that case one byte remains in DE and DBIT is already set.
-196++ 6DBD 7A                   ld      a,d
-197++ 6DBE B7                   or      a
-198++ 6DBF C2 04 6E             jp      nz,p126_neogs_transport_error
-199++ 6DC2 7B                   ld      a,e
-200++ 6DC3 FE 01                cp      1
-201++ 6DC5 C2 04 6E             jp      nz,p126_neogs_transport_error
-202++ 6DC8 DB BB                in      a,(P126_NGS_GSSTAT)
-203++ 6DCA CB 7F                bit     P126_NGS_DBIT,a
-204++ 6DCC CA 04 6E             jp      z,p126_neogs_transport_error
-205++ 6DCF CD 70 6F             call    p126_neogs_receive_byte
-206++ 6DD2 D8                   ret     c
-207++ 6DD3 FE A2                cp      P126_NGS_ACK_DONE
-208++ 6DD5 C2 04 6E             jp      nz,p126_neogs_transport_error
-209++ 6DD8 18 17                jr      .p126_neogs_startup_done
-210++ 6DDA              .p126_neogs_core_byte_sent:
-211++ 6DDA 23                   inc     hl
-212++ 6DDB 22 C0 6F             ld      (p126_neogs_buffer_ptr),hl
-213++ 6DDE 2A C2 6F             ld      hl,(p126_neogs_buffer_remaining)
-214++ 6DE1 2B                   dec     hl
-215++ 6DE2 22 C2 6F             ld      (p126_neogs_buffer_remaining),hl
-216++ 6DE5 1B                   dec     de
-217++ 6DE6 18 AF                jr      .p126_neogs_core_stream
-218++ 6DE8
-219++ 6DE8              .p126_neogs_core_stream_done:
-220++ 6DE8 CD 70 6F             call    p126_neogs_receive_byte
-221++ 6DEB D8                   ret     c
-222++ 6DEC FE A2                cp      P126_NGS_ACK_DONE
-223++ 6DEE C2 04 6E             jp      nz,p126_neogs_transport_error
-224++ 6DF1              .p126_neogs_startup_done:
-225++ 6DF1 3E 30                ld      a,'0'
-226++ 6DF3 32 CF 6F             ld      (p126_neogs_startup_stage),a
-227++ 6DF6 AF                   xor     a
-228++ 6DF7 C9                   ret
-229++ 6DF8
-230++ 6DF8              p126_neogs_boot_file_bad:
-231++ 6DF8 3E 01                ld      a,1
-232++ 6DFA 18 0A                jr      p126_neogs_store_error
-233++ 6DFC              p126_neogs_core_file_bad:
-234++ 6DFC 3E 02                ld      a,2
-235++ 6DFE 18 06                jr      p126_neogs_store_error
-236++ 6E00              p126_neogs_ram_bad:
-237++ 6E00 3E 03                ld      a,3
-238++ 6E02 18 02                jr      p126_neogs_store_error
-239++ 6E04              p126_neogs_transport_error:
-240++ 6E04 3E 04                ld      a,4
-241++ 6E06              p126_neogs_store_error:
-242++ 6E06 32 CE 6F             ld      (p126_neogs_startup_error),a
-243++ 6E09 37                   scf
-244++ 6E0A C9                   ret
-245++ 6E0B
-246++ 6E0B              ; IN HL=exact 8-character filename. Directory was preloaded at C800h.
-247++ 6E0B              ; OUT: carry clear, first sector at C000h, metadata initialized.
-248++ 6E0B              p126_neogs_open_file:
-249++ 6E0B 22 B8 6F             ld      (p126_neogs_name_ptr),hl
-250++ 6E0E DD 21 00 C8          ld      ix,#C800
-251++ 6E12 06 80                ld      b,128
-252++ 6E14              .p126_neogs_find_loop:
-253++ 6E14 DD E5                push    ix
-254++ 6E16 C5                   push    bc
-255++ 6E17 2A B8 6F             ld      hl,(p126_neogs_name_ptr)
-256++ 6E1A 0E 08                ld      c,8
-257++ 6E1C              .p126_neogs_compare:
-258++ 6E1C 7E                   ld      a,(hl)
-259++ 6E1D DD BE 00             cp      (ix+0)
-260++ 6E20 20 0D                jr      nz,.p126_neogs_find_miss
-261++ 6E22 23                   inc     hl
-262++ 6E23 DD 23                inc     ix
-263++ 6E25 0D                   dec     c
-264++ 6E26 20 F4                jr      nz,.p126_neogs_compare
-265++ 6E28 DD 7E 00             ld      a,(ix+0)
-266++ 6E2B FE 43                cp      'C'
-267++ 6E2D 28 0C                jr      z,.p126_neogs_find_hit
-268++ 6E2F              .p126_neogs_find_miss:
-269++ 6E2F C1                   pop     bc
-270++ 6E30 DD E1                pop     ix
-271++ 6E32 11 10 00             ld      de,16
-272++ 6E35 DD 19                add     ix,de
-273++ 6E37 10 DB                djnz    .p126_neogs_find_loop
-274++ 6E39 37                   scf
-275++ 6E3A C9                   ret
-276++ 6E3B              .p126_neogs_find_hit:
-277++ 6E3B C1                   pop     bc
-278++ 6E3C D1                   pop     de
-279++ 6E3D DD 7E 03             ld      a,(ix+3)
-280++ 6E40 32 BA 6F             ld      (p126_neogs_file_length),a
-281++ 6E43 DD 7E 04             ld      a,(ix+4)
-282++ 6E46 32 BB 6F             ld      (p126_neogs_file_length+1),a
-283++ 6E49 DD 7E 05             ld      a,(ix+5)
-284++ 6E4C 32 C9 6F             ld      (p126_neogs_file_sectors_left),a
-285++ 6E4F DD 7E 06             ld      a,(ix+6)
-286++ 6E52 32 CA 6F             ld      (p126_neogs_file_sector),a
-287++ 6E55 DD 7E 07             ld      a,(ix+7)
-288++ 6E58 32 CB 6F             ld      (p126_neogs_file_track),a
-289++ 6E5B 3A C9 6F             ld      a,(p126_neogs_file_sectors_left)
-290++ 6E5E B7                   or      a
-291++ 6E5F 20 02                jr      nz,.p126_neogs_file_meta_ok
-292++ 6E61 37                   scf
-293++ 6E62 C9                   ret
-294++ 6E63              .p126_neogs_file_meta_ok:
-295++ 6E63 CD 75 6E             call    p126_neogs_read_next_sector
-296++ 6E66 D8                   ret     c
-297++ 6E67 21 00 C0             ld      hl,#C000
-298++ 6E6A 22 C0 6F             ld      (p126_neogs_buffer_ptr),hl
-299++ 6E6D 21 00 01             ld      hl,256
-300++ 6E70 22 C2 6F             ld      (p126_neogs_buffer_remaining),hl
-301++ 6E73 AF                   xor     a
-302++ 6E74 C9                   ret
-303++ 6E75
-304++ 6E75              ; Read one sector at the current TR-DOS cursor. Preserves all Z80 registers.
-305++ 6E75              p126_neogs_read_next_sector:
-306++ 6E75 3A C9 6F             ld      a,(p126_neogs_file_sectors_left)
-307++ 6E78 B7                   or      a
-308++ 6E79 20 02                jr      nz,.p126_neogs_read_sector_ready
-309++ 6E7B 37                   scf
-310++ 6E7C C9                   ret
-311++ 6E7D              .p126_neogs_read_sector_ready:
-312++ 6E7D F5                   push    af
-313++ 6E7E C5                   push    bc
-314++ 6E7F D5                   push    de
-315++ 6E80 E5                   push    hl
-316++ 6E81 DD E5                push    ix
-317++ 6E83 FD E5                push    iy
-318++ 6E85 D9                   exx
-319++ 6E86 C5                   push    bc
-320++ 6E87 D5                   push    de
-321++ 6E88 E5                   push    hl
-322++ 6E89 D9                   exx
-323++ 6E8A 08                   ex      af,af'
-324++ 6E8B F5                   push    af
-325++ 6E8C 08                   ex      af,af'
-326++ 6E8D ED 73 C4 6F          ld      (p126_neogs_saved_sp),sp
-327++ 6E91 31 FF BF             ld      sp,#BFFF
-328++ 6E94
-329++ 6E94 3A CB 6F             ld      a,(p126_neogs_file_track)
-330++ 6E97 57                   ld      d,a
-331++ 6E98 3A CA 6F             ld      a,(p126_neogs_file_sector)
-332++ 6E9B 5F                   ld      e,a
-333++ 6E9C 21 00 C0             ld      hl,#C000
-334++ 6E9F 06 01                ld      b,1
-335++ 6EA1 0E 05                ld      c,5
-336++ 6EA3 AF                   xor     a
-337++ 6EA4 32 0F 5D             ld      (#5D0F),a
-338++ 6EA7 32 10 5D             ld      (#5D10),a
-339++ 6EAA CD 13 3D             call    #3D13
-340++ 6EAD 3A 0F 5D             ld      a,(#5D0F)
-341++ 6EB0 47                   ld      b,a
-342++ 6EB1 3A 10 5D             ld      a,(#5D10)
-343++ 6EB4 B0                   or      b
-344++ 6EB5 32 CC 6F             ld      (p126_neogs_io_error),a
-345++ 6EB8 20 1F                jr      nz,.p126_neogs_read_restore
-346++ 6EBA
-347++ 6EBA 3A CA 6F             ld      a,(p126_neogs_file_sector)
-348++ 6EBD 3C                   inc     a
-349++ 6EBE FE 10                cp      16
-350++ 6EC0 38 0D                jr      c,.p126_neogs_sector_advanced
-351++ 6EC2 AF                   xor     a
-352++ 6EC3 32 CA 6F             ld      (p126_neogs_file_sector),a
-353++ 6EC6 3A CB 6F             ld      a,(p126_neogs_file_track)
-354++ 6EC9 3C                   inc     a
-355++ 6ECA 32 CB 6F             ld      (p126_neogs_file_track),a
-356++ 6ECD 18 03                jr      .p126_neogs_sector_count
-357++ 6ECF              .p126_neogs_sector_advanced:
-358++ 6ECF 32 CA 6F             ld      (p126_neogs_file_sector),a
-359++ 6ED2              .p126_neogs_sector_count:
-360++ 6ED2 3A C9 6F             ld      a,(p126_neogs_file_sectors_left)
-361++ 6ED5 3D                   dec     a
-362++ 6ED6 32 C9 6F             ld      (p126_neogs_file_sectors_left),a
-363++ 6ED9
-364++ 6ED9              .p126_neogs_read_restore:
-365++ 6ED9 ED 7B C4 6F          ld      sp,(p126_neogs_saved_sp)
-366++ 6EDD 08                   ex      af,af'
-367++ 6EDE F1                   pop     af
-368++ 6EDF 08                   ex      af,af'
-369++ 6EE0 D9                   exx
-370++ 6EE1 E1                   pop     hl
-371++ 6EE2 D1                   pop     de
-372++ 6EE3 C1                   pop     bc
-373++ 6EE4 D9                   exx
-374++ 6EE5 FD E1                pop     iy
-375++ 6EE7 DD E1                pop     ix
-376++ 6EE9 E1                   pop     hl
-377++ 6EEA D1                   pop     de
-378++ 6EEB C1                   pop     bc
-379++ 6EEC F1                   pop     af
-380++ 6EED 3A CC 6F             ld      a,(p126_neogs_io_error)
-381++ 6EF0 B7                   or      a
-382++ 6EF1 28 02                jr      z,.p126_neogs_read_ok
-383++ 6EF3 37                   scf
-384++ 6EF4 C9                   ret
-385++ 6EF5              .p126_neogs_read_ok:
-386++ 6EF5 B7                   or      a
-387++ 6EF6 C9                   ret
-388++ 6EF7
-389++ 6EF7               ; Query the stock ROM for its 24-bit RAM size. Project126 requires 4 MiB.
-390++ 6EF7              p126_neogs_probe_rom_ram:
-391++ 6EF7 3E 20                ld      a,P126_NGS_CMD_RAM
-392++ 6EF9 CD 1D 6F             call    p126_neogs_send_command_long
-393++ 6EFC D8                   ret     c
-394++ 6EFD CD 70 6F             call    p126_neogs_receive_byte
-395++ 6F00 D8                   ret     c
-396++ 6F01 32 C6 6F             ld      (p126_neogs_ram_size),a
-397++ 6F04 CD 70 6F             call    p126_neogs_receive_byte
-398++ 6F07 D8                   ret     c
-399++ 6F08 32 C7 6F             ld      (p126_neogs_ram_size+1),a
-400++ 6F0B CD 70 6F             call    p126_neogs_receive_byte
-401++ 6F0E D8                   ret     c
-402++ 6F0F 32 C8 6F             ld      (p126_neogs_ram_size+2),a
-403++ 6F12 3A C8 6F             ld      a,(p126_neogs_ram_size+2)
-404++ 6F15 FE 40                cp      #40
-405++ 6F17 38 02                jr      c,.p126_neogs_ram_probe_bad
-406++ 6F19 B7                   or      a
-407++ 6F1A C9                   ret
-408++ 6F1B              .p126_neogs_ram_probe_bad:
-409++ 6F1B 37                   scf
-410++ 6F1C C9                   ret
-411++ 6F1D
-412++ 6F1D              ; Extended CBIT wait based on the known-working Project125 GS105a driver.
-413++ 6F1D              p126_neogs_send_command_long:
-414++ 6F1D 32 CD 6F             ld      (p126_neogs_tx_byte),a
-415++ 6F20 3A CD 6F             ld      a,(p126_neogs_tx_byte)
-416++ 6F23 D3 BB                out     (P126_NGS_GSCOM),a
-417++ 6F25 D5                   push    de
-418++ 6F26 16 10                ld      d,16
-419++ 6F28              .p126_neogs_command_long_outer:
-420++ 6F28 01 FF FF             ld      bc,#FFFF
-421++ 6F2B              .p126_neogs_command_long_inner:
-422++ 6F2B DB BB                in      a,(P126_NGS_GSSTAT)
-423++ 6F2D CB 47                bit     P126_NGS_CBIT,a
-424++ 6F2F 28 0B                jr      z,.p126_neogs_command_long_done
-425++ 6F31 0B                   dec     bc
-426++ 6F32 78                   ld      a,b
-427++ 6F33 B1                   or      c
-428++ 6F34 20 F5                jr      nz,.p126_neogs_command_long_inner
-429++ 6F36 15                   dec     d
-430++ 6F37 20 EF                jr      nz,.p126_neogs_command_long_outer
-431++ 6F39 D1                   pop     de
-432++ 6F3A 37                   scf
-433++ 6F3B C9                   ret
-434++ 6F3C              .p126_neogs_command_long_done:
-435++ 6F3C D1                   pop     de
-436++ 6F3D B7                   or      a
-437++ 6F3E C9                   ret
-438++ 6F3F
-439++ 6F3F              ; Stock GS105a command/data primitives. Application payloads do not use these.
-440++ 6F3F              p126_neogs_send_command:
-441++ 6F3F 32 CD 6F             ld      (p126_neogs_tx_byte),a
-442++ 6F42 3A CD 6F             ld      a,(p126_neogs_tx_byte)
-443++ 6F45 D3 BB                out     (P126_NGS_GSCOM),a
-444++ 6F47 01 FF FF             ld      bc,P126_NGS_TIMEOUT
-445++ 6F4A              .p126_neogs_command_wait:
-446++ 6F4A DB BB                in      a,(P126_NGS_GSSTAT)
-447++ 6F4C CB 47                bit     P126_NGS_CBIT,a
-448++ 6F4E 28 07                jr      z,.p126_neogs_command_ok
-449++ 6F50 0B                   dec     bc
-450++ 6F51 78                   ld      a,b
-451++ 6F52 B1                   or      c
-452++ 6F53 20 F5                jr      nz,.p126_neogs_command_wait
-453++ 6F55 37                   scf
-454++ 6F56 C9                   ret
-455++ 6F57              .p126_neogs_command_ok:
-456++ 6F57 B7                   or      a
-457++ 6F58 C9                   ret
-458++ 6F59
-459++ 6F59              p126_neogs_send_argument:
-460++ 6F59 CD 84 6F             call    p126_neogs_wait_dbit_clear
-461++ 6F5C D8                   ret     c
-462++ 6F5D D3 B3                out     (P126_NGS_GSDAT),a
-463++ 6F5F B7                   or      a
-464++ 6F60 C9                   ret
-465++ 6F61
-466++ 6F61              p126_neogs_send_byte:
-467++ 6F61 32 CD 6F             ld      (p126_neogs_tx_byte),a
-468++ 6F64 CD 84 6F             call    p126_neogs_wait_dbit_clear
-469++ 6F67 D8                   ret     c
-470++ 6F68 3A CD 6F             ld      a,(p126_neogs_tx_byte)
-471++ 6F6B D3 B3                out     (P126_NGS_GSDAT),a
-472++ 6F6D C3 84 6F             jp      p126_neogs_wait_dbit_clear
-473++ 6F70
-474++ 6F70              p126_neogs_receive_byte:
-475++ 6F70 CD 96 6F             call    p126_neogs_wait_dbit_set
-476++ 6F73 D8                   ret     c
-477++ 6F74 DB B3                in      a,(P126_NGS_GSDAT)
-478++ 6F76                      ; Give the GS105a sender time to observe DBIT being cleared.
-479++ 6F76 F5                   push    af
-480++ 6F77 C5                   push    bc
-481++ 6F78 01 00 04             ld      bc,#0400
-482++ 6F7B              .p126_neogs_receive_turnaround:
-483++ 6F7B 0B                   dec     bc
-484++ 6F7C 78                   ld      a,b
-485++ 6F7D B1                   or      c
-486++ 6F7E 20 FB                jr      nz,.p126_neogs_receive_turnaround
-487++ 6F80 C1                   pop     bc
-488++ 6F81 F1                   pop     af
-489++ 6F82 B7                   or      a
-490++ 6F83 C9                   ret
-491++ 6F84
-492++ 6F84              p126_neogs_wait_dbit_clear:
-493++ 6F84 01 FF FF             ld      bc,P126_NGS_TIMEOUT
-494++ 6F87              .p126_neogs_dbit_clear_loop:
-495++ 6F87 DB BB                in      a,(P126_NGS_GSSTAT)
-496++ 6F89 CB 7F                bit     P126_NGS_DBIT,a
-497++ 6F8B 28 07                jr      z,.p126_neogs_dbit_clear_ok
-498++ 6F8D 0B                   dec     bc
-499++ 6F8E 78                   ld      a,b
-500++ 6F8F B1                   or      c
-501++ 6F90 20 F5                jr      nz,.p126_neogs_dbit_clear_loop
-502++ 6F92 37                   scf
-503++ 6F93 C9                   ret
-504++ 6F94              .p126_neogs_dbit_clear_ok:
-505++ 6F94 B7                   or      a
-506++ 6F95 C9                   ret
-507++ 6F96
-508++ 6F96              p126_neogs_wait_dbit_set:
-509++ 6F96 01 FF FF             ld      bc,P126_NGS_TIMEOUT
-510++ 6F99              .p126_neogs_dbit_set_loop:
-511++ 6F99 DB BB                in      a,(P126_NGS_GSSTAT)
-512++ 6F9B CB 7F                bit     P126_NGS_DBIT,a
-513++ 6F9D 20 07                jr      nz,.p126_neogs_dbit_set_ok
-514++ 6F9F 0B                   dec     bc
-515++ 6FA0 78                   ld      a,b
-516++ 6FA1 B1                   or      c
-517++ 6FA2 20 F5                jr      nz,.p126_neogs_dbit_set_loop
-518++ 6FA4 37                   scf
-519++ 6FA5 C9                   ret
-520++ 6FA6              .p126_neogs_dbit_set_ok:
-521++ 6FA6 B7                   or      a
-522++ 6FA7 C9                   ret
-523++ 6FA8
-524++ 6FA8 50 31 32 36  p126_neogs_boot_name: db "P126BOOT"
-524++ 6FAC 42 4F 4F 54
-525++ 6FB0 58 38 36 43  p126_neogs_core_name: db "X86CORE "
-525++ 6FB4 4F 52 45 20
-526++ 6FB8 00 00        p126_neogs_name_ptr: dw 0
-527++ 6FBA 00 00        p126_neogs_file_length: dw 0
-528++ 6FBC 00 00        p126_neogs_core_length: dw 0
-529++ 6FBE 00 00        p126_neogs_block_length: dw 0
-530++ 6FC0 00 C0        p126_neogs_buffer_ptr: dw #C000
-531++ 6FC2 00 00        p126_neogs_buffer_remaining: dw 0
-532++ 6FC4 00 00        p126_neogs_saved_sp: dw 0
-533++ 6FC6 00 00 00     p126_neogs_ram_size: db 0,0,0
-534++ 6FC9 00           p126_neogs_file_sectors_left: db 0
-535++ 6FCA 00           p126_neogs_file_sector: db 0
-536++ 6FCB 00           p126_neogs_file_track: db 0
-537++ 6FCC 00           p126_neogs_io_error: db 0
-538++ 6FCD 00           p126_neogs_tx_byte: db 0
-539++ 6FCE 00           p126_neogs_startup_error: db 0
-540++ 6FCF 30           p126_neogs_startup_stage: db '0'
-541++ 6FD0
-542++ 6FD0
-543++ 6FD0              ; Build and send one valid 18-byte diagnostics request through the application
-544++ 6FD0              ; DMA transport. The NeoGS resident loop independently validates CRC and
-545++ 6FD0              ; emits DMA FRAME VALID / DMA FRAME REJECTED on its own #EF channel.
-546++ 6FD0              p126_neogs_dma_smoke_test:
-546++ 6FD0
-547++ 6FD0 21 FF FF             ld      hl,#FFFF
-548++ 6FD3 11 EB 6F             ld      de,p126_neogs_dma_test_frame
-549++ 6FD6 06 10                ld      b,16
-550++ 6FD8              .p126_neogs_dma_crc_loop:
-551++ 6FD8 1A                   ld      a,(de)
-552++ 6FD9 13                   inc     de
-553++ 6FDA CD 83 66             call    p126_ipc_crc16_update
-554++ 6FDD 10 F9                djnz    .p126_neogs_dma_crc_loop
-555++ 6FDF 22 FB 6F             ld      (p126_neogs_dma_test_frame+16),hl
-556++ 6FE2 21 EB 6F             ld      hl,p126_neogs_dma_test_frame
-557++ 6FE5 01 12 00             ld      bc,18
-558++ 6FE8 C3 C6 67             jp      p126_ipc_dma_send_frame
-559++ 6FEB
-560++ 6FEB              p126_neogs_dma_test_frame:
-561++ 6FEB 50 31 32 36          db      'P','1','2','6',1,0,1,5,0,0,1,0,0,0,0,0,0,0
-561++ 6FEF 01 00 01 05
-561++ 6FF3 00 00 01 00
-561++ 6FF7 00 00 00 00
-561++ 6FFB 00 00
-562++ 6FFD
+ 44++ 6C9A CD 45 6F             call    p126_neogs_send_command_long
+ 45++ 6C9D DA 0F 6E             jp      c,p126_neogs_ram_bad
+ 46++ 6CA0 3E 42                ld      a,'B'                 ; B: first #20 RAM probe
+ 47++ 6CA2 32 F7 6F             ld      (p126_neogs_startup_stage),a
+ 48++ 6CA5 CD 06 6F             call    p126_neogs_probe_rom_ram
+ 49++ 6CA8 30 18                jr      nc,.p126_neogs_stock_rom_ready
+ 50++ 6CAA 3E 48                ld      a,'H'                 ; H: retry #F4 after failed first probe
+ 51++ 6CAC 32 F7 6F             ld      (p126_neogs_startup_stage),a
+ 52++ 6CAF 3E F4                ld      a,#F4
+ 53++ 6CB1 CD 45 6F             call    p126_neogs_send_command_long
+ 54++ 6CB4 DA 0F 6E             jp      c,p126_neogs_ram_bad
+ 55++ 6CB7 3E 42                ld      a,'B'                 ; B: retry #20 RAM probe
+ 56++ 6CB9 32 F7 6F             ld      (p126_neogs_startup_stage),a
+ 57++ 6CBC CD 06 6F             call    p126_neogs_probe_rom_ram
+ 58++ 6CBF DA 0F 6E             jp      c,p126_neogs_ram_bad
+ 59++ 6CC2              .p126_neogs_stock_rom_ready:
+ 60++ 6CC2
+ 61++ 6CC2                      ; GS105a #14 receives P126BOOT at logical 4000h.
+ 62++ 6CC2 3E 34                ld      a,'4'
+ 63++ 6CC4 32 F7 6F             ld      (p126_neogs_startup_stage),a
+ 64++ 6CC7 21 00 00             ld      hl,0
+ 65++ 6CCA ED 5B E2 6F          ld      de,(p126_neogs_file_length)
+ 66++ 6CCE B7                   or      a
+ 67++ 6CCF ED 52                sbc     hl,de
+ 68++ 6CD1 22 E6 6F             ld      (p126_neogs_block_length),hl
+ 69++ 6CD4 7D                   ld      a,l
+ 70++ 6CD5 CD 81 6F             call    p126_neogs_send_argument
+ 71++ 6CD8 D8                   ret     c
+ 72++ 6CD9 3E 14                ld      a,P126_NGS_CMD_RECV
+ 73++ 6CDB CD 67 6F             call    p126_neogs_send_command
+ 74++ 6CDE D8                   ret     c
+ 75++ 6CDF 3A E7 6F             ld      a,(p126_neogs_block_length+1)
+ 76++ 6CE2 CD 89 6F             call    p126_neogs_send_byte
+ 77++ 6CE5 D8                   ret     c
+ 78++ 6CE6 AF                   xor     a
+ 79++ 6CE7 CD 89 6F             call    p126_neogs_send_byte
+ 80++ 6CEA D8                   ret     c
+ 81++ 6CEB 3E 40                ld      a,#40
+ 82++ 6CED CD 89 6F             call    p126_neogs_send_byte
+ 83++ 6CF0 D8                   ret     c
+ 84++ 6CF1 21 00 C0             ld      hl,#C000
+ 85++ 6CF4 ED 5B E2 6F          ld      de,(p126_neogs_file_length)
+ 86++ 6CF8              .p126_neogs_boot_stream:
+ 87++ 6CF8 7A                   ld      a,d
+ 88++ 6CF9 B3                   or      e
+ 89++ 6CFA 28 09                jr      z,.p126_neogs_boot_loaded
+ 90++ 6CFC 7E                   ld      a,(hl)
+ 91++ 6CFD CD 89 6F             call    p126_neogs_send_byte
+ 92++ 6D00 D8                   ret     c
+ 93++ 6D01 23                   inc     hl
+ 94++ 6D02 1B                   dec     de
+ 95++ 6D03 18 F3                jr      .p126_neogs_boot_stream
+ 96++ 6D05              .p126_neogs_boot_loaded:
+ 97++ 6D05                      ; Read the first resident-image sector before starting stage-0.
+ 98++ 6D05 3E 35                ld      a,'5'
+ 99++ 6D07 32 F7 6F             ld      (p126_neogs_startup_stage),a
+100++ 6D0A 21 D8 6F             ld      hl,p126_neogs_core_name
+101++ 6D0D CD 1A 6E             call    p126_neogs_open_file
+102++ 6D10 D8                   ret     c
+103++ 6D11 3E 36                ld      a,'6'
+104++ 6D13 32 F7 6F             ld      (p126_neogs_startup_stage),a
+105++ 6D16 2A E2 6F             ld      hl,(p126_neogs_file_length)
+106++ 6D19 7C                   ld      a,h
+107++ 6D1A FE 40                cp      #40
+108++ 6D1C 38 08                jr      c,.p126_neogs_core_size_low
+109++ 6D1E C2 0B 6E             jp      nz,p126_neogs_core_file_bad
+110++ 6D21 7D                   ld      a,l
+111++ 6D22 B7                   or      a
+112++ 6D23 C2 0B 6E             jp      nz,p126_neogs_core_file_bad
+113++ 6D26              .p126_neogs_core_size_low:
+114++ 6D26 7C                   ld      a,h
+115++ 6D27 B5                   or      l
+116++ 6D28 CA 0B 6E             jp      z,p126_neogs_core_file_bad
+117++ 6D2B 2A E2 6F             ld      hl,(p126_neogs_file_length)
+118++ 6D2E 22 E4 6F             ld      (p126_neogs_core_length),hl
+119++ 6D31
+120++ 6D31                      ; Enter stage-0 at 4000h; it publishes A1h when ready.
+121++ 6D31 3E 37                ld      a,'7'
+122++ 6D33 32 F7 6F             ld      (p126_neogs_startup_stage),a
+123++ 6D36 AF                   xor     a
+124++ 6D37 CD 81 6F             call    p126_neogs_send_argument
+125++ 6D3A D8                   ret     c
+126++ 6D3B 3E 13                ld      a,P126_NGS_CMD_JUMP
+127++ 6D3D CD 67 6F             call    p126_neogs_send_command
+128++ 6D40 D8                   ret     c
+129++ 6D41 3E 40                ld      a,#40
+130++ 6D43 CD 89 6F             call    p126_neogs_send_byte
+131++ 6D46 30 12                jr      nc,.p126_neogs_jump_tx_done
+132++ 6D48 DB BB                in      a,(P126_NGS_GSSTAT)
+133++ 6D4A CB 7F                bit     P126_NGS_DBIT,a
+134++ 6D4C CA 13 6E             jp      z,p126_neogs_transport_error
+135++ 6D4F CD 98 6F             call    p126_neogs_receive_byte
+136++ 6D52 D8                   ret     c
+137++ 6D53 FE A1                cp      P126_NGS_ACK_READY
+138++ 6D55 C2 13 6E             jp      nz,p126_neogs_transport_error
+139++ 6D58 18 09                jr      .p126_neogs_stage0_ready
+140++ 6D5A              .p126_neogs_jump_tx_done:
+141++ 6D5A CD 98 6F             call    p126_neogs_receive_byte
+142++ 6D5D D8                   ret     c
+143++ 6D5E FE A1                cp      P126_NGS_ACK_READY
+144++ 6D60 C2 13 6E             jp      nz,p126_neogs_transport_error
+145++ 6D63
+146++ 6D63              .p126_neogs_stage0_ready:
+147++ 6D63                      ; Length exchange; A3h confirms the resident image size.
+148++ 6D63 3E 38                ld      a,'8'
+149++ 6D65 32 F7 6F             ld      (p126_neogs_startup_stage),a
+150++ 6D68 2A E4 6F             ld      hl,(p126_neogs_core_length)
+151++ 6D6B 7D                   ld      a,l
+152++ 6D6C CD 89 6F             call    p126_neogs_send_byte
+153++ 6D6F D8                   ret     c
+154++ 6D70 7C                   ld      a,h
+155++ 6D71 CD 89 6F             call    p126_neogs_send_byte
+156++ 6D74 30 12                jr      nc,.p126_neogs_length_sent
+157++ 6D76 DB BB                in      a,(P126_NGS_GSSTAT)
+158++ 6D78 CB 7F                bit     P126_NGS_DBIT,a
+159++ 6D7A CA 13 6E             jp      z,p126_neogs_transport_error
+160++ 6D7D CD 98 6F             call    p126_neogs_receive_byte
+161++ 6D80 D8                   ret     c
+162++ 6D81 FE A3                cp      P126_NGS_ACK_LENGTH
+163++ 6D83 C2 13 6E             jp      nz,p126_neogs_transport_error
+164++ 6D86 18 09                jr      .p126_neogs_stream_begin
+165++ 6D88              .p126_neogs_length_sent:
+166++ 6D88 CD 98 6F             call    p126_neogs_receive_byte
+167++ 6D8B D8                   ret     c
+168++ 6D8C FE A3                cp      P126_NGS_ACK_LENGTH
+169++ 6D8E C2 13 6E             jp      nz,p126_neogs_transport_error
+170++ 6D91
+171++ 6D91              .p126_neogs_stream_begin:
+172++ 6D91 3E 39                ld      a,'9'
+173++ 6D93 32 F7 6F             ld      (p126_neogs_startup_stage),a
+174++ 6D96 21 00 C0             ld      hl,#C000
+175++ 6D99 22 E8 6F             ld      (p126_neogs_buffer_ptr),hl
+176++ 6D9C 21 00 01             ld      hl,256
+177++ 6D9F 22 EA 6F             ld      (p126_neogs_buffer_remaining),hl
+178++ 6DA2 ED 5B E4 6F          ld      de,(p126_neogs_core_length)
+179++ 6DA6              .p126_neogs_core_stream:
+180++ 6DA6 7A                   ld      a,d
+181++ 6DA7 B3                   or      e
+182++ 6DA8 28 4D                jr      z,.p126_neogs_core_stream_done
+183++ 6DAA 2A EA 6F             ld      hl,(p126_neogs_buffer_remaining)
+184++ 6DAD 7C                   ld      a,h
+185++ 6DAE B5                   or      l
+186++ 6DAF 20 12                jr      nz,.p126_neogs_core_buffer_ready
+187++ 6DB1 D5                   push    de
+188++ 6DB2 CD 84 6E             call    p126_neogs_read_next_sector
+189++ 6DB5 D1                   pop     de
+190++ 6DB6 D8                   ret     c
+191++ 6DB7 21 00 C0             ld      hl,#C000
+192++ 6DBA 22 E8 6F             ld      (p126_neogs_buffer_ptr),hl
+193++ 6DBD 21 00 01             ld      hl,256
+194++ 6DC0 22 EA 6F             ld      (p126_neogs_buffer_remaining),hl
+195++ 6DC3              .p126_neogs_core_buffer_ready:
+196++ 6DC3 2A E8 6F             ld      hl,(p126_neogs_buffer_ptr)
+197++ 6DC6 7E                   ld      a,(hl)
+198++ 6DC7 CD 89 6F             call    p126_neogs_send_byte
+199++ 6DCA 30 1D                jr      nc,.p126_neogs_core_byte_sent
+200++ 6DCC                      ; The resident can publish A2h immediately after consuming the final
+201++ 6DCC                      ; byte. In that case one byte remains in DE and DBIT is already set.
+202++ 6DCC 7A                   ld      a,d
+203++ 6DCD B7                   or      a
+204++ 6DCE C2 13 6E             jp      nz,p126_neogs_transport_error
+205++ 6DD1 7B                   ld      a,e
+206++ 6DD2 FE 01                cp      1
+207++ 6DD4 C2 13 6E             jp      nz,p126_neogs_transport_error
+208++ 6DD7 DB BB                in      a,(P126_NGS_GSSTAT)
+209++ 6DD9 CB 7F                bit     P126_NGS_DBIT,a
+210++ 6DDB CA 13 6E             jp      z,p126_neogs_transport_error
+211++ 6DDE CD 98 6F             call    p126_neogs_receive_byte
+212++ 6DE1 D8                   ret     c
+213++ 6DE2 FE A2                cp      P126_NGS_ACK_DONE
+214++ 6DE4 C2 13 6E             jp      nz,p126_neogs_transport_error
+215++ 6DE7 18 17                jr      .p126_neogs_startup_done
+216++ 6DE9              .p126_neogs_core_byte_sent:
+217++ 6DE9 23                   inc     hl
+218++ 6DEA 22 E8 6F             ld      (p126_neogs_buffer_ptr),hl
+219++ 6DED 2A EA 6F             ld      hl,(p126_neogs_buffer_remaining)
+220++ 6DF0 2B                   dec     hl
+221++ 6DF1 22 EA 6F             ld      (p126_neogs_buffer_remaining),hl
+222++ 6DF4 1B                   dec     de
+223++ 6DF5 18 AF                jr      .p126_neogs_core_stream
+224++ 6DF7
+225++ 6DF7              .p126_neogs_core_stream_done:
+226++ 6DF7 CD 98 6F             call    p126_neogs_receive_byte
+227++ 6DFA D8                   ret     c
+228++ 6DFB FE A2                cp      P126_NGS_ACK_DONE
+229++ 6DFD C2 13 6E             jp      nz,p126_neogs_transport_error
+230++ 6E00              .p126_neogs_startup_done:
+231++ 6E00 3E 30                ld      a,'0'
+232++ 6E02 32 F7 6F             ld      (p126_neogs_startup_stage),a
+233++ 6E05 AF                   xor     a
+234++ 6E06 C9                   ret
+235++ 6E07
+236++ 6E07              p126_neogs_boot_file_bad:
+237++ 6E07 3E 01                ld      a,1
+238++ 6E09 18 0A                jr      p126_neogs_store_error
+239++ 6E0B              p126_neogs_core_file_bad:
+240++ 6E0B 3E 02                ld      a,2
+241++ 6E0D 18 06                jr      p126_neogs_store_error
+242++ 6E0F              p126_neogs_ram_bad:
+243++ 6E0F 3E 03                ld      a,3
+244++ 6E11 18 02                jr      p126_neogs_store_error
+245++ 6E13              p126_neogs_transport_error:
+246++ 6E13 3E 04                ld      a,4
+247++ 6E15              p126_neogs_store_error:
+248++ 6E15 32 F6 6F             ld      (p126_neogs_startup_error),a
+249++ 6E18 37                   scf
+250++ 6E19 C9                   ret
+251++ 6E1A
+252++ 6E1A              ; IN HL=exact 8-character filename. Directory was preloaded at C800h.
+253++ 6E1A              ; OUT: carry clear, first sector at C000h, metadata initialized.
+254++ 6E1A              p126_neogs_open_file:
+255++ 6E1A 22 E0 6F             ld      (p126_neogs_name_ptr),hl
+256++ 6E1D DD 21 00 C8          ld      ix,#C800
+257++ 6E21 06 80                ld      b,128
+258++ 6E23              .p126_neogs_find_loop:
+259++ 6E23 DD E5                push    ix
+260++ 6E25 C5                   push    bc
+261++ 6E26 2A E0 6F             ld      hl,(p126_neogs_name_ptr)
+262++ 6E29 0E 08                ld      c,8
+263++ 6E2B              .p126_neogs_compare:
+264++ 6E2B 7E                   ld      a,(hl)
+265++ 6E2C DD BE 00             cp      (ix+0)
+266++ 6E2F 20 0D                jr      nz,.p126_neogs_find_miss
+267++ 6E31 23                   inc     hl
+268++ 6E32 DD 23                inc     ix
+269++ 6E34 0D                   dec     c
+270++ 6E35 20 F4                jr      nz,.p126_neogs_compare
+271++ 6E37 DD 7E 00             ld      a,(ix+0)
+272++ 6E3A FE 43                cp      'C'
+273++ 6E3C 28 0C                jr      z,.p126_neogs_find_hit
+274++ 6E3E              .p126_neogs_find_miss:
+275++ 6E3E C1                   pop     bc
+276++ 6E3F DD E1                pop     ix
+277++ 6E41 11 10 00             ld      de,16
+278++ 6E44 DD 19                add     ix,de
+279++ 6E46 10 DB                djnz    .p126_neogs_find_loop
+280++ 6E48 37                   scf
+281++ 6E49 C9                   ret
+282++ 6E4A              .p126_neogs_find_hit:
+283++ 6E4A C1                   pop     bc
+284++ 6E4B D1                   pop     de
+285++ 6E4C DD 7E 03             ld      a,(ix+3)
+286++ 6E4F 32 E2 6F             ld      (p126_neogs_file_length),a
+287++ 6E52 DD 7E 04             ld      a,(ix+4)
+288++ 6E55 32 E3 6F             ld      (p126_neogs_file_length+1),a
+289++ 6E58 DD 7E 05             ld      a,(ix+5)
+290++ 6E5B 32 F1 6F             ld      (p126_neogs_file_sectors_left),a
+291++ 6E5E DD 7E 06             ld      a,(ix+6)
+292++ 6E61 32 F2 6F             ld      (p126_neogs_file_sector),a
+293++ 6E64 DD 7E 07             ld      a,(ix+7)
+294++ 6E67 32 F3 6F             ld      (p126_neogs_file_track),a
+295++ 6E6A 3A F1 6F             ld      a,(p126_neogs_file_sectors_left)
+296++ 6E6D B7                   or      a
+297++ 6E6E 20 02                jr      nz,.p126_neogs_file_meta_ok
+298++ 6E70 37                   scf
+299++ 6E71 C9                   ret
+300++ 6E72              .p126_neogs_file_meta_ok:
+301++ 6E72 CD 84 6E             call    p126_neogs_read_next_sector
+302++ 6E75 D8                   ret     c
+303++ 6E76 21 00 C0             ld      hl,#C000
+304++ 6E79 22 E8 6F             ld      (p126_neogs_buffer_ptr),hl
+305++ 6E7C 21 00 01             ld      hl,256
+306++ 6E7F 22 EA 6F             ld      (p126_neogs_buffer_remaining),hl
+307++ 6E82 AF                   xor     a
+308++ 6E83 C9                   ret
+309++ 6E84
+310++ 6E84              ; Read one sector at the current TR-DOS cursor. Preserves all Z80 registers.
+311++ 6E84              p126_neogs_read_next_sector:
+312++ 6E84 3A F1 6F             ld      a,(p126_neogs_file_sectors_left)
+313++ 6E87 B7                   or      a
+314++ 6E88 20 02                jr      nz,.p126_neogs_read_sector_ready
+315++ 6E8A 37                   scf
+316++ 6E8B C9                   ret
+317++ 6E8C              .p126_neogs_read_sector_ready:
+318++ 6E8C F5                   push    af
+319++ 6E8D C5                   push    bc
+320++ 6E8E D5                   push    de
+321++ 6E8F E5                   push    hl
+322++ 6E90 DD E5                push    ix
+323++ 6E92 FD E5                push    iy
+324++ 6E94 D9                   exx
+325++ 6E95 C5                   push    bc
+326++ 6E96 D5                   push    de
+327++ 6E97 E5                   push    hl
+328++ 6E98 D9                   exx
+329++ 6E99 08                   ex      af,af'
+330++ 6E9A F5                   push    af
+331++ 6E9B 08                   ex      af,af'
+332++ 6E9C ED 73 EC 6F          ld      (p126_neogs_saved_sp),sp
+333++ 6EA0 31 FF BF             ld      sp,#BFFF
+334++ 6EA3
+335++ 6EA3 3A F3 6F             ld      a,(p126_neogs_file_track)
+336++ 6EA6 57                   ld      d,a
+337++ 6EA7 3A F2 6F             ld      a,(p126_neogs_file_sector)
+338++ 6EAA 5F                   ld      e,a
+339++ 6EAB 21 00 C0             ld      hl,#C000
+340++ 6EAE 06 01                ld      b,1
+341++ 6EB0 0E 05                ld      c,5
+342++ 6EB2 AF                   xor     a
+343++ 6EB3 32 0F 5D             ld      (#5D0F),a
+344++ 6EB6 32 10 5D             ld      (#5D10),a
+345++ 6EB9 CD 13 3D             call    #3D13
+346++ 6EBC 3A 0F 5D             ld      a,(#5D0F)
+347++ 6EBF 47                   ld      b,a
+348++ 6EC0 3A 10 5D             ld      a,(#5D10)
+349++ 6EC3 B0                   or      b
+350++ 6EC4 32 F4 6F             ld      (p126_neogs_io_error),a
+351++ 6EC7 20 1F                jr      nz,.p126_neogs_read_restore
+352++ 6EC9
+353++ 6EC9 3A F2 6F             ld      a,(p126_neogs_file_sector)
+354++ 6ECC 3C                   inc     a
+355++ 6ECD FE 10                cp      16
+356++ 6ECF 38 0D                jr      c,.p126_neogs_sector_advanced
+357++ 6ED1 AF                   xor     a
+358++ 6ED2 32 F2 6F             ld      (p126_neogs_file_sector),a
+359++ 6ED5 3A F3 6F             ld      a,(p126_neogs_file_track)
+360++ 6ED8 3C                   inc     a
+361++ 6ED9 32 F3 6F             ld      (p126_neogs_file_track),a
+362++ 6EDC 18 03                jr      .p126_neogs_sector_count
+363++ 6EDE              .p126_neogs_sector_advanced:
+364++ 6EDE 32 F2 6F             ld      (p126_neogs_file_sector),a
+365++ 6EE1              .p126_neogs_sector_count:
+366++ 6EE1 3A F1 6F             ld      a,(p126_neogs_file_sectors_left)
+367++ 6EE4 3D                   dec     a
+368++ 6EE5 32 F1 6F             ld      (p126_neogs_file_sectors_left),a
+369++ 6EE8
+370++ 6EE8              .p126_neogs_read_restore:
+371++ 6EE8 ED 7B EC 6F          ld      sp,(p126_neogs_saved_sp)
+372++ 6EEC 08                   ex      af,af'
+373++ 6EED F1                   pop     af
+374++ 6EEE 08                   ex      af,af'
+375++ 6EEF D9                   exx
+376++ 6EF0 E1                   pop     hl
+377++ 6EF1 D1                   pop     de
+378++ 6EF2 C1                   pop     bc
+379++ 6EF3 D9                   exx
+380++ 6EF4 FD E1                pop     iy
+381++ 6EF6 DD E1                pop     ix
+382++ 6EF8 E1                   pop     hl
+383++ 6EF9 D1                   pop     de
+384++ 6EFA C1                   pop     bc
+385++ 6EFB F1                   pop     af
+386++ 6EFC 3A F4 6F             ld      a,(p126_neogs_io_error)
+387++ 6EFF B7                   or      a
+388++ 6F00 28 02                jr      z,.p126_neogs_read_ok
+389++ 6F02 37                   scf
+390++ 6F03 C9                   ret
+391++ 6F04              .p126_neogs_read_ok:
+392++ 6F04 B7                   or      a
+393++ 6F05 C9                   ret
+394++ 6F06
+395++ 6F06               ; Query the stock ROM for its 24-bit RAM size. Project126 requires 4 MiB.
+396++ 6F06              p126_neogs_probe_rom_ram:
+397++ 6F06 3E 43                ld      a,'C'                 ; C: send #20 and wait for CBIT
+398++ 6F08 32 F7 6F             ld      (p126_neogs_startup_stage),a
+399++ 6F0B 3E 20                ld      a,P126_NGS_CMD_RAM
+400++ 6F0D CD 45 6F             call    p126_neogs_send_command_long
+401++ 6F10 D8                   ret     c
+402++ 6F11 3E 44                ld      a,'D'                 ; D: wait for/read RAM byte 0
+403++ 6F13 32 F7 6F             ld      (p126_neogs_startup_stage),a
+404++ 6F16 CD 98 6F             call    p126_neogs_receive_byte
+405++ 6F19 D8                   ret     c
+406++ 6F1A 32 EE 6F             ld      (p126_neogs_ram_size),a
+407++ 6F1D 3E 45                ld      a,'E'                 ; E: wait for/read RAM byte 1
+408++ 6F1F 32 F7 6F             ld      (p126_neogs_startup_stage),a
+409++ 6F22 CD 98 6F             call    p126_neogs_receive_byte
+410++ 6F25 D8                   ret     c
+411++ 6F26 32 EF 6F             ld      (p126_neogs_ram_size+1),a
+412++ 6F29 3E 46                ld      a,'F'                 ; F: wait for/read RAM byte 2
+413++ 6F2B 32 F7 6F             ld      (p126_neogs_startup_stage),a
+414++ 6F2E CD 98 6F             call    p126_neogs_receive_byte
+415++ 6F31 D8                   ret     c
+416++ 6F32 32 F0 6F             ld      (p126_neogs_ram_size+2),a
+417++ 6F35 3E 47                ld      a,'G'                 ; G: validate reported 24-bit RAM size
+418++ 6F37 32 F7 6F             ld      (p126_neogs_startup_stage),a
+419++ 6F3A 3A F0 6F             ld      a,(p126_neogs_ram_size+2)
+420++ 6F3D FE 40                cp      #40
+421++ 6F3F 38 02                jr      c,.p126_neogs_ram_probe_bad
+422++ 6F41 B7                   or      a
+423++ 6F42 C9                   ret
+424++ 6F43              .p126_neogs_ram_probe_bad:
+425++ 6F43 37                   scf
+426++ 6F44 C9                   ret
+427++ 6F45
+428++ 6F45              ; Extended CBIT wait based on the known-working Project125 GS105a driver.
+429++ 6F45              p126_neogs_send_command_long:
+430++ 6F45 32 F5 6F             ld      (p126_neogs_tx_byte),a
+431++ 6F48 3A F5 6F             ld      a,(p126_neogs_tx_byte)
+432++ 6F4B D3 BB                out     (P126_NGS_GSCOM),a
+433++ 6F4D D5                   push    de
+434++ 6F4E 16 10                ld      d,16
+435++ 6F50              .p126_neogs_command_long_outer:
+436++ 6F50 01 FF FF             ld      bc,#FFFF
+437++ 6F53              .p126_neogs_command_long_inner:
+438++ 6F53 DB BB                in      a,(P126_NGS_GSSTAT)
+439++ 6F55 CB 47                bit     P126_NGS_CBIT,a
+440++ 6F57 28 0B                jr      z,.p126_neogs_command_long_done
+441++ 6F59 0B                   dec     bc
+442++ 6F5A 78                   ld      a,b
+443++ 6F5B B1                   or      c
+444++ 6F5C 20 F5                jr      nz,.p126_neogs_command_long_inner
+445++ 6F5E 15                   dec     d
+446++ 6F5F 20 EF                jr      nz,.p126_neogs_command_long_outer
+447++ 6F61 D1                   pop     de
+448++ 6F62 37                   scf
+449++ 6F63 C9                   ret
+450++ 6F64              .p126_neogs_command_long_done:
+451++ 6F64 D1                   pop     de
+452++ 6F65 B7                   or      a
+453++ 6F66 C9                   ret
+454++ 6F67
+455++ 6F67              ; Stock GS105a command/data primitives. Application payloads do not use these.
+456++ 6F67              p126_neogs_send_command:
+457++ 6F67 32 F5 6F             ld      (p126_neogs_tx_byte),a
+458++ 6F6A 3A F5 6F             ld      a,(p126_neogs_tx_byte)
+459++ 6F6D D3 BB                out     (P126_NGS_GSCOM),a
+460++ 6F6F 01 FF FF             ld      bc,P126_NGS_TIMEOUT
+461++ 6F72              .p126_neogs_command_wait:
+462++ 6F72 DB BB                in      a,(P126_NGS_GSSTAT)
+463++ 6F74 CB 47                bit     P126_NGS_CBIT,a
+464++ 6F76 28 07                jr      z,.p126_neogs_command_ok
+465++ 6F78 0B                   dec     bc
+466++ 6F79 78                   ld      a,b
+467++ 6F7A B1                   or      c
+468++ 6F7B 20 F5                jr      nz,.p126_neogs_command_wait
+469++ 6F7D 37                   scf
+470++ 6F7E C9                   ret
+471++ 6F7F              .p126_neogs_command_ok:
+472++ 6F7F B7                   or      a
+473++ 6F80 C9                   ret
+474++ 6F81
+475++ 6F81              p126_neogs_send_argument:
+476++ 6F81 CD AC 6F             call    p126_neogs_wait_dbit_clear
+477++ 6F84 D8                   ret     c
+478++ 6F85 D3 B3                out     (P126_NGS_GSDAT),a
+479++ 6F87 B7                   or      a
+480++ 6F88 C9                   ret
+481++ 6F89
+482++ 6F89              p126_neogs_send_byte:
+483++ 6F89 32 F5 6F             ld      (p126_neogs_tx_byte),a
+484++ 6F8C CD AC 6F             call    p126_neogs_wait_dbit_clear
+485++ 6F8F D8                   ret     c
+486++ 6F90 3A F5 6F             ld      a,(p126_neogs_tx_byte)
+487++ 6F93 D3 B3                out     (P126_NGS_GSDAT),a
+488++ 6F95 C3 AC 6F             jp      p126_neogs_wait_dbit_clear
+489++ 6F98
+490++ 6F98              p126_neogs_receive_byte:
+491++ 6F98 CD BE 6F             call    p126_neogs_wait_dbit_set
+492++ 6F9B D8                   ret     c
+493++ 6F9C DB B3                in      a,(P126_NGS_GSDAT)
+494++ 6F9E                      ; Give the GS105a sender time to observe DBIT being cleared.
+495++ 6F9E F5                   push    af
+496++ 6F9F C5                   push    bc
+497++ 6FA0 01 00 04             ld      bc,#0400
+498++ 6FA3              .p126_neogs_receive_turnaround:
+499++ 6FA3 0B                   dec     bc
+500++ 6FA4 78                   ld      a,b
+501++ 6FA5 B1                   or      c
+502++ 6FA6 20 FB                jr      nz,.p126_neogs_receive_turnaround
+503++ 6FA8 C1                   pop     bc
+504++ 6FA9 F1                   pop     af
+505++ 6FAA B7                   or      a
+506++ 6FAB C9                   ret
+507++ 6FAC
+508++ 6FAC              p126_neogs_wait_dbit_clear:
+509++ 6FAC 01 FF FF             ld      bc,P126_NGS_TIMEOUT
+510++ 6FAF              .p126_neogs_dbit_clear_loop:
+511++ 6FAF DB BB                in      a,(P126_NGS_GSSTAT)
+512++ 6FB1 CB 7F                bit     P126_NGS_DBIT,a
+513++ 6FB3 28 07                jr      z,.p126_neogs_dbit_clear_ok
+514++ 6FB5 0B                   dec     bc
+515++ 6FB6 78                   ld      a,b
+516++ 6FB7 B1                   or      c
+517++ 6FB8 20 F5                jr      nz,.p126_neogs_dbit_clear_loop
+518++ 6FBA 37                   scf
+519++ 6FBB C9                   ret
+520++ 6FBC              .p126_neogs_dbit_clear_ok:
+521++ 6FBC B7                   or      a
+522++ 6FBD C9                   ret
+523++ 6FBE
+524++ 6FBE              p126_neogs_wait_dbit_set:
+525++ 6FBE 01 FF FF             ld      bc,P126_NGS_TIMEOUT
+526++ 6FC1              .p126_neogs_dbit_set_loop:
+527++ 6FC1 DB BB                in      a,(P126_NGS_GSSTAT)
+528++ 6FC3 CB 7F                bit     P126_NGS_DBIT,a
+529++ 6FC5 20 07                jr      nz,.p126_neogs_dbit_set_ok
+530++ 6FC7 0B                   dec     bc
+531++ 6FC8 78                   ld      a,b
+532++ 6FC9 B1                   or      c
+533++ 6FCA 20 F5                jr      nz,.p126_neogs_dbit_set_loop
+534++ 6FCC 37                   scf
+535++ 6FCD C9                   ret
+536++ 6FCE              .p126_neogs_dbit_set_ok:
+537++ 6FCE B7                   or      a
+538++ 6FCF C9                   ret
+539++ 6FD0
+540++ 6FD0 50 31 32 36  p126_neogs_boot_name: db "P126BOOT"
+540++ 6FD4 42 4F 4F 54
+541++ 6FD8 58 38 36 43  p126_neogs_core_name: db "X86CORE "
+541++ 6FDC 4F 52 45 20
+542++ 6FE0 00 00        p126_neogs_name_ptr: dw 0
+543++ 6FE2 00 00        p126_neogs_file_length: dw 0
+544++ 6FE4 00 00        p126_neogs_core_length: dw 0
+545++ 6FE6 00 00        p126_neogs_block_length: dw 0
+546++ 6FE8 00 C0        p126_neogs_buffer_ptr: dw #C000
+547++ 6FEA 00 00        p126_neogs_buffer_remaining: dw 0
+548++ 6FEC 00 00        p126_neogs_saved_sp: dw 0
+549++ 6FEE 00 00 00     p126_neogs_ram_size: db 0,0,0
+550++ 6FF1 00           p126_neogs_file_sectors_left: db 0
+551++ 6FF2 00           p126_neogs_file_sector: db 0
+552++ 6FF3 00           p126_neogs_file_track: db 0
+553++ 6FF4 00           p126_neogs_io_error: db 0
+554++ 6FF5 00           p126_neogs_tx_byte: db 0
+555++ 6FF6 00           p126_neogs_startup_error: db 0
+556++ 6FF7 30           p126_neogs_startup_stage: db '0'
+557++ 6FF8
+558++ 6FF8
+559++ 6FF8              ; Build and send one valid 18-byte diagnostics request through the application
+560++ 6FF8              ; DMA transport. The NeoGS resident loop independently validates CRC and
+561++ 6FF8              ; emits DMA FRAME VALID / DMA FRAME REJECTED on its own #EF channel.
+562++ 6FF8              p126_neogs_dma_smoke_test:
+562++ 6FF8
+563++ 6FF8 21 FF FF             ld      hl,#FFFF
+564++ 6FFB 11 13 70             ld      de,p126_neogs_dma_test_frame
+565++ 6FFE 06 10                ld      b,16
+566++ 7000              .p126_neogs_dma_crc_loop:
+567++ 7000 1A                   ld      a,(de)
+568++ 7001 13                   inc     de
+569++ 7002 CD 83 66             call    p126_ipc_crc16_update
+570++ 7005 10 F9                djnz    .p126_neogs_dma_crc_loop
+571++ 7007 22 23 70             ld      (p126_neogs_dma_test_frame+16),hl
+572++ 700A 21 13 70             ld      hl,p126_neogs_dma_test_frame
+573++ 700D 01 12 00             ld      bc,18
+574++ 7010 C3 C6 67             jp      p126_ipc_dma_send_frame
+575++ 7013
+576++ 7013              p126_neogs_dma_test_frame:
+577++ 7013 50 31 32 36          db      'P','1','2','6',1,0,1,5,0,0,1,0,0,0,0,0,0,0
+577++ 7017 01 00 01 05
+577++ 701B 00 00 01 00
+577++ 701F 00 00 00 00
+577++ 7023 00 00
+578++ 7025
 # file closed: p126_neogs_loader.asm
-289+  6FFD
-290+  6FFD              ; Project125-derived ATM-native text console, relocated to window 2.
-291+  6FFD              ; Its renderer maps video pages only for each write and restores host pages.
-292+  6FFD                      PAGE 0
-293+  6FFD                      ORG #A000
+289+  7025
+290+  7025              ; Project125-derived ATM-native text console, relocated to window 2.
+291+  7025              ; Its renderer maps video pages only for each write and restores host pages.
+292+  7025                      PAGE 0
+293+  7025                      ORG #A000
 294+  A000                      INCLUDE "atm_host/p126_screen_console.asm"
 # file opened: p126_screen_console.asm
   1++ A000              ; =========================================================================
@@ -3912,76 +3928,76 @@ Value    Label
 0x0003   P126_MSG_EVENT
 0x0001   P126_MSG_REQUEST
 0x0002   P126_MSG_RESPONSE
-0x6FBE   p126_neogs_block_length
-0x6DF8   p126_neogs_boot_file_bad
-0x6FA8   p126_neogs_boot_name
-0x6FC0   p126_neogs_buffer_ptr
-0x6FC2   p126_neogs_buffer_remaining
-0x6DFC   p126_neogs_core_file_bad
-0x6FBC   p126_neogs_core_length
-0x6FB0   p126_neogs_core_name
-0x6FD0   p126_neogs_dma_smoke_test
-0x6FD8   p126_neogs_dma_smoke_test.p126_neogs_dma_crc_loop
-0x6FEB   p126_neogs_dma_test_frame
-0x6FBA   p126_neogs_file_length
-0x6FCA   p126_neogs_file_sector
-0x6FC9   p126_neogs_file_sectors_left
-0x6FCB   p126_neogs_file_track
-0x6FCC   p126_neogs_io_error
-0x6FB8   p126_neogs_name_ptr
-0x6E0B   p126_neogs_open_file
-0x6E1C   p126_neogs_open_file.p126_neogs_compare
-0x6E63   p126_neogs_open_file.p126_neogs_file_meta_ok
-0x6E3B   p126_neogs_open_file.p126_neogs_find_hit
-0x6E14   p126_neogs_open_file.p126_neogs_find_loop
-0x6E2F   p126_neogs_open_file.p126_neogs_find_miss
-0x6EF7   p126_neogs_probe_rom_ram
-0x6F1B   p126_neogs_probe_rom_ram.p126_neogs_ram_probe_bad
-0x6E00   p126_neogs_ram_bad
-0x6FC6   p126_neogs_ram_size
-0x6E75   p126_neogs_read_next_sector
-0x6EF5   p126_neogs_read_next_sector.p126_neogs_read_ok
-0x6ED9   p126_neogs_read_next_sector.p126_neogs_read_restore
-0x6E7D   p126_neogs_read_next_sector.p126_neogs_read_sector_ready
-0x6ECF   p126_neogs_read_next_sector.p126_neogs_sector_advanced
-0x6ED2   p126_neogs_read_next_sector.p126_neogs_sector_count
-0x6F70   p126_neogs_receive_byte
-0x6F7B   p126_neogs_receive_byte.p126_neogs_receive_turnaround
-0x6FC4   p126_neogs_saved_sp
-0x6F59   p126_neogs_send_argument
-0x6F61   p126_neogs_send_byte
-0x6F3F   p126_neogs_send_command
-0x6F57   p126_neogs_send_command.p126_neogs_command_ok
-0x6F4A   p126_neogs_send_command.p126_neogs_command_wait
-0x6F1D   p126_neogs_send_command_long
-0x6F3C   p126_neogs_send_command_long.p126_neogs_command_long_done
-0x6F2B   p126_neogs_send_command_long.p126_neogs_command_long_inner
-0x6F28   p126_neogs_send_command_long.p126_neogs_command_long_outer
+0x6FE6   p126_neogs_block_length
+0x6E07   p126_neogs_boot_file_bad
+0x6FD0   p126_neogs_boot_name
+0x6FE8   p126_neogs_buffer_ptr
+0x6FEA   p126_neogs_buffer_remaining
+0x6E0B   p126_neogs_core_file_bad
+0x6FE4   p126_neogs_core_length
+0x6FD8   p126_neogs_core_name
+0x6FF8   p126_neogs_dma_smoke_test
+0x7000   p126_neogs_dma_smoke_test.p126_neogs_dma_crc_loop
+0x7013   p126_neogs_dma_test_frame
+0x6FE2   p126_neogs_file_length
+0x6FF2   p126_neogs_file_sector
+0x6FF1   p126_neogs_file_sectors_left
+0x6FF3   p126_neogs_file_track
+0x6FF4   p126_neogs_io_error
+0x6FE0   p126_neogs_name_ptr
+0x6E1A   p126_neogs_open_file
+0x6E2B   p126_neogs_open_file.p126_neogs_compare
+0x6E72   p126_neogs_open_file.p126_neogs_file_meta_ok
+0x6E4A   p126_neogs_open_file.p126_neogs_find_hit
+0x6E23   p126_neogs_open_file.p126_neogs_find_loop
+0x6E3E   p126_neogs_open_file.p126_neogs_find_miss
+0x6F06   p126_neogs_probe_rom_ram
+0x6F43   p126_neogs_probe_rom_ram.p126_neogs_ram_probe_bad
+0x6E0F   p126_neogs_ram_bad
+0x6FEE   p126_neogs_ram_size
+0x6E84   p126_neogs_read_next_sector
+0x6F04   p126_neogs_read_next_sector.p126_neogs_read_ok
+0x6EE8   p126_neogs_read_next_sector.p126_neogs_read_restore
+0x6E8C   p126_neogs_read_next_sector.p126_neogs_read_sector_ready
+0x6EDE   p126_neogs_read_next_sector.p126_neogs_sector_advanced
+0x6EE1   p126_neogs_read_next_sector.p126_neogs_sector_count
+0x6F98   p126_neogs_receive_byte
+0x6FA3   p126_neogs_receive_byte.p126_neogs_receive_turnaround
+0x6FEC   p126_neogs_saved_sp
+0x6F81   p126_neogs_send_argument
+0x6F89   p126_neogs_send_byte
+0x6F67   p126_neogs_send_command
+0x6F7F   p126_neogs_send_command.p126_neogs_command_ok
+0x6F72   p126_neogs_send_command.p126_neogs_command_wait
+0x6F45   p126_neogs_send_command_long
+0x6F64   p126_neogs_send_command_long.p126_neogs_command_long_done
+0x6F53   p126_neogs_send_command_long.p126_neogs_command_long_inner
+0x6F50   p126_neogs_send_command_long.p126_neogs_command_long_outer
 0x6C75   p126_neogs_startup
-0x6CF6   p126_neogs_startup.p126_neogs_boot_loaded
-0x6CE9   p126_neogs_startup.p126_neogs_boot_stream
-0x6DB4   p126_neogs_startup.p126_neogs_core_buffer_ready
-0x6DDA   p126_neogs_startup.p126_neogs_core_byte_sent
-0x6D17   p126_neogs_startup.p126_neogs_core_size_low
-0x6D97   p126_neogs_startup.p126_neogs_core_stream
-0x6DE8   p126_neogs_startup.p126_neogs_core_stream_done
-0x6D4B   p126_neogs_startup.p126_neogs_jump_tx_done
-0x6D79   p126_neogs_startup.p126_neogs_length_sent
-0x6D54   p126_neogs_startup.p126_neogs_stage0_ready
-0x6DF1   p126_neogs_startup.p126_neogs_startup_done
-0x6CB3   p126_neogs_startup.p126_neogs_stock_rom_ready
-0x6D82   p126_neogs_startup.p126_neogs_stream_begin
-0x6FCE   p126_neogs_startup_error
-0x6FCF   p126_neogs_startup_stage
-0x6E06   p126_neogs_store_error
-0x6E04   p126_neogs_transport_error
-0x6FCD   p126_neogs_tx_byte
-0x6F84   p126_neogs_wait_dbit_clear
-0x6F87   p126_neogs_wait_dbit_clear.p126_neogs_dbit_clear_loop
-0x6F94   p126_neogs_wait_dbit_clear.p126_neogs_dbit_clear_ok
-0x6F96   p126_neogs_wait_dbit_set
-0x6F99   p126_neogs_wait_dbit_set.p126_neogs_dbit_set_loop
-0x6FA6   p126_neogs_wait_dbit_set.p126_neogs_dbit_set_ok
+0x6D05   p126_neogs_startup.p126_neogs_boot_loaded
+0x6CF8   p126_neogs_startup.p126_neogs_boot_stream
+0x6DC3   p126_neogs_startup.p126_neogs_core_buffer_ready
+0x6DE9   p126_neogs_startup.p126_neogs_core_byte_sent
+0x6D26   p126_neogs_startup.p126_neogs_core_size_low
+0x6DA6   p126_neogs_startup.p126_neogs_core_stream
+0x6DF7   p126_neogs_startup.p126_neogs_core_stream_done
+0x6D5A   p126_neogs_startup.p126_neogs_jump_tx_done
+0x6D88   p126_neogs_startup.p126_neogs_length_sent
+0x6D63   p126_neogs_startup.p126_neogs_stage0_ready
+0x6E00   p126_neogs_startup.p126_neogs_startup_done
+0x6CC2   p126_neogs_startup.p126_neogs_stock_rom_ready
+0x6D91   p126_neogs_startup.p126_neogs_stream_begin
+0x6FF6   p126_neogs_startup_error
+0x6FF7   p126_neogs_startup_stage
+0x6E15   p126_neogs_store_error
+0x6E13   p126_neogs_transport_error
+0x6FF5   p126_neogs_tx_byte
+0x6FAC   p126_neogs_wait_dbit_clear
+0x6FAF   p126_neogs_wait_dbit_clear.p126_neogs_dbit_clear_loop
+0x6FBC   p126_neogs_wait_dbit_clear.p126_neogs_dbit_clear_ok
+0x6FBE   p126_neogs_wait_dbit_set
+0x6FC1   p126_neogs_wait_dbit_set.p126_neogs_dbit_set_loop
+0x6FCE   p126_neogs_wait_dbit_set.p126_neogs_dbit_set_ok
 0x00A2   P126_NGS_ACK_DONE
 0x00A3   P126_NGS_ACK_LENGTH
 0x00A1   P126_NGS_ACK_READY
