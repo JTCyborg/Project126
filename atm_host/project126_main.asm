@@ -32,9 +32,8 @@ p126_host_entry:
         di
         ld      sp, P126_HOST_STACK_TOP
 
-        ld      hl, p126_host_version_text
-        ; Probe the proven Project125 DS12887 RTC backend before normal logs.
-        call    ATM_KBD_RTC_PROBE
+        ; Initialize the Dallas DS12887 RTC before any timestamped log.
+        call    DS12887_PROBE
         ld      hl, p126_host_version_text
         call    p126_host_debug_string
         call    p126_host_log_prefix
@@ -150,7 +149,7 @@ p126_host_log_prefix:
 p126_host_version_text:
         db "[P126 ATM HOST v0.1.0]", 13, 10, 0
 
-        INCLUDE "atm_host/atm_kbd_rtc.asm"
+        INCLUDE "atm_host/ds12887_rtc.asm"
         INCLUDE "atm_host/neogs_ipc.asm"
 
 ; Project125-derived ATM-native text console, relocated to window 2.
