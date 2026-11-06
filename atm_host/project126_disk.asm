@@ -4,7 +4,7 @@
 ;
 ; Produces disk_A.trd containing:
 ;   BOOT.B     BASIC boot loader
-;   PROJ126.C  ATM host program
+;   @@HOST_NAME@@.C  ATM host program
 ;   X86CORE.C  current NeoGS x86 CPU-state/ALU module image
 ;
 ; The x86 module is packaged as a disk file, but is not yet auto-uploaded:
@@ -15,7 +15,7 @@
         EMPTYTRD "disk_A.trd"
 
 ; -------------------------------------------------------------------------
-; ATM resident program, loaded by boot.B at 6000h.
+; ATM resident program, loaded by @@BOOT_NAME@@.B at 6000h.
 ; -------------------------------------------------------------------------
         PAGE 0
         ORG P126_HOST_LOAD_ADDRESS
@@ -24,15 +24,15 @@
         ASSERT p126_host_program_start = P126_HOST_LOAD_ADDRESS
         ASSERT p126_host_entry = P126_HOST_ENTRY_POINT
         ASSERT p126_host_program_end <= #A800
-        SAVETRD "disk_A.trd", "PROJ126.C", P126_HOST_LOAD_ADDRESS, p126_host_program_end-P126_HOST_LOAD_ADDRESS
+        SAVETRD "disk_A.trd", "@@HOST_NAME@@.C", P126_HOST_LOAD_ADDRESS, p126_host_program_end-P126_HOST_LOAD_ADDRESS
 
 ; -------------------------------------------------------------------------
 ; TR-DOS BASIC boot program.
 ; -------------------------------------------------------------------------
         PAGE 0
         ORG #E000
-        INCLUDE "atm_host/boot_loader.asm"
-        SAVETRD "disk_A.trd", "BOOT.B", BASIC_START, BASIC_END-BASIC_START
+        INCLUDE "build/boot_loader.generated.asm"
+        SAVETRD "disk_A.trd", "@@BOOT_NAME@@.B", BASIC_START, BASIC_END-BASIC_START
 
 ; -------------------------------------------------------------------------
 ; NeoGS x86 module. Stored as a standalone CODE file on the TR-DOS disk.

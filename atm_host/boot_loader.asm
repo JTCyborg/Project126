@@ -56,7 +56,7 @@ P126_LINE11:
         DB      $0D
 P126_LINE11_END:
 
-        ; 20 RANDOMIZE USR 15619:REM:LOAD "proj126" CODE 24576
+        ; 20 RANDOMIZE USR 15619:REM:LOAD "@@HOST_NAME@@" CODE 24576
         ; Keep the Project125 TR-DOS entry trampoline unchanged.
         DB      0, 20
         DW      P126_LINE20_END-P126_LINE20
