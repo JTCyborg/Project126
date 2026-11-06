@@ -140,7 +140,6 @@ p126_ipc_emit_version::
         push    af
         push    bc
         push    hl
-        call    p126_host_log_prefix
         ld      hl, p126_ipc_version_text
         ld      bc, #00EF
 .p126_version_loop:

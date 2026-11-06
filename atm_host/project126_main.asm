@@ -37,6 +37,7 @@ p126_host_entry:
         call    DS12887_PROBE
         ld      hl, p126_host_version_text
         call    p126_host_debug_string
+        call    p126_host_log_prefix
         call    p126_ipc_emit_version
 
         ; TR-DOS file access is complete. Bring up the ATM Turbo 2+ native
