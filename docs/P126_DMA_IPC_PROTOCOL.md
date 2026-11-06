@@ -194,11 +194,39 @@ BIOS destination addresses, guest ROM mapping, NeoGS image staging addresses, fi
 ## 10. Implementation boundaries and next work
 
 This document fixes the ABI and lifecycle contract, not the runtime memory map. Remaining work:
-1. Implement shared frame CRC/validation and sequence state on both processors.
-2. Implement NeoGS DMA endpoint and ATM host frame sender/receiver.
+1. CRC primitives and local-buffer frame validation are implemented on both processors; sequence/session state remains pending.
+2. ATM sender and callable NeoGS receive endpoint are implemented; wire the receiver into the resident command dispatcher and verify both directions on hardware.
 3. Reserve and assert staging buffers and DMA source/destination windows in the Project126 4 MiB NeoGS map and ATM host memory map.
 4. Add deterministic DMA write/read tests and full-frame CRC tests on hardware.
 5. Migrate application payloads from DBIT/GSDAT to DMA frames.
 6. Implement bounded service dispatch and service-specific ABIs.
 
 This specification alone does not imply BUILD PASS, EMULATOR PASS or HARDWARE PASS.
+
+
+## 11. First callable NeoGS command dispatcher
+
+The NeoGS IPC module exports `p126_ngs_ipc_dispatch_once`. It samples ZXSTAT/CBIT, returns immediately when no command is pending, reads ZXCMD when CBIT is asserted, and routes E0h to the DMA receive endpoint. Unimplemented command IDs are acknowledged by clearing CBIT and return `NO_OPERATION`, preventing the ATM sender from waiting forever on an unsupported doorbell.
+
+The receiver restores the validated frame pointer and exact byte count after the validator returns (the validator clobbers BC/HL). A valid frame returns HL=C000h and BC=18+payload_length; errors return carry set and the ABI status in A. Version mismatches use the shared `BAD_VERSION` status.
+
+The IPC module is linked into `X86CORE.C` after the x86 state and ALU modules. This makes the dispatcher available in the core artifact, but does **not** claim a complete resident firmware or active main loop. The repository still has no NeoGS startup/loader that establishes WIN0-WIN2 placement and repeatedly calls `p126_ngs_ipc_dispatch_once`. That remains a separate integration milestone.
+
+Verification boundary: CI can verify assembly, symbol placement, and packaging. Only target testing can verify ZXCMD/CBIT timing, DMA writes into page 42h, WIN3 mapping, CRC and timeout behavior.
+
+
+## 12. Resident startup and GS105a bootstrap
+
+Project126 now has a concrete startup chain:
+1. ATM reads the TR-DOS directory before video paging is enabled.
+2. ATM locates `P126BOOT.C` and `X86CORE.C` in that preloaded directory and reads their sectors with the established TR-DOS C=5/B=1 sector API.
+3. ATM resets NeoGS through GSCTR, probes the stock GS105a ROM with command 20h, and uses ROM commands 14h/13h to load and enter stage-0 at logical 4000h.
+4. Stage-0 switches to writable RAM-over-ROM, establishes temporary WIN2/WIN3 mappings and a temporary stack, receives a bounded 1..4000h resident image over the legacy DBIT bootstrap byte channel, then jumps to address 0000h.
+5. The resident entry maps WIN0 to physical page 00, WIN1 to physical page 03, places the operational stack at 7FFEh, runs the CRC self-test and publishes A2h as the resident-ready acknowledgement.
+6. The resident main loop continuously calls `p126_ngs_ipc_dispatch_once`. E0h arms DMA module 1 at physical 108000h; a complete frame is CRC-checked before the resident emits a valid-frame diagnostic.
+
+DBIT/GSDAT is used only for stock-ROM bootstrap compatibility. After A2h, application payloads use ABI 1.0 DMA; NeoGS does not perform direct physical host I/O. ATM startup file reads occur before ATM video initialization to preserve the established TR-DOS paging constraints.
+
+The resident image must fit within one 16 KiB WIN0 page. The 256 KiB kernel allocation remains reserved for future overlays; this startup revision does not claim that the entire allocation is populated. P126BOOT.C is limited to one 256-byte TR-DOS sector.
+
+Hardware verification remains outstanding: stock-ROM reset/probe timing, #14/#13 transfer, DBIT turnaround, RAM-over-ROM paging, stack page 03, A2 ready acknowledgement and the first E0/DMA/FF frame exchange must be exercised on target hardware.

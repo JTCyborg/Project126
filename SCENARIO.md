@@ -416,3 +416,139 @@ Project126 не должен повторять практику, при кот�
 - Проверяется корректная маршрутизация диагностических сообщений до и после активации видеорежима.
 - Отдельно проверяется, что после активации видеорежима штатный поток не дублируется в отладочной панели, а экранный вывод включается только явно.
 - Эти правила обязательны для всех этапов реализации и не считаются выполненными только на основании наличия соответствующего кода.
+
+
+## 12. Первичная физическая карта NeoGS (решение 0.1)
+
+Физическая карта 4 MiB NeoGS зафиксирована документом [docs/P126_NEOGS_MEMORY_MAP.md](docs/P126_NEOGS_MEMORY_MAP.md) и машинно-читаемым контрактом [shared/p126_neogs_memory_map.inc](shared/p126_neogs_memory_map.inc). Она использует 256 физических страниц по 16 KiB и задаёт непересекающиеся регионы: kernel 256 KiB, системная BIOS 256 KiB, отдельный слот VGA BIOS 256 KiB, VGA VRAM 256 KiB, framebuffer ATM 32 KiB, DMA page 16 KiB, IPC scratch 16 KiB, guest RAM backing 1 MiB и резерв оставшейся памяти.
+
+Решение закрывает только размещение ресурсов в физической 4 MiB RAM. Оно не задаёт гостевую карту 8086, логические 64 KiB окна NeoGS, ATM staging addresses или аппаратное кодирование DMA-регистров. Для них нужны отдельные контракты и проверка реального механизма адресации. Адреса Project125 не переносятся.
+
+Сборка проверяет границы, смежность, размеры и общий предел 4 MiB через ASSERT в NeoGS assembly unit. BUILD PASS этих проверок не является HARDWARE PASS физического paging/DMA.
+
+
+## 13. Гостевая карта памяти 8086 и профиль системной платы P126-ATMPC-XT-HYBRID-0.1
+
+Выбран гибридный профиль ATM-PC: совместимые с PC/XT системные интерфейсы там, где это полезно для BIOS/ПО, собственная карта памяти Project126 и обязательный VGA. Это не заявление о полной совместимости с IBM PC/XT.
+
+Гостевое 1 MiB адресное пространство имеет полную RAM backing в NeoGS. Приоритетные окна при включённой декодировке: 00000–9FFFF RAM (640 KiB); A0000–BFFFF VGA aperture (128 KiB); C0000–C7FFF VGA BIOS ROM (32 KiB); C8000–FDFFF дополнительная RAM (216 KiB); FE000–FFFFF системная BIOS ROM (8 KiB). Итого на старте доступно 856 KiB RAM, 128 KiB VGA aperture, 32 KiB VGA BIOS и 8 KiB system BIOS. Верхняя RAM C8000–FDFFF — сознательное отличие от обычного PC UMA: это RAM, а не неявно зарезервированная область option ROM.
+
+8086 использует 20-битное физическое адресование с wrap на 1 MiB; A20 gate не вводится. System BIOS 8 KiB размещается в FE000–FFFFF, поэтому reset vector FFFF0 соответствует смещению 1FF0 образа. Физический слот системной BIOS NeoGS остаётся 256 KiB, но это ёмкость хранения, а не утверждение о линейном гостевом окне 256 KiB. Для BIOS больше 8 KiB потребуется отдельная спецификация банков/окон; в этой ревизии banking не назначен.
+
+Профиль портов и совместимых устройств определён в docs/P126_ATM_PC_PROFILE.md, а машинные константы и проверки — в shared/p126_x86_machine_map.inc. Виртуальные порты обслуживаются программными моделями NeoGS; физические ресурсы ATM доступны только через DMA/IPC ABI 1.0. Неизвестные порты читаются как FFh и игнорируют запись.
+
+Карта и классификатор физического адреса подключены к NeoGS assembly audit unit. Runtime handlers памяти и устройств ещё не реализованы; аппаратный/эмуляторный PASS не заявляется.
+
+
+## 14. NeoGS guest-RAM bank window and first memory backend
+
+The first guest-RAM backend uses the physical allocation already assigned to guest RAM: NeoGS pages 44h–83h (1 MiB), corresponding linearly to guest physical address + 110000h. NeoGS logical WIN3, address C000h–FFFFh, is reserved as a 16 KiB banked aperture. The firmware selects a physical page by writing its page number to NeoGS WIN3 register port 23h. The helper computes page 44h + guest_address[19:14] and offset C000h + guest_address[13:0].
+
+WIN3 is volatile and owned exclusively by the guest memory backend. Resident code, data, stack and any interrupt handler that can run during a banked access must stay in WIN0–WIN2. The helper does not attempt to restore the prior WIN3 page because the page register is write-only. This logical-window contract is fixed for the initial backend; final kernel placement/linking across WIN0–WIN2 remains a later integration task.
+
+Implemented in `neogs_sub/x86_cpu_state.asm`:
+- `x86_guest_ram_read8`: reads one guest RAM byte; returns byte in A, carry clear on success.
+- `x86_guest_ram_write8`: writes A to one guest RAM byte; carry clear on success.
+- Both accept the 20-bit address in `x86_phys_addr[0..2]`, reject non-RAM decode regions, and use WIN3 bank switching.
+- The helpers do not yet implement ROM overlays, VGA aperture/VRAM banking, word/string access, DMA transfer, or runtime initialization of the WIN0–WIN2 kernel map.
+
+This stage must be built and then exercised on NeoGS with boundary and data-retention tests before it can be marked as emulator/hardware PASS.
+
+
+## Unified guest memory access layer v0.1
+
+- Added the common byte interface `x86_guest_mem_read8` / `x86_guest_mem_write8`. The dispatcher uses the existing 20-bit `x86_mem_classify` result; callers provide the physical address in `x86_phys_addr[0..2]`.
+- RAM regions (00000–9FFFF and C8000–FDFFF) use the existing 1 MiB guest RAM backing at NeoGS pages 44h–83h.
+- VGA BIOS C0000–C7FFF is read from the separate VGA BIOS slot, pages 20h–21h. System BIOS FE000–FFFFF is read from the system BIOS slot, page 10h; the guest-visible 8 KiB range maps to the first 8 KiB of that 256 KiB slot. Both ROM regions reject writes.
+- VGA aperture A0000–BFFFF is routed to pages 30h–37h, the first 128 KiB of the 256 KiB VRAM allocation. This first backend is explicitly byte-linear staging only. It does not implement VGA plane/latch/read-mode/write-mode behavior and must not be represented as a complete IBM VGA memory model.
+- All physical slots are accessed through WIN3 (C000h–FFFFh) using the page-select port 23h. Page-bias constants are defined and asserted in `shared/p126_neogs_memory_map.inc`.
+- The generic selector uses the 20-bit guest address to select a 16 KiB page and return the in-window offset. WIN3 remains volatile; resident code, data, stack and interrupt handlers must remain in WIN0–WIN2.
+- **Verification boundary:** build-time assembly and map checks can validate encoding and image placement only. No hardware page switching, ROM image contents, VGA rendering or full VGA semantics are claimed.
+
+
+### Verification — unified guest memory dispatcher
+
+- **BUILD PASS:** GitHub Actions run [42306662917](https://github.com/JTCyborg/Project126/actions/runs/42306662917), source commit `b4b21ff7dcc4a161c9912d03162487e02dc542fb`.
+- SjASMPlus 1.23.1 assembled the NeoGS unit with 0 errors and 0 warnings. The x86 state module is 842 bytes; combined x86 state/ALU image is 1,616 bytes. ATM IPC (246 bytes) and NeoGS IPC (65 bytes) also assembled with 0 errors and 0 warnings.
+- TR-DOS image generated at 655,360 bytes. `X86CORE.C` is 1,616 bytes / 7 sectors; BIOS1.C, BIOS2.C and COMPAQ.C are each 8,192 bytes / 32 sectors. Listings, maps and disk artifact were published.
+- The disk assembler retains one pre-existing generated-path backslash warning; the NeoGS and IPC assembly units report no warnings.
+- **Not verified:** actual WIN3 paging/read/write on target hardware, ROM contents in physical slots, guest BIOS POST, VGA plane semantics or scanout. This is BUILD PASS only.
+
+
+## DMA/IPC ABI 1.0 frame validation primitives
+
+- Added ATM and NeoGS byte-buffer validators for the fixed 18-byte frame header, magic `P126`, major/minor version, message type, reserved flag bits, exact declared frame size and CRC-16/CCITT-FALSE.
+- Both validators return carry clear with A=0 for a valid frame; on failure carry is set and A contains the ABI status code. The functions are non-reentrant and use private module scratch.
+- These routines validate a frame already present in local memory. They do not arm DMA, receive a hardware frame, maintain session/sequence state, or dispatch services.
+
+
+### ABI 1.0 validator branch-range follow-up
+
+- The first range correction converted the branches to generic BAD_FRAME exits, but CI run `42307162663` showed five remaining relative branches to the MAGIC/VERSION exits were still out of range.
+- Converted the remaining ATM validator branches to absolute `JP`. The failed runs `42306957900` and `42307162663` remain BUILD FAIL; a subsequent CI run is required to establish BUILD PASS.
+
+
+## ABI 1.0 first DMA endpoint routines
+
+- ATM exports `p126_ipc_dma_send_frame`: validates the complete source frame, enforces the 16 KiB aperture bound, posts E0h, waits for READY, copies exactly the frame to the ZX DMA aperture at 0000h, sends FFh and waits for completion acknowledgement.
+- NeoGS exports `p126_ngs_ipc_dma_receive_frame`: selects ZX DMA module 1, targets reserved physical page 42h (108000h), arms DMA, waits for FFh with a bounded timeout, disables DMA on success/timeout, acknowledges CBIT, maps page 42h into WIN3 and validates the received frame using the payload length from its header.
+- The NeoGS receiver is a callable routine but is not yet wired into a resident command dispatcher. ATM DMA aperture paging and physical hardware operation remain to be verified. No hardware DMA PASS is claimed.
+
+
+## 15. ABI 1.0 — NeoGS receive dispatcher callable entry
+
+The NeoGS IPC endpoint now exports `p126_ngs_ipc_dispatch_once`. It checks ZXSTAT/CBIT, reads the pending ZXCMD byte, dispatches E0h (ATM frame) to the DMA receiver, and acknowledges currently unsupported commands with `NO_OPERATION`. A valid receive returns HL=C000h and BC=the exact validated frame size.
+
+The IPC module is linked into `X86CORE.C` after CPU state and ALU code. The standalone IPC audit binary remains a separate build output. This integrates the callable endpoint into the core artifact, **not** a completed resident firmware: no startup/loader or main loop currently places the code in WIN0-WIN2 and repeatedly calls the dispatcher. That must be implemented before the ATM can communicate with an automatically running endpoint.
+
+Test order after BUILD PASS:
+1. Load the updated core image and verify its reported size/version.
+2. Call the dispatcher with no CBIT pending; verify immediate return and no DMA activity.
+3. Send E0h; verify DMA module 1 targets physical 108000h and CBIT clears for READY.
+4. Send a short known frame followed by FFh; verify DMA stops, CBIT completion is acknowledged, WIN3 maps page 42h, and the returned bytes match.
+5. Corrupt payload/CRC; verify CRC_ERROR and no service dispatch.
+6. Suppress FFh; verify bounded TIMEOUT, DMA disable and CBIT cleanup.
+7. Repeat at 16 KiB boundaries, including an 18-byte empty-payload frame and the 16384-byte maximum frame.
+
+BUILD PASS is assembly/package verification only. Runtime checks are required for HARDWARE PASS.
+
+
+## 16. Resident NeoGS firmware startup — implementation v0.1.0
+
+The previously missing resident startup path is now implemented in source and added to the TR-DOS image:
+
+- `P126BOOT.C` is a one-sector GS105a stage-0 bootstrap, loaded at 4000h using ROM #14 and entered using ROM #13.
+- The ATM host finds `P126BOOT.C` and `X86CORE.C` in the preloaded TR-DOS directory and streams their sectors using the established C=5/B=1 TR-DOS read path before ATM video initialization.
+- Stage-0 switches to writable RAM-over-ROM, sets temporary WIN2/WIN3 pages and a temporary stack, receives the bounded resident image over the stock-ROM DBIT bootstrap channel, then jumps to 0000h.
+- The resident entry maps WIN0 to page 00 and WIN1 to page 03, moves the stack to 7FFEh, initializes WIN2/WIN3, runs the CRC16 self-test and returns A2h to ATM.
+- The resident main loop repeatedly calls `p126_ngs_ipc_dispatch_once`. A valid E0h frame is received into DMA page 42h and CRC-checked before a diagnostic success message.
+
+DBIT/GSDAT remains confined to the stock-ROM bootstrap sequence; post-start application traffic is DMA-only. The first resident image must fit within one 16 KiB page. The 256 KiB kernel allocation remains reserved for future overlays.
+
+Test checklist after BUILD PASS:
+1. Confirm ATM log reaches `NEOGS RESIDENT READY` and NeoGS #EF prints `P126 RESIDENT v0.1.0` and `ABI CRC16 PASS`.
+2. Confirm the resident loop remains responsive with no CBIT command pending.
+3. Send a known 18-byte empty-payload E0h frame; verify DMA READY, FFh completion, CRC acceptance and `DMA FRAME VALID`.
+4. Send a frame with corrupted CRC; verify `DMA FRAME REJECTED`.
+5. Suppress FFh; verify bounded timeout and DMA disable.
+6. Confirm ATM remains in its UI after a loader error and reports startup failure.
+
+BUILD PASS proves assembly and TR-DOS packaging only. ROM boot and all DMA/paging checks require target hardware or a hardware-accurate emulator.
+
+
+### Build verification for resident startup
+
+GitHub Actions run [42309240393](https://github.com/JTCyborg/Project126/actions/runs/42309240393) completed **BUILD PASS** for commit `2375b849bd684087b9027262c277b097e46f408e`. The resident image is 2,356 bytes, stage-0 bootstrap 175 bytes, ATM host program 17,517 bytes, and generated TR-DOS image 655,360 bytes. The image contains `P126BOOT.C` (175 bytes / one sector) and `X86CORE.C` (2,356 bytes / ten sectors). This verifies assembly and packaging, not ROM execution, paging, or physical DMA.
+
+
+## 17. First automatic DMA smoke frame
+
+After the resident reports A2h and the ATM video/UI is initialized, the ATM sends one valid 18-byte ABI 1.0 diagnostics request with sequence 0001h and zero payload. CRC is calculated by the same production ATM CRC routine, and the frame is sent using the normal DMA sender. This is the first automatic exercise of E0h → CBIT READY → 18-byte DMA write → FFh → completion.
+
+Expected independent logs:
+- ATM: `[BOOT] DMA SMOKE FRAME SENT` means the sender completed the CBIT handshake.
+- NeoGS: `[NGS] DMA FRAME VALID` confirms the receiver accepted the complete frame and CRC.
+- NeoGS: `[NGS] DMA FRAME REJECTED` means the transport completed but receiver validation failed.
+- ATM: `[BOOT] DMA SMOKE TEST FAILED` means the sender timed out or rejected the transaction.
+
+The smoke frame does not test reverse DMA, sequence/session enforcement, or any service handler. Hardware results must be reported separately from BUILD PASS.

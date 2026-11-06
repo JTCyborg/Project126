@@ -10,17 +10,17 @@ This document records actual artifacts and their verification state; it is not a
 - Added ATM CRC-16/CCITT-FALSE byte-update routine and executable standard-vector self-test (123456789 → 29B1h). Startup does not call the self-test yet.
 - Added NeoGS-side counterpart in `neogs_sub/p126_ipc.asm`, with standalone audit unit `neogs_sub/p126_ipc_assemble.asm`; it uses the same shared constants and test vector. This is a reusable primitive, not yet connected to a resident command loop.
 - ATM assembly origin remains image-relative `ORG 0000h`; final host load address is not assigned.
-- **BUILD PASS for ATM IPC v0.2.0:** GitHub Actions run [42303249684](https://github.com/JTCyborg/Project126/actions/runs/42303249684), commit `27416c290b7d3f95b3cf98f8825c860e7c3abcef`; SjASMPlus assembly and TR-DOS packaging completed successfully. The CI build assembles the CRC routine and emits the updated ATM binary/listing/map. No live Project126 DMA/IPC hardware test has been performed.
+- **BUILD PASS:** GitHub Actions run [42303465405](https://github.com/JTCyborg/Project126/actions/runs/42303465405), commit `50bf91bf35a0ef89e5d5ebb128fb36b46ceac479`; SjASMPlus assembly and TR-DOS packaging completed successfully. The build assembles the ATM and NeoGS CRC primitives and publishes the new `P126_NGS_IPC.bin`, `NEOGS_IPC.lst` and `NEOGS_IPC.map` alongside existing artifacts. No live Project126 DMA/IPC hardware test has been performed.
 
 ## Unified DMA/IPC ABI 1.0
 
 - Normative specification: `docs/P126_DMA_IPC_PROTOCOL.md`; architecture reference: `SCENARIO.md` section 7.1.1.
 - Fixed: control/data plane separation; ATM-facing DMA aperture contract; NeoGS-only DMA register ownership; GSCOM commands E0h..E3h and FFh end marker; 18-byte P126 frame header; little-endian fields; message types/flags; CRC-16/CCITT-FALSE; per-direction sequence rules; duplicate suppression; ordered fragmentation; status codes; initial service namespace; READY/end/CBIT completion lifecycle.
 - Added shared constants in `shared/p126_ipc_protocol.inc`, imported by the ATM IPC public include.
-- Added ATM-side CRC update and standard test-vector routine in `atm_host/neogs_ipc.asm`.
+- Added CRC update and standard test-vector routines on both endpoints: `atm_host/neogs_ipc.asm` and `neogs_sub/p126_ipc.asm`.
 - **IN PROGRESS:** the contract and CRC primitives on both processors are implemented in source. Complete frame encode/decode, DMA send/receive, session negotiation, sequence state, resident NeoGS command endpoint, fragment reassembly and service dispatch remain unimplemented.
-- **OPEN / MUST NOT GUESS:** final ATM and NeoGS staging-buffer addresses, NeoGS 4 MiB resident memory reservations, ATM paging/buffer placement and final DMA window integration. Project125 physical addresses/layout are reference material, not Project126 allocations.
-- **Verification:** BUILD PASS for the ATM-side v0.2.0 source is recorded in run [42303249684](https://github.com/JTCyborg/Project126/actions/runs/42303249684). The CRC self-test routine is assembled but has not been executed on target hardware. Complete DMA directions and frame transport are not implemented and are not claimed as Project126 HARDWARE PASS.
+- **OPEN / MUST NOT GUESS:** ATM staging-buffer addresses, ATM paging/buffer placement and final DMA window integration. The NeoGS 4 MiB physical allocation is now assigned in docs/P126_NEOGS_MEMORY_MAP.md; NeoGS logical 64 KiB windows and hardware page selection remain open. Project125 physical addresses/layout are reference material, not Project126 allocations.
+- **Verification:** BUILD PASS for both CRC primitives and all three assembly units is recorded in run [42303465405](https://github.com/JTCyborg/Project126/actions/runs/42303465405). CRC self-test routines are assembled but have not been executed on target hardware. Complete DMA directions and frame transport are not implemented and are not claimed as Project126 HARDWARE PASS.
 
 ## Build pipeline and address-placement audit
 
@@ -32,11 +32,11 @@ This document records actual artifacts and their verification state; it is not a
   - `build/ATM_IPC.bin`, `build/ATM.lst`, `build/ATM.map`;
   - `build/P126_NGS_IPC.bin`, `build/NEOGS_IPC.lst`, `build/NEOGS_IPC.map`.
 - The script deletes stale outputs before assembling and fails if any product is missing.
-- NeoGS assembly translation unit: `neogs_sub/x86_cpu_state_assemble.asm`, version v0.5.0. It exports explicit start/end labels for the CPU-state and ALU modules and displays each module's start, end and size, plus the complete image end and size.
+- NeoGS assembly translation unit: `neogs_sub/x86_cpu_state_assemble.asm`, version v0.6.0. It exports explicit start/end labels for the CPU-state and ALU modules and displays each module's start, end and size, plus the complete image end and size.
 - NeoGS assembly-time assertions enforce non-empty modules, contiguous placement (ALU begins exactly at CPU-state end), and total image size no greater than 256 KiB.
 - ATM assembly translation unit exports the IPC module start/end/size and asserts a non-empty image no larger than 64 KiB.
-- **Address-space qualification:** both assembly origins are image-relative offsets, not final physical NeoGS/ATM load addresses. Runtime memory maps and the ATM integration/load point remain to be fixed.
-- CI publishes both binaries, listings and maps in one audit artifact.
+- **Address-space qualification:** both assembly origins are image-relative offsets, not final physical NeoGS/ATM load addresses. The guest x86 decode map and NeoGS physical allocation are now specified; the NeoGS logical 64 KiB window mapping, final physical load address and ATM integration/load point remain to be fixed.
+- CI publishes all three binaries, listings and maps plus the TR-DOS disk image in one audit artifact.
 
 ## Latest verified assembly
 
@@ -130,6 +130,7 @@ A committed source file is not automatically a successful runtime or hardware te
 | DS12887 RTC integration | HARDWARE CONFIRMED IN PRIOR RUN | ATM shadow-port activation and Project125-derived read-only RTC path; valid timestamp was previously observed. |
 | ATM 80x25 status console | HARDWARE CONFIRMED FOR CURRENT CATALOGUE UI | The catalogue interface is displayed on the target ATM. |
 | TR-DOS directory read | HARDWARE PASS | Early read before ATM video init; eight individual C=5, B=1 sector reads. User confirmed operation. |
+| Unified DMA/IPC ABI 1.0 | IN PROGRESS; BUILD PASS for CRC primitives | Contract, common constants and ATM/NeoGS CRC routines assembled; frame codec, DMA endpoints, session/sequence handling and hardware tests remain. |
 | Directory filtering, rendering and scrolling | HARDWARE PASS | Nine-row catalogue and CAPS SHIFT+7/6 navigation confirmed by user. |
 | BIOS images in TR-DOS disk | BUILD PASS | BIOS1.C, BIOS2.C and COMPAQ.C, each 8192 bytes; included in successful disk build. |
 | BIOS choice on ENTER | PLANNED | ENTER is the proposed confirmation key only; no selection/confirmation handler implemented yet. |
@@ -147,3 +148,123 @@ A committed source file is not automatically a successful runtime or hardware te
 - Replaced one `C=5, B=8` call with eight individual `C=5, B=1` calls. Each call reloads D/E/HL and clears/checks `#5D0F/#5D10`.
 - Directory buffer: `#C800..#CFFF`; parsing, display and keyboard navigation run in the later UI phase.
 - **Verification:** commits `94c7436a258ccab48182f72446609738ec7e80ca`, `591c00eed1227bc89ecbf9658942297ac6867193`, and `ea916953044349e68ef3cc8af93fc8f5020b483e`. GitHub Actions run [42302005699](https://github.com/JTCyborg/Project126/actions/runs/42302005699) completed successfully. The user subsequently confirmed the catalogue stage on physical ATM hardware.
+
+
+## NeoGS physical RAM allocation v0.1
+
+- Normative map: docs/P126_NEOGS_MEMORY_MAP.md; machine-readable constants/assertions: shared/p126_neogs_memory_map.inc.
+- Allocation: 256 physical pages × 16 KiB = 4 MiB. Pages 00–0F resident kernel (256 KiB); 10–1F system BIOS slot (256 KiB); 20–2F separate VGA BIOS slot (256 KiB); 30–3F VGA VRAM (256 KiB); 40–41 ATM presentation frame (32 KiB); 42 DMA backing page (16 KiB); 43 IPC scratch (16 KiB); 44–83 guest RAM backing (1 MiB); 84–FF unassigned reserve (1.9375 MiB).
+- This is a physical RAM allocation only. It does not assign guest x86 logical ROM/RAM/device addresses, NeoGS logical Z80 windows, ATM staging addresses or DMA register encoding.
+- Build integration: the NeoGS assembly translation unit includes the map constants and checks all region boundaries, adjacency, capacities and the 4 MiB limit with assembler ASSERTs. Existing NEOGS.lst/NEOGS.map therefore include the allocation symbols.
+- Physical paging and DMA hardware tests are not claimed. BUILD PASS is pending CI for this commit.
+
+
+## Guest 8086 memory map and ATM-PC/XT hybrid profile v0.1
+
+- Profile: docs/P126_ATM_PC_PROFILE.md; machine-readable guest map and port constants: shared/p126_x86_machine_map.inc.
+- Guest physical space: 1 MiB, 20-bit wrap, no A20. Full 1 MiB NeoGS guest-RAM backing remains allocated. Read/write decode at reset: 00000–9FFFF RAM (640 KiB); A0000–BFFFF VGA aperture (128 KiB); C0000–C7FFF VGA BIOS ROM (32 KiB); C8000–FDFFF upper RAM (216 KiB); FE000–FFFFF system BIOS ROM (8 KiB). Exposed guest RAM total: 856 KiB.
+- This is a custom ATM-PC/XT hybrid. The 216 KiB C8000–FDFFF region is intentionally RAM, not a conventional PC option-ROM/UMA reservation. VGA aperture follows PCem VGA GC register 6 mapping; 256 KiB VRAM is separate backing.
+- The current 8 KiB XT-compatible system BIOS images map at FE000–FFFFF; reset vector FFFF0 is image offset 1FF0. The 256 KiB NeoGS BIOS slot is storage capacity, not a linear guest ROM aperture. Images larger than 8 KiB need a separate banking/window policy.
+- Added x86_mem_classify and target-side boundary vectors for low RAM, VGA aperture, VGA BIOS, upper RAM and system BIOS. Runtime memory handlers are not implemented.
+- I/O decode profile reserves PC/XT-style DMA/PIC/PIT/PPI/VGA/FDC and ATA task-file ranges; DS12887-compatible 70h/71h is a custom extension with ATM as the physical time source. All guest I/O remains software-modeled; no direct NeoGS physical IN/OUT.
+- BUILD PASS pending CI for the current commit; target execution of the new classifier and any guest BIOS POST/boot are not claimed.
+
+
+### Verification — guest memory map and ATM-PC/XT hybrid profile
+
+- **BUILD PASS:** GitHub Actions run [42305863741](https://github.com/JTCyborg/Project126/actions/runs/42305863741), source commit `4e4edf3bbe25f6ffbe2e71cb6d51f411f546b440`. NeoGS assembly completed with 0 errors and 0 warnings; the new memory map constants and classifier assembled into `build/x86_cpu_state.bin` (1,416 bytes), with updated `NEOGS.lst` and `NEOGS.map`.
+- ATM IPC and NeoGS IPC audit units also assembled successfully. TR-DOS disk packaging completed at 655,360 bytes; BIOS1.C, BIOS2.C and COMPAQ.C were each verified as 8,192 bytes / 32 sectors. Artifact: `project126-trdos-disk-and-build` (run 42305863741).
+- The disk packaging assembler emitted one pre-existing path-format warning for the generated source filename containing a backslash; no assembly errors occurred. GitHub runner Node.js deprecation notices are unrelated to project source.
+- The new classifier has target-side boundary test vectors in source, but the self-test has not yet been executed on NeoGS. No guest memory read/write runtime, BIOS POST, VGA output, emulator PASS or hardware PASS is claimed.
+
+
+## Guest RAM banked access layer v0.1
+
+- Assigned NeoGS logical WIN3 (C000h–FFFFh) as the dedicated 16 KiB physical RAM bank window, selected through port 23h. WIN0–WIN2 are reserved for executing resident code, data, stack and interrupt handlers during a banked access.
+- Added `x86_guest_ram_select_page`, `x86_guest_ram_read8` and `x86_guest_ram_write8` to the NeoGS x86 state module. Guest RAM backing is linear: NeoGS physical offset 110000h + 20-bit guest physical address, pages 44h–83h.
+- RAM helpers check the guest address decoder and reject VGA/ROM overlay regions rather than incorrectly treating them as RAM. They do not yet implement VGA/ROM access.
+- Updated `docs/P126_NEOGS_MEMORY_MAP.md` and `SCENARIO.md` with the WIN3 contract and execution constraints.
+- **Verification status:** source-level only until CI assembles this revision. No target-side page-switch, read/write retention, interrupt-safety or guest execution test is claimed. Final resident placement in WIN0–WIN2 remains an integration requirement.
+
+
+### Verification — banked guest RAM access v0.1
+
+- **BUILD PASS:** GitHub Actions run [42306324753](https://github.com/JTCyborg/Project126/actions/runs/42306324753), source commit `d53e16500183f65f76d93f7b02786829f15c3191`.
+- NeoGS memory module assembled successfully: 0 errors, 0 warnings, image size 1,492 bytes. Build map confirms bank aperture C000h and WIN3 page-select port 0023h. ATM IPC and NeoGS IPC units also assembled; TR-DOS disk generation and artifact upload completed.
+- The disk assembler emitted the existing generated-filename backslash warning; the NeoGS module itself had no warnings.
+- **Not yet verified:** actual WIN3 page selection/read/write on NeoGS hardware or a cycle-accurate emulator. No runtime RAM-retention PASS is claimed. The helpers require the resident runtime to keep code, data, stack and interrupt handlers outside WIN3.
+
+
+## Unified guest memory dispatcher
+
+- Source: `neogs_sub/x86_cpu_state.asm`; shared page-bias constants: `shared/p126_neogs_memory_map.inc`.
+- Added byte read/write entry points `x86_guest_mem_read8` and `x86_guest_mem_write8`, dispatching by `x86_mem_classify`.
+- RAM accesses use the existing guest RAM backend. VGA aperture accesses use the first 128 KiB of the dedicated VRAM allocation as linear staging. VGA BIOS and system BIOS reads use their independent physical slots; writes to either ROM are rejected.
+- The VGA aperture implementation is not a complete VGA memory model: plane/latch/read/write-mode semantics and register-controlled mapping remain pending.
+- Scenario and physical map documentation record exact guest-to-NeoGS page mapping and the limitations.
+- Verification is pending CI for this commit. No emulator or hardware runtime PASS is claimed.
+
+
+### Verification — unified guest memory dispatcher
+
+- **BUILD PASS:** GitHub Actions run [42306662917](https://github.com/JTCyborg/Project126/actions/runs/42306662917), source commit `b4b21ff7dcc4a161c9912d03162487e02dc542fb`.
+- SjASMPlus 1.23.1 assembled the NeoGS unit with 0 errors and 0 warnings. The x86 state module is 842 bytes; combined x86 state/ALU image is 1,616 bytes. ATM IPC (246 bytes) and NeoGS IPC (65 bytes) also assembled with 0 errors and 0 warnings.
+- TR-DOS image generated at 655,360 bytes. `X86CORE.C` is 1,616 bytes / 7 sectors; BIOS1.C, BIOS2.C and COMPAQ.C are each 8,192 bytes / 32 sectors. Listings, maps and disk artifact were published.
+- The disk assembler retains one pre-existing generated-path backslash warning; the NeoGS and IPC assembly units report no warnings.
+- **Not verified:** actual WIN3 paging/read/write on target hardware, ROM contents in physical slots, guest BIOS POST, VGA plane semantics or scanout. This is BUILD PASS only.
+
+
+## ABI 1.0 frame validation
+
+- Implemented matching ATM and NeoGS frame validators in `atm_host/neogs_ipc.asm` and `neogs_sub/p126_ipc.asm`.
+- Validation covers minimum header length, P126 magic, ABI major/minor, legal message type, reserved flags, exact 18+payload length and full CRC-16/CCITT-FALSE.
+- Return convention: carry clear/A=0 valid; carry set/A=ABI status code invalid. Validators are non-reentrant.
+- Hardware DMA endpoint, transaction lifecycle, sequence/session state and BIOS service dispatch remain pending. This milestone alone does not claim DMA transport.
+
+
+## ABI 1.0 validator branch-range follow-up
+
+- CI run `42307162663` still failed at five ATM validator relative branches targeting the shared BAD_MAGIC/BAD_VERSION exits. The earlier correction did not cover those destinations.
+- Converted those remaining branches to absolute `JP`; validation semantics are unchanged. Build verification is pending on this commit. Do not treat either prior failed run as BUILD PASS.
+
+
+## ABI 1.0 DMA endpoint routines
+
+- Added ATM frame sender and NeoGS DMA receive endpoint routines. NeoGS DMA destination is reserved physical page 42h / 108000h; WIN3 maps page 42h only after DMA has been disabled and acknowledged.
+- NeoGS receiver is currently an exported callable routine, not yet wired into a resident command dispatcher. ATM DMA-window mapping and physical hardware tests remain outstanding.
+- CI verification is pending for this revision. No hardware transfer result is claimed.
+
+
+## ABI 1.0 — callable NeoGS receive dispatcher linked into core image
+
+- Added `p126_ngs_ipc_dispatch_once`: polls ZXSTAT/CBIT, reads ZXCMD, dispatches E0h to the ATM→NeoGS DMA receiver, and acknowledges unsupported command IDs with `NO_OPERATION`.
+- Corrected the receive endpoint return contract: after validation it restores HL=C000h and BC=exact frame size; previously the validator clobbered these registers.
+- Corrected the NeoGS version error to use shared ABI status `P126_STATUS_BAD_VERSION`.
+- Linked `neogs_sub/p126_ipc.asm` into the assembled `X86CORE.C` image after CPU state and ALU. The standalone IPC audit binary/listing/map remains available.
+- **Not implemented:** no resident firmware startup/main loop currently calls `p126_ngs_ipc_dispatch_once`; final WIN0-WIN2 placement, firmware load/entry, and active polling loop remain open. This commit provides a callable dispatcher in the packaged core, not a running resident endpoint.
+- **Verification target:** BUILD PASS must confirm the enlarged core and TR-DOS packaging. Hardware tests must exercise E0h READY, DMA payload, FFh completion, CRC acceptance/rejection, timeout cleanup, and WIN3 page mapping. No hardware PASS is claimed.
+
+
+## Resident startup implementation v0.1.0
+
+- Added GS105a stage-0 source `neogs_sub/p126_bootstrap.asm`, assembled at 4000h and emitted as a bounded `P126BOOT.C` TR-DOS file (maximum one 256-byte sector).
+- Added ATM loader `atm_host/p126_neogs_loader.asm`. It locates the exact 8.3 files in the preloaded directory, reads TR-DOS sectors through C=5/B=1, resets/probes the stock GS105a ROM, loads stage-0 with #14, enters it with #13, streams the resident core and requires A2h before reporting success.
+- Added resident entry/vector and main polling loop to X86CORE. It establishes WIN0/page00, WIN1/page03, stack 7FFEh, initializes WIN2/WIN3, runs the CRC16 self-test, sends A2h, then continuously polls the ABI 1.0 dispatcher.
+- Added P126BOOT.C to the TR-DOS image and build validation. ATM performs startup file reads before video initialization, preserving the established TR-DOS paging order.
+- DBIT/GSDAT is explicitly confined to stock-ROM bootstrap; after A2h, application payloads are DMA-only.
+- **Not claimed:** no hardware verification yet for GSCTR reset timing, ROM #14/#13 sequence, paging, A2h handshake, DMA timing or frame integrity. The resident loop currently validates incoming frames and logs success/rejection; service dispatch and reverse DMA remain future work.
+
+
+### Verification — resident startup build
+
+- **BUILD PASS:** GitHub Actions run [42309240393](https://github.com/JTCyborg/Project126/actions/runs/42309240393), source commit `2375b849bd684087b9027262c277b097e46f408e`.
+- SjASMPlus 1.23.1: resident/core image 2,356 bytes; ATM IPC 519 bytes; standalone NeoGS IPC 414 bytes; stage-0 bootstrap 175 bytes. All assembly units completed with 0 errors and 0 warnings.
+- TR-DOS image: 655,360 bytes. `proj126.C` 17,517 bytes / 69 sectors; `X86CORE.C` 2,356 bytes / 10 sectors; `P126BOOT.C` 175 bytes / 1 sector; each BIOS image 8,192 bytes / 32 sectors. The disk assembly retains one pre-existing generated-path backslash warning.
+- **BUILD PASS only.** No emulator or hardware boot/DMA test has been run.
+
+
+## Automatic first-frame DMA smoke test
+
+After resident startup and ATM video initialization, the host now builds an 18-byte ABI 1.0 diagnostics request (sequence 0001h, empty payload), calculates CRC-16/CCITT-FALSE with the production ATM routine and sends it through `p126_ipc_dma_send_frame`. This exercises E0h, READY/CBIT, the complete 18-byte DMA write, FFh and completion acknowledgement. The NeoGS resident independently validates the frame and logs either `DMA FRAME VALID` or `DMA FRAME REJECTED`.
+
+The ATM log `DMA SMOKE FRAME SENT` means the transport handshake completed; it is not by itself proof of receiver CRC acceptance. Compare it with the independent NeoGS #EF diagnostic. This is a target-side smoke test, not a build-time test.

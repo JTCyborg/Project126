@@ -15,6 +15,9 @@ ATM and NeoGS retain independent debug channels at port #EF.
 - `atm_host/neogs_ipc_assemble.asm` — relocatable assembly unit and placement labels.
 - `build/ATM_IPC.bin` — assembled ATM transport module.
 - `build/ATM.lst`, `build/ATM.map` — listing and symbol/address map.
+- `shared/p126_ipc_protocol.inc` — shared DMA/IPC ABI constants imported by both processors.
+- `neogs_sub/p126_ipc.asm` and `neogs_sub/p126_ipc_assemble.asm` — NeoGS-side CRC primitive and independent assembly/audit unit.
+- `build/P126_NGS_IPC.bin`, `build/NEOGS_IPC.lst`, `build/NEOGS_IPC.map` — NeoGS IPC primitive build products.
 
 The current assembly origin is `ORG 0000h`, used only to produce auditable image-relative offsets. It does not assign a final physical ATM load address. That address depends on the ATM memory map and integration with the TR-DOS/host program, which are not yet fixed.
 
@@ -71,7 +74,7 @@ The current ATM driver still does not implement complete frame send/receive, DMA
 - ATM source version: `P126 ATM_IPC v0.2.0`; shared application ABI: `P126 DMA/IPC ABI 1.0`.
 - The assembly unit continues to generate `build/ATM_IPC.bin`, `build/ATM.lst` and `build/ATM.map`.
 - The CRC self-tests are present as executable code on both processors but are not yet called by startup and have not been run on target hardware.
-- **BUILD PASS for v0.2.0:** GitHub Actions run [42303249684](https://github.com/JTCyborg/Project126/actions/runs/42303249684), commit `27416c290b7d3f95b3cf98f8825c860e7c3abcef`; ATM/NeoGS assembly and TR-DOS packaging completed successfully.
+- **BUILD PASS for the dual-endpoint CRC primitives:** GitHub Actions run [42303465405](https://github.com/JTCyborg/Project126/actions/runs/42303465405), commit `50bf91bf35a0ef89e5d5ebb128fb36b46ceac479`; ATM IPC, NeoGS IPC and x86 modules assembled, and TR-DOS packaging completed successfully.
 - Assembly success will prove syntax and image-boundary assertions only; live DMA/IPC requires separate deterministic hardware tests.
 
 
