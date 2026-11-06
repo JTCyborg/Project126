@@ -260,6 +260,11 @@ x86_guest_mem_read8:
 .sysbios:
         ld      a,P126_NGS_GUEST_SYSBIOS_PAGE_BIAS
         call    x86_guest_mem_select_page
+        ; FE000h is half-way through a 16 KiB guest page. Rebase the
+        ; guest-visible 8 KiB BIOS window to offset 0000h in slot page 10h.
+        ld      a,h
+        sub     #20
+        ld      h,a
         ld      a,(hl)
         or      a
         ret
