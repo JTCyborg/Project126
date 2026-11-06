@@ -127,7 +127,7 @@ p126_ngs_ipc_validate_frame::
         scf
         ret
 .p126_ngs_frame_version:
-        ld      a,P126_STATUS_UNSUPPORTED_VERSION
+        ld      a,P126_STATUS_BAD_VERSION
         scf
         ret
 .p126_ngs_frame_crc_bad:
@@ -159,7 +159,7 @@ P126_NGS_DMA_CST      EQU #1F
 P126_NGS_ZXSTAT       EQU #04
 P126_NGS_CLRCBIT      EQU #05
 P126_NGS_WIN3_PORT    EQU #23
-P126_NGS_DMA_PAGE     EQU #42
+P126_NGS_DMA_TARGET_PAGE     EQU #42
 P126_NGS_DMA_TIMEOUT  EQU #FFFF
 
 p126_ngs_ipc_dma_receive_frame::
@@ -196,7 +196,7 @@ p126_ngs_ipc_dma_receive_frame::
         xor     a
         out     (P126_NGS_DMA_CST),a
         out     (P126_NGS_CLRCBIT),a
-        ld      a,P126_NGS_DMA_PAGE
+        ld      a,P126_NGS_DMA_TARGET_PAGE
         out     (P126_NGS_WIN3_PORT),a
 
         ; Derive exact frame size from the fixed header's payload length.

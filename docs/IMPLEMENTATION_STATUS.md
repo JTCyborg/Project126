@@ -239,7 +239,7 @@ A committed source file is not automatically a successful runtime or hardware te
 
 - Added `p126_ngs_ipc_dispatch_once`: polls ZXSTAT/CBIT, reads ZXCMD, dispatches E0h to the ATM→NeoGS DMA receiver, and acknowledges unsupported command IDs with `NO_OPERATION`.
 - Corrected the receive endpoint return contract: after validation it restores HL=C000h and BC=exact frame size; previously the validator clobbered these registers.
-- Corrected the NeoGS version error to use shared ABI status `P126_STATUS_UNSUPPORTED_VERSION`.
+- Corrected the NeoGS version error to use shared ABI status `P126_STATUS_BAD_VERSION`.
 - Linked `neogs_sub/p126_ipc.asm` into the assembled `X86CORE.C` image after CPU state and ALU. The standalone IPC audit binary/listing/map remains available.
 - **Not implemented:** no resident firmware startup/main loop currently calls `p126_ngs_ipc_dispatch_once`; final WIN0-WIN2 placement, firmware load/entry, and active polling loop remain open. This commit provides a callable dispatcher in the packaged core, not a running resident endpoint.
 - **Verification target:** BUILD PASS must confirm the enlarged core and TR-DOS packaging. Hardware tests must exercise E0h READY, DMA payload, FFh completion, CRC acceptance/rejection, timeout cleanup, and WIN3 page mapping. No hardware PASS is claimed.

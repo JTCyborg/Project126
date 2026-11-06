@@ -208,7 +208,7 @@ This specification alone does not imply BUILD PASS, EMULATOR PASS or HARDWARE PA
 
 The NeoGS IPC module exports `p126_ngs_ipc_dispatch_once`. It samples ZXSTAT/CBIT, returns immediately when no command is pending, reads ZXCMD when CBIT is asserted, and routes E0h to the DMA receive endpoint. Unimplemented command IDs are acknowledged by clearing CBIT and return `NO_OPERATION`, preventing the ATM sender from waiting forever on an unsupported doorbell.
 
-The receiver restores the validated frame pointer and exact byte count after the validator returns (the validator clobbers BC/HL). A valid frame returns HL=C000h and BC=18+payload_length; errors return carry set and the ABI status in A. Version mismatches use the shared `UNSUPPORTED_VERSION` status.
+The receiver restores the validated frame pointer and exact byte count after the validator returns (the validator clobbers BC/HL). A valid frame returns HL=C000h and BC=18+payload_length; errors return carry set and the ABI status in A. Version mismatches use the shared `BAD_VERSION` status.
 
 The IPC module is linked into `X86CORE.C` after the x86 state and ALU modules. This makes the dispatcher available in the core artifact, but does **not** claim a complete resident firmware or active main loop. The repository still has no NeoGS startup/loader that establishes WIN0-WIN2 placement and repeatedly calls `p126_ngs_ipc_dispatch_once`. That remains a separate integration milestone.
 
