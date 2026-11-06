@@ -49,284 +49,1109 @@
  25+  6009 F3                   di
  26+  600A 31 FF AF             ld      sp, P126_HOST_STACK_TOP
  27+  600D
- 28+  600D 21 2A 60             ld      hl, p126_host_version_text
- 29+  6010 CD 19 60             call    p126_host_debug_string
- 30+  6013 CD C7 60             call    p126_ipc_emit_version
+ 28+  600D 21 A7 60             ld      hl, p126_host_version_text
+ 29+  6010 CD 96 60             call    p126_host_debug_string
+ 30+  6013 CD 44 61             call    p126_ipc_emit_version
  31+  6016
- 32+  6016              p126_host_idle:
- 33+  6016 76                   halt
- 34+  6017 18 FD                jr      p126_host_idle
- 35+  6019
- 36+  6019              ; ATM debug output is independent of NeoGS debug output.
- 37+  6019              p126_host_debug_string:
- 38+  6019 F5                   push    af
- 39+  601A C5                   push    bc
- 40+  601B 01 EF 00             ld      bc, #00EF
- 41+  601E              .p126_host_debug_loop:
- 42+  601E 7E                   ld      a, (hl)
- 43+  601F 23                   inc     hl
- 44+  6020 B7                   or      a
- 45+  6021 28 04                jr      z, .p126_host_debug_done
- 46+  6023 ED 79                out     (c), a
- 47+  6025 18 F7                jr      .p126_host_debug_loop
- 48+  6027              .p126_host_debug_done:
- 49+  6027 C1                   pop     bc
- 50+  6028 F1                   pop     af
- 51+  6029 C9                   ret
- 52+  602A
- 53+  602A              p126_host_version_text:
- 54+  602A 5B 50 31 32          db "[P126 ATM HOST v0.1.0]", 13, 10, 0
- 54+  602E 36 20 41 54
- 54+  6032 4D 20 48 4F
- 54+  6036 53 54 20 76
- 54+  603A 30 2E 31 2E
- 54+  603E 30 5D 0D 0A
- 54+  6042 00
- 55+  6043
- 56+  6043                      INCLUDE "atm_host/neogs_ipc.asm"
+ 32+  6016                      ; TR-DOS file access is complete. Bring up the ATM Turbo 2+ native
+ 33+  6016                      ; 80x25 text display only now, after the BASIC/TR-DOS loader returned.
+ 34+  6016 CD 02 A0             call    p126_atm_video_init
+ 35+  6019 CD 6D A0             call    BIOS_DebugConsole_Init
+ 36+  601C CD 7D A0             call    BIOS_DebugConsole_Clear
+ 37+  601F CD 03 A1             call    BIOS_DebugConsole_DrawInterface
+ 38+  6022 21 34 60             ld      hl, p126_host_ui_log
+ 39+  6025 CD 2B 60             call    p126_host_console_string
+ 40+  6028
+ 41+  6028              p126_host_idle:
+ 42+  6028 76                   halt
+ 43+  6029 18 FD                jr      p126_host_idle
+ 44+  602B
+ 45+  602B              ; IN: HL=zero-terminated string. Writes to the lower on-screen log.
+ 46+  602B              p126_host_console_string:
+ 47+  602B 7E                   ld      a, (hl)
+ 48+  602C B7                   or      a
+ 49+  602D C8                   ret     z
+ 50+  602E CD B7 A1             call    BIOS_DebugConsole_PrintChar
+ 51+  6031 23                   inc     hl
+ 52+  6032 18 F7                jr      p126_host_console_string
+ 53+  6034
+ 54+  6034              p126_host_ui_log:
+ 55+  6034 41 54 4D 20          db "ATM HOST SHELL INITIALIZED", 13, 10
+ 55+  6038 48 4F 53 54
+ 55+  603C 20 53 48 45
+ 55+  6040 4C 4C 20 49
+ 55+  6044 4E 49 54 49
+ 55+  6048 41 4C 49 5A
+ 55+  604C 45 44 0D 0A
+ 56+  6050 4E 65 6F 47          db "NeoGS firmware upload: NOT IMPLEMENTED", 13, 10
+ 56+  6054 53 20 66 69
+ 56+  6058 72 6D 77 61
+ 56+  605C 72 65 20 75
+ 56+  6060 70 6C 6F 61
+ 56+  6064 64 3A 20 4E
+ 56+  6068 4F 54 20 49
+ 56+  606C 4D 50 4C 45
+ 56+  6070 4D 45 4E 54
+ 56+  6074 45 44 0D 0A
+ 57+  6078 38 30 38 36          db "8086 execution: NOT STARTED", 13, 10, 0
+ 57+  607C 20 65 78 65
+ 57+  6080 63 75 74 69
+ 57+  6084 6F 6E 3A 20
+ 57+  6088 4E 4F 54 20
+ 57+  608C 53 54 41 52
+ 57+  6090 54 45 44 0D
+ 57+  6094 0A 00
+ 58+  6096
+ 59+  6096              ; ATM debug output is independent of NeoGS debug output.
+ 60+  6096              p126_host_debug_string:
+ 61+  6096 F5                   push    af
+ 62+  6097 C5                   push    bc
+ 63+  6098 01 EF 00             ld      bc, #00EF
+ 64+  609B              .p126_host_debug_loop:
+ 65+  609B 7E                   ld      a, (hl)
+ 66+  609C 23                   inc     hl
+ 67+  609D B7                   or      a
+ 68+  609E 28 04                jr      z, .p126_host_debug_done
+ 69+  60A0 ED 79                out     (c), a
+ 70+  60A2 18 F7                jr      .p126_host_debug_loop
+ 71+  60A4              .p126_host_debug_done:
+ 72+  60A4 C1                   pop     bc
+ 73+  60A5 F1                   pop     af
+ 74+  60A6 C9                   ret
+ 75+  60A7
+ 76+  60A7              p126_host_version_text:
+ 77+  60A7 5B 50 31 32          db "[P126 ATM HOST v0.1.0]", 13, 10, 0
+ 77+  60AB 36 20 41 54
+ 77+  60AF 4D 20 48 4F
+ 77+  60B3 53 54 20 76
+ 77+  60B7 30 2E 31 2E
+ 77+  60BB 30 5D 0D 0A
+ 77+  60BF 00
+ 78+  60C0
+ 79+  60C0                      INCLUDE "atm_host/neogs_ipc.asm"
 # file opened: neogs_ipc.asm
-  1++ 6043              ; =========================================================================
-  2++ 6043              ; PROJECT126 — ATM Turbo 2+ / NeoGS host-side IPC driver
-  3++ 6043              ; Version: P126_ATM_IPC v0.1.0
-  4++ 6043              ;
-  5++ 6043              ; This is ATM Z80 code. It runs on the 7 MHz host CPU.
-  6++ 6043              ; NeoGS is an independent Z80 and has its own private debug port #EF.
-  7++ 6043              ;
-  8++ 6043              ; The implementation follows the proven Project125 host transport v2
-  9++ 6043              ; handshake semantics. It intentionally contains no NeoGS-local IN/OUT
- 10++ 6043              ; and does not program DMA_MOD/HAD/MAD/LAD/CST from the ATM side.
- 11++ 6043              ; =========================================================================
- 12++ 6043
- 13++ 6043                      INCLUDE "atm_host/neogs_ipc.inc"
+  1++ 60C0              ; =========================================================================
+  2++ 60C0              ; PROJECT126 — ATM Turbo 2+ / NeoGS host-side IPC driver
+  3++ 60C0              ; Version: P126_ATM_IPC v0.1.0
+  4++ 60C0              ;
+  5++ 60C0              ; This is ATM Z80 code. It runs on the 7 MHz host CPU.
+  6++ 60C0              ; NeoGS is an independent Z80 and has its own private debug port #EF.
+  7++ 60C0              ;
+  8++ 60C0              ; The implementation follows the proven Project125 host transport v2
+  9++ 60C0              ; handshake semantics. It intentionally contains no NeoGS-local IN/OUT
+ 10++ 60C0              ; and does not program DMA_MOD/HAD/MAD/LAD/CST from the ATM side.
+ 11++ 60C0              ; =========================================================================
+ 12++ 60C0
+ 13++ 60C0                      INCLUDE "atm_host/neogs_ipc.inc"
 # file opened: neogs_ipc.inc
-  1+++6043              ; =========================================================================
-  2+++6043              ; PROJECT126 — ATM / NeoGS IPC public interface
-  3+++6043              ; Version: P126_ATM_IPC_API v0.1.0
-  4+++6043              ;
-  5+++6043              ; Include this file in ATM-side Z80 modules that call neogs_ipc.asm.
-  6+++6043              ; Physical transport: GSCOM/GSSTAT (#BB), GSDAT (#B3), GSCTR (#33).
-  7+++6043              ; The ATM-side driver never accesses NeoGS-local DMA registers.
-  8+++6043              ; =========================================================================
-  9+++6043
- 10+++6043              P126_GSCOM          EQU #BB
- 11+++6043              P126_GSSTAT         EQU #BB
- 12+++6043              P126_GSDAT          EQU #B3
- 13+++6043              P126_GSCTR          EQU #33
- 14+++6043
- 15+++6043              P126_CBIT           EQU 0
- 16+++6043              P126_DBIT           EQU 7
- 17+++6043              P126_M_CBIT         EQU #01
- 18+++6043              P126_M_DBIT         EQU #80
- 19+++6043
- 20+++6043              P126_GS_RESET       EQU #80
- 21+++6043              P126_GS_NMI         EQU #40
- 22+++6043              P126_GS_LED         EQU #20
- 23+++6043
- 24+++6043              ; Driver result convention:
- 25+++6043              ;   Carry clear = operation completed.
- 26+++6043              ;   Carry set   = timeout.
- 27+++6043              ;   A           = last observed GSSTAT on timeout / final status on wait.
- 28+++6043              ;   p126_ipc_last_status always contains the last sampled GSSTAT byte.
- 29+++6043
- 30+++6043              ; Public entry points (see docs/ATM_HOST_INTERFACE.md):
- 31+++6043              ;   p126_ipc_read_status
- 32+++6043              ;   p126_ipc_wait_cbit_clear
- 33+++6043              ;   p126_ipc_wait_dbit_clear
- 34+++6043              ;   p126_ipc_wait_dbit_set
- 35+++6043              ;   p126_ipc_send_command       A=command
- 36+++6043              ;   p126_ipc_send_argument      A=argument; preloads GSDAT before GSCOM
- 37+++6043              ;   p126_ipc_send_byte          A=data; waits for consumption
- 38+++6043              ;   p126_ipc_receive_byte       returns A=data
- 39+++6043              ;   p126_ipc_emit_version
- 40+++6043
- 41+++6043              P126_IPC_TIMEOUT    EQU #FFFF
- 42+++6043
+  1+++60C0              ; =========================================================================
+  2+++60C0              ; PROJECT126 — ATM / NeoGS IPC public interface
+  3+++60C0              ; Version: P126_ATM_IPC_API v0.1.0
+  4+++60C0              ;
+  5+++60C0              ; Include this file in ATM-side Z80 modules that call neogs_ipc.asm.
+  6+++60C0              ; Physical transport: GSCOM/GSSTAT (#BB), GSDAT (#B3), GSCTR (#33).
+  7+++60C0              ; The ATM-side driver never accesses NeoGS-local DMA registers.
+  8+++60C0              ; =========================================================================
+  9+++60C0
+ 10+++60C0              P126_GSCOM          EQU #BB
+ 11+++60C0              P126_GSSTAT         EQU #BB
+ 12+++60C0              P126_GSDAT          EQU #B3
+ 13+++60C0              P126_GSCTR          EQU #33
+ 14+++60C0
+ 15+++60C0              P126_CBIT           EQU 0
+ 16+++60C0              P126_DBIT           EQU 7
+ 17+++60C0              P126_M_CBIT         EQU #01
+ 18+++60C0              P126_M_DBIT         EQU #80
+ 19+++60C0
+ 20+++60C0              P126_GS_RESET       EQU #80
+ 21+++60C0              P126_GS_NMI         EQU #40
+ 22+++60C0              P126_GS_LED         EQU #20
+ 23+++60C0
+ 24+++60C0              ; Driver result convention:
+ 25+++60C0              ;   Carry clear = operation completed.
+ 26+++60C0              ;   Carry set   = timeout.
+ 27+++60C0              ;   A           = last observed GSSTAT on timeout / final status on wait.
+ 28+++60C0              ;   p126_ipc_last_status always contains the last sampled GSSTAT byte.
+ 29+++60C0
+ 30+++60C0              ; Public entry points (see docs/ATM_HOST_INTERFACE.md):
+ 31+++60C0              ;   p126_ipc_read_status
+ 32+++60C0              ;   p126_ipc_wait_cbit_clear
+ 33+++60C0              ;   p126_ipc_wait_dbit_clear
+ 34+++60C0              ;   p126_ipc_wait_dbit_set
+ 35+++60C0              ;   p126_ipc_send_command       A=command
+ 36+++60C0              ;   p126_ipc_send_argument      A=argument; preloads GSDAT before GSCOM
+ 37+++60C0              ;   p126_ipc_send_byte          A=data; waits for consumption
+ 38+++60C0              ;   p126_ipc_receive_byte       returns A=data
+ 39+++60C0              ;   p126_ipc_emit_version
+ 40+++60C0
+ 41+++60C0              P126_IPC_TIMEOUT    EQU #FFFF
+ 42+++60C0
 # file closed: neogs_ipc.inc
- 14++ 6043
- 15++ 6043              ; -------------------------------------------------------------------------
- 16++ 6043              ; Read the current hardware handshake state.
- 17++ 6043              ; OUT: A=status; p126_ipc_last_status updated.
- 18++ 6043              ; -------------------------------------------------------------------------
- 19++ 6043              p126_ipc_read_status:
- 19++ 6043
- 20++ 6043 DB BB                in      a, (P126_GSSTAT)
- 21++ 6045 32 DD 60             ld      (p126_ipc_last_status), a
- 22++ 6048 C9                   ret
- 23++ 6049
- 24++ 6049              ; -------------------------------------------------------------------------
- 25++ 6049              ; Wait routines. Every wait is bounded by P126_IPC_TIMEOUT.
- 26++ 6049              ; OUT: Carry clear on requested state; carry set on timeout.
- 27++ 6049              ;      A=last sampled GSSTAT. BC is clobbered.
- 28++ 6049              ; -------------------------------------------------------------------------
- 29++ 6049              p126_ipc_wait_cbit_clear:
- 29++ 6049
- 30++ 6049 01 FF FF             ld      bc, P126_IPC_TIMEOUT
- 31++ 604C              .p126_cbit_loop:
- 32++ 604C CD 43 60             call    p126_ipc_read_status
- 33++ 604F CB 47                bit     P126_CBIT, a
- 34++ 6051 28 0A                jr      z, .p126_cbit_ready
- 35++ 6053 0B                   dec     bc
- 36++ 6054 78                   ld      a, b
- 37++ 6055 B1                   or      c
- 38++ 6056 20 F4                jr      nz, .p126_cbit_loop
- 39++ 6058 3A DD 60             ld      a, (p126_ipc_last_status)
- 40++ 605B 37                   scf
- 41++ 605C C9                   ret
- 42++ 605D              .p126_cbit_ready:
- 43++ 605D 3A DD 60             ld      a, (p126_ipc_last_status)
- 44++ 6060 B7                   or      a
- 45++ 6061 C9                   ret
- 46++ 6062
- 47++ 6062              p126_ipc_wait_dbit_clear:
- 47++ 6062
- 48++ 6062 01 FF FF             ld      bc, P126_IPC_TIMEOUT
- 49++ 6065              .p126_dbit_clear_loop:
- 50++ 6065 CD 43 60             call    p126_ipc_read_status
- 51++ 6068 CB 7F                bit     P126_DBIT, a
- 52++ 606A 28 0A                jr      z, .p126_dbit_clear_ready
- 53++ 606C 0B                   dec     bc
- 54++ 606D 78                   ld      a, b
- 55++ 606E B1                   or      c
- 56++ 606F 20 F4                jr      nz, .p126_dbit_clear_loop
- 57++ 6071 3A DD 60             ld      a, (p126_ipc_last_status)
- 58++ 6074 37                   scf
- 59++ 6075 C9                   ret
- 60++ 6076              .p126_dbit_clear_ready:
- 61++ 6076 3A DD 60             ld      a, (p126_ipc_last_status)
- 62++ 6079 B7                   or      a
- 63++ 607A C9                   ret
- 64++ 607B
- 65++ 607B              p126_ipc_wait_dbit_set:
- 65++ 607B
- 66++ 607B 01 FF FF             ld      bc, P126_IPC_TIMEOUT
- 67++ 607E              .p126_dbit_set_loop:
- 68++ 607E CD 43 60             call    p126_ipc_read_status
- 69++ 6081 CB 7F                bit     P126_DBIT, a
- 70++ 6083 20 0A                jr      nz, .p126_dbit_set_ready
- 71++ 6085 0B                   dec     bc
- 72++ 6086 78                   ld      a, b
- 73++ 6087 B1                   or      c
- 74++ 6088 20 F4                jr      nz, .p126_dbit_set_loop
- 75++ 608A 3A DD 60             ld      a, (p126_ipc_last_status)
- 76++ 608D 37                   scf
- 77++ 608E C9                   ret
- 78++ 608F              .p126_dbit_set_ready:
- 79++ 608F 3A DD 60             ld      a, (p126_ipc_last_status)
- 80++ 6092 B7                   or      a
- 81++ 6093 C9                   ret
- 82++ 6094
- 83++ 6094              ; -------------------------------------------------------------------------
- 84++ 6094              ; Send one command through GSCOM.
- 85++ 6094              ; IN : A=command.
- 86++ 6094              ; OUT: Carry clear after NeoGS clears CBIT; carry set on timeout.
- 87++ 6094              ; -------------------------------------------------------------------------
- 88++ 6094              p126_ipc_send_command:
- 88++ 6094
- 89++ 6094 32 DE 60             ld      (p126_ipc_tx_byte), a
- 90++ 6097 3A DE 60             ld      a, (p126_ipc_tx_byte)
- 91++ 609A D3 BB                out     (P126_GSCOM), a
- 92++ 609C C3 49 60             jp      p126_ipc_wait_cbit_clear
- 93++ 609F
- 94++ 609F              ; -------------------------------------------------------------------------
- 95++ 609F              ; Preload one data byte before issuing a command.
- 96++ 609F              ; This ordering is required by the stock GS105a #13/#14 command ABI.
- 97++ 609F              ; IN : A=argument.
- 98++ 609F              ; OUT: Carry clear after GSDAT write; carry set if the data slot is busy.
- 99++ 609F              ; -------------------------------------------------------------------------
-100++ 609F              p126_ipc_send_argument:
-100++ 609F
-101++ 609F 32 DE 60             ld      (p126_ipc_tx_byte), a
-102++ 60A2 CD 62 60             call    p126_ipc_wait_dbit_clear
-103++ 60A5 D8                   ret     c
-104++ 60A6 3A DE 60             ld      a, (p126_ipc_tx_byte)
-105++ 60A9 D3 B3                out     (P126_GSDAT), a
-106++ 60AB B7                   or      a
-107++ 60AC C9                   ret
-108++ 60AD
-109++ 60AD              ; -------------------------------------------------------------------------
-110++ 60AD              ; Send a data byte and wait until NeoGS consumes it (DBIT clears).
-111++ 60AD              ; IN : A=data.
-112++ 60AD              ; OUT: Carry clear on consumption; carry set on timeout.
-113++ 60AD              ; -------------------------------------------------------------------------
-114++ 60AD              p126_ipc_send_byte:
-114++ 60AD
-115++ 60AD 32 DE 60             ld      (p126_ipc_tx_byte), a
-116++ 60B0 CD 62 60             call    p126_ipc_wait_dbit_clear
-117++ 60B3 D8                   ret     c
-118++ 60B4 3A DE 60             ld      a, (p126_ipc_tx_byte)
-119++ 60B7 D3 B3                out     (P126_GSDAT), a
-120++ 60B9 C3 62 60             jp      p126_ipc_wait_dbit_clear
-121++ 60BC
-122++ 60BC              ; -------------------------------------------------------------------------
-123++ 60BC              ; Receive one byte published by NeoGS.
-124++ 60BC              ; OUT: A=data; carry clear. Carry set on timeout.
-125++ 60BC              ; Reading GSDAT acknowledges the byte and clears DBIT in the host view.
-126++ 60BC              ; -------------------------------------------------------------------------
-127++ 60BC              p126_ipc_receive_byte:
-127++ 60BC
-128++ 60BC CD 7B 60             call    p126_ipc_wait_dbit_set
-129++ 60BF D8                   ret     c
-130++ 60C0 DB B3                in      a, (P126_GSDAT)
-131++ 60C2 32 DF 60             ld      (p126_ipc_rx_byte), a
-132++ 60C5 B7                   or      a
-133++ 60C6 C9                   ret
-134++ 60C7
-135++ 60C7              ; -------------------------------------------------------------------------
-136++ 60C7              ; Emit a build/runtime identity to ATM's independent debug port #EF.
-137++ 60C7              ; Preserves AF, BC and HL.
-138++ 60C7              ; -------------------------------------------------------------------------
-139++ 60C7              p126_ipc_emit_version:
-139++ 60C7
-140++ 60C7 F5                   push    af
-141++ 60C8 C5                   push    bc
-142++ 60C9 E5                   push    hl
-143++ 60CA 21 E0 60             ld      hl, p126_ipc_version_text
-144++ 60CD 01 EF 00             ld      bc, #00EF
-145++ 60D0              .p126_version_loop:
-146++ 60D0 7E                   ld      a, (hl)
-147++ 60D1 23                   inc     hl
-148++ 60D2 B7                   or      a
-149++ 60D3 28 04                jr      z, .p126_version_done
-150++ 60D5 ED 79                out     (c), a
-151++ 60D7 18 F7                jr      .p126_version_loop
-152++ 60D9              .p126_version_done:
-153++ 60D9 E1                   pop     hl
-154++ 60DA C1                   pop     bc
-155++ 60DB F1                   pop     af
-156++ 60DC C9                   ret
-157++ 60DD
-158++ 60DD              ; Driver state is private to this module. Callers must not modify it.
-159++ 60DD 00           p126_ipc_last_status: db 0
-160++ 60DE 00           p126_ipc_tx_byte:     db 0
-161++ 60DF 00           p126_ipc_rx_byte:     db 0
-162++ 60E0
-163++ 60E0              p126_ipc_version_text:
-164++ 60E0 5B 50 31 32          db "[P126 ATM_IPC v0.1.0]", 13, 10, 0
-164++ 60E4 36 20 41 54
-164++ 60E8 4D 5F 49 50
-164++ 60EC 43 20 76 30
-164++ 60F0 2E 31 2E 30
-164++ 60F4 5D 0D 0A 00
-165++ 60F8
+ 14++ 60C0
+ 15++ 60C0              ; -------------------------------------------------------------------------
+ 16++ 60C0              ; Read the current hardware handshake state.
+ 17++ 60C0              ; OUT: A=status; p126_ipc_last_status updated.
+ 18++ 60C0              ; -------------------------------------------------------------------------
+ 19++ 60C0              p126_ipc_read_status:
+ 19++ 60C0
+ 20++ 60C0 DB BB                in      a, (P126_GSSTAT)
+ 21++ 60C2 32 5A 61             ld      (p126_ipc_last_status), a
+ 22++ 60C5 C9                   ret
+ 23++ 60C6
+ 24++ 60C6              ; -------------------------------------------------------------------------
+ 25++ 60C6              ; Wait routines. Every wait is bounded by P126_IPC_TIMEOUT.
+ 26++ 60C6              ; OUT: Carry clear on requested state; carry set on timeout.
+ 27++ 60C6              ;      A=last sampled GSSTAT. BC is clobbered.
+ 28++ 60C6              ; -------------------------------------------------------------------------
+ 29++ 60C6              p126_ipc_wait_cbit_clear:
+ 29++ 60C6
+ 30++ 60C6 01 FF FF             ld      bc, P126_IPC_TIMEOUT
+ 31++ 60C9              .p126_cbit_loop:
+ 32++ 60C9 CD C0 60             call    p126_ipc_read_status
+ 33++ 60CC CB 47                bit     P126_CBIT, a
+ 34++ 60CE 28 0A                jr      z, .p126_cbit_ready
+ 35++ 60D0 0B                   dec     bc
+ 36++ 60D1 78                   ld      a, b
+ 37++ 60D2 B1                   or      c
+ 38++ 60D3 20 F4                jr      nz, .p126_cbit_loop
+ 39++ 60D5 3A 5A 61             ld      a, (p126_ipc_last_status)
+ 40++ 60D8 37                   scf
+ 41++ 60D9 C9                   ret
+ 42++ 60DA              .p126_cbit_ready:
+ 43++ 60DA 3A 5A 61             ld      a, (p126_ipc_last_status)
+ 44++ 60DD B7                   or      a
+ 45++ 60DE C9                   ret
+ 46++ 60DF
+ 47++ 60DF              p126_ipc_wait_dbit_clear:
+ 47++ 60DF
+ 48++ 60DF 01 FF FF             ld      bc, P126_IPC_TIMEOUT
+ 49++ 60E2              .p126_dbit_clear_loop:
+ 50++ 60E2 CD C0 60             call    p126_ipc_read_status
+ 51++ 60E5 CB 7F                bit     P126_DBIT, a
+ 52++ 60E7 28 0A                jr      z, .p126_dbit_clear_ready
+ 53++ 60E9 0B                   dec     bc
+ 54++ 60EA 78                   ld      a, b
+ 55++ 60EB B1                   or      c
+ 56++ 60EC 20 F4                jr      nz, .p126_dbit_clear_loop
+ 57++ 60EE 3A 5A 61             ld      a, (p126_ipc_last_status)
+ 58++ 60F1 37                   scf
+ 59++ 60F2 C9                   ret
+ 60++ 60F3              .p126_dbit_clear_ready:
+ 61++ 60F3 3A 5A 61             ld      a, (p126_ipc_last_status)
+ 62++ 60F6 B7                   or      a
+ 63++ 60F7 C9                   ret
+ 64++ 60F8
+ 65++ 60F8              p126_ipc_wait_dbit_set:
+ 65++ 60F8
+ 66++ 60F8 01 FF FF             ld      bc, P126_IPC_TIMEOUT
+ 67++ 60FB              .p126_dbit_set_loop:
+ 68++ 60FB CD C0 60             call    p126_ipc_read_status
+ 69++ 60FE CB 7F                bit     P126_DBIT, a
+ 70++ 6100 20 0A                jr      nz, .p126_dbit_set_ready
+ 71++ 6102 0B                   dec     bc
+ 72++ 6103 78                   ld      a, b
+ 73++ 6104 B1                   or      c
+ 74++ 6105 20 F4                jr      nz, .p126_dbit_set_loop
+ 75++ 6107 3A 5A 61             ld      a, (p126_ipc_last_status)
+ 76++ 610A 37                   scf
+ 77++ 610B C9                   ret
+ 78++ 610C              .p126_dbit_set_ready:
+ 79++ 610C 3A 5A 61             ld      a, (p126_ipc_last_status)
+ 80++ 610F B7                   or      a
+ 81++ 6110 C9                   ret
+ 82++ 6111
+ 83++ 6111              ; -------------------------------------------------------------------------
+ 84++ 6111              ; Send one command through GSCOM.
+ 85++ 6111              ; IN : A=command.
+ 86++ 6111              ; OUT: Carry clear after NeoGS clears CBIT; carry set on timeout.
+ 87++ 6111              ; -------------------------------------------------------------------------
+ 88++ 6111              p126_ipc_send_command:
+ 88++ 6111
+ 89++ 6111 32 5B 61             ld      (p126_ipc_tx_byte), a
+ 90++ 6114 3A 5B 61             ld      a, (p126_ipc_tx_byte)
+ 91++ 6117 D3 BB                out     (P126_GSCOM), a
+ 92++ 6119 C3 C6 60             jp      p126_ipc_wait_cbit_clear
+ 93++ 611C
+ 94++ 611C              ; -------------------------------------------------------------------------
+ 95++ 611C              ; Preload one data byte before issuing a command.
+ 96++ 611C              ; This ordering is required by the stock GS105a #13/#14 command ABI.
+ 97++ 611C              ; IN : A=argument.
+ 98++ 611C              ; OUT: Carry clear after GSDAT write; carry set if the data slot is busy.
+ 99++ 611C              ; -------------------------------------------------------------------------
+100++ 611C              p126_ipc_send_argument:
+100++ 611C
+101++ 611C 32 5B 61             ld      (p126_ipc_tx_byte), a
+102++ 611F CD DF 60             call    p126_ipc_wait_dbit_clear
+103++ 6122 D8                   ret     c
+104++ 6123 3A 5B 61             ld      a, (p126_ipc_tx_byte)
+105++ 6126 D3 B3                out     (P126_GSDAT), a
+106++ 6128 B7                   or      a
+107++ 6129 C9                   ret
+108++ 612A
+109++ 612A              ; -------------------------------------------------------------------------
+110++ 612A              ; Send a data byte and wait until NeoGS consumes it (DBIT clears).
+111++ 612A              ; IN : A=data.
+112++ 612A              ; OUT: Carry clear on consumption; carry set on timeout.
+113++ 612A              ; -------------------------------------------------------------------------
+114++ 612A              p126_ipc_send_byte:
+114++ 612A
+115++ 612A 32 5B 61             ld      (p126_ipc_tx_byte), a
+116++ 612D CD DF 60             call    p126_ipc_wait_dbit_clear
+117++ 6130 D8                   ret     c
+118++ 6131 3A 5B 61             ld      a, (p126_ipc_tx_byte)
+119++ 6134 D3 B3                out     (P126_GSDAT), a
+120++ 6136 C3 DF 60             jp      p126_ipc_wait_dbit_clear
+121++ 6139
+122++ 6139              ; -------------------------------------------------------------------------
+123++ 6139              ; Receive one byte published by NeoGS.
+124++ 6139              ; OUT: A=data; carry clear. Carry set on timeout.
+125++ 6139              ; Reading GSDAT acknowledges the byte and clears DBIT in the host view.
+126++ 6139              ; -------------------------------------------------------------------------
+127++ 6139              p126_ipc_receive_byte:
+127++ 6139
+128++ 6139 CD F8 60             call    p126_ipc_wait_dbit_set
+129++ 613C D8                   ret     c
+130++ 613D DB B3                in      a, (P126_GSDAT)
+131++ 613F 32 5C 61             ld      (p126_ipc_rx_byte), a
+132++ 6142 B7                   or      a
+133++ 6143 C9                   ret
+134++ 6144
+135++ 6144              ; -------------------------------------------------------------------------
+136++ 6144              ; Emit a build/runtime identity to ATM's independent debug port #EF.
+137++ 6144              ; Preserves AF, BC and HL.
+138++ 6144              ; -------------------------------------------------------------------------
+139++ 6144              p126_ipc_emit_version:
+139++ 6144
+140++ 6144 F5                   push    af
+141++ 6145 C5                   push    bc
+142++ 6146 E5                   push    hl
+143++ 6147 21 5D 61             ld      hl, p126_ipc_version_text
+144++ 614A 01 EF 00             ld      bc, #00EF
+145++ 614D              .p126_version_loop:
+146++ 614D 7E                   ld      a, (hl)
+147++ 614E 23                   inc     hl
+148++ 614F B7                   or      a
+149++ 6150 28 04                jr      z, .p126_version_done
+150++ 6152 ED 79                out     (c), a
+151++ 6154 18 F7                jr      .p126_version_loop
+152++ 6156              .p126_version_done:
+153++ 6156 E1                   pop     hl
+154++ 6157 C1                   pop     bc
+155++ 6158 F1                   pop     af
+156++ 6159 C9                   ret
+157++ 615A
+158++ 615A              ; Driver state is private to this module. Callers must not modify it.
+159++ 615A 00           p126_ipc_last_status: db 0
+160++ 615B 00           p126_ipc_tx_byte:     db 0
+161++ 615C 00           p126_ipc_rx_byte:     db 0
+162++ 615D
+163++ 615D              p126_ipc_version_text:
+164++ 615D 5B 50 31 32          db "[P126 ATM_IPC v0.1.0]", 13, 10, 0
+164++ 6161 36 20 41 54
+164++ 6165 4D 5F 49 50
+164++ 6169 43 20 76 30
+164++ 616D 2E 31 2E 30
+164++ 6171 5D 0D 0A 00
+165++ 6175
 # file closed: neogs_ipc.asm
- 57+  60F8
- 58+  60F8              p126_host_program_end:
- 59+  60F8                      ASSERT p126_host_program_start = P126_HOST_LOAD_ADDRESS
- 60+  60F8                      ASSERT p126_host_entry = P126_HOST_ENTRY_POINT
- 61+  60F8                      ASSERT p126_host_program_end <= #A800
- 62+  60F8
+ 80+  6175
+ 81+  6175              ; Project125-derived ATM-native text console, relocated to window 2.
+ 82+  6175              ; Its renderer maps video pages only for each write and restores host pages.
+ 83+  6175                      PAGE 0
+ 84+  6175                      ORG #A000
+ 85+  A000                      INCLUDE "atm_host/p126_screen_console.asm"
+# file opened: p126_screen_console.asm
+  1++ A000              ; =========================================================================
+  2++ A000              ; PROJECT126 — ATM TURBO 2+ native 80x25 text console
+  3++ A000              ;
+  4++ A000              ; This module is deliberately placed at #A000 in window 2. The host program
+  5++ A000              ; is loaded at #6000 in physical page 5; the ATM text screen uses the
+  6++ A000              ; alternate screen pair page 7/page 3 selected by bit 3 of port #7FFD.
+  7++ A000              ;
+  8++ A000              ; The renderer temporarily maps page 7 to #4000 and page 3 to #C000, writes
+  9++ A000              ; the character/attribute, then restores page 5/page 0 before returning to
+ 10++ A000              ; the caller. Code at #6000 and the TR-DOS #C000 staging buffer are preserved.
+ 11++ A000              ;
+ 12++ A000              ; Text layout follows the tested Project112 ATM 80x25 renderer:
+ 13++ A000              ;   offset = #01C0 + row*64 + column/2
+ 14++ A000              ;   character even: page 7, #4000+offset
+ 15++ A000              ;   character odd : page 7, #6000+offset
+ 16++ A000              ;   attribute even: page 3, #E000+offset
+ 17++ A000              ;   attribute odd : page 3, #C000+offset+1
+ 18++ A000              ; =========================================================================
+ 19++ A000
+ 20++ A000              BIOS_DEBUG_COLUMNS EQU 80
+ 21++ A000              BIOS_DEBUG_ROWS    EQU 13
+ 22++ A000              BIOS_DEBUG_TOP     EQU 12
+ 23++ A000              P126_VIDEO_PAGE7   EQU #78          ; RAM page 7, inverted page number
+ 24++ A000              P126_VIDEO_PAGE3   EQU #7C          ; RAM page 3, inverted page number
+ 25++ A000              P126_HOST_PAGE5    EQU #7A          ; RAM page 5, host code at #6000
+ 26++ A000              P126_HOST_PAGE0    EQU #7F          ; RAM page 0, TR-DOS staging at #C000
+ 27++ A000
+ 28++ A000 00           Console_X: db 0
+ 29++ A001 0C           Console_Y: db BIOS_DEBUG_TOP
+ 30++ A002
+ 31++ A002              ; =========================================================================
+ 32++ A002              ; ATM shadow-port and text-mode initialization.
+ 33++ A002              ; The TR-DOS ROM trampoline must run before any #7FF7/#FFF7/#0177 access.
+ 34++ A002              ; =========================================================================
+ 35++ A002              p126_atm_video_init:
+ 35++ A002
+ 36++ A002 F5                   push    af
+ 37++ A003 C5                   push    bc
+ 38++ A004 D5                   push    de
+ 39++ A005 E5                   push    hl
+ 40++ A006
+ 41++ A006                      ; Reset the ATM paging/control latch BEFORE enabling permanent
+ 42++ A006                      ; DOSEN. On this board #EFF7 is part of the ATM paging control path;
+ 43++ A006                      ; resetting it after the #0177 shadow-port setup can undo the state
+ 44++ A006                      ; needed by the TR-DOS overlay.
+ 45++ A006 AF                   xor     a
+ 46++ A007 01 F7 EF             ld      bc, #EFF7
+ 47++ A00A ED 79                out     (c), a
+ 48++ A00C
+ 49++ A00C                      ; ROM2=1 (D4) is required for TR-DOS overlay; D3 selects alternate
+ 50++ A00C                      ; video pages 7/3. This is #18, matching the host display setup.
+ 51++ A00C 3E 18                ld      a, #18
+ 52++ A00E 01 FD 7F             ld      bc, #7FFD
+ 53++ A011 ED 79                out     (c), a
+ 54++ A013 32 3B 5C             ld      (#5C3B), a
+ 55++ A016
+ 56++ A016                      ; Open shadow ports and hold DOSEN permanently (A9=0) using the
+ 57++ A016                      ; documented TR-DOS ROM trampoline. Do this AFTER the paging reset.
+ 58++ A016 01 26 A0             ld      bc, p126_atm_ports_open_done
+ 59++ A019 C5                   push    bc
+ 60++ A01A 01 53 2A             ld      bc, #2A53
+ 61++ A01D C5                   push    bc
+ 62++ A01E 01 77 01             ld      bc, #0177
+ 63++ A021 3E C3                ld      a, #C3
+ 64++ A023 C3 2F 3D             jp      #3D2F
+ 65++ A026
+ 66++ A026              p126_atm_ports_open_done:
+ 67++ A026                      ; Window 0 must use ROM with D7=1 so its ROM page selection is
+ 68++ A026                      ; coupled to ROM2/DOSEN. #BF selects the low ROM page with the
+ 69++ A026                      ; DOSEN-controlled low ROM select: BASIC-48 when DOSEN=0, TR-DOS
+ 70++ A026                      ; when DOSEN=1. This is the ATM2+ documented auto-TR-DOS mapping.
+ 71++ A026 3E BF                ld      a, #BF
+ 72++ A028 01 F7 3F             ld      bc, #3FF7
+ 73++ A02B ED 79                out     (c), a
+ 74++ A02D
+ 75++ A02D
+ 76++ A02D                      ; Map the alternate screen pages while the 32-byte mode trampoline
+ 77++ A02D                      ; is installed at #FFEC. Window 3 uses a fixed RAM page here; the
+ 78++ A02D                      ; TR-DOS auto-select mux is configured separately in window 0.
+ 79++ A02D 3E 78                ld      a, P126_VIDEO_PAGE7
+ 80++ A02F 01 F7 7F             ld      bc, #7FF7
+ 81++ A032 ED 79                out     (c), a
+ 82++ A034 3E 7C                ld      a, P126_VIDEO_PAGE3
+ 83++ A036 01 F7 FF             ld      bc, #FFF7
+ 84++ A039 ED 79                out     (c), a
+ 85++ A03B
+ 86++ A03B                      ; LD BC,#0177 / OUT (C),A / JP p126_atm_video_mode_ready
+ 87++ A03B 21 EC FF             ld      hl, #FFEC
+ 88++ A03E 36 01                ld      (hl), #01
+ 89++ A040 23                   inc     hl
+ 90++ A041 36 77                ld      (hl), #77
+ 91++ A043 23                   inc     hl
+ 92++ A044 36 01                ld      (hl), #01
+ 93++ A046 23                   inc     hl
+ 94++ A047 36 ED                ld      (hl), #ED
+ 95++ A049 23                   inc     hl
+ 96++ A04A 36 79                ld      (hl), #79
+ 97++ A04C 23                   inc     hl
+ 98++ A04D 36 C3                ld      (hl), #C3
+ 99++ A04F 23                   inc     hl
+100++ A050 36 5A                ld      (hl), p126_atm_video_mode_ready & #FF
+101++ A052 23                   inc     hl
+102++ A053 36 A0                ld      (hl), p126_atm_video_mode_ready >> 8
+103++ A055
+104++ A055                      ; ATM Turbo 2+ RG=6: hardware text 80x25.
+105++ A055 3E C6                ld      a, #C6
+106++ A057 C3 EC FF             jp      #FFEC
+107++ A05A
+108++ A05A              p126_atm_video_mode_ready:
+109++ A05A                      ; Restore CPU-visible host/staging pages. Keep D7 clear on #FFF7 so
+110++ A05A                      ; window 3 remains fixed to RAM page 0 for the TR-DOS staging buffer.
+111++ A05A 3E 7A                ld      a, P126_HOST_PAGE5
+112++ A05C 01 F7 7F             ld      bc, #7FF7
+113++ A05F ED 79                out     (c), a
+114++ A061 3E 7F                ld      a, P126_HOST_PAGE0
+115++ A063 01 F7 FF             ld      bc, #FFF7
+116++ A066 ED 79                out     (c), a
+117++ A068
+118++ A068 E1                   pop     hl
+119++ A069 D1                   pop     de
+120++ A06A C1                   pop     bc
+121++ A06B F1                   pop     af
+122++ A06C C9                   ret
+123++ A06D
+124++ A06D              ; =========================================================================
+125++ A06D              ; Screen initialization and static Project124-style two-zone workspace.
+126++ A06D              ; The upper 12 rows are the status panel; the lower 13 rows are the log.
+127++ A06D              ; =========================================================================
+128++ A06D              BIOS_DebugConsole_Init:
+128++ A06D
+129++ A06D AF                   xor     a
+130++ A06E 32 54 A5             ld      (bios_dbg_row), a
+131++ A071 32 55 A5             ld      (bios_dbg_col), a
+132++ A074 32 00 A0             ld      (Console_X), a
+133++ A077 3E 0C                ld      a, BIOS_DEBUG_TOP
+134++ A079 32 01 A0             ld      (Console_Y), a
+135++ A07C C9                   ret
+136++ A07D
+137++ A07D              BIOS_DebugConsole_Clear:
+137++ A07D
+138++ A07D F5                   push    af
+139++ A07E C5                   push    bc
+140++ A07F D5                   push    de
+141++ A080 E5                   push    hl
+142++ A081 CD 57 A3             call    p126_screen_map_video_pages
+143++ A084
+144++ A084                      ; Clear 25 rows x 64-byte stride in both character parity planes.
+145++ A084 21 C0 41             ld      hl, #41C0
+146++ A087 11 C1 41             ld      de, #41C1
+147++ A08A 36 20                ld      (hl), 32
+148++ A08C 01 3F 06             ld      bc, #063F
+149++ A08F ED B0                ldir
+150++ A091 21 C0 61             ld      hl, #61C0
+151++ A094 11 C1 61             ld      de, #61C1
+152++ A097 36 20                ld      (hl), 32
+153++ A099 01 3F 06             ld      bc, #063F
+154++ A09C ED B0                ldir
+155++ A09E
+156++ A09E                      ; Default attributes, then color the status panel blue/white.
+157++ A09E 21 C0 E1             ld      hl, #E1C0
+158++ A0A1 11 C1 E1             ld      de, #E1C1
+159++ A0A4 36 47                ld      (hl), #47
+160++ A0A6 01 3F 06             ld      bc, #063F
+161++ A0A9 ED B0                ldir
+162++ A0AB 21 C1 C1             ld      hl, #C1C1
+163++ A0AE 11 C2 C1             ld      de, #C1C2
+164++ A0B1 36 47                ld      (hl), #47
+165++ A0B3 01 3F 06             ld      bc, #063F
+166++ A0B6 ED B0                ldir
+167++ A0B8
+168++ A0B8 21 C0 E1             ld      hl, #E1C0
+169++ A0BB 11 C1 E1             ld      de, #E1C1
+170++ A0BE 36 4F                ld      (hl), #4F
+171++ A0C0 01 FF 02             ld      bc, #02FF
+172++ A0C3 ED B0                ldir
+173++ A0C5 21 C1 C1             ld      hl, #C1C1
+174++ A0C8 11 C2 C1             ld      de, #C1C2
+175++ A0CB 36 4F                ld      (hl), #4F
+176++ A0CD 01 FF 02             ld      bc, #02FF
+177++ A0D0 ED B0                ldir
+178++ A0D2
+179++ A0D2                      ; Lower log area: black background, green foreground.
+180++ A0D2 21 C0 E4             ld      hl, #E4C0
+181++ A0D5 11 C1 E4             ld      de, #E4C1
+182++ A0D8 36 44                ld      (hl), #44
+183++ A0DA 01 3F 03             ld      bc, #033F
+184++ A0DD ED B0                ldir
+185++ A0DF 21 C1 C4             ld      hl, #C4C1
+186++ A0E2 11 C2 C4             ld      de, #C4C2
+187++ A0E5 36 44                ld      (hl), #44
+188++ A0E7 01 3F 03             ld      bc, #033F
+189++ A0EA ED B0                ldir
+190++ A0EC
+191++ A0EC CD 66 A3             call    p126_screen_restore_host_pages
+192++ A0EF AF                   xor     a
+193++ A0F0 32 54 A5             ld      (bios_dbg_row), a
+194++ A0F3 32 55 A5             ld      (bios_dbg_col), a
+195++ A0F6 32 00 A0             ld      (Console_X), a
+196++ A0F9 3E 0C                ld      a, BIOS_DEBUG_TOP
+197++ A0FB 32 01 A0             ld      (Console_Y), a
+198++ A0FE E1                   pop     hl
+199++ A0FF D1                   pop     de
+200++ A100 C1                   pop     bc
+201++ A101 F1                   pop     af
+202++ A102 C9                   ret
+203++ A103
+204++ A103              BIOS_DebugConsole_DrawInterface:
+204++ A103
+205++ A103 F5                   push    af
+206++ A104 C5                   push    bc
+207++ A105 E5                   push    hl
+208++ A106 21 F9 A3             ld      hl, p126_ui_line0
+209++ A109 3E 00                ld      a, 0
+210++ A10B 0E 01                ld      c, 1
+211++ A10D CD 6E A1             call    BIOS_DebugConsole_PrintAt
+212++ A110 21 28 A4             ld      hl, p126_ui_line2
+213++ A113 3E 02                ld      a, 2
+214++ A115 0E 01                ld      c, 1
+215++ A117 CD 6E A1             call    BIOS_DebugConsole_PrintAt
+216++ A11A 21 3D A4             ld      hl, p126_ui_line3
+217++ A11D 3E 03                ld      a, 3
+218++ A11F 0E 01                ld      c, 1
+219++ A121 CD 6E A1             call    BIOS_DebugConsole_PrintAt
+220++ A124 21 60 A4             ld      hl, p126_ui_line4
+221++ A127 3E 04                ld      a, 4
+222++ A129 0E 01                ld      c, 1
+223++ A12B CD 6E A1             call    BIOS_DebugConsole_PrintAt
+224++ A12E 21 8E A4             ld      hl, p126_ui_line5
+225++ A131 3E 05                ld      a, 5
+226++ A133 0E 01                ld      c, 1
+227++ A135 CD 6E A1             call    BIOS_DebugConsole_PrintAt
+228++ A138 21 A9 A4             ld      hl, p126_ui_line6
+229++ A13B 3E 06                ld      a, 6
+230++ A13D 0E 01                ld      c, 1
+231++ A13F CD 6E A1             call    BIOS_DebugConsole_PrintAt
+232++ A142 21 CF A4             ld      hl, p126_ui_line7
+233++ A145 3E 07                ld      a, 7
+234++ A147 0E 01                ld      c, 1
+235++ A149 CD 6E A1             call    BIOS_DebugConsole_PrintAt
+236++ A14C 21 EF A4             ld      hl, p126_ui_line9
+237++ A14F 3E 09                ld      a, 9
+238++ A151 0E 01                ld      c, 1
+239++ A153 CD 6E A1             call    BIOS_DebugConsole_PrintAt
+240++ A156 21 FB A4             ld      hl, p126_ui_line10
+241++ A159 3E 0A                ld      a, 10
+242++ A15B 0E 01                ld      c, 1
+243++ A15D CD 6E A1             call    BIOS_DebugConsole_PrintAt
+244++ A160 21 24 A5             ld      hl, p126_ui_line11
+245++ A163 3E 0B                ld      a, 11
+246++ A165 0E 01                ld      c, 1
+247++ A167 CD 6E A1             call    BIOS_DebugConsole_PrintAt
+248++ A16A E1                   pop     hl
+249++ A16B C1                   pop     bc
+250++ A16C F1                   pop     af
+251++ A16D C9                   ret
+252++ A16E
+253++ A16E              ; IN: HL=zero-terminated text, A=absolute row 0..24, C=column 0..79.
+254++ A16E              ; This helper is for static UI labels and does not emit port #EF log bytes.
+255++ A16E              BIOS_DebugConsole_PrintAt:
+255++ A16E
+256++ A16E F5                   push    af
+257++ A16F C5                   push    bc
+258++ A170 D5                   push    de
+259++ A171 E5                   push    hl
+260++ A172 22 5D A5             ld      (bios_dbg_text_ptr), hl
+261++ A175 32 5F A5             ld      (bios_dbg_print_row), a
+262++ A178 79                   ld      a, c
+263++ A179 32 60 A5             ld      (bios_dbg_print_col), a
+264++ A17C              .p126_print_at_loop:
+265++ A17C 2A 5D A5             ld      hl, (bios_dbg_text_ptr)
+266++ A17F 7E                   ld      a, (hl)
+267++ A180 B7                   or      a
+268++ A181 28 2F                jr      z, .p126_print_at_done
+269++ A183 32 56 A5             ld      (bios_dbg_char), a
+270++ A186 23                   inc     hl
+271++ A187 22 5D A5             ld      (bios_dbg_text_ptr), hl
+272++ A18A 3A 5F A5             ld      a, (bios_dbg_print_row)
+273++ A18D 57                   ld      d, a
+274++ A18E 3A 60 A5             ld      a, (bios_dbg_print_col)
+275++ A191 5F                   ld      e, a
+276++ A192 3A 56 A5             ld      a, (bios_dbg_char)
+277++ A195 CD 67 A2             call    p126_screen_write_char
+278++ A198 3A 60 A5             ld      a, (bios_dbg_print_col)
+279++ A19B 3C                   inc     a
+280++ A19C FE 50                cp      BIOS_DEBUG_COLUMNS
+281++ A19E 38 0D                jr      c, .p126_print_at_col_ok
+282++ A1A0 AF                   xor     a
+283++ A1A1 32 60 A5             ld      (bios_dbg_print_col), a
+284++ A1A4 3A 5F A5             ld      a, (bios_dbg_print_row)
+285++ A1A7 3C                   inc     a
+286++ A1A8 32 5F A5             ld      (bios_dbg_print_row), a
+287++ A1AB 18 CF                jr      .p126_print_at_loop
+288++ A1AD              .p126_print_at_col_ok:
+289++ A1AD 32 60 A5             ld      (bios_dbg_print_col), a
+290++ A1B0 18 CA                jr      .p126_print_at_loop
+291++ A1B2              .p126_print_at_done:
+292++ A1B2 E1                   pop     hl
+293++ A1B3 D1                   pop     de
+294++ A1B4 C1                   pop     bc
+295++ A1B5 F1                   pop     af
+296++ A1B6 C9                   ret
+297++ A1B7
+298++ A1B7              ; IN: A=character. CR/LF/BS are handled; printable ASCII is rendered.
+299++ A1B7              BIOS_DebugConsole_PrintChar:
+299++ A1B7
+300++ A1B7 F5                   push    af
+301++ A1B8 C5                   push    bc
+302++ A1B9 D5                   push    de
+303++ A1BA E5                   push    hl
+304++ A1BB FE 0D                cp      13
+305++ A1BD 28 49                jr      z, .p126_console_cr
+306++ A1BF FE 0A                cp      10
+307++ A1C1 28 4E                jr      z, .p126_console_lf
+308++ A1C3 FE 08                cp      8
+309++ A1C5 28 4F                jr      z, .p126_console_bs
+310++ A1C7 FE 20                cp      32
+311++ A1C9 38 66                jr      c, .p126_console_done
+312++ A1CB FE 80                cp      128
+313++ A1CD 38 02                jr      c, .p126_console_char_ok
+314++ A1CF 3E 3F                ld      a, '?'
+315++ A1D1              .p126_console_char_ok:
+316++ A1D1 32 56 A5             ld      (bios_dbg_char), a
+317++ A1D4 3A 54 A5             ld      a, (bios_dbg_row)
+318++ A1D7 C6 0C                add     a, BIOS_DEBUG_TOP
+319++ A1D9 57                   ld      d, a
+320++ A1DA 3A 55 A5             ld      a, (bios_dbg_col)
+321++ A1DD 5F                   ld      e, a
+322++ A1DE 3A 56 A5             ld      a, (bios_dbg_char)
+323++ A1E1 CD 67 A2             call    p126_screen_write_char
+324++ A1E4 3A 55 A5             ld      a, (bios_dbg_col)
+325++ A1E7 3C                   inc     a
+326++ A1E8 FE 50                cp      BIOS_DEBUG_COLUMNS
+327++ A1EA 38 09                jr      c, .p126_console_store_col
+328++ A1EC AF                   xor     a
+329++ A1ED 32 55 A5             ld      (bios_dbg_col), a
+330++ A1F0 CD 75 A3             call    bios_dbg_newline
+331++ A1F3 18 03                jr      .p126_console_sync_cursor
+332++ A1F5              .p126_console_store_col:
+333++ A1F5 32 55 A5             ld      (bios_dbg_col), a
+334++ A1F8              .p126_console_sync_cursor:
+335++ A1F8 3A 55 A5             ld      a, (bios_dbg_col)
+336++ A1FB 32 00 A0             ld      (Console_X), a
+337++ A1FE 3A 54 A5             ld      a, (bios_dbg_row)
+338++ A201 C6 0C                add     a, BIOS_DEBUG_TOP
+339++ A203 32 01 A0             ld      (Console_Y), a
+340++ A206 18 29                jr      .p126_console_done
+341++ A208              .p126_console_cr:
+342++ A208 AF                   xor     a
+343++ A209 32 55 A5             ld      (bios_dbg_col), a
+344++ A20C 32 00 A0             ld      (Console_X), a
+345++ A20F 18 20                jr      .p126_console_done
+346++ A211              .p126_console_lf:
+347++ A211 CD 75 A3             call    bios_dbg_newline
+348++ A214 18 E2                jr      .p126_console_sync_cursor
+349++ A216              .p126_console_bs:
+350++ A216 3A 55 A5             ld      a, (bios_dbg_col)
+351++ A219 B7                   or      a
+352++ A21A 28 15                jr      z, .p126_console_done
+353++ A21C 3D                   dec     a
+354++ A21D 32 55 A5             ld      (bios_dbg_col), a
+355++ A220 3A 54 A5             ld      a, (bios_dbg_row)
+356++ A223 C6 0C                add     a, BIOS_DEBUG_TOP
+357++ A225 57                   ld      d, a
+358++ A226 3A 55 A5             ld      a, (bios_dbg_col)
+359++ A229 5F                   ld      e, a
+360++ A22A 3E 20                ld      a, 32
+361++ A22C CD 67 A2             call    p126_screen_write_char
+362++ A22F 18 C7                jr      .p126_console_sync_cursor
+363++ A231              .p126_console_done:
+364++ A231 E1                   pop     hl
+365++ A232 D1                   pop     de
+366++ A233 C1                   pop     bc
+367++ A234 F1                   pop     af
+368++ A235 C9                   ret
+369++ A236
+370++ A236              BIOS_DebugConsole_SetCursor:
+370++ A236
+371++ A236 FE 0D                cp      BIOS_DEBUG_ROWS
+372++ A238 D0                   ret     nc
+373++ A239 32 54 A5             ld      (bios_dbg_row), a
+374++ A23C 79                   ld      a, c
+375++ A23D FE 50                cp      BIOS_DEBUG_COLUMNS
+376++ A23F D0                   ret     nc
+377++ A240 32 55 A5             ld      (bios_dbg_col), a
+378++ A243 C9                   ret
+379++ A244
+380++ A244              BIOS_DebugConsole_PrintHex16:
+380++ A244
+381++ A244 F5                   push    af
+382++ A245 C5                   push    bc
+383++ A246 7C                   ld      a, h
+384++ A247 CD 51 A2             call    bios_dbg_print_hex8
+385++ A24A 7D                   ld      a, l
+386++ A24B CD 51 A2             call    bios_dbg_print_hex8
+387++ A24E C1                   pop     bc
+388++ A24F F1                   pop     af
+389++ A250 C9                   ret
+390++ A251
+391++ A251              bios_dbg_print_hex8:
+392++ A251 F5                   push    af
+393++ A252 1F                   rra
+394++ A253 1F                   rra
+395++ A254 1F                   rra
+396++ A255 1F                   rra
+397++ A256 CD 5A A2             call    bios_dbg_print_nibble
+398++ A259 F1                   pop     af
+399++ A25A              bios_dbg_print_nibble:
+400++ A25A E6 0F                and     #0F
+401++ A25C FE 0A                cp      10
+402++ A25E 38 02                jr      c, .p126_hex_digit
+403++ A260 C6 07                add     a, 7
+404++ A262              .p126_hex_digit:
+405++ A262 C6 30                add     a, '0'
+406++ A264 C3 B7 A1             jp      BIOS_DebugConsole_PrintChar
+407++ A267
+408++ A267              ; =========================================================================
+409++ A267              ; ATM-native character write primitive.
+410++ A267              ; IN: A=character, D=absolute row, E=column.
+411++ A267              ; Preserves AF/BC/DE/HL and always restores the host memory map.
+412++ A267              ; =========================================================================
+413++ A267              p126_screen_write_char:
+414++ A267 F5                   push    af
+415++ A268 C5                   push    bc
+416++ A269 D5                   push    de
+417++ A26A E5                   push    hl
+418++ A26B 32 56 A5             ld      (bios_dbg_char), a
+419++ A26E 7A                   ld      a, d
+420++ A26F 32 57 A5             ld      (bios_dbg_write_row), a
+421++ A272 7B                   ld      a, e
+422++ A273 32 58 A5             ld      (bios_dbg_write_col), a
+423++ A276
+424++ A276 CD 57 A3             call    p126_screen_map_video_pages
+425++ A279
+426++ A279                      ; Offset = #01C0 + row*64 + column/2.
+427++ A279 3A 57 A5             ld      a, (bios_dbg_write_row)
+428++ A27C 6F                   ld      l, a
+429++ A27D 26 00                ld      h, 0
+430++ A27F 29                   add     hl, hl
+431++ A280 29                   add     hl, hl
+432++ A281 29                   add     hl, hl
+433++ A282 29                   add     hl, hl
+434++ A283 29                   add     hl, hl
+435++ A284 29                   add     hl, hl
+436++ A285 11 C0 01             ld      de, #01C0
+437++ A288 19                   add     hl, de
+438++ A289 3A 58 A5             ld      a, (bios_dbg_write_col)
+439++ A28C 4F                   ld      c, a
+440++ A28D E6 01                and     1
+441++ A28F 32 59 A5             ld      (bios_dbg_parity), a
+442++ A292 79                   ld      a, c
+443++ A293 CB 3F                srl     a
+444++ A295 5F                   ld      e, a
+445++ A296 16 00                ld      d, 0
+446++ A298 19                   add     hl, de
+447++ A299 22 5B A5             ld      (bios_dbg_offset), hl
+448++ A29C
+449++ A29C                      ; Header rows use blue/white; the lower log uses green/black.
+450++ A29C 3A 57 A5             ld      a, (bios_dbg_write_row)
+451++ A29F FE 0C                cp      BIOS_DEBUG_TOP
+452++ A2A1 3E 44                ld      a, #44
+453++ A2A3 30 02                jr      nc, .p126_attr_ready
+454++ A2A5 3E 4F                ld      a, #4F
+455++ A2A7              .p126_attr_ready:
+456++ A2A7 32 5A A5             ld      (bios_dbg_attr), a
+457++ A2AA
+458++ A2AA 2A 5B A5             ld      hl, (bios_dbg_offset)
+459++ A2AD 3A 59 A5             ld      a, (bios_dbg_parity)
+460++ A2B0 B7                   or      a
+461++ A2B1 20 15                jr      nz, .p126_write_odd
+462++ A2B3
+463++ A2B3 11 00 40             ld      de, #4000
+464++ A2B6 19                   add     hl, de
+465++ A2B7 3A 56 A5             ld      a, (bios_dbg_char)
+466++ A2BA 77                   ld      (hl), a
+467++ A2BB 2A 5B A5             ld      hl, (bios_dbg_offset)
+468++ A2BE 11 00 E0             ld      de, #E000
+469++ A2C1 19                   add     hl, de
+470++ A2C2 3A 5A A5             ld      a, (bios_dbg_attr)
+471++ A2C5 77                   ld      (hl), a
+472++ A2C6 18 14                jr      .p126_write_done
+473++ A2C8
+474++ A2C8              .p126_write_odd:
+475++ A2C8 11 00 60             ld      de, #6000
+476++ A2CB 19                   add     hl, de
+477++ A2CC 3A 56 A5             ld      a, (bios_dbg_char)
+478++ A2CF 77                   ld      (hl), a
+479++ A2D0 2A 5B A5             ld      hl, (bios_dbg_offset)
+480++ A2D3 11 00 C0             ld      de, #C000
+481++ A2D6 19                   add     hl, de
+482++ A2D7 23                   inc     hl
+483++ A2D8 3A 5A A5             ld      a, (bios_dbg_attr)
+484++ A2DB 77                   ld      (hl), a
+485++ A2DC
+486++ A2DC              .p126_write_done:
+487++ A2DC CD 66 A3             call    p126_screen_restore_host_pages
+488++ A2DF E1                   pop     hl
+489++ A2E0 D1                   pop     de
+490++ A2E1 C1                   pop     bc
+491++ A2E2 F1                   pop     af
+492++ A2E3 C9                   ret
+493++ A2E4
+494++ A2E4              ; IN: A=character, B=ATM-native attribute, D=row, E=column.
+495++ A2E4              p126_screen_write_guest_cell:
+496++ A2E4 F5                   push    af
+497++ A2E5 C5                   push    bc
+498++ A2E6 D5                   push    de
+499++ A2E7 E5                   push    hl
+500++ A2E8 32 56 A5             ld      (bios_dbg_char),a
+501++ A2EB 78                   ld      a,b
+502++ A2EC 32 5A A5             ld      (bios_dbg_attr),a
+503++ A2EF 7A                   ld      a,d
+504++ A2F0 32 57 A5             ld      (bios_dbg_write_row),a
+505++ A2F3 7B                   ld      a,e
+506++ A2F4 32 58 A5             ld      (bios_dbg_write_col),a
+507++ A2F7 CD 57 A3             call    p126_screen_map_video_pages
+508++ A2FA 3A 57 A5             ld      a,(bios_dbg_write_row)
+509++ A2FD 6F                   ld      l,a
+510++ A2FE 26 00                ld      h,0
+511++ A300 29                   add     hl,hl
+512++ A301 29                   add     hl,hl
+513++ A302 29                   add     hl,hl
+514++ A303 29                   add     hl,hl
+515++ A304 29                   add     hl,hl
+516++ A305 29                   add     hl,hl
+517++ A306 11 C0 01             ld      de,#01C0
+518++ A309 19                   add     hl,de
+519++ A30A 3A 58 A5             ld      a,(bios_dbg_write_col)
+520++ A30D 4F                   ld      c,a
+521++ A30E E6 01                and     1
+522++ A310 32 59 A5             ld      (bios_dbg_parity),a
+523++ A313 79                   ld      a,c
+524++ A314 CB 3F                srl     a
+525++ A316 5F                   ld      e,a
+526++ A317 16 00                ld      d,0
+527++ A319 19                   add     hl,de
+528++ A31A 22 5B A5             ld      (bios_dbg_offset),hl
+529++ A31D 2A 5B A5             ld      hl,(bios_dbg_offset)
+530++ A320 3A 59 A5             ld      a,(bios_dbg_parity)
+531++ A323 B7                   or      a
+532++ A324 20 15                jr      nz,.guest_odd
+533++ A326 11 00 40             ld      de,#4000
+534++ A329 19                   add     hl,de
+535++ A32A 3A 56 A5             ld      a,(bios_dbg_char)
+536++ A32D 77                   ld      (hl),a
+537++ A32E 2A 5B A5             ld      hl,(bios_dbg_offset)
+538++ A331 11 00 E0             ld      de,#E000
+539++ A334 19                   add     hl,de
+540++ A335 3A 5A A5             ld      a,(bios_dbg_attr)
+541++ A338 77                   ld      (hl),a
+542++ A339 18 14                jr      .guest_done
+543++ A33B              .guest_odd:
+544++ A33B 11 00 60             ld      de,#6000
+545++ A33E 19                   add     hl,de
+546++ A33F 3A 56 A5             ld      a,(bios_dbg_char)
+547++ A342 77                   ld      (hl),a
+548++ A343 2A 5B A5             ld      hl,(bios_dbg_offset)
+549++ A346 11 00 C0             ld      de,#C000
+550++ A349 19                   add     hl,de
+551++ A34A 23                   inc     hl
+552++ A34B 3A 5A A5             ld      a,(bios_dbg_attr)
+553++ A34E 77                   ld      (hl),a
+554++ A34F              .guest_done:
+555++ A34F CD 66 A3             call    p126_screen_restore_host_pages
+556++ A352 E1                   pop     hl
+557++ A353 D1                   pop     de
+558++ A354 C1                   pop     bc
+559++ A355 F1                   pop     af
+560++ A356 C9                   ret
+561++ A357
+562++ A357              p126_screen_map_video_pages:
+563++ A357 3E 78                ld      a, P126_VIDEO_PAGE7
+564++ A359 01 F7 7F             ld      bc, #7FF7
+565++ A35C ED 79                out     (c), a
+566++ A35E 3E 7C                ld      a, P126_VIDEO_PAGE3
+567++ A360 01 F7 FF             ld      bc, #FFF7
+568++ A363 ED 79                out     (c), a
+569++ A365 C9                   ret
+570++ A366
+571++ A366              p126_screen_restore_host_pages:
+572++ A366 3E 7A                ld      a, P126_HOST_PAGE5
+573++ A368 01 F7 7F             ld      bc, #7FF7
+574++ A36B ED 79                out     (c), a
+575++ A36D 3E 7F                ld      a, P126_HOST_PAGE0
+576++ A36F 01 F7 FF             ld      bc, #FFF7
+577++ A372 ED 79                out     (c), a
+578++ A374 C9                   ret
+579++ A375
+580++ A375              ; Advance one row in the 13-row log; scroll rows 13..24 at the bottom.
+581++ A375              bios_dbg_newline:
+582++ A375 3A 54 A5             ld      a, (bios_dbg_row)
+583++ A378 3C                   inc     a
+584++ A379 FE 0D                cp      BIOS_DEBUG_ROWS
+585++ A37B 38 05                jr      c, .p126_newline_store
+586++ A37D CD 8A A3             call    P126_ScrollConsoleUp
+587++ A380 3E 0C                ld      a, BIOS_DEBUG_ROWS - 1
+588++ A382              .p126_newline_store:
+589++ A382 32 54 A5             ld      (bios_dbg_row), a
+590++ A385 AF                   xor     a
+591++ A386 32 55 A5             ld      (bios_dbg_col), a
+592++ A389 C9                   ret
+593++ A38A
+594++ A38A              ; Move log rows 13..24 up by one. Each hardware text row has a 64-byte
+595++ A38A              ; stride; the 40 visible bytes are copied together with the row padding.
+596++ A38A              P126_ScrollConsoleUp:
+596++ A38A
+597++ A38A F5                   push    af
+598++ A38B C5                   push    bc
+599++ A38C D5                   push    de
+600++ A38D E5                   push    hl
+601++ A38E CD 57 A3             call    p126_screen_map_video_pages
+602++ A391
+603++ A391                      ; Even character plane: page 7, window #4000.
+604++ A391 21 00 45             ld      hl, #4500
+605++ A394 11 C0 44             ld      de, #44C0
+606++ A397 01 00 03             ld      bc, #0300
+607++ A39A ED B0                ldir
+608++ A39C                      ; Odd character plane: page 7, window #6000.
+609++ A39C 21 00 65             ld      hl, #6500
+610++ A39F 11 C0 64             ld      de, #64C0
+611++ A3A2 01 00 03             ld      bc, #0300
+612++ A3A5 ED B0                ldir
+613++ A3A7                      ; Even attributes: page 3, window #E000.
+614++ A3A7 21 00 E5             ld      hl, #E500
+615++ A3AA 11 C0 E4             ld      de, #E4C0
+616++ A3AD 01 00 03             ld      bc, #0300
+617++ A3B0 ED B0                ldir
+618++ A3B2                      ; Odd attributes: page 3, window #C000, odd-byte skew +1.
+619++ A3B2 21 01 C5             ld      hl, #C501
+620++ A3B5 11 C1 C4             ld      de, #C4C1
+621++ A3B8 01 00 03             ld      bc, #0300
+622++ A3BB ED B0                ldir
+623++ A3BD
+624++ A3BD                      ; Clear the new bottom row.
+625++ A3BD 21 C0 47             ld      hl, #47C0
+626++ A3C0 11 C1 47             ld      de, #47C1
+627++ A3C3 36 20                ld      (hl), 32
+628++ A3C5 01 3F 00             ld      bc, #003F
+629++ A3C8 ED B0                ldir
+630++ A3CA 21 C0 67             ld      hl, #67C0
+631++ A3CD 11 C1 67             ld      de, #67C1
+632++ A3D0 36 20                ld      (hl), 32
+633++ A3D2 01 3F 00             ld      bc, #003F
+634++ A3D5 ED B0                ldir
+635++ A3D7 21 C0 E7             ld      hl, #E7C0
+636++ A3DA 11 C1 E7             ld      de, #E7C1
+637++ A3DD 36 44                ld      (hl), #44
+638++ A3DF 01 3F 00             ld      bc, #003F
+639++ A3E2 ED B0                ldir
+640++ A3E4 21 C1 C7             ld      hl, #C7C1
+641++ A3E7 11 C2 C7             ld      de, #C7C2
+642++ A3EA 36 44                ld      (hl), #44
+643++ A3EC 01 3F 00             ld      bc, #003F
+644++ A3EF ED B0                ldir
+645++ A3F1
+646++ A3F1 CD 66 A3             call    p126_screen_restore_host_pages
+647++ A3F4 E1                   pop     hl
+648++ A3F5 D1                   pop     de
+649++ A3F6 C1                   pop     bc
+650++ A3F7 F1                   pop     af
+651++ A3F8 C9                   ret
+652++ A3F9
+653++ A3F9              ; =========================================================================
+654++ A3F9              ; Status panel labels. This preserves Project124's upper-panel/lower-log
+655++ A3F9              ; visual organization while replacing Spectrum bitmap rendering with ATM
+656++ A3F9              ; hardware text mode.
+657++ A3F9              ; =========================================================================
+658++ A3F9 50 52 4F 4A  p126_ui_line0:  db "PROJECT126  |  ATM TURBO 2+  |  SYSTEM MONITOR", 0
+658++ A3FD 45 43 54 31
+658++ A401 32 36 20 20
+658++ A405 7C 20 20 41
+658++ A409 54 4D 20 54
+658++ A40D 55 52 42 4F
+658++ A411 20 32 2B 20
+658++ A415 20 7C 20 20
+658++ A419 53 59 53 54
+658++ A41D 45 4D 20 4D
+658++ A421 4F 4E 49 54
+658++ A425 4F 52 00
+659++ A428 53 59 53 54  p126_ui_line2:  db "SYSTEM / HOST STATUS", 0
+659++ A42C 45 4D 20 2F
+659++ A430 20 48 4F 53
+659++ A434 54 20 53 54
+659++ A438 41 54 55 53
+659++ A43C 00
+660++ A43D 48 4F 53 54  p126_ui_line3:  db "HOST CPU      : Z80 / ATM TURBO 2+", 0
+660++ A441 20 43 50 55
+660++ A445 20 20 20 20
+660++ A449 20 20 3A 20
+660++ A44D 5A 38 30 20
+660++ A451 2F 20 41 54
+660++ A455 4D 20 54 55
+660++ A459 52 42 4F 20
+660++ A45D 32 2B 00
+661++ A460 47 55 45 53  p126_ui_line4:  db "GUEST CPU     : 8086 REAL MODE / NeoGS (IDLE)", 0
+661++ A464 54 20 43 50
+661++ A468 55 20 20 20
+661++ A46C 20 20 3A 20
+661++ A470 38 30 38 36
+661++ A474 20 52 45 41
+661++ A478 4C 20 4D 4F
+661++ A47C 44 45 20 2F
+661++ A480 20 4E 65 6F
+661++ A484 47 53 20 28
+661++ A488 49 44 4C 45
+661++ A48C 29 00
+662++ A48E 42 49 4F 53  p126_ui_line5:  db "BIOS          : NOT LOADED", 0
+662++ A492 20 20 20 20
+662++ A496 20 20 20 20
+662++ A49A 20 20 3A 20
+662++ A49E 4E 4F 54 20
+662++ A4A2 4C 4F 41 44
+662++ A4A6 45 44 00
+663++ A4A9 56 49 44 45  p126_ui_line6:  db "VIDEO         : ATM TEXT 80x25 ACTIVE", 0
+663++ A4AD 4F 20 20 20
+663++ A4B1 20 20 20 20
+663++ A4B5 20 20 3A 20
+663++ A4B9 41 54 4D 20
+663++ A4BD 54 45 58 54
+663++ A4C1 20 38 30 78
+663++ A4C5 32 35 20 41
+663++ A4C9 43 54 49 56
+663++ A4CD 45 00
+664++ A4CF 52 45 41 4C  p126_ui_line7:  db "REAL TIME CLK : NOT INITIALIZED", 0
+664++ A4D3 20 54 49 4D
+664++ A4D7 45 20 43 4C
+664++ A4DB 4B 20 3A 20
+664++ A4DF 4E 4F 54 20
+664++ A4E3 49 4E 49 54
+664++ A4E7 49 41 4C 49
+664++ A4EB 5A 45 44 00
+665++ A4EF 4E 45 4F 47  p126_ui_line9:  db "NEOGS / IPC", 0
+665++ A4F3 53 20 2F 20
+665++ A4F7 49 50 43 00
+666++ A4FB 44 45 42 55  p126_ui_line10: db "DEBUG STREAM  : ATM #EF / NEOGS IPC IDLE", 0
+666++ A4FF 47 20 53 54
+666++ A503 52 45 41 4D
+666++ A507 20 20 3A 20
+666++ A50B 41 54 4D 20
+666++ A50F 23 45 46 20
+666++ A513 2F 20 4E 45
+666++ A517 4F 47 53 20
+666++ A51B 49 50 43 20
+666++ A51F 49 44 4C 45
+666++ A523 00
+667++ A524 5A 38 30 20  p126_ui_line11: db "Z80 LOG       : HOST STARTED; GUEST NOT STARTED", 0
+667++ A528 4C 4F 47 20
+667++ A52C 20 20 20 20
+667++ A530 20 20 3A 20
+667++ A534 48 4F 53 54
+667++ A538 20 53 54 41
+667++ A53C 52 54 45 44
+667++ A540 3B 20 47 55
+667++ A544 45 53 54 20
+667++ A548 4E 4F 54 20
+667++ A54C 53 54 41 52
+667++ A550 54 45 44 00
+668++ A554
+669++ A554              ; =========================================================================
+670++ A554              ; Renderer state — all data is in window 2 with this module.
+671++ A554              ; =========================================================================
+672++ A554 00           bios_dbg_row:         db 0
+673++ A555 00           bios_dbg_col:         db 0
+674++ A556 00           bios_dbg_char:        db 0
+675++ A557 00           bios_dbg_write_row:   db 0
+676++ A558 00           bios_dbg_write_col:   db 0
+677++ A559 00           bios_dbg_parity:      db 0
+678++ A55A 00           bios_dbg_attr:        db 0
+679++ A55B 00 00        bios_dbg_offset:      dw 0
+680++ A55D 00 00        bios_dbg_text_ptr:    dw 0
+681++ A55F 00           bios_dbg_print_row:   db 0
+682++ A560 00           bios_dbg_print_col:   db 0
+683++ A561
+# file closed: p126_screen_console.asm
+ 86+  A561
+ 87+  A561              p126_host_program_end:
+ 88+  A561                      ASSERT p126_host_program_start = P126_HOST_LOAD_ADDRESS
+ 89+  A561                      ASSERT p126_host_entry = P126_HOST_ENTRY_POINT
+ 90+  A561                      ASSERT p126_host_program_end <= #A800
+ 91+  A561
 # file closed: project126_main.asm
- 23   60F8
- 24   60F8                      ASSERT p126_host_program_start = P126_HOST_LOAD_ADDRESS
- 25   60F8                      ASSERT p126_host_entry = P126_HOST_ENTRY_POINT
- 26   60F8                      ASSERT p126_host_program_end <= #A800
- 27   60F8                      SAVETRD "disk_A.trd", "PROJ126.C", P126_HOST_LOAD_ADDRESS, p126_host_program_end-P126_HOST_LOAD_ADDRESS
- 28   60F8
- 29   60F8              ; -------------------------------------------------------------------------
- 30   60F8              ; TR-DOS BASIC boot program.
- 31   60F8              ; -------------------------------------------------------------------------
- 32   60F8                      PAGE 0
- 33   60F8                      ORG #E000
+ 23   A561
+ 24   A561                      ASSERT p126_host_program_start = P126_HOST_LOAD_ADDRESS
+ 25   A561                      ASSERT p126_host_entry = P126_HOST_ENTRY_POINT
+ 26   A561                      ASSERT p126_host_program_end <= #A800
+ 27   A561                      SAVETRD "disk_A.trd", "PROJ126.C", P126_HOST_LOAD_ADDRESS, p126_host_program_end-P126_HOST_LOAD_ADDRESS
+ 28   A561
+ 29   A561              ; -------------------------------------------------------------------------
+ 30   A561              ; TR-DOS BASIC boot program.
+ 31   A561              ; -------------------------------------------------------------------------
+ 32   A561                      PAGE 0
+ 33   A561                      ORG #E000
  34   E000                      INCLUDE "atm_host/boot_loader.asm"
 # file opened: boot_loader.asm
   1+  E000              ; =========================================================================
@@ -552,10 +1377,51 @@ Value    Label
 ------ - -----------------------------------------------------------
 0xE1DB X BASIC_END
 0xE000 X BASIC_START
+0xA55A   bios_dbg_attr
+0xA556   bios_dbg_char
+0xA555   bios_dbg_col
+0xA375   bios_dbg_newline
+0xA382   bios_dbg_newline.p126_newline_store
+0xA55B   bios_dbg_offset
+0xA559   bios_dbg_parity
+0xA560   bios_dbg_print_col
+0xA251   bios_dbg_print_hex8
+0xA25A   bios_dbg_print_nibble
+0xA262   bios_dbg_print_nibble.p126_hex_digit
+0xA55F   bios_dbg_print_row
+0xA554   bios_dbg_row
+0xA55D   bios_dbg_text_ptr
+0xA558   bios_dbg_write_col
+0xA557   bios_dbg_write_row
+0x0050   BIOS_DEBUG_COLUMNS
+0x000D   BIOS_DEBUG_ROWS
+0x000C   BIOS_DEBUG_TOP
+0xA07D   BIOS_DebugConsole_Clear
+0xA103   BIOS_DebugConsole_DrawInterface
+0xA06D   BIOS_DebugConsole_Init
+0xA16E   BIOS_DebugConsole_PrintAt
+0xA1AD   BIOS_DebugConsole_PrintAt.p126_print_at_col_ok
+0xA1B2   BIOS_DebugConsole_PrintAt.p126_print_at_done
+0xA17C   BIOS_DebugConsole_PrintAt.p126_print_at_loop
+0xA1B7   BIOS_DebugConsole_PrintChar
+0xA216   BIOS_DebugConsole_PrintChar.p126_console_bs
+0xA1D1   BIOS_DebugConsole_PrintChar.p126_console_char_ok
+0xA208   BIOS_DebugConsole_PrintChar.p126_console_cr
+0xA231   BIOS_DebugConsole_PrintChar.p126_console_done
+0xA211   BIOS_DebugConsole_PrintChar.p126_console_lf
+0xA1F5   BIOS_DebugConsole_PrintChar.p126_console_store_col
+0xA1F8   BIOS_DebugConsole_PrintChar.p126_console_sync_cursor
+0xA244 X BIOS_DebugConsole_PrintHex16
+0xA236 X BIOS_DebugConsole_SetCursor
 0x00FD   CLEAR
 0x00AF X CODE
+0xA000   Console_X
+0xA001   Console_Y
 0x00EF X LOAD
 0x00DF   OUT_CMD
+0xA026   p126_atm_ports_open_done
+0xA002   p126_atm_video_init
+0xA05A   p126_atm_video_mode_ready
 0xE000 X p126_basic_loader
 0x0000   P126_CBIT
 0x0007   P126_DBIT
@@ -566,39 +1432,43 @@ Value    Label
 0x0033 X P126_GSCTR
 0x00B3   P126_GSDAT
 0x00BB   P126_GSSTAT
-0x6019   p126_host_debug_string
-0x6027   p126_host_debug_string.p126_host_debug_done
-0x601E   p126_host_debug_string.p126_host_debug_loop
+0x602B   p126_host_console_string
+0x6096   p126_host_debug_string
+0x60A4   p126_host_debug_string.p126_host_debug_done
+0x609B   p126_host_debug_string.p126_host_debug_loop
 0x6009   p126_host_entry
 0x6009   P126_HOST_ENTRY_POINT
-0x6016   p126_host_idle
+0x6028   p126_host_idle
 0x6000   P126_HOST_LOAD_ADDRESS
-0x60F8   p126_host_program_end
+0x007F   P126_HOST_PAGE0
+0x007A   P126_HOST_PAGE5
+0xA561   p126_host_program_end
 0x6000   p126_host_program_start
 0xAFFF   P126_HOST_STACK_TOP
-0x602A   p126_host_version_text
-0x60C7   p126_ipc_emit_version
-0x60D9   p126_ipc_emit_version.p126_version_done
-0x60D0   p126_ipc_emit_version.p126_version_loop
-0x60DD   p126_ipc_last_status
-0x6043   p126_ipc_read_status
-0x60BC X p126_ipc_receive_byte
-0x60DF   p126_ipc_rx_byte
-0x609F X p126_ipc_send_argument
-0x60AD X p126_ipc_send_byte
-0x6094 X p126_ipc_send_command
+0x6034   p126_host_ui_log
+0x60A7   p126_host_version_text
+0x6144   p126_ipc_emit_version
+0x6156   p126_ipc_emit_version.p126_version_done
+0x614D   p126_ipc_emit_version.p126_version_loop
+0x615A   p126_ipc_last_status
+0x60C0   p126_ipc_read_status
+0x6139 X p126_ipc_receive_byte
+0x615C   p126_ipc_rx_byte
+0x611C X p126_ipc_send_argument
+0x612A X p126_ipc_send_byte
+0x6111 X p126_ipc_send_command
 0xFFFF   P126_IPC_TIMEOUT
-0x60DE   p126_ipc_tx_byte
-0x60E0   p126_ipc_version_text
-0x6049   p126_ipc_wait_cbit_clear
-0x604C   p126_ipc_wait_cbit_clear.p126_cbit_loop
-0x605D   p126_ipc_wait_cbit_clear.p126_cbit_ready
-0x6062   p126_ipc_wait_dbit_clear
-0x6065   p126_ipc_wait_dbit_clear.p126_dbit_clear_loop
-0x6076   p126_ipc_wait_dbit_clear.p126_dbit_clear_ready
-0x607B   p126_ipc_wait_dbit_set
-0x607E   p126_ipc_wait_dbit_set.p126_dbit_set_loop
-0x608F   p126_ipc_wait_dbit_set.p126_dbit_set_ready
+0x615B   p126_ipc_tx_byte
+0x615D   p126_ipc_version_text
+0x60C6   p126_ipc_wait_cbit_clear
+0x60C9   p126_ipc_wait_cbit_clear.p126_cbit_loop
+0x60DA   p126_ipc_wait_cbit_clear.p126_cbit_ready
+0x60DF   p126_ipc_wait_dbit_clear
+0x60E2   p126_ipc_wait_dbit_clear.p126_dbit_clear_loop
+0x60F3   p126_ipc_wait_dbit_clear.p126_dbit_clear_ready
+0x60F8   p126_ipc_wait_dbit_set
+0x60FB   p126_ipc_wait_dbit_set.p126_dbit_set_loop
+0x610C   p126_ipc_wait_dbit_set.p126_dbit_set_ready
 0xE004   P126_LINE10
 0xE024   P126_LINE10_END
 0xE028   P126_LINE11
@@ -611,6 +1481,28 @@ Value    Label
 0xE1DA   P126_LINE30_END
 0x0001 X P126_M_CBIT
 0x0080 X P126_M_DBIT
+0xA357   p126_screen_map_video_pages
+0xA366   p126_screen_restore_host_pages
+0xA267   p126_screen_write_char
+0xA2A7   p126_screen_write_char.p126_attr_ready
+0xA2DC   p126_screen_write_char.p126_write_done
+0xA2C8   p126_screen_write_char.p126_write_odd
+0xA2E4 X p126_screen_write_guest_cell
+0xA34F   p126_screen_write_guest_cell.guest_done
+0xA33B   p126_screen_write_guest_cell.guest_odd
+0xA38A   P126_ScrollConsoleUp
+0xA3F9   p126_ui_line0
+0xA4FB   p126_ui_line10
+0xA524   p126_ui_line11
+0xA428   p126_ui_line2
+0xA43D   p126_ui_line3
+0xA460   p126_ui_line4
+0xA48E   p126_ui_line5
+0xA4A9   p126_ui_line6
+0xA4CF   p126_ui_line7
+0xA4EF   p126_ui_line9
+0x007C   P126_VIDEO_PAGE3
+0x0078   P126_VIDEO_PAGE7
 0xC483   p126_x86_core_file_end
 0xC000   p126_x86_core_file_start
 0x00F9   RANDOMIZE
