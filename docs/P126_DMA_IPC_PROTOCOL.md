@@ -194,7 +194,7 @@ BIOS destination addresses, guest ROM mapping, NeoGS image staging addresses, fi
 ## 10. Implementation boundaries and next work
 
 This document fixes the ABI and lifecycle contract, not the runtime memory map. Remaining work:
-1. Implement shared frame CRC/validation and sequence state on both processors.
+1. CRC primitives and local-buffer frame validation are implemented on both processors; sequence/session state remains pending.
 2. Implement NeoGS DMA endpoint and ATM host frame sender/receiver.
 3. Reserve and assert staging buffers and DMA source/destination windows in the Project126 4 MiB NeoGS map and ATM host memory map.
 4. Add deterministic DMA write/read tests and full-frame CRC tests on hardware.

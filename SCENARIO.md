@@ -473,3 +473,10 @@ This stage must be built and then exercised on NeoGS with boundary and data-rete
 - TR-DOS image generated at 655,360 bytes. `X86CORE.C` is 1,616 bytes / 7 sectors; BIOS1.C, BIOS2.C and COMPAQ.C are each 8,192 bytes / 32 sectors. Listings, maps and disk artifact were published.
 - The disk assembler retains one pre-existing generated-path backslash warning; the NeoGS and IPC assembly units report no warnings.
 - **Not verified:** actual WIN3 paging/read/write on target hardware, ROM contents in physical slots, guest BIOS POST, VGA plane semantics or scanout. This is BUILD PASS only.
+
+
+## DMA/IPC ABI 1.0 frame validation primitives
+
+- Added ATM and NeoGS byte-buffer validators for the fixed 18-byte frame header, magic `P126`, major/minor version, message type, reserved flag bits, exact declared frame size and CRC-16/CCITT-FALSE.
+- Both validators return carry clear with A=0 for a valid frame; on failure carry is set and A contains the ABI status code. The functions are non-reentrant and use private module scratch.
+- These routines validate a frame already present in local memory. They do not arm DMA, receive a hardware frame, maintain session/sequence state, or dispatch services.

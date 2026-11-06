@@ -212,3 +212,11 @@ A committed source file is not automatically a successful runtime or hardware te
 - TR-DOS image generated at 655,360 bytes. `X86CORE.C` is 1,616 bytes / 7 sectors; BIOS1.C, BIOS2.C and COMPAQ.C are each 8,192 bytes / 32 sectors. Listings, maps and disk artifact were published.
 - The disk assembler retains one pre-existing generated-path backslash warning; the NeoGS and IPC assembly units report no warnings.
 - **Not verified:** actual WIN3 paging/read/write on target hardware, ROM contents in physical slots, guest BIOS POST, VGA plane semantics or scanout. This is BUILD PASS only.
+
+
+## ABI 1.0 frame validation
+
+- Implemented matching ATM and NeoGS frame validators in `atm_host/neogs_ipc.asm` and `neogs_sub/p126_ipc.asm`.
+- Validation covers minimum header length, P126 magic, ABI major/minor, legal message type, reserved flags, exact 18+payload length and full CRC-16/CCITT-FALSE.
+- Return convention: carry clear/A=0 valid; carry set/A=ABI status code invalid. Validators are non-reentrant.
+- Hardware DMA endpoint, transaction lifecycle, sequence/session state and BIOS service dispatch remain pending. This milestone alone does not claim DMA transport.
