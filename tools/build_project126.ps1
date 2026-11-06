@@ -126,7 +126,10 @@ try {
     $requiredEntries = @(
         @{ Name = ($BootName.PadRight(8) + "B"); Label = "$BootName.B" },
         @{ Name = ($HostName.PadRight(8) + "C"); Label = "$HostName.C" },
-        @{ Name = "X86CORE C"; Label = "X86CORE.C" }
+        @{ Name = "X86CORE C"; Label = "X86CORE.C" },
+        @{ Name = "BIOS1   C"; Label = "BIOS1.C"; ExpectedLength = 8192; ExpectedSectors = 32 },
+        @{ Name = "BIOS2   C"; Label = "BIOS2.C"; ExpectedLength = 8192; ExpectedSectors = 32 },
+        @{ Name = "COMPAQ  C"; Label = "COMPAQ.C"; ExpectedLength = 8192; ExpectedSectors = 32 }
     )
 
     foreach ($required in $requiredEntries) {
@@ -146,6 +149,12 @@ try {
                 $length = [int]$disk[$offset + 11] + ([int]$disk[$offset + 12] -shl 8)
                 if ($sectors -lt 1 -or $length -lt 1) {
                     throw ("TR-DOS entry {0} has invalid length/sector metadata." -f $required.Label)
+                }
+                if ($null -ne $required.ExpectedLength -and $length -ne $required.ExpectedLength) {
+                    throw ("TR-DOS entry {0} has length {1}; expected {2} bytes." -f $required.Label, $length, $required.ExpectedLength)
+                }
+                if ($null -ne $required.ExpectedSectors -and $sectors -ne $required.ExpectedSectors) {
+                    throw ("TR-DOS entry {0} has {1} sectors; expected {2}." -f $required.Label, $sectors, $required.ExpectedSectors)
                 }
                 Write-Host ("[TRD] {0}: {1} bytes, {2} sectors" -f $required.Label, $length, $sectors)
                 break

@@ -205,55 +205,29 @@ BIOS_DebugConsole_DrawInterface::
         push    af
         push    bc
         push    hl
+
         ld      hl, p126_ui_line0
         ld      a, 0
         ld      c, 1
         call    BIOS_DebugConsole_PrintAt
-        ld      hl, p126_ui_line2
-        ld      a, 2
+
+        ld      hl, p126_ui_line1
+        ld      a, 1
         ld      c, 1
         call    BIOS_DebugConsole_PrintAt
-        ld      hl, p126_ui_line3
-        ld      a, 3
-        ld      c, 1
-        call    BIOS_DebugConsole_PrintAt
-        ld      hl, p126_ui_line4
-        ld      a, 4
-        ld      c, 1
-        call    BIOS_DebugConsole_PrintAt
-        ld      hl, p126_ui_line5
-        ld      a, 5
-        ld      c, 1
-        call    BIOS_DebugConsole_PrintAt
-        ld      hl, p126_ui_line6
-        ld      a, 6
-        ld      c, 1
-        call    BIOS_DebugConsole_PrintAt
-        ; Reflect the result of DS12887_PROBE instead of showing a
-        ; permanent NOT INITIALIZED placeholder.
+
         ld      a, (ds12887_available)
         or      a
         jr      z, .p126_draw_rtc_unavailable
-        ld      hl, p126_ui_line7_ready
+        ld      hl, p126_ui_line11_ready
         jr      .p126_draw_rtc_line
 .p126_draw_rtc_unavailable:
-        ld      hl, p126_ui_line7
-.p126_draw_rtc_line:
-        ld      a, 7
-        ld      c, 1
-        call    BIOS_DebugConsole_PrintAt
-        ld      hl, p126_ui_line9
-        ld      a, 9
-        ld      c, 1
-        call    BIOS_DebugConsole_PrintAt
-        ld      hl, p126_ui_line10
-        ld      a, 10
-        ld      c, 1
-        call    BIOS_DebugConsole_PrintAt
         ld      hl, p126_ui_line11
+.p126_draw_rtc_line:
         ld      a, 11
         ld      c, 1
         call    BIOS_DebugConsole_PrintAt
+
         pop     hl
         pop     bc
         pop     af
@@ -664,17 +638,10 @@ P126_ScrollConsoleUp::
 ; visual organization while replacing Spectrum bitmap rendering with ATM
 ; hardware text mode.
 ; =========================================================================
-p126_ui_line0:  db "PROJECT126  |  ATM TURBO 2+  |  SYSTEM MONITOR", 0
-p126_ui_line2:  db "SYSTEM / HOST STATUS", 0
-p126_ui_line3:  db "HOST CPU      : Z80 / ATM TURBO 2+", 0
-p126_ui_line4:  db "GUEST CPU     : 8086 REAL MODE / NeoGS (IDLE)", 0
-p126_ui_line5:  db "BIOS          : NOT LOADED", 0
-p126_ui_line6:  db "VIDEO         : ATM TEXT 80x25 ACTIVE", 0
-p126_ui_line7:       db "REAL TIME CLK : NOT INITIALIZED", 0
-p126_ui_line7_ready: db "REAL TIME CLK : DS12887 ONLINE", 0
-p126_ui_line9:  db "NEOGS / IPC", 0
-p126_ui_line10: db "DEBUG STREAM  : ATM #EF / NEOGS IPC IDLE", 0
-p126_ui_line11: db "Z80 LOG       : HOST STARTED; GUEST NOT STARTED", 0
+p126_ui_line0:       db "PROJECT126  |  ATM TURBO 2+  |  SYSTEM MONITOR", 0
+p126_ui_line1:       db "TR-DOS DISK A: FILE CATALOG", 0
+p126_ui_line11:      db "RTC: NOT INITIALIZED | CURSOR UP/DOWN: MOVE", 0
+p126_ui_line11_ready: db "RTC: DS12887 ONLINE | CURSOR UP/DOWN: MOVE", 0
 
 ; =========================================================================
 ; Renderer state — all data is in window 2 with this module.
