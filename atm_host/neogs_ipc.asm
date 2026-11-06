@@ -170,7 +170,7 @@ p126_ipc_validate_frame::
         jr      nz,.p126_frame_min_ok
         ld      a,c
         cp      P126_IPC_HEADER_SIZE
-        jr      c,.p126_frame_bad
+        jp      c,.p126_frame_bad
 .p126_frame_min_ok:
         push    hl
         pop     ix
@@ -200,11 +200,11 @@ p126_ipc_validate_frame::
         cp      P126_MSG_EVENT
         jr      z,.p126_frame_type
         cp      P126_MSG_CANCEL
-        jr      nz,.p126_frame_bad
+        jp      nz,.p126_frame_bad
 .p126_frame_type:
         ld      a,(ix+9)
         and     #F8
-        jr      nz,.p126_frame_bad
+        jp      nz,.p126_frame_bad
         ld      l,(ix+12)
         ld      h,(ix+13)
         ld      de,P126_IPC_HEADER_SIZE
@@ -212,7 +212,7 @@ p126_ipc_validate_frame::
         ld      de,(p126_ipc_frame_size)
         or      a
         sbc     hl,de
-        jr      nz,.p126_frame_bad
+        jp      nz,.p126_frame_bad
         ; CRC header and payload in one pass.
         push    ix
         pop     de
