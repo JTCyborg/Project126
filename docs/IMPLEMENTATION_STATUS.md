@@ -315,3 +315,12 @@ The ATM log `DMA SMOKE FRAME SENT` means the transport handshake completed; it i
 - Необходимо разработать безопасный полный тест всех 256 страниц с проверкой записи/чтения и целостности, исключив повреждение кода, стека и активных DMA/IPC областей.
 - ROM-ответ 3F:40:00 — только наблюдение старого ROM (4,145,152 байта); он не доказывает, что физически отсутствуют три верхние страницы. Версия ROM не является входным условием Project126.
 - **Статус реализации:** архитектурное решение принято; загрузчик ATM ещё содержит старую проверку и требует изменения. Наличие NOROM в bootstrap подтверждено исходным кодом, но фактическое отключение ROM и полный тест 4 MiB на оборудовании пока не подтверждены. BUILD/HARDWARE PASS не заявляются.
+
+
+## Independent NeoGS debug stream; ROM RAM-size probe removed from startup gate (2026-11-07)
+
+- Diagnosis: the user's log stopped at stage G, the ATM-side GS105a #20 4 MiB threshold check. Project126 bootstrap had not been entered, so no Project126-originated NeoGS #EF message was possible. The existing resident image already contains direct NeoGS #EF messages (`P126 RESIDENT`, `ABI CRC16 PASS`, DMA frame valid/rejected), but those occur only after successful stage-0 and resident streaming.
+- ATM loader now retains GS105a cold restart #F4 but skips #20 entirely and no longer gates Project126 startup on stock-ROM RAM reporting.
+- `neogs_sub/p126_bootstrap.asm` now emits `[NGS] BOOTSTRAP ENTER` directly to NeoGS #EF and `[NGS] NOROM ENABLED` after writing GSCFG0 with NOROM/EXPAG bits. ATM does not synthesize these messages.
+- Expected NeoGS diagnostics after target run: BOOTSTRAP ENTER -> NOROM ENABLED -> P126 RESIDENT v0.1.0 -> ABI CRC16 PASS. These are separate from the ATM #EF stream.
+- **Status:** source changes committed; CI/build and one-sector bootstrap size verification pending; target hardware verification pending. The actual 4 MiB page test is not implemented by this diagnostic change.
