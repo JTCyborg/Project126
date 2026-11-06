@@ -28,7 +28,7 @@ $units = @(
         Binary = "ATM_IPC.bin"
         Listing = "ATM.lst"
         Map = "ATM.map"
-        Version = "ATM_IPC v0.1.0"
+        Version = "ATM_IPC v0.2.0"
         MaxBytes = 65536
     }
 )
