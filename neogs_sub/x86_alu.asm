@@ -16,6 +16,26 @@
 X86_ALU_KEEP_FLAGS_LO EQU #2A
 X86_ALU_KEEP_FLAGS_HI EQU #F7
 
+; Runtime component identity for NeoGS #EF diagnostics.
+x86_alu_emit_version:
+        push    af
+        push    hl
+        ld      hl,x86_alu_version_text
+.version_loop:
+        ld      a,(hl)
+        or      a
+        jr      z,.version_done
+        out     (#EF),a
+        inc     hl
+        jr      .version_loop
+.version_done:
+        pop     hl
+        pop     af
+        ret
+
+x86_alu_version_text:
+        defb    "[P126 X86_ALU v0.1.0]",13,10,0
+
 x86_alu_add8:
         ld      (x86_alu_lhs),a
         ld      a,c
@@ -101,6 +121,22 @@ x86_alu_selftest:
         push    hl
         ld      hl,(x86_reg_flags)
         ld      (x86_alu_saved_flags),hl
+
+        ; Preserve non-arithmetic control flags (TF, IF, DF) and FLAGS bit 1.
+        ld      hl,#0702
+        ld      (x86_reg_flags),hl
+        ld      a,#01
+        ld      c,#01
+        call    x86_alu_add8
+        ld      hl,(x86_reg_flags)
+        bit     0,h
+        jp      z,.fail
+        bit     1,h
+        jp      z,.fail
+        bit     2,h
+        jp      z,.fail
+        bit     1,l
+        jp      z,.fail
 
         ; 7F + 01 = 80: OF,SF,AF set; CF,ZF,PF clear.
         ld      a,#7F
