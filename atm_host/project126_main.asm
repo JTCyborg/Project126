@@ -22,6 +22,13 @@ p126_host_program_start:
         BLOCK   6, 0
 
 p126_host_entry:
+        ; First instruction-level proof that BASIC USR reached 6009h.
+        ; Keep this before display/paging setup so the marker is independent
+        ; of the ATM text renderer and its memory-map changes.
+        ld      bc, #00EF
+        ld      a, '>'
+        out     (c), a
+
         di
         ld      sp, P126_HOST_STACK_TOP
 
