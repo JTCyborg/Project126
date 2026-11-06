@@ -571,3 +571,16 @@ The smoke frame does not test reverse DMA, sequence/session enforcement, or any 
 - Project126's own RAM requirement is retained: the high byte of the 24-bit reported size must be at least `#40` (4 MiB). Project125's lower 2 MiB threshold is not imported.
 - The previous raw GSCTR `#80` reset sequence is removed from stage 3.
 - **Verification boundary:** CI validates assembly and TR-DOS packaging only. The next ATM run must show stage 3 clearing and startup reaching stage 4 or later; no physical ROM handshake is claimed by this source change.
+
+
+## Stage-3 diagnostic subdivision (2026-11-07)
+
+The startup failure character now identifies the last GS105a operation entered:
+- `A`: cold restart command `#F4` / CBIT completion wait.
+- `B`: entering the `#20` RAM probe.
+- `C`: sending `#20` / CBIT completion wait.
+- `D`, `E`, `F`: waiting for and reading RAM-size bytes 0, 1, and 2 respectively.
+- `G`: validating the returned 24-bit RAM size against Project126's 4 MiB minimum.
+- `H`: retrying cold restart after the first RAM probe failed.
+
+This is diagnostic instrumentation; the next ATM log must report the letter after `NGS FAIL STAGE=` so the failed handshake can be isolated without guessing.

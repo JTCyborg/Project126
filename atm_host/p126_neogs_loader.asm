@@ -38,16 +38,22 @@ p126_neogs_startup::
         ; Use the proven GS105a ROM cold-restart path (#F4), not a
         ; raw GSCTR reset. Retry once if a stale DMA transaction consumes
         ; the first restart command as its end marker.
-        ld      a,'3'
+        ld      a,'A'                 ; A: GS105a #F4 cold restart / CBIT wait
         ld      (p126_neogs_startup_stage),a
         ld      a,#F4
         call    p126_neogs_send_command_long
         jp      c,p126_neogs_ram_bad
+        ld      a,'B'                 ; B: first #20 RAM probe
+        ld      (p126_neogs_startup_stage),a
         call    p126_neogs_probe_rom_ram
         jr      nc,.p126_neogs_stock_rom_ready
+        ld      a,'H'                 ; H: retry #F4 after failed first probe
+        ld      (p126_neogs_startup_stage),a
         ld      a,#F4
         call    p126_neogs_send_command_long
         jp      c,p126_neogs_ram_bad
+        ld      a,'B'                 ; B: retry #20 RAM probe
+        ld      (p126_neogs_startup_stage),a
         call    p126_neogs_probe_rom_ram
         jp      c,p126_neogs_ram_bad
 .p126_neogs_stock_rom_ready:
@@ -388,18 +394,28 @@ p126_neogs_read_next_sector:
 
  ; Query the stock ROM for its 24-bit RAM size. Project126 requires 4 MiB.
 p126_neogs_probe_rom_ram:
+        ld      a,'C'                 ; C: send #20 and wait for CBIT
+        ld      (p126_neogs_startup_stage),a
         ld      a,P126_NGS_CMD_RAM
         call    p126_neogs_send_command_long
         ret     c
+        ld      a,'D'                 ; D: wait for/read RAM byte 0
+        ld      (p126_neogs_startup_stage),a
         call    p126_neogs_receive_byte
         ret     c
         ld      (p126_neogs_ram_size),a
+        ld      a,'E'                 ; E: wait for/read RAM byte 1
+        ld      (p126_neogs_startup_stage),a
         call    p126_neogs_receive_byte
         ret     c
         ld      (p126_neogs_ram_size+1),a
+        ld      a,'F'                 ; F: wait for/read RAM byte 2
+        ld      (p126_neogs_startup_stage),a
         call    p126_neogs_receive_byte
         ret     c
         ld      (p126_neogs_ram_size+2),a
+        ld      a,'G'                 ; G: validate reported 24-bit RAM size
+        ld      (p126_neogs_startup_stage),a
         ld      a,(p126_neogs_ram_size+2)
         cp      #40
         jr      c,.p126_neogs_ram_probe_bad
