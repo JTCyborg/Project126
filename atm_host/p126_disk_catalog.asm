@@ -43,10 +43,10 @@ p126_catalog_poll_keyboard::
         call    p126_catalog_scan_keys
         or      a
         ret     z
-        ld      (p126_catalog_key), a
+        ld      (p126_catalog_scan_result), a
         call    p126_catalog_wait_release
 
-        ld      a, (p126_catalog_key)
+        ld      a, (p126_catalog_scan_result)
         bit     0, a
         jr      nz, .catalog_move_up
         bit     1, a
@@ -110,7 +110,7 @@ p126_catalog_scan_keys:
         push    hl
 
         xor     a
-        ld      (p126_catalog_key), a
+        ld      (p126_catalog_scan_result), a
 
         ; CAPS SHIFT is bit 0 in the #FE row.
         ld      bc, #FEFE
@@ -123,18 +123,18 @@ p126_catalog_scan_keys:
         in      a, (c)
         bit     3, a
         jr      nz, .catalog_check_down
-        ld      a, (p126_catalog_key)
+        ld      a, (p126_catalog_scan_result)
         or      1
-        ld      (p126_catalog_key), a
+        ld      (p126_catalog_scan_result), a
 
 .catalog_check_down:
         ld      bc, #EFFE
         in      a, (c)
         bit     4, a
         jr      nz, .catalog_check_other_arrows
-        ld      a, (p126_catalog_key)
+        ld      a, (p126_catalog_scan_result)
         or      2
-        ld      (p126_catalog_key), a
+        ld      (p126_catalog_scan_result), a
 
 .catalog_check_other_arrows:
         ; Read the remaining cursor combinations to keep the matrix scan
@@ -143,21 +143,21 @@ p126_catalog_scan_keys:
         in      a, (c)
         bit     4, a
         jr      nz, .catalog_check_right
-        ld      a, (p126_catalog_key)
+        ld      a, (p126_catalog_scan_result)
         or      4
-        ld      (p126_catalog_key), a
+        ld      (p126_catalog_scan_result), a
 
 .catalog_check_right:
         ld      bc, #EFFE
         in      a, (c)
         bit     2, a
         jr      nz, .catalog_keys_done
-        ld      a, (p126_catalog_key)
+        ld      a, (p126_catalog_scan_result)
         or      8
-        ld      (p126_catalog_key), a
+        ld      (p126_catalog_scan_result), a
 
 .catalog_keys_done:
-        ld      a, (p126_catalog_key)
+        ld      a, (p126_catalog_scan_result)
         pop     hl
         pop     de
         pop     bc
@@ -455,6 +455,7 @@ p126_catalog_total:    db 0
 p126_catalog_target:   db 0
 p126_catalog_row:      db 0
 p126_catalog_key:      db 0
+p126_catalog_scan_result: db 0
 p126_catalog_io_result: db 0
 p126_catalog_saved_sp: dw 0
 p126_catalog_line:     db "            ", 0

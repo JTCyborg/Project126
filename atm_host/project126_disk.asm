@@ -72,6 +72,6 @@ p126_bios3_file_start:
         INCBIN "bios/Compaq Portable Plus 100666-001 Rev C.bin"
 p126_bios3_file_end:
         ASSERT p126_bios3_file_end-p126_bios3_file_start = #2000
-        SAVETRD "disk_A.trd", "disk_A.trd", "COMPAQ.C", #C000, #2000
+        SAVETRD "disk_A.trd", "COMPAQ.C", #C000, #2000
 
         PAGE 0
