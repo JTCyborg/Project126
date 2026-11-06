@@ -20,9 +20,13 @@ P126_NGS_TIMEOUT EQU #FFFF
 ; Called after directory preload and before ATM video initialization.
 ; Carry clear means the resident image sent its A2h ready acknowledgement.
 p126_neogs_startup::
+        ld      a,'1'
+        ld      (p126_neogs_startup_stage),a
         ld      hl,p126_neogs_boot_name
         call    p126_neogs_open_file
         ret     c
+        ld      a,'2'
+        ld      (p126_neogs_startup_stage),a
         ld      hl,(p126_neogs_file_length)
         ld      a,h
         or      a
@@ -32,6 +36,8 @@ p126_neogs_startup::
         jp      z,p126_neogs_boot_file_bad
 
         ; Reset NeoGS into the stock GS105a ROM before #20/#14/#13.
+        ld      a,'3'
+        ld      (p126_neogs_startup_stage),a
         ld      a,#80
         out     (P126_NGS_GSCTR),a
         ld      bc,#FFFF
@@ -58,6 +64,8 @@ p126_neogs_startup::
         jp      c,p126_neogs_ram_bad
 
         ; GS105a #14 receives P126BOOT at logical 4000h.
+        ld      a,'4'
+        ld      (p126_neogs_startup_stage),a
         ld      hl,0
         ld      de,(p126_neogs_file_length)
         or      a
@@ -92,9 +100,13 @@ p126_neogs_startup::
         jr      .p126_neogs_boot_stream
 .p126_neogs_boot_loaded:
         ; Read the first resident-image sector before starting stage-0.
+        ld      a,'5'
+        ld      (p126_neogs_startup_stage),a
         ld      hl,p126_neogs_core_name
         call    p126_neogs_open_file
         ret     c
+        ld      a,'6'
+        ld      (p126_neogs_startup_stage),a
         ld      hl,(p126_neogs_file_length)
         ld      a,h
         cp      #40
@@ -111,6 +123,8 @@ p126_neogs_startup::
         ld      (p126_neogs_core_length),hl
 
         ; Enter stage-0 at 4000h; it publishes A1h when ready.
+        ld      a,'7'
+        ld      (p126_neogs_startup_stage),a
         xor     a
         call    p126_neogs_send_argument
         ret     c
@@ -136,6 +150,8 @@ p126_neogs_startup::
 
 .p126_neogs_stage0_ready:
         ; Length exchange; A3h confirms the resident image size.
+        ld      a,'8'
+        ld      (p126_neogs_startup_stage),a
         ld      hl,(p126_neogs_core_length)
         ld      a,l
         call    p126_neogs_send_byte
@@ -158,6 +174,8 @@ p126_neogs_startup::
         jp      nz,p126_neogs_transport_error
 
 .p126_neogs_stream_begin:
+        ld      a,'9'
+        ld      (p126_neogs_startup_stage),a
         ld      hl,#C000
         ld      (p126_neogs_buffer_ptr),hl
         ld      hl,256
@@ -215,6 +233,8 @@ p126_neogs_startup::
         cp      P126_NGS_ACK_DONE
         jp      nz,p126_neogs_transport_error
 .p126_neogs_startup_done:
+        ld      a,'0'
+        ld      (p126_neogs_startup_stage),a
         xor     a
         ret
 
@@ -467,6 +487,7 @@ p126_neogs_file_track: db 0
 p126_neogs_io_error: db 0
 p126_neogs_tx_byte: db 0
 p126_neogs_startup_error: db 0
+p126_neogs_startup_stage: db '0'
 
 
 ; Build and send one valid 18-byte diagnostics request through the application
