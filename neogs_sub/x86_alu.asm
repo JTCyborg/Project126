@@ -20,8 +20,6 @@ x86_alu_add8:
         ld      (x86_alu_lhs),a
         ld      a,c
         ld      (x86_alu_rhs),a
-        ld      a,(x86_alu_lhs)
-        ld      c,a
         ld      a,(x86_alu_rhs)
         ld      c,a
         ld      a,(x86_alu_lhs)
@@ -109,80 +107,80 @@ x86_alu_selftest:
         ld      c,#01
         call    x86_alu_add8
         cp      #80
-        jr      nz,.fail
+        jp      nz,.fail
         ld      hl,(x86_reg_flags)
         bit     3,h
-        jr      z,.fail
+        jp      z,.fail
         bit     7,l
-        jr      z,.fail
+        jp      z,.fail
         bit     4,l
-        jr      z,.fail
+        jp      z,.fail
         bit     0,l
-        jr      nz,.fail
+        jp      nz,.fail
         bit     6,l
-        jr      nz,.fail
+        jp      nz,.fail
         bit     2,l
-        jr      nz,.fail
+        jp      nz,.fail
 
         ; FF + 01 = 00: CF,AF,ZF,PF set; OF,SF clear.
         ld      a,#FF
         ld      c,#01
         call    x86_alu_add8
         or      a
-        jr      nz,.fail
+        jp      nz,.fail
         ld      hl,(x86_reg_flags)
         bit     0,l
-        jr      z,.fail
+        jp      z,.fail
         bit     4,l
-        jr      z,.fail
+        jp      z,.fail
         bit     6,l
-        jr      z,.fail
+        jp      z,.fail
         bit     2,l
-        jr      z,.fail
+        jp      z,.fail
         bit     3,h
-        jr      nz,.fail
+        jp      nz,.fail
         bit     7,l
-        jr      nz,.fail
+        jp      nz,.fail
 
         ; 80 - 01 = 7F: OF,AF set; CF,SF,ZF,PF clear.
         ld      a,#80
         ld      c,#01
         call    x86_alu_sub8
         cp      #7F
-        jr      nz,.fail
+        jp      nz,.fail
         ld      hl,(x86_reg_flags)
         bit     3,h
-        jr      z,.fail
+        jp      z,.fail
         bit     4,l
-        jr      z,.fail
+        jp      z,.fail
         bit     0,l
-        jr      nz,.fail
+        jp      nz,.fail
         bit     7,l
-        jr      nz,.fail
+        jp      nz,.fail
         bit     6,l
-        jr      nz,.fail
+        jp      nz,.fail
         bit     2,l
-        jr      nz,.fail
+        jp      nz,.fail
 
         ; 00 - 01 = FF: CF,AF,SF,PF set; OF,ZF clear.
         ld      a,#00
         ld      c,#01
         call    x86_alu_sub8
         cp      #FF
-        jr      nz,.fail
+        jp      nz,.fail
         ld      hl,(x86_reg_flags)
         bit     0,l
-        jr      z,.fail
+        jp      z,.fail
         bit     4,l
-        jr      z,.fail
+        jp      z,.fail
         bit     7,l
-        jr      z,.fail
+        jp      z,.fail
         bit     2,l
-        jr      z,.fail
+        jp      z,.fail
         bit     3,h
-        jr      nz,.fail
+        jp      nz,.fail
         bit     6,l
-        jr      nz,.fail
+        jp      nz,.fail
 
         ld      hl,(x86_alu_saved_flags)
         ld      (x86_reg_flags),hl
