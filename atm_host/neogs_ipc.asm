@@ -133,6 +133,63 @@ p126_ipc_receive_byte::
         ret
 
 ; -------------------------------------------------------------------------
+; CRC-16/CCITT-FALSE byte update for the shared P126 DMA/IPC frame ABI.
+; IN : HL=current CRC, A=next byte.
+; OUT: HL=updated CRC. BC and DE are preserved.
+; The caller initializes HL to #FFFF and processes header[0..15]
+; followed by exactly payload_length bytes.
+; -------------------------------------------------------------------------
+p126_ipc_crc16_update::
+        push    bc
+        xor     h
+        ld      h, a
+        ld      b, 8
+.p126_crc_bit:
+        add     hl, hl
+        jr      nc, .p126_crc_no_xor
+        ld      a, h
+        xor     #10
+        ld      h, a
+        ld      a, l
+        xor     #21
+        ld      l, a
+.p126_crc_no_xor:
+        djnz    .p126_crc_bit
+        pop     bc
+        ret
+
+; Standard CRC-16/CCITT-FALSE regression vector.
+; OUT: Carry clear and HL=#29B1 on pass; Carry set on failure.
+p126_ipc_crc16_selftest::
+        push    bc
+        push    de
+        ld      hl, #FFFF
+        ld      de, p126_ipc_crc16_test_vector
+        ld      b, 9
+.p126_crc_test_loop:
+        ld      a, (de)
+        inc     de
+        call    p126_ipc_crc16_update
+        djnz    .p126_crc_test_loop
+        ld      de, #29B1
+        or      a
+        sbc     hl, de
+        jr      nz, .p126_crc_test_failed
+        pop     de
+        pop     bc
+        ld      hl, #29B1
+        or      a
+        ret
+.p126_crc_test_failed:
+        pop     de
+        pop     bc
+        scf
+        ret
+
+p126_ipc_crc16_test_vector:
+        db "123456789"
+
+; -------------------------------------------------------------------------
 ; Emit a build/runtime identity to ATM's independent debug port #EF.
 ; Preserves AF, BC and HL.
 ; -------------------------------------------------------------------------
@@ -161,4 +218,4 @@ p126_ipc_tx_byte:     db 0
 p126_ipc_rx_byte:     db 0
 
 p126_ipc_version_text:
-        db "[P126 ATM_IPC v0.1.0]", 13, 10, 0
+        db "[P126 ATM_IPC v0.2.0]", 13, 10, 0
