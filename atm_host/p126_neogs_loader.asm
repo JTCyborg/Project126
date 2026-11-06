@@ -27,13 +27,23 @@ p126_neogs_startup::
         ret     c
         ld      a,'2'
         ld      (p126_neogs_startup_stage),a
+        ; The build deliberately permits a full 256-byte ROM #14 block.
+        ; Accept lengths 1..255 and exactly 256 (0100h); reject 0 and >256.
         ld      hl,(p126_neogs_file_length)
         ld      a,h
         or      a
+        jr      z,.p126_neogs_boot_length_low
+        cp      1
         jp      nz,p126_neogs_boot_file_bad
         ld      a,l
         or      a
+        jp      nz,p126_neogs_boot_file_bad
+        jr      .p126_neogs_boot_length_ok
+.p126_neogs_boot_length_low:
+        ld      a,l
+        or      a
         jp      z,p126_neogs_boot_file_bad
+.p126_neogs_boot_length_ok:
 
         ; Cold-restart the GS105a ROM only to enter its known bootstrap
         ; receive state. Do NOT query #20: its RAM-size report is not an
