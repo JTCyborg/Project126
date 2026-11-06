@@ -66,7 +66,7 @@ P126_LINE20:
         DW      15619
         DB      0
         DB      $3A, REM, $3A
-        DB      "LOAD ", 34, "proj126", 34, " CODE 24576", $0D
+        DB      "LOAD ", 34, "@@HOST_NAME@@", 34, " CODE 24576", $0D
 P126_LINE20_END:
 
         ; 21 LOADED marker, emitted only after TR-DOS loads PROJ126.C.
