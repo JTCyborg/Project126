@@ -10,9 +10,9 @@ p126_atm_ipc_module_start:
         INCLUDE "atm_host/neogs_ipc.asm"
 p126_atm_ipc_module_end:
 
-DISPLAY "P126_ATM_IPC_START=", /H, p126_atm_ipc_module_start
-DISPLAY "P126_ATM_IPC_END=", /H, p126_atm_ipc_module_end
-DISPLAY "P126_ATM_IPC_SIZE=", /D, p126_atm_ipc_module_end-p126_atm_ipc_module_start
+    DISPLAY "P126_ATM_IPC_START=", /H, p126_atm_ipc_module_start
+    DISPLAY "P126_ATM_IPC_END=", /H, p126_atm_ipc_module_end
+    DISPLAY "P126_ATM_IPC_SIZE=", /D, p126_atm_ipc_module_end-p126_atm_ipc_module_start
 
-ASSERT p126_atm_ipc_module_end > p126_atm_ipc_module_start
-ASSERT p126_atm_ipc_module_end <= #10000
+    ASSERT p126_atm_ipc_module_end > p126_atm_ipc_module_start
+    ASSERT p126_atm_ipc_module_end <= #10000
