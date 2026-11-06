@@ -1,38 +1,43 @@
-name: NeoGS Z80 assembly
+name: Project126 ATM and NeoGS Z80 assembly
 
 on:
   push:
     branches: [main]
     paths:
       - "neogs_sub/**"
+      - "atm_host/**"
       - "tools/build_project126.ps1"
       - "tools/sjasmplus.exe"
       - ".github/workflows/neogs-assembly.yml"
   pull_request:
     paths:
       - "neogs_sub/**"
+      - "atm_host/**"
       - "tools/build_project126.ps1"
       - "tools/sjasmplus.exe"
       - ".github/workflows/neogs-assembly.yml"
   workflow_dispatch:
 
 jobs:
-  assemble-x86-state:
+  assemble-and-audit:
     runs-on: windows-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Assemble and audit NeoGS module placement
+      - name: Assemble ATM and NeoGS modules
         shell: pwsh
-        run: .\\tools\\build_project126.ps1
+        run: .\tools\build_project126.ps1
 
-      - name: Publish assembly, listing and symbol map
+      - name: Publish binaries, listings and symbol maps
         uses: actions/upload-artifact@v4
         with:
-          name: project126-neogs-assembly-audit
+          name: project126-atm-neogs-assembly-audit
           if-no-files-found: error
           path: |
             build/x86_cpu_state.bin
             build/NEOGS.lst
             build/NEOGS.map
+            build/ATM_IPC.bin
+            build/ATM.lst
+            build/ATM.map

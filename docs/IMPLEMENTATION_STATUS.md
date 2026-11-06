@@ -2,25 +2,36 @@
 
 This document records actual artifacts and their verification state; it is not a projection of the roadmap.
 
+## ATM host IPC module
+
+- ATM-side source: `atm_host/neogs_ipc.asm`, public interface: `atm_host/neogs_ipc.inc`.
+- Assembly unit: `atm_host/neogs_ipc_assemble.asm`, source version `P126 ATM_IPC v0.1.0`.
+- Implements bounded CBIT/DBIT polling, command transmission through GSCOM, byte transmission/reception through GSDAT, and an ATM-side version banner on the independent #EF debug port.
+- Handshake semantics follow the established Project125 host transport v2 implementation.
+- ATM build outputs: `build/ATM_IPC.bin`, `build/ATM.lst`, `build/ATM.map`.
+- ATM assembly origin is image-relative `ORG 0000h`; the final host load address is not assigned.
+- Not yet implemented: application command schema, versioned request frames, sequence IDs, CRC, retry/deduplication, DMA aperture and host-service ABIs. These remain explicit interface work, not implied by successful assembly.
+- Status: source committed; build/runtime verification pending.
+
 ## Build pipeline and address-placement audit
 
 - Assembler: repository-pinned `tools/sjasmplus.exe` (SjASMPlus 1.23.1).
-- Local build entry point: `tools/build_project126.ps1`.
+- Local build entry point: `build_project126.bat` (Windows double-click launcher), which invokes `tools/build_project126.ps1`.
 - CI: `.github/workflows/neogs-assembly.yml`; CI invokes the same PowerShell build script as a local build.
-- Every successful assembly must produce:
-  - `build/x86_cpu_state.bin` — assembled image;
-  - `build/NEOGS.lst` — SjASMPlus source listing with addresses/opcodes;
-  - `build/NEOGS.map` — sorted symbol/address map.
-- The script deletes old outputs before assembling and fails if any of the three products is missing. This prevents stale listing/map files from being mistaken for the current build.
-- Assembly translation unit: `neogs_sub/x86_cpu_state_assemble.asm`, version v0.5.0. It exports explicit start/end labels for the CPU-state and ALU modules and displays each module's start, end and size, plus the complete image end and size.
-- Assembly-time assertions enforce non-empty modules, contiguous placement (ALU begins exactly at CPU-state end), and total image size no greater than 256 KiB.
-- **Address-space qualification:** these are offsets in the current ORG 0000h assembly image. They are not a claim about the final physical NeoGS RAM bank/load address; that runtime memory map has not yet been fixed.
-- CI publishes the binary, listing and map together as one artifact.
+- Every successful assembly must produce both modules:
+  - `build/x86_cpu_state.bin`, `build/NEOGS.lst`, `build/NEOGS.map`;
+  - `build/ATM_IPC.bin`, `build/ATM.lst`, `build/ATM.map`.
+- The script deletes stale outputs before assembling and fails if any product is missing.
+- NeoGS assembly translation unit: `neogs_sub/x86_cpu_state_assemble.asm`, version v0.5.0. It exports explicit start/end labels for the CPU-state and ALU modules and displays each module's start, end and size, plus the complete image end and size.
+- NeoGS assembly-time assertions enforce non-empty modules, contiguous placement (ALU begins exactly at CPU-state end), and total image size no greater than 256 KiB.
+- ATM assembly translation unit exports the IPC module start/end/size and asserts a non-empty image no larger than 64 KiB.
+- **Address-space qualification:** both assembly origins are image-relative offsets, not final physical NeoGS/ATM load addresses. Runtime memory maps and the ATM integration/load point remain to be fixed.
+- CI publishes both binaries, listings and maps in one audit artifact.
 
 ## Last verified assembly before listing/map integration
 
 - GitHub Actions run `42273068373`, commit `0e53ce36bb4a6a4052aac8e3886f62546861b52b`: SjASMPlus 1.23.1, 674 source lines, 0 errors, 0 warnings, 1155-byte output, size limit passed.
-- The listing/map build changes are newer and require their own CI pass. Do not treat the previous result as verification of the new build script.
+- The listing/map build changes and ATM module are newer and require their own CI pass. Do not treat the previous result as verification of the current sources.
 
 ## PCem reference integrity tooling
 
