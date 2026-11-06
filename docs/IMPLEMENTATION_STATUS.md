@@ -333,3 +333,5 @@ The ATM log `DMA SMOKE FRAME SENT` means the transport handshake completed; it i
 - This source correction is committed, but no assembly build or hardware pass is claimed yet. On the next target run, `[NGS] BOOTSTRAP ENTER` is the decisive marker for successful execution of the first Project126 bootstrap instructions.
 
 - Comparison against Project125 identified a concrete transport bug in Project126: `p126_neogs_send_argument` did not preserve A across `p126_neogs_wait_dbit_clear`, which overwrites A with GSSTAT. Project125's corresponding `gs_boot_write_command_argument` stores the argument before the wait and restores it before `OUT GSDAT`. Project126 now follows that proven sequence, fixing the first argument byte for both `#14` RECEIVE BLOCK and `#13` JUMP. Build/hardware confirmation is pending.
+
+- Project126 bootstrap startup now follows Project125's validated ordering: temporary stack at `#3FFF`, direct entry marker, ZX DMA disable, settle delay, NOROM/EXPAG and window mapping, then `SP=#FFFE` after WIN3 is selected. This complements the command-argument preservation fix. Assembly and physical-board verification for these latest commits are pending.
