@@ -110,6 +110,11 @@ x86_cpu_step:
         cp      #98
         jp      c,x86_exec_xchg_ax_reg
 .not_xchg_ax_reg:
+        cp      #88
+        jp      c,.not_mov_rm_reg
+        cp      #8C
+        jp      c,x86_exec_mov_rm_reg
+.not_mov_rm_reg:
         cp      #A8
         jp      z,x86_exec_test_al_imm
         cp      #A9
@@ -148,6 +153,41 @@ x86_cpu_step:
 .not_mov_imm_reg:
         scf
         ret
+
+; 88/89 MOV r/m8/16,r8/16; 8A/8B MOV r8/16,r/m8/16.
+; Every form uses the common 8086 ModR/M decoder and operand accessors.
+x86_exec_mov_rm_reg:
+        ld      a,(x86_exec_opcode)
+        ld      (x86_exec_mov_opcode),a
+        call    x86_decode_modrm16
+        ret     c
+        ld      a,(x86_exec_mov_opcode)
+        bit     1,a
+        jr      nz,.mov_word
+
+        ; Byte transfer.
+        bit     2,a
+        jr      nz,.mov_r8_from_rm8
+        ld      a,(x86_modrm_reg)
+        call    x86_modrm_read_reg8
+        ld      (x86_exec_mov_byte),a
+        ld      a,(x86_exec_mov_byte)
+        jp      x86_modrm_write_rm8
+.mov_r8_from_rm8:
+        call    x86_modrm_read_rm8
+        ld      (x86_exec_mov_byte),a
+        ld      c,a
+        ld      a,(x86_modrm_reg)
+        jp      x86_modrm_write_reg8
+
+.mov_word:
+        bit     2,a
+        jr      nz,.mov_r16_from_rm16
+        call    x86_modrm_read_reg16
+        jp      x86_modrm_write_rm16
+.mov_r16_from_rm16:
+        call    x86_modrm_read_rm16
+        jp      x86_modrm_write_reg16
 
 ; 9A CALL FAR ptr16:16. The return IP is the address after both immediates.
 ; Stack layout after the call is [SS:SP]=return IP, [SS:SP+2]=old CS.
@@ -1171,6 +1211,8 @@ x86_exec_call_displacement: dw 0
 x86_exec_loop_opcode: db 0
 x86_exec_test_result: db 0,0
 x86_exec_test_immediate: dw 0
+x86_exec_mov_opcode: db 0
+x86_exec_mov_byte: db 0
 x86_exec_jcc_condition: db 0
 x86_exec_jcc_displacement: db 0
 x86_exec_moffs_opcode: db 0
