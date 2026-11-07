@@ -1,7 +1,7 @@
 # Project126 — ATM-PC/XT hybrid machine profile
 
 **Profile ID:** P126-ATMPC-XT-HYBRID-0.1  
-**Status:** initial guest memory and I/O decode contract; device runtime is not yet implemented.
+**Status:** initial guest memory and I/O decode contract; PPI and PIC register-level slices are implemented, while IRQ delivery and other device models remain pending.
 
 ## 1. Selected compatibility model
 
@@ -58,7 +58,7 @@ The profile reserves the following PC/XT-style interfaces. They are guest-visibl
 | Port range | Model / purpose | Status |
 |---|---|---|
 | 0000–000F | 8237-compatible DMA controller | Reserved decode; implementation pending |
-| 0020–0021 | 8259-compatible master PIC | Reserved decode; implementation pending |
+| 0020–0021 | 8259-compatible master PIC | Partial register model: ICW sequence, IMR, IRR/ISR readback and EOI; IRQ delivery pending |
 | 0040–0043 | 8253-compatible PIT | Reserved decode; implementation pending |
 | 0060–0063 | 8255-compatible PPI / XT keyboard and system control | Reserved decode; keyboard events originate at ATM and arrive through IPC |
 | 0070–0071 | DS12887-compatible RTC/CMOS extension | Custom ATM-PC extension; time source is ATM |
@@ -95,12 +95,22 @@ VGA BIOS is a separate image and is not one of these three system BIOS choices. 
 
 - Runtime RAM/ROM/VGA read and write handlers.
 - VGA register/plane/latch implementation and renderer.
-- PIC/PIT/PPI/keyboard/RTC/IDE/FDC/DMA device emulation.
+- PIT/DMA/page registers/VGA/RTC/IDE/FDC device emulation; PIC IRQ generation/CPU acknowledge and complete PPI/keyboard electrical behavior.
 - Guest BIOS banking for images larger than 8 KiB.
 - ATM-side physical I/O request service handlers.
 - BIOS POST/boot validation on NeoGS.
 
 A source-level address map and compile-time assertions are not BUILD/EMULATOR/HARDWARE PASS for those runtime components.
+
+
+
+### PIC 8259A master register-model status
+
+The first master-PIC register slice is implemented in `neogs_sub/x86_io.asm` for ports 0020h–0021h:
+- Command port 20h: ICW1 initialization, OCW3 IRR/ISR read selection, non-specific EOI and specific EOI.
+- Data port 21h: ICW2 vector-base programming, ICW3/ICW4 sequence consumption, and IMR read/write.
+- Reset state: vector base 08h, IMR=FFh, IRR=00h, ISR=00h.
+- Still pending: IRQ request producers, priority arbitration/rotation, CPU interrupt-acknowledge integration, IRQ0 timer and IRQ1 keyboard delivery, auto-EOI and full cascade/special-mask behavior. This is a register interface slice, not a complete 8259A or BIOS POST pass.
 
 ### PPI / XT keyboard implementation status
 
