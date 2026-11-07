@@ -1601,7 +1601,7 @@
 150+  087D              ; Receive one ATM -> NeoGS ABI 1.0 frame through ZX DMA.
 151+  087D              ; Entry: resident dispatcher consumed E0h from ZXCMD; CBIT remains asserted.
 152+  087D              ; Resident code, stack and interrupt handlers must stay in WIN0-WIN2.
-153+  087D              ; OUT: carry clear/A=0, HL=#D000 and BC=derived frame size; otherwise
+153+  087D              ; OUT: carry clear/A=0, HL=#5000 and BC=derived frame size; otherwise
 154+  087D              ; carry set/A=status. Diagnostic DMA destination is physical 00D000h on
 155+  087D              ; page 03h, matching Project125. Production page-42 staging is not yet tested.
 156+  087D              ; -------------------------------------------------------------------------
@@ -1612,10 +1612,10 @@
 161+  087D              P126_NGS_DMA_CST      EQU #1F
 162+  087D              P126_NGS_ZXSTAT       EQU #04
 163+  087D              P126_NGS_CLRCBIT      EQU #05
-164+  087D              P126_NGS_WIN3_PORT    EQU #23
+164+  087D              P126_NGS_PG1_PORT     EQU #21
 165+  087D              ; Project125 hardware-parity diagnostic locations. WIN1 is physical page 03;
 166+  087D              ; its operational stack is at logical 7FFEh (physical offset 3FFEh). The two
-167+  087D              ; 274-byte smoke buffers at D000h and E000h do not overlap that stack.
+167+  087D              ; 274-byte smoke buffers at logical 5000h and 6000h (physical D000h and E000h) do not overlap that stack.
 168+  087D              ; These are diagnostic carve-outs only; production ABI staging remains page 42h.
 169+  087D              P126_NGS_DMA_DIAG_PAGE        EQU #03
 170+  087D              P126_NGS_DMA_TIMEOUT          EQU #FFFF
@@ -1624,9 +1624,9 @@
 172+  087D
 173+  087D                      ; Match the proven Project125 DMA setup ordering: map the physical
 174+  087D                      ; destination page into a CPU window before arming ZX DMA. Resident
-175+  087D                      ; code, data and stack remain in WIN0-WIN2; WIN3 is only the aperture.
+175+  087D                      ; code, data and stack remain in WIN0-WIN2; WIN1 is only the aperture.
 176+  087D 3E 03                ld      a,P126_NGS_DMA_DIAG_PAGE
-177+  087F D3 23                out     (P126_NGS_WIN3_PORT),a
+177+  087F D3 21                out     (P126_NGS_PG1_PORT),a
 178+  0881 21 35 0B             ld      hl,p126_ngs_ipc_log_dma_page_premapped
 179+  0884 CD C5 0C             call    p126_ngs_ipc_log
 180+  0887 21 7C 0A             ld      hl,p126_ngs_ipc_log_dma_cfg_begin
@@ -1689,17 +1689,17 @@
 237+  08EC CD 80 0C             call    p126_ngs_ipc_log_hex_byte_inline
 238+  08EF CD 70 0C             call    p126_ngs_ipc_log_crlf
 239+  08F2
-240+  08F2                      ; WIN3 remains mapped to physical page 03. The DMA destination is
-241+  08F2                      ; D000h (the Project125-proven host-to-NeoGS diagnostic address).
+240+  08F2                      ; WIN1 remains mapped to physical page 03. The DMA destination is
+241+  08F2                      ; physical D000h / logical 5000h (the Project125-proven host-to-NeoGS diagnostic address).
 242+  08F2 21 59 0B             ld      hl,p126_ngs_ipc_log_dma_page_mapped
 243+  08F5 CD C5 0C             call    p126_ngs_ipc_log
 244+  08F8 21 7F 0B             ld      hl,p126_ngs_ipc_log_dma_end
 245+  08FB CD C5 0C             call    p126_ngs_ipc_log
 246+  08FE
-247+  08FE                      ; Inspect the actual Project125 parity destination, D000h.
+247+  08FE                      ; Inspect the Project125 parity destination: physical D000h at WIN1 logical 5000h.
 248+  08FE 21 B1 0B             ld      hl,p126_ngs_ipc_log_rx_header
 249+  0901 CD C5 0C             call    p126_ngs_ipc_log
-250+  0904 DD 21 00 D0          ld      ix,#D000
+250+  0904 DD 21 00 50          ld      ix,#5000
 251+  0908 06 10                ld      b,16
 252+  090A              .p126_ngs_rx_dump_loop:
 253+  090A DD 7E 00             ld      a,(ix+0)
@@ -1709,13 +1709,13 @@
 257+  0914 CD 70 0C             call    p126_ngs_ipc_log_crlf
 258+  0917
 259+  0917                      ; Derive exact frame size from the fixed header's payload length.
-260+  0917 3A 0C D0             ld      a,(#D00C)
+260+  0917 3A 0C 50             ld      a,(#500C)
 261+  091A 5F                   ld      e,a
-262+  091B 3A 0D D0             ld      a,(#D00D)
+262+  091B 3A 0D 50             ld      a,(#500D)
 263+  091E 57                   ld      d,a
 264+  091F 21 12 00             ld      hl,P126_IPC_HEADER_SIZE
 265+  0922 19                   add     hl,de
-266+  0923                      ; Diagnostic target starts at D000h; reject a frame crossing page 03.
+266+  0923                      ; Physical diagnostic target starts at D000h (WIN1 logical 5000h); reject a page crossing.
 267+  0923 7C                   ld      a,h
 268+  0924 FE 30                cp      #30
 269+  0926 38 0A                jr      c,.p126_ngs_dma_size_ok
@@ -1727,7 +1727,7 @@
 275+  0932              .p126_ngs_dma_size_ok:
 276+  0932 22 75 09             ld      (p126_ngs_ipc_rx_size),hl
 277+  0935 ED 4B 75 09          ld      bc,(p126_ngs_ipc_rx_size)
-278+  0939 21 00 D0             ld      hl,#D000
+278+  0939 21 00 50             ld      hl,#5000
 279+  093C CD AA 07             call    p126_ngs_ipc_validate_frame
 280+  093F 38 12                jr      c,.p126_ngs_dma_validation_failed
 281+  0941 21 C6 0B             ld      hl,p126_ngs_ipc_log_frame_valid
@@ -1736,7 +1736,7 @@
 284+  0947                      ; Validation succeeded: only now acknowledge completion to ATM.
 285+  0947 AF                   xor     a
 286+  0948 D3 05                out     (P126_NGS_CLRCBIT),a
-287+  094A 21 00 D0             ld      hl,#D000
+287+  094A 21 00 50             ld      hl,#5000
 288+  094D ED 4B 75 09          ld      bc,(p126_ngs_ipc_rx_size)
 289+  0951 AF                   xor     a
 290+  0952 C9                   ret
@@ -1771,25 +1771,25 @@
 319+  0977              ; -------------------------------------------------------------------------
 320+  0977              ; Resident command-dispatch entry, one bounded unit of work.
 321+  0977              ; OUT: carry clear/Z=1/A=0 when no command is pending;
-322+  0977              ;      carry clear/Z=0 with HL=#D000, BC=size on a valid E0h frame;
+322+  0977              ;      carry clear/Z=0 with HL=#5000, BC=size on a valid E0h frame;
 323+  0977              ;      carry set/A=status for a rejected command or receive failure.
 324+  0977              ; The caller owns the resident main loop and must keep its stack/code outside
-325+  0977              ; WIN3. E0h is consumed from ZXCMD while CBIT stays asserted until DMA is armed.
+325+  0977              ; WIN1. E0h is consumed from ZXCMD while CBIT stays asserted until DMA is armed.
 326+  0977              ; -------------------------------------------------------------------------
 327+  0977              P126_NGS_ZXCMD       EQU #01
 328+  0977
 329+  0977              ; Reverse DMA diagnostic response for ABI command E1h (NGS_FRAME).
-330+  0977              ; Use the Project125 reference source address: physical 00E000h, page 03h
-331+  0977              ; / logical E000h through the WIN3 alias. This is diagnostic only.
+330+  0977              ; Use the Project125 reference source address: physical 00E000h at
+331+  0977              ; WIN1 logical 6000h. This is diagnostic only.
 332+  0977              p126_ngs_ipc_dma_send_test_frame:
 332+  0977
 333+  0977 3E 03                ld      a,P126_NGS_DMA_DIAG_PAGE
-334+  0979 D3 23                out     (P126_NGS_WIN3_PORT),a
+334+  0979 D3 21                out     (P126_NGS_PG1_PORT),a
 335+  097B 21 F4 09             ld      hl,p126_ngs_ipc_dma_test_header
-336+  097E 11 00 E0             ld      de,#E000
+336+  097E 11 00 60             ld      de,#6000
 337+  0981 01 12 00             ld      bc,P126_IPC_HEADER_SIZE
 338+  0984 ED B0                ldir
-339+  0986 21 12 E0             ld      hl,#E000+P126_IPC_HEADER_SIZE
+339+  0986 21 12 60             ld      hl,#6000+P126_IPC_HEADER_SIZE
 340+  0989 AF                   xor     a
 341+  098A 06 00                ld      b,0
 342+  098C              .ngs_fill:
@@ -1799,7 +1799,7 @@
 346+  098F 10 FB                djnz    .ngs_fill
 347+  0991                      ; CRC covers header[0..15] followed by payload[18..273].
 348+  0991 21 FF FF             ld      hl,#FFFF
-349+  0994 11 00 E0             ld      de,#E000
+349+  0994 11 00 60             ld      de,#6000
 350+  0997 06 10                ld      b,16
 351+  0999              .ngs_crc_header:
 352+  0999 1A                   ld      a,(de)
@@ -1814,7 +1814,7 @@
 361+  09A5 13                   inc     de
 362+  09A6 CD 96 07             call    p126_ngs_ipc_crc16_update
 363+  09A9 10 F9                djnz    .ngs_crc_payload
-364+  09AB 22 10 E0             ld      (#E000+P126_IPC_OFF_CRC),hl
+364+  09AB 22 10 60             ld      (#6000+P126_IPC_OFF_CRC),hl
 365+  09AE 3E 01                ld      a,1
 366+  09B0 D3 1B                out     (P126_NGS_DMA_MOD),a
 367+  09B2 AF                   xor     a
@@ -1860,8 +1860,8 @@
 407+  09F4 50 31 32 36          db 'P','1','2','6'
 408+  09F8 01 00                db P126_IPC_MAJOR,P126_IPC_MINOR
 409+  09FA 02 05 00 00          db P126_MSG_RESPONSE,P126_SERVICE_DIAGNOSTICS,P126_OP_DIAGNOSTIC,0
-410+  09FE 60 12                db #60,#12
-411+  0A00 00 01                db #00,#01
+410+  09FE 00 01                db #00,#01
+411+  0A00 00 00                db #00,#00
 412+  0A02 00 00                db #00,#00
 413+  0A04 00 00                db #00,#00
 414+  0A06
@@ -2341,6 +2341,7 @@ Value    Label
 0x0100   P126_NGS_PAGE_COUNT
 0x000E X P126_NGS_PAGE_SHIFT
 0x4000   P126_NGS_PAGE_SIZE
+0x0021   P126_NGS_PG1_PORT
 0x400000   P126_NGS_RAM_SIZE
 0x210000   P126_NGS_RESERVED_BASE
 0x400000   P126_NGS_RESERVED_LIMIT
@@ -2380,7 +2381,6 @@ Value    Label
 0x100000 X P126_NGS_VRAM_LIMIT
 0x0030   P126_NGS_VRAM_PAGE
 0x0010   P126_NGS_VRAM_PAGES
-0x0023   P126_NGS_WIN3_PORT
 0x0001   P126_NGS_ZXCMD
 0x0004   P126_NGS_ZXSTAT
 0x0001 X P126_OP_CAPABILITIES
