@@ -104,6 +104,8 @@ x86_cpu_step_fetch_opcode:
         jp      z,.prefix_ds
         cp      #F0
         jp      z,.prefix_lock
+        cp      #F1
+        jp      z,.prefix_lock
         cp      #F2
         jp      z,.prefix_repne
         cp      #F3
@@ -205,6 +207,8 @@ x86_cpu_step_fetch_opcode:
         cp      #3E
         jp      c,x86_exec_subcmp_family
 .not_sub_family_38:
+        cp      #0F
+        jp      z,x86_exec_invalid_nop
         cp      #06
         jp      z,x86_exec_push_segment
         cp      #07
@@ -255,6 +259,8 @@ x86_cpu_step_fetch_opcode:
         jp      z,x86_exec_call_far_imm
         cp      #9B
         jp      z,x86_exec_wait
+        cp      #C0
+        jp      z,x86_exec_ret_near
         cp      #CC
         jp      z,x86_exec_int3
         cp      #CD
@@ -751,6 +757,11 @@ x86_exec_get_data_segment:
         inc     hl
         ld      d,(hl)
         ex      de,hl
+        ret
+
+; PCem's 8086 switch has no 0F case: the fetched byte is ignored.
+x86_exec_invalid_nop:
+        or      a
         ret
 
 ; 06/0E/16/1E PUSH ES/CS/SS/DS; 07/17/1F POP ES/SS/DS.
@@ -2619,8 +2630,11 @@ x86_exec_wait:
 ; Return IP is read from SS:SP, then SP advances by 2 plus optional cleanup.
 x86_exec_ret_near:
         ld      a,(x86_exec_opcode)
+        cp      #C0
+        jr      z,.ret_near_adjust
         cp      #C2
         jr      nz,.ret_near_no_adjust
+.ret_near_adjust:
         call    x86_cpu_fetch16
         ret     c
         ld      (x86_exec_ret_adjust),hl
