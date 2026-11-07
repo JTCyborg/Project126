@@ -127,51 +127,24 @@ x86_io_read8_device:
 
 ; Read one byte from PPI 8255. Carry set means port is not in PPI decode.
 x86_io_ppi_read8:
-        ld      hl,(x86_io_port)
-        ld      de,#0060
-        or      a
-        sbc     hl,de
+        call    x86_io_ppi_decode
+        ret     c
+        cp      0
         jr      z,.ppi_read_a
-        ld      hl,(x86_io_port)
-        ld      de,#0061
-        or      a
-        sbc     hl,de
+        cp      1
         jr      z,.ppi_read_b
-        ld      hl,(x86_io_port)
-        ld      de,#0062
-        or      a
-        sbc     hl,de
+        cp      2
         jr      z,.ppi_read_c
-        ld      hl,(x86_io_port)
-        ld      de,#0063
-        or      a
-        sbc     hl,de
-        jr      z,.ppi_read_control
-        scf
+        scf                             ; control register is write-only
         ret
 .ppi_read_a:
-        ld      a,(x86_io_ppi_control)
-        bit     4,a
-        jr      z,.ppi_read_a_latch
         jp      x86_io_keyboard_read
-.ppi_read_a_latch:
-        ld      a,(x86_io_ppi_pa)
-        or      a
-        ret
 .ppi_read_b:
-        ld      a,(x86_io_ppi_control)
-        bit     1,a
-        jr      nz,.ppi_read_b_input
         ld      a,(x86_io_ppi_pb)
         or      a
         ret
-.ppi_read_b_input:
-        ld      a,#FF
-        or      a
-        ret
 .ppi_read_c:
-        ; Port C combines external input pins and the output latch according
-        ; to the upper/lower direction bits of the 8255 mode control word.
+        ; Port C combines external input pins and the output latch by nibble.
         ld      a,(x86_io_ppi_control)
         ld      b,a
         ld      a,(x86_io_ppi_pc)
@@ -203,10 +176,23 @@ x86_io_ppi_read8:
 .ppi_pc_done:
         or      a
         ret
-.ppi_read_control:
-        ; 8255 control register is not a readable data register.
-        ld      a,#FF
+
+; Decode ports 0060h..0063h. Returns A=offset 0..3, carry if unmatched.
+x86_io_ppi_decode:
+        ld      hl,(x86_io_port)
+        ld      de,#0060
         or      a
+        sbc     hl,de
+        ld      a,h
+        or      a
+        jr      nz,.ppi_decode_bad
+        ld      a,l
+        cp      4
+        jr      nc,.ppi_decode_bad
+        or      a
+        ret
+.ppi_decode_bad:
+        scf
         ret
 
 ; Write one byte to the guest I/O bus. A=value.
@@ -233,28 +219,15 @@ x86_io_write8_device:
 ; A=value.
 x86_io_ppi_write8:
         ld      (x86_io_ppi_write_value),a
-        ld      hl,(x86_io_port)
-        ld      de,#0060
-        or      a
-        sbc     hl,de
+        call    x86_io_ppi_decode
+        ret     c
+        cp      0
         jr      z,.ppi_write_a
-        ld      hl,(x86_io_port)
-        ld      de,#0061
-        or      a
-        sbc     hl,de
+        cp      1
         jr      z,.ppi_write_b
-        ld      hl,(x86_io_port)
-        ld      de,#0062
-        or      a
-        sbc     hl,de
+        cp      2
         jr      z,.ppi_write_c
-        ld      hl,(x86_io_port)
-        ld      de,#0063
-        or      a
-        sbc     hl,de
-        jr      z,.ppi_write_control
-        scf
-        ret
+        jr      .ppi_write_control
 .ppi_write_a:
         ld      a,(x86_io_ppi_write_value)
         ld      (x86_io_ppi_pa),a
@@ -292,9 +265,7 @@ x86_io_ppi_write8:
         ld      a,(x86_io_ppi_write_value)
         bit     7,a
         jr      z,.ppi_bit_set_reset
-        ; Mode-set operation. The XT BIOS selects mode 0 (control word 99h).
-        ; 8255 mode-set resets output latches; mode 1/2 handshake behavior
-        ; remains outside this first implementation slice.
+        ; Mode-set operation. XT BIOS selects mode 0 (control word 99h).
         ld      (x86_io_ppi_control),a
         xor     a
         ld      (x86_io_ppi_pa),a
@@ -509,7 +480,6 @@ x86_io_log_value_text: db " V=",0
 x86_io_log_at_text:  db " @",0
 
 x86_io_port: dw 0
-x86_io_value: dw 0
 x86_io_test_latch: dw 0
 x86_io_log_value: dw 0
 x86_io_log_direction: db 0
