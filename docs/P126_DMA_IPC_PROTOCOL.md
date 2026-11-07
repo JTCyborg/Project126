@@ -201,7 +201,7 @@ This is the initial fixed-size SYSBIOS profile, not a general image reassembly i
 
 ### Fixed-origin overlay transfer profiles
 
-The first overlay is the fixed-origin XT I/O model, with image kind `01h` (`P126_IMAGE_KIND_X86IO`):
+The first fixed-origin overlay is the XT I/O model, with image kind `01h` (`P126_IMAGE_KIND_X86IO`):
 
 - TR-DOS file: `X86IO.C`; fixed assembly origin: logical `8000h`; current image size: 796 bytes.
 - IMAGE_BEGIN payload is exactly 6 bytes: message ID `0001h`, kind `01h`, reserved byte `00h`, image size as u16 LE. The receiver accepts 1..1000h bytes for this profile.
@@ -212,7 +212,17 @@ The first overlay is the fixed-origin XT I/O model, with image kind `01h` (`P126
 - CPU-facing X86IO entry points are resident wrappers through the WIN2 call gate; implementation code remains fixed at logical 8000h on page04. The gate saves/restores the prior selector on the WIN1 stack and supports stack-nested page switches, but has no dynamic module table/allocator or unload policy.
 - BIOS execution is gated until IO_OVERLAY_READY, X86ALU_READY and BIOS_IMAGE_READY are all set.
 
-The X86IO and X86ALU profiles are separate single-fragment pinned images, not a generic manifest/reassembly service. The X86ALU profile uses image kind 02h, TR-DOS file X86ALU.C, logical origin 8000h, physical page05/selector82, maximum 4096 bytes and byte-for-byte readback. IMAGE_FINISH probes its entry through the resident gate and verifies restoration to page04 before setting X86ALU_READY. CI passes; ATM/NeoGS transfer and both gate tests still require target verification.
+### X86ALU fixed-origin transfer profile
+
+The second overlay is the 8086 arithmetic/flags implementation, image kind 02h (P126_IMAGE_KIND_X86ALU):
+
+- TR-DOS file X86ALU.C; logical origin 8000h; current image size 1,175 bytes.
+- Destination is physical kernel page05, selected through WIN3 with MPAGEX selector82h (ROR8(05h)); maximum size is 4096 bytes.
+- ATM uses the same fixed-profile loader and one-fragment ABI1.0 IMAGE transaction as X86IO.
+- NeoGS performs byte-for-byte readback. IMAGE_FINISH calls x86_alu_overlay_probe through the resident gate, checks A=A5 and confirms WIN2 returns to page04 before publishing X86ALU_READY.
+- The ten ALU entry points used by x86_exec are resident wrappers; internal helpers remain within page05.
+
+These are two separate single-fragment pinned profiles, not a generic manifest/reassembly service. CI passes; ATM/NeoGS transfer and both gate tests still require target verification.
 
 ## 9. Compatibility and migration
 
