@@ -701,3 +701,12 @@ Source commit: `aac9d7e60c391510150016d3b29906a7b2f90e3d`.
 - Added p126_atm_restore_dosen in p126_screen_console.asm. After native RTC gate closure it re-enters the documented #3Dxx ROM trampoline and writes #C6 to #0177. This re-establishes permanent DOSEN/shadow-port access and restores the project's fixed RG=6 ATM 80x25 text mode.
 - DS12887_CLOSE now invokes that helper after its #EFF7=0 write on the native ATM RTC backend. SMUC backend behavior is unchanged. The existing ROM2/BANKM D3 preservation and WIN0 #3FF7=#BF selection are unchanged.
 - This correction addresses a concrete destructive #EFF7 write in the RTC path. Hardware verification is still required: after RTC PROBE and timestamped logging, the next BIOS selection must show TR-DOS C=0Ah RETURN and then C=08h CALL/RETURN. BIOS sector read, IMAGE transfer and BIOS execution remain unverified.
+
+
+## 2026-11-07 — Restore the exact Project125 TR-DOS C=0A call boundary
+
+- The 11:29 hardware trace still stopped after the C=0Ah call marker. A source-level comparison with Project125 showed that Project126 inserted p126_bios_trace_search_state between setting C=10 and CALL #3D13; Project125 enters the ROM directly.
+- The trace helper was not actually a passive register-preserving probe: it calls the timestamp logger (which reaches the RTC time-read path), emits port #EF traffic, reads the #3D13 ROM window, and its comment overstated its register preservation. Although the helper restores AF/BC/DE/HL, it does not save IX/IY or alternate register banks.
+- Removed the helper invocation from the critical C=0Ah boundary. The sequence is now exactly LD C,10 / CALL #3D13, with no helper or I/O between those instructions. The diagnostic routine remains in the source but is no longer executed on this path.
+- No ATM port mapping, DOSEN, BANKM, filename, TR-DOS ABI, sector reader, DMA, IPC or IMAGE behavior was changed in this commit.
+- **STATUS:** source committed; CI and physical hardware verification pending. Required target evidence: C=0Ah RETURN, followed by C=08h CALL/RETURN. This is a controlled isolation of the Project126-only boundary instrumentation, not yet a confirmed root-cause fix.
