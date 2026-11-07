@@ -50,7 +50,7 @@ p126_overlay_gate_return:
         ex      af,af'                   ; restore module return AF
         ret
 
-.p126_overlay_depth_rejected:
+p126_overlay_depth_rejected:
         ; No selector change or stack frame is made on overflow.
         ld      hl,(p126_overlay_gate_saved_hl)
         ex      af,af'                   ; restore the caller's alternate AF
