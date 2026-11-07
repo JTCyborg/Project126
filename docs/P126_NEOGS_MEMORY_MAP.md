@@ -139,4 +139,4 @@ The first ABI IMAGE implementation accepts exactly one 8192-byte SYSBIOS image. 
 
 The guest-visible BIOS window remains FE000h..FFFFFh. Its reset vector FFFF0h maps to offset 1FF0h in the 8 KiB image. The remaining 248 KiB of the physical system BIOS slot are reserved capacity and are not exposed by this initial guest mapping.
 
-This is a source/build implementation only. Physical page-10 installation, readback and subsequent 8086 execution require separate target evidence.
+This is a source implementation. After the page-42 frame passes the complete ABI CRC, the resident handler copies the 8192-byte image into page 10h and performs a second byte-for-byte comparison of all 8192 destination bytes against the still-preserved staging fragment before setting `image_received`. A mismatch rejects the fragment and leaves the BIOS image unready. The comparison is source-level implemented; assembly/package CI and physical page-10 readback still require confirmation. Subsequent 8086 execution remains gated and requires separate CPU-completeness approval.
