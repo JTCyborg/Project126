@@ -864,3 +864,11 @@ This is the frozen baseline for the transition from CPU/BIOS execution debugging
 5. Validate each device with isolated register-level tests before returning to BIOS bring-up. A BIOS watchdog disappearing is not by itself a POST pass.
 
 All device models execute as software on NeoGS. NeoGS must not issue guest IN/OUT port numbers on its own physical Z80 I/O bus. Any external keyboard, clock or storage service is accessed only through the Project126 DMA/IPC contract.
+
+## 2026-11-07 — I/O subsystem implementation started
+
+- Guest system-board I/O tasks were added to the architectural scenario; the frozen BIOS bring-up checkpoint remains the baseline.
+- First target: XT-compatible 8255 PPI at 0060h–0063h and keyboard scan-code FIFO. PCem comparison: PCem/ppi.c reset state, PCem/keyboard_xt.c port 60h–62h behavior and port 61h keyboard reset/acknowledge, PCem/io.c word-access fallback.
+- The generic I/O bus must preserve the full 16-bit guest port address and implement byte/word behavior consistently with PCem/io.c; test latch 00E0h remains during migration.
+- ATM→NeoGS keyboard producer over DMA/IPC, PIC IRQ1 delivery and timer-driven keyboard polling are separate dependent tasks. They are not implied by a PPI register implementation.
+- No BIOS POST or keyboard hardware pass is claimed.
