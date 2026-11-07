@@ -114,7 +114,7 @@ The primary opcode-byte dispatcher now has an explicit path for every byte value
 - Connect external virtual I/O devices to DMA/IPC. The current software I/O backend only provides the deterministic E0h test latch and open-bus behavior; it never issues physical NeoGS IN/OUT.
 - Add interrupt servicing between REP string iterations. Current REP/REPE/REPNE loops complete within one interpreter step.
 - Verify the new TF single-step/trap implementation against PCem, including TF changes by POPF/IRET, INT entry, TF-versus-NMI priority, HLT and the one-boundary `noint` shadow; complete remaining NMI/IRQ/HLT edge cases.
-- Review exact undefined/reserved FLAGS behavior and all arithmetic/shift/decimal-adjust flag corner cases against PCem, including POPF/IRET restrictions.
+- POPF and IRET currently load the PCem 8086 `word & 0FFFh` FLAGS image verbatim; continue auditing undefined/reserved FLAGS behavior and arithmetic/shift/decimal-adjust corner cases against PCem.
 - Review 20-bit wrap, segment-offset wrap, memory faults and all ModR/M default-segment/override corner cases.
 - Define remaining LOCK behavior and external bus serialization if the virtual machine later models concurrent bus masters. In the current single-guest-CPU model the prefix is parsed and recorded.
 - 8087 is not present: ESC instructions consume ModR/M/displacement but perform no coprocessor operation.
