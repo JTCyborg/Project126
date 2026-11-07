@@ -1169,6 +1169,8 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 - [x] NeoGS IMAGE receiver поддерживает kind 01h для X86IO: проверяет ID, kind, размер, fragment index/count, u32 total length и точный размер кадра.
 - [x] NeoGS копирует модуль из DMA page 42h в физическую страницу 04h через WIN3, выполняет побайтный readback, а после IMAGE_FINISH переключает WIN2 на page 04h (MPAG #00, selector #02) и выставляет IO_OVERLAY_READY.
 - [x] Запуск BIOS gated по двум признакам: IO_OVERLAY_READY и BIOS_IMAGE_READY.
+- [x] Добавлен resident runtime self-test WIN2: проверяет разные страницы 04h/05h через BFFFh, сохраняет и восстанавливает исходные байты, оставляет page04h mapped; при ошибке IO_OVERLAY_READY не выставляется.
+- [ ] Получить физический лог с `[NGS] WIN2 PAGE04/05 TEST PASS` и подтвердить последующий вызов X86IO из BIOS.
 - [x] Общая карта памяти обновлена: WIN0 — resident, WIN1 — stack/fixed data, WIN2 — overlay aperture, WIN3 — guest-memory aperture.
 - [x] GitHub Actions BUILD PASS: [run 42396608945](https://github.com/JTCyborg/Project126/actions/runs/42396608945), commit `079c53a136dc043428ffba92ef328e99ac96e70f`. Размеры: X86CORE 15756/16384, X86IO 796/4096; TR-DOS image 655360 байт; NeoGS assembly 0 errors/0 warnings.
 - [ ] Проверить на физическом ATM/NeoGS: host open/read X86IO.C, IMAGE transfer, NeoGS page-04 readback, WIN2 mapping and successful first BIOS I/O call.
