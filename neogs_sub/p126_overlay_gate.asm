@@ -81,11 +81,11 @@ p126_overlay_depth_rejected:
 
 ; -------------------------------------------------------------------------
 ; Physical overlay-page allocator.
-; Pool: physical pages 06h..0Fh. Pages 04h/05h remain pinned to X86IO/X86ALU;
+; Pool: physical pages 07h..0Fh. Pages 04h/05h/06h are pinned to X86IO/X86ALU/X86DEV;
 ; pages 00h..03h are never allocator-owned. WIN3 is not used here.
 ;
 ; p126_overlay_allocate_page:
-;   OUT A=physical page 06h..0Fh, carry clear; A=0/carry set if exhausted.
+;   OUT A=physical page 07h..0Fh, carry clear; A=0/carry set if exhausted.
 ;   Clobbers BC, IX.
 ;
 ; p126_overlay_release_page:
@@ -95,8 +95,8 @@ p126_overlay_depth_rejected:
 ; -------------------------------------------------------------------------
 p126_overlay_allocate_page:
         ld      ix,p126_overlay_alloc_state
-        ld      b,10
-        ld      c,6
+        ld      b,9
+        ld      c,7
 .allocate_scan:
         ld      a,(ix+0)
         or      a
@@ -115,7 +115,7 @@ p126_overlay_allocate_page:
         ret
 
 p126_overlay_release_page:
-        cp      6
+        cp      7
         jr      c,.release_range_error
         cp      16
         jr      nc,.release_range_error
@@ -139,7 +139,7 @@ p126_overlay_release_page:
         djnz    .release_active_scan
 .release_not_active:
         pop     af
-        sub     6
+        sub     7
         ld      e,a
         ld      d,0
         ld      hl,p126_overlay_alloc_state
@@ -161,9 +161,9 @@ p126_overlay_release_page:
         scf
         ret
 
-; Startup regression for the dynamic page allocator. It allocates all ten
+; Startup regression for the dynamic page allocator. It allocates all nine
 ; pages in ascending order, verifies exhaustion, releases in reverse order,
-; then confirms page06 can be allocated and released again.
+; then confirms page07 can be allocated and released again.
 ; OUT: carry clear on pass; carry set on failure. Startup halts on failure.
 p126_overlay_allocator_selftest:
         push    bc
@@ -171,8 +171,8 @@ p126_overlay_allocator_selftest:
         push    hl
         push    ix
         ld      hl,p126_overlay_allocator_test_pages
-        ld      b,10
-        ld      c,6
+        ld      b,9
+        ld      c,7
 .allocator_test_allocate:
         push    bc
         call    p126_overlay_allocate_page
@@ -185,7 +185,7 @@ p126_overlay_allocator_selftest:
         inc     c
         djnz    .allocator_test_allocate
 
-        ; All ten dynamic pages must now be reserved.
+        ; All nine dynamic pages must now be reserved.
         push    bc
         call    p126_overlay_allocate_page
         pop     bc
@@ -194,8 +194,8 @@ p126_overlay_allocator_selftest:
         jr      nz,.allocator_test_failed
 
         ; Release every page in reverse order.
-        ld      hl,p126_overlay_allocator_test_pages+9
-        ld      b,10
+        ld      hl,p126_overlay_allocator_test_pages+8
+        ld      b,9
 .allocator_test_release:
         ld      a,(hl)
         push    bc
@@ -207,12 +207,12 @@ p126_overlay_allocator_selftest:
         dec     hl
         djnz    .allocator_test_release
 
-        ; First-fit reuse must return page06 again.
+        ; First-fit reuse must return page07 again.
         push    bc
         call    p126_overlay_allocate_page
         pop     bc
         jr      c,.allocator_test_failed
-        cp      6
+        cp      7
         jr      nz,.allocator_test_failed
         call    p126_overlay_release_page
         jr      c,.allocator_test_failed
@@ -561,5 +561,5 @@ p126_overlay_request_selector: db #80
 p126_overlay_gate_entry:       dw 0
 p126_overlay_gate_saved_hl:    dw 0
 p126_overlay_call_pages:       defs P126_OVERLAY_MAX_CALL_DEPTH,0
-p126_overlay_alloc_state:      defs 10,0
-p126_overlay_allocator_test_pages: defs 10,0
+p126_overlay_alloc_state:      defs 9,0
+p126_overlay_allocator_test_pages: defs 9,0
