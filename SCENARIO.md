@@ -1129,7 +1129,7 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 - [ ] Добавить проверки размера/пересечений, page-switch restore, запрет вызова функции после выгрузки overlay, и тесты вложенных/повторных вызовов.
 - [ ] Перенести расширяемые device models (PIC/PIT/DMA/VGA/RTC/IDE) в отдельные overlay-модули после проверки менеджера. Не увеличивать лимит X86CORE.C и не менять физическую карту страниц без отдельного решения.
 
-Причина приоритета: X86CORE.C теперь занимает 16204 из 16384 байт; осталось 180 байт. Следующий полноценный контроллер нельзя безопасно добавлять в resident image — его следует выносить в отдельный overlay после завершения allocator/manifest/loader и проверки call gate на плате.
+Причина приоритета: X86CORE.C теперь занимает 16322 из 16384 байт; осталось 62 байта. Следующий полноценный контроллер нельзя безопасно добавлять в resident image — его следует выносить в отдельный overlay после завершения allocator/manifest/loader и проверки call gate на плате.
 
 
 ## 2026-11-07 — Overlay Manager: source audit and design baseline
@@ -1146,7 +1146,8 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 - [ ] Реализовать dynamic page allocator и таблицу модулей; ограничить выдачу страницами 05h–0Fh, page04h оставить закреплённой за X86IO.
 - [ ] Перенести первый реальный модуль (XT PPI/keyboard) из resident image только после готовности и проверки его загрузки.
 - [ ] Добавить generic IMAGE manifest/loader и ATM streaming дополнительных overlay-модулей.
-- [ ] Выполнить аппаратные тесты загрузки, checksum/readback, X86IO-вызовов через gate, вложенности и восстановления WIN2 mapping.
+- [x] В IMAGE_FINISH добавлен boot-time gate self-test: тестовый код на page05 вызывает resident X86IO wrapper на page04, затем продолжает выполнение на page05; исходные 4 байта page05 восстанавливаются.
+- [ ] Получить физический лог [NGS] WIN2 MAP/GATE TEST PASS; отдельно проверить repeated/deeper nested calls, регистры/FLAGS и stack integrity.
 
 Полная спецификация проектного baseline: [docs/P126_OVERLAY_MANAGER_DESIGN.md](docs/P126_OVERLAY_MANAGER_DESIGN.md). Это завершённый source audit/design checkpoint, не реализация и не hardware PASS.
 
@@ -1190,3 +1191,12 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 - После успешного WIN2 page04/page05 self-test программное состояние gate синхронизируется с фактическим selector #02. На старте оно равно #80 (page01 placeholder).
 - **BUILD PASS:** GitHub Actions run [42397778997](https://github.com/JTCyborg/Project126/actions/runs/42397778997), commit `b0e708b00aaf85996b415dacebbe4bb8e657c731`. X86CORE.C — 16,204/16,384 байта (180 свободно); X86IO.C — 796/4,096. NeoGS, ATM, standalone IPC и TR-DOS assembly/package прошли без ошибок и предупреждений.
 - **Не подтверждено:** физическое выполнение gate, nested/repeated switching, сохранение AF/результатов на реальной NeoGS, динамический allocator, module manifest и generic loader. BIOS/CPU functional status не меняется.
+
+
+## 2026-11-07 — boot-time self-test resident WIN2 gate
+
+- IMAGE_FINISH запускает короткий тест до выставления IO_OVERLAY_READY: сохраняет первые 4 байта свободной page05h, записывает туда CALL resident X86IO wrapper / RET, отображает page05h в WIN2 и вызывает тестовый stub.
+- Wrapper должен переключить WIN2 на X86IO page04h, выполнить x86_io_reset, а resident trampoline — вернуть page05h. Возврат проверяется по opcode CDh в 8000h и software selector #82; затем исходные 4 байта page05h восстанавливаются.
+- После теста WIN2 возвращается к page04h, WIN3 — к DMA page42h. При отказе gate тест сообщает общий [NGS] WIN2 MAP/GATE TEST FAIL и не публикует IO_OVERLAY_READY. Успех отмечается [NGS] WIN2 MAP/GATE TEST PASS.
+- BUILD PASS: GitHub Actions run [42398073825](https://github.com/JTCyborg/Project126/actions/runs/42398073825), commit 99f007da68aacc57dd0ff9d87a568b1d4df10600. X86CORE.C — 16,322/16,384 bytes (62 free); X86IO.C — 796/4,096. NeoGS, ATM, standalone IPC and TR-DOS packaging: 0 errors, 0 warnings.
+- Runtime execution on physical ATM/NeoGS is still unconfirmed. This is a single-level page05→page04→page05 gate exercise, not proof of arbitrary-depth nested calls or a complete dynamic module manager.
