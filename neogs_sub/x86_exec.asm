@@ -227,6 +227,12 @@ x86_cpu_step_fetch_opcode:
         jp      z,x86_exec_shift_group
         cp      #D3
         jp      z,x86_exec_shift_group
+        cp      #D4
+        jp      z,x86_exec_aam
+        cp      #D5
+        jp      z,x86_exec_aad
+        cp      #D6
+        jp      z,x86_exec_salc
         cp      #D7
         jp      z,x86_exec_xlat
         cp      #F5
@@ -2188,6 +2194,78 @@ x86_exec_lahf:
         or      a
         ret
 
+; D4 AAM imm8, D5 AAD imm8, D6 undocumented SALC.
+; AAM base zero raises divide-error vector 0 through the normal IVT path.
+x86_exec_aam:
+        call    x86_cpu_fetch8
+        ret     c
+        or      a
+        jr      nz,.aam_base_ready
+        xor     a
+        jp      x86_exec_interrupt
+.aam_base_ready:
+        ld      (x86_exec_adjust_base),a
+        ld      a,(x86_reg_ax)
+        ld      b,0
+        ld      a,(x86_exec_adjust_base)
+        ld      c,a
+        ld      a,(x86_reg_ax)
+.aam_divide_loop:
+        cp      c
+        jr      c,.aam_divide_done
+        sub     c
+        inc     b
+        jr      .aam_divide_loop
+.aam_divide_done:
+        ld      (x86_reg_ax),a
+        ld      a,b
+        ld      (x86_reg_ax+1),a
+        ld      a,(x86_reg_ax)
+        jp      x86_exec_update_szp8
+
+x86_exec_aad:
+        call    x86_cpu_fetch8
+        ret     c
+        ld      (x86_exec_adjust_base),a
+        ld      a,(x86_reg_ax+1)
+        ld      b,a
+        ld      a,(x86_exec_adjust_base)
+        ld      e,a
+        ld      d,0
+        ld      hl,0
+.aad_multiply_loop:
+        ld      a,b
+        or      a
+        jr      z,.aad_multiply_done
+        add     hl,de
+        dec     b
+        jr      .aad_multiply_loop
+.aad_multiply_done:
+        ld      a,(x86_reg_ax)
+        ld      e,a
+        ld      d,0
+        add     hl,de
+        ld      a,l
+        ld      (x86_reg_ax),a
+        xor     a
+        ld      (x86_reg_ax+1),a
+        ld      a,(x86_reg_ax)
+        jp      x86_exec_update_szp8
+
+; SALC: AL=FFh when CF=1, otherwise AL=00h; FLAGS are unchanged.
+x86_exec_salc:
+        ld      hl,(x86_reg_flags)
+        bit     0,l
+        jr      z,.salc_clear
+        ld      a,#FF
+        ld      (x86_reg_ax),a
+        or      a
+        ret
+.salc_clear:
+        xor     a
+        ld      (x86_reg_ax),a
+        ret
+
 ; D0-D3 Group 2 shifts/rotates. 8086 CL counts are unmasked.
 ; /0 ROL, /1 ROR, /2 RCL, /3 RCR, /4-/6 SHL/SAL, /5 SHR, /7 SAR.
 x86_exec_shift_group:
@@ -3847,6 +3925,7 @@ x86_exec_string_remaining: db 0
 x86_exec_string_value: db 0
 x86_exec_string_word: dw 0
 x86_exec_string_temp_offset: dw 0
+x86_exec_adjust_base: db 0
 x86_exec_szp8_value: db 0
 x86_exec_shift_opcode: db 0
 x86_exec_shift_operation: db 0
