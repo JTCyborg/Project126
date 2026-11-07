@@ -893,3 +893,12 @@ User-provided physical ATM/NeoGS target log at 09:52:27 confirms the corrected P
 - The DMA handshake and hardware contract are unchanged: E0, wait READY/CBIT clear, DI, LDIR to 0000h, FF, wait completion. No DMA registers, page mapping, dummy-read behavior, or ABI fields changed.
 - Commit: `3d4f9fd` plus exact-16-KiB boundary correction `2aa29a6`.
 - Status: source change committed; build/CI and hardware retest required. No 16 KiB hardware PASS is claimed.
+
+
+## 2026-11-07 — NeoGS resident loader aligned with Project125
+
+- Replaced Project126's hand-parsed TR-DOS directory-entry lookup with the proven Project125 ROM file-open ABI: prepare the 8-character name and extension at #5CDD/#5CE5, call TR-DOS C=#0A, then fetch the full descriptor with C=#08. File length and start track/sector now come from the same system variables used by Project125 (#5CE8, #5CEB, #5CEC).
+- Replaced the custom stack-relocating sector reader with the Project125 direct C=5/B=1 sector-read sequence into #C000. Sector/track cursor and remaining-sector count advance only after a successful TR-DOS return. Remaining sectors are derived from the exact file length, not the raw directory-entry offsets.
+- Replaced Project126's final-byte/A2 race special case with the Project125 V1 ordering: each data byte completes the DBIT-consumed handshake; only after all declared bytes have been sent does the host wait for the final A2 resident-ready acknowledgement. Buffer refill remains demand-driven at 256-byte boundaries.
+- File names remain Project126-specific: P126BOOT and X86CORE. The catalogue UI/preload, GS105a #14 bootstrap transfer, #13 stage-0 entry, A1/A3 exchange, ABI, DMA implementation and resident firmware are unchanged.
+- This is a source port of the Project125 TR-DOS/DBIT loader sequence, not a hardware result. CI build is required; physical startup is still pending a fresh target log showing the resident A2 acknowledgement and startup stage 0.
