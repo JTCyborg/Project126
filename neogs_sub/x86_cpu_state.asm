@@ -185,9 +185,9 @@ x86_bios_startup_trace:
         ld      (x86_bios_trace_first_count),a
         ld      hl,x86_bios_trace_start_log
         call    p126_ngs_resident_log
-        ; Temporary diagnostic window: allow both BIOS port tables to finish
-        ; and capture the first post-table initialization instructions.
-        ld      hl,#0200
+        ; Run BIOS POST through long RAM-sizing loops. The 16-bit instruction
+        ; watchdog below remains the runaway-execution safety limit.
+        ld      hl,#FFFF
         ld      (x86_bios_trace_remaining),hl
         ld      hl,0
         ld      (x86_bios_trace_executed),hl
