@@ -698,3 +698,6 @@ This is diagnostic instrumentation; the next ATM log must report the letter afte
 - Исправление: восстанавливать сохранённый указатель непосредственно в `IX` (`pop ix`). `HL` остаётся нетронутым и содержит CRC заголовка; цикл payload продолжает накапливать CRC в том же регистре.
 - CRC primitive, ABI CRC, test frame и DMA handshake не менялись. Исправлена только порча аккумулятора в ATM validator.
 - Граница проверки: исправление исходника и CI сборка должны быть подтверждены отдельно; аппаратный `FRAME VALID` и дальнейший DMA обмен ещё не подтверждены.
+
+
+- **CI verification:** GitHub Actions run [42352359828](https://github.com/JTCyborg/Project126/actions/runs/42352359828), source commit `7601e8e58c8c82a0bce4697de3cdcb824f743685`, completed with SUCCESS. The ATM/NeoGS assembly and TR-DOS image packaging step passed. This confirms build correctness only; hardware rerun is still required.
