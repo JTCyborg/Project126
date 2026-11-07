@@ -811,8 +811,8 @@ p126_ngs_image_finish:
 .image_finish_x86io:
         ; Page 04h is pinned in WIN2 (8000h-BFFFh). Resident code is in WIN0,
         ; stack is in WIN1, and WIN3 remains exclusively owned by guest RAM.
-        ld      a,#02                  ; ROR8(physical page 04h)
-        out     (#00),a                ; MPAG selects WIN2
+        ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
+        out     (P126_NGS_OVERLAY_WINDOW_PORT),a ; MPAG selects WIN2/page 04h
         ld      a,1
         ld      (p126_ngs_io_overlay_ready),a
         ld      hl,p126_ngs_io_overlay_installed_log
