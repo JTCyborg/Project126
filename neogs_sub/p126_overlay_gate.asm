@@ -368,6 +368,62 @@ x86_io_overlay_nested_gate_probe:
         pop     ix
         ret
 
+; DMA/PIT device overlay API; implementations live on physical page 06h.
+; The public wrappers preserve the guest port/value ABI across WIN2 switching.
+x86_dev_reset:
+        push    af
+        push    ix
+        ld      a,P126_NGS_X86DEV_OVERLAY_SELECTOR
+        ld      (p126_overlay_request_selector),a
+        pop     ix
+        pop     af
+        push    ix
+        ld      ix,x86_dev_reset_impl
+        call    p126_overlay_call
+        pop     ix
+        ret
+
+; IN: HL=guest port. OUT: A=value, carry set if X86DEV does not decode it.
+x86_dev_read8:
+        push    af
+        push    ix
+        ld      a,P126_NGS_X86DEV_OVERLAY_SELECTOR
+        ld      (p126_overlay_request_selector),a
+        pop     ix
+        pop     af
+        push    ix
+        ld      ix,x86_dev_read8_impl
+        call    p126_overlay_call
+        pop     ix
+        ret
+
+; IN: HL=guest port, A=value. OUT: carry set if X86DEV does not decode it.
+x86_dev_write8:
+        push    af
+        push    ix
+        ld      a,P126_NGS_X86DEV_OVERLAY_SELECTOR
+        ld      (p126_overlay_request_selector),a
+        pop     ix
+        pop     af
+        push    ix
+        ld      ix,x86_dev_write8_impl
+        call    p126_overlay_call
+        pop     ix
+        ret
+
+x86_dev_overlay_probe:
+        push    af
+        push    ix
+        ld      a,P126_NGS_X86DEV_OVERLAY_SELECTOR
+        ld      (p126_overlay_request_selector),a
+        pop     ix
+        pop     af
+        push    ix
+        ld      ix,x86_dev_overlay_probe_impl
+        call    p126_overlay_call
+        pop     ix
+        ret
+
 ; X86ALU public entry points; implementations live on physical page 05h.
 x86_alu_add8:
         push    af
