@@ -8,6 +8,9 @@
 ; Guest FLAGS and CPU registers are never changed by the backend.
 
 x86_io_read8:
+        ld      hl,(x86_io_count_in)
+        inc     hl
+        ld      (x86_io_count_in),hl
         ld      hl,(x86_io_port)
         ld      de,#00E0
         or      a
@@ -20,6 +23,9 @@ x86_io_read8:
         ret
 
 x86_io_read16:
+        ld      hl,(x86_io_count_in)
+        inc     hl
+        ld      (x86_io_count_in),hl
         ld      hl,(x86_io_port)
         ld      de,#00E0
         or      a
@@ -33,6 +39,9 @@ x86_io_read16:
 
 ; A=value. Byte write updates only the low lane of port 00E0h.
 x86_io_write8:
+        ld      hl,(x86_io_count_out)
+        inc     hl
+        ld      (x86_io_count_out),hl
         ld      hl,(x86_io_port)
         ld      de,#00E0
         or      a
@@ -44,6 +53,9 @@ x86_io_write8:
 ; HL=value. Word write updates the complete 16-bit test latch.
 x86_io_write16:
         ld      (x86_io_value),hl
+        ld      hl,(x86_io_count_out)
+        inc     hl
+        ld      (x86_io_count_out),hl
         ld      hl,(x86_io_port)
         ld      de,#00E0
         or      a
@@ -171,3 +183,6 @@ x86_io_test_latch: dw 0
 x86_io_log_value: dw 0
 x86_io_log_direction: db 0
 x86_io_log_width: db 0
+
+x86_io_count_in:  dw 0
+x86_io_count_out: dw 0
