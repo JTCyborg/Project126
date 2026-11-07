@@ -107,6 +107,7 @@ x86_bios_startup_trace:
 .reset_vector_ok:
         xor     a
         ld      (x86_bios_trace_event_status),a
+        ld      (x86_bios_trace_first_count),a
         ld      hl,x86_bios_trace_start_log
         call    p126_ngs_resident_log
         ld      hl,#FFFF
@@ -117,6 +118,7 @@ x86_bios_startup_trace:
         call    x86_cpu_step
         jr      c,.trace_fault
         call    x86_bios_trace_capture_instruction
+        call    x86_bios_trace_log_first32
         ld      hl,(x86_bios_trace_executed)
         inc     hl
         ld      (x86_bios_trace_executed),hl
@@ -226,6 +228,121 @@ x86_bios_trace_capture_instruction:
         inc     a
         and     #0F
         ld      (x86_bios_trace_history_index),a
+        pop     hl
+        pop     de
+        pop     bc
+        pop     af
+        ret
+
+; Emit a detailed architectural snapshot for each of the first 32 BIOS
+; instructions. CS:IP and physical address identify the instruction start;
+; registers and FLAGS are the post-instruction architectural state.
+x86_bios_trace_log_first32:
+        push    af
+        push    bc
+        push    de
+        push    hl
+        ld      a,(x86_bios_trace_first_count)
+        cp      32
+        jp      nc,.first32_done
+        inc     a
+        ld      (x86_bios_trace_first_count),a
+        ld      (x86_bios_trace_first_number),a
+
+        ld      hl,(x86_exec_instruction_start_cs)
+        ld      de,(x86_exec_instruction_start_ip)
+        call    x86_cpu_calc_phys
+        ld      a,(x86_phys_addr)
+        ld      (x86_bios_trace_first_phys),a
+        ld      a,(x86_phys_addr+1)
+        ld      (x86_bios_trace_first_phys+1),a
+        ld      a,(x86_phys_addr+2)
+        ld      (x86_bios_trace_first_phys+2),a
+        call    x86_mem_classify
+        ld      (x86_bios_trace_first_region),a
+
+        ld      hl,x86_bios_trace_first_prefix
+        call    p126_ngs_resident_log
+        ld      a,(x86_bios_trace_first_number)
+        call    x86_bios_trace_emit_hex8
+        ld      hl,x86_bios_trace_first_csip
+        call    p126_ngs_resident_log
+        ld      hl,(x86_exec_instruction_start_cs)
+        call    x86_bios_trace_emit_hex16
+        ld      a,':'
+        call    x86_bios_trace_emit_char
+        ld      hl,(x86_exec_instruction_start_ip)
+        call    x86_bios_trace_emit_hex16
+        ld      hl,x86_bios_trace_first_phys_text
+        call    p126_ngs_resident_log
+        ld      a,(x86_bios_trace_first_phys+2)
+        call    x86_bios_trace_emit_hex8
+        ld      a,(x86_bios_trace_first_phys+1)
+        call    x86_bios_trace_emit_hex8
+        ld      a,(x86_bios_trace_first_phys)
+        call    x86_bios_trace_emit_hex8
+        ld      hl,x86_bios_trace_first_region_text
+        call    p126_ngs_resident_log
+        ld      a,(x86_bios_trace_first_region)
+        call    x86_bios_trace_emit_hex8
+        ld      hl,x86_bios_trace_first_opcode_text
+        call    p126_ngs_resident_log
+        ld      a,(x86_exec_opcode)
+        call    x86_bios_trace_emit_hex8
+
+        ld      hl,x86_bios_trace_first_ax
+        call    p126_ngs_resident_log
+        ld      hl,(x86_reg_ax)
+        call    x86_bios_trace_emit_hex16
+        ld      hl,x86_bios_trace_first_bx
+        call    p126_ngs_resident_log
+        ld      hl,(x86_reg_bx)
+        call    x86_bios_trace_emit_hex16
+        ld      hl,x86_bios_trace_first_cx
+        call    p126_ngs_resident_log
+        ld      hl,(x86_reg_cx)
+        call    x86_bios_trace_emit_hex16
+        ld      hl,x86_bios_trace_first_dx
+        call    p126_ngs_resident_log
+        ld      hl,(x86_reg_dx)
+        call    x86_bios_trace_emit_hex16
+        ld      hl,x86_bios_trace_first_si
+        call    p126_ngs_resident_log
+        ld      hl,(x86_reg_si)
+        call    x86_bios_trace_emit_hex16
+        ld      hl,x86_bios_trace_first_di
+        call    p126_ngs_resident_log
+        ld      hl,(x86_reg_di)
+        call    x86_bios_trace_emit_hex16
+        ld      hl,x86_bios_trace_first_bp
+        call    p126_ngs_resident_log
+        ld      hl,(x86_reg_bp)
+        call    x86_bios_trace_emit_hex16
+        ld      hl,x86_bios_trace_first_sp
+        call    p126_ngs_resident_log
+        ld      hl,(x86_reg_sp)
+        call    x86_bios_trace_emit_hex16
+        ld      hl,x86_bios_trace_first_ds
+        call    p126_ngs_resident_log
+        ld      hl,(x86_reg_ds)
+        call    x86_bios_trace_emit_hex16
+        ld      hl,x86_bios_trace_first_es
+        call    p126_ngs_resident_log
+        ld      hl,(x86_reg_es)
+        call    x86_bios_trace_emit_hex16
+        ld      hl,x86_bios_trace_first_ss
+        call    p126_ngs_resident_log
+        ld      hl,(x86_reg_ss)
+        call    x86_bios_trace_emit_hex16
+        ld      hl,x86_bios_trace_first_flags
+        call    p126_ngs_resident_log
+        ld      hl,(x86_reg_flags)
+        call    x86_bios_trace_emit_hex16
+        ld      a,13
+        call    x86_bios_trace_emit_char
+        ld      a,10
+        call    x86_bios_trace_emit_char
+.first32_done:
         pop     hl
         pop     de
         pop     bc
@@ -482,6 +599,28 @@ x86_bios_trace_emit_nibble:
 .hex_digit:
         call    x86_bios_trace_emit_char
         ret
+
+x86_bios_trace_first_count: db 0
+x86_bios_trace_first_number: db 0
+x86_bios_trace_first_phys: db 0,0,0
+x86_bios_trace_first_region: db 0
+x86_bios_trace_first_prefix: db "[X86 STEP ",0
+x86_bios_trace_first_csip: db "] CS:IP=",0
+x86_bios_trace_first_phys_text: db " P=",0
+x86_bios_trace_first_region_text: db " R=",0
+x86_bios_trace_first_opcode_text: db " OP=",0
+x86_bios_trace_first_ax: db " AX=",0
+x86_bios_trace_first_bx: db " BX=",0
+x86_bios_trace_first_cx: db " CX=",0
+x86_bios_trace_first_dx: db " DX=",0
+x86_bios_trace_first_si: db " SI=",0
+x86_bios_trace_first_di: db " DI=",0
+x86_bios_trace_first_bp: db " BP=",0
+x86_bios_trace_first_sp: db " SP=",0
+x86_bios_trace_first_ds: db " DS=",0
+x86_bios_trace_first_es: db " ES=",0
+x86_bios_trace_first_ss: db " SS=",0
+x86_bios_trace_first_flags: db " FLAGS=",0
 
 x86_bios_trace_history_index: db 0
 x86_bios_trace_dump_index: db 0
