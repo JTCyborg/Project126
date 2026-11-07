@@ -614,7 +614,7 @@ p126_ngs_image_begin:
         jr      z,.image_x86io_size_ok
         jr      .image_begin_bad
 .image_x86io_size_ok:
-        ld      a,#02                  ; WIN3 selector for physical page 04h
+        ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR ; WIN3 selector for physical page 04h
         ld      (p126_ngs_image_dest_selector),a
 
 .image_begin_common:
