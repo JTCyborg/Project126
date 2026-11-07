@@ -283,9 +283,9 @@ x86_modrm_write_rm8:
         ld      a,(x86_ea_is_reg)
         or      a
         jr      z,.write_rm8_memory
-        ld      a,(x86_ea_reg)
         ld      a,(x86_modrm_operand_value)
         ld      c,a
+        ld      a,(x86_ea_reg)
         jp      x86_modrm_write_reg8
 .write_rm8_memory:
         call    x86_modrm_make_ea_address
