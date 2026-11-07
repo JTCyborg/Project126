@@ -1124,7 +1124,7 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 
 ### Обязательная инфраструктурная задача перед расширением набора устройств
 
-- [ ] Разработать и реализовать resident overlay/module manager для использования выделенного kernel pool pages 00h–0Fh (256 KiB), сохранив bootstrap entry и resident dispatcher, фиксированный стек WIN1/page 03h и эксклюзивное владение WIN3 memory backend. Текущий X86CORE.C ограничен одной 16 KiB страницей до появления overlay manager.
+- [ ] Разработать и реализовать resident overlay/module manager для использования выделенного kernel pool pages 00h–0Fh (256 KiB), сохранив bootstrap entry и resident dispatcher, фиксированный стек WIN1/page 03h и эксклюзивное владение WIN3 memory backend. Текущий X86CORE.C ограничен одной 16 KiB страницей; в текущей сборке занимает 15610 байт, свободно 774 байта.
 - [ ] Определить формат/манифест overlay-модулей, загрузку дополнительных 16 KiB страниц через TR-DOS/ATM DMA/IPC, адресацию символов и ABI вызовов между resident core и overlay.
 - [ ] Добавить проверки размера/пересечений, page-switch restore, запрет вызова функции после выгрузки overlay, и тесты вложенных/повторных вызовов.
 - [ ] Перенести расширяемые device models (PIC/PIT/DMA/VGA/RTC/IDE) в отдельные overlay-модули после проверки менеджера. Не увеличивать лимит X86CORE.C и не менять физическую карту страниц без отдельного решения.
@@ -1212,3 +1212,13 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 - TR-DOS образ включает X86ALU.C, build script проверяет размер 1..4096 байт, CI artifact публикует файл.
 - BUILD PASS: GitHub Actions run [42398846093](https://github.com/JTCyborg/Project126/actions/runs/42398846093), commit 94ac5ba2a2cbb338af0e0bb1af8b1efd826a469a. X86CORE 15,610/16,384 bytes (774 free); X86IO 796/4,096; X86ALU 1,175/4,096. All assembly and TR-DOS packaging steps: 0 errors, 0 warnings.
 - Физическая загрузка X86ALU, probe и выполнение арифметических инструкций на ATM/NeoGS пока не подтверждены. Это второй pinned overlay, не dynamic allocator/module manager.
+
+
+## 2026-11-07 — X86ALU overlay checkpoint
+
+- X86ALU (1,175 bytes) is now a separate fixed-origin module at logical 8000h, physical page05/selector82. X86IO remains page04/selector02 (796 bytes).
+- Ten ALU entry points used by x86_exec route through resident wrappers and the common WIN2 gate; internal ALU helper calls remain direct inside the overlay.
+- IMAGE kind02 and a shared ATM fixed-profile loader now transfer X86ALU.C after X86IO.C. NeoGS copies to page05 and verifies every byte through WIN3.
+- IMAGE_FINISH runs the ALU probe through the gate, verifies A=A5 and that the previous page04 selector is restored, then publishes X86ALU_READY. BIOS now waits for X86IO_READY, X86ALU_READY and BIOS_IMAGE_READY.
+- TR-DOS packaging and CI artifact include X86ALU.C. BUILD PASS: run [42398846093](https://github.com/JTCyborg/Project126/actions/runs/42398846093), commit 94ac5ba2a2cbb338af0e0bb1af8b1efd826a469a. X86CORE 15,610/16,384 (774 free), X86IO 796/4,096, X86ALU 1,175/4,096; 0 errors, 0 warnings.
+- Physical X86ALU transfer, probe and arithmetic execution remain unverified. Dynamic allocator/manifest and generic module loading remain the next manager tasks.
