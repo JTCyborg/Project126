@@ -118,7 +118,7 @@ The primary opcode-byte dispatcher now has an explicit path for every byte value
 - 8087 is not present: ESC instructions consume ModR/M/displacement but perform no coprocessor operation.
 - Confirm PCem's default invalid-opcode behavior for every unsupported encoding and preserve the 8086-only profile (no 80186+ extensions).
 
-**No CPU functional tests, BIOS POST or guest program execution have been run.** Only compile/package CI is permitted until the semantic and integration work above is complete and explicitly reviewed.
+**No CPU functional tests, BIOS POST or guest program execution have been run.** The resident loop also gates automatic execution after BIOS image installation and only logs that the image is ready; the reset-vector probe routine remains dormant. Only compile/package CI is permitted until the semantic and integration work above is complete and explicitly reviewed.
 
 ## Architectural constraints
 
