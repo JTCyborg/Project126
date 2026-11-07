@@ -199,6 +199,21 @@ The first implemented image profile is an 8 KiB system BIOS:
 
 This is the initial fixed-size SYSBIOS profile, not a general image reassembly implementation. IMAGE_RESULT (03h), multi-fragment images, VGA BIOS image installation, and service-level response frames remain unimplemented. Source build success does not prove physical page-10 installation; that requires a target log.
 
+### Initial X86IO overlay transfer profile
+
+The first overlay is the fixed-origin XT I/O model, with image kind `01h` (`P126_IMAGE_KIND_X86IO`):
+
+- TR-DOS file: `X86IO.C`; fixed assembly origin: logical `8000h`; current image size: 796 bytes.
+- IMAGE_BEGIN payload is exactly 6 bytes: message ID `0001h`, kind `01h`, reserved byte `00h`, image size as u16 LE. The receiver accepts 1..1000h bytes for this profile.
+- IMAGE_FRAGMENT is exactly one fragment: index 0, count 1, total logical length u32 LE equal to the IMAGE_BEGIN size, followed by the complete X86IO image. The frame carries the normal ABI FRAGMENT flag and CRC.
+- ATM loads the TR-DOS file after the resident A2h acknowledgement. The first 256-byte sector is copied backwards from C000h to C01Ch so that the frame header remains intact despite overlap; subsequent sectors are read directly into the following data area.
+- NeoGS copies the validated fragment from DMA staging page 42h to physical kernel page 04h through WIN3 and compares every installed byte against the source still in page 42h.
+- IMAGE_FINISH maps page 04h into WIN2 (logical 8000h-BFFFh) through MPAG port 00h with selector 02h (ROR8(04h)), then publishes IO_OVERLAY_READY.
+- The resident CPU's I/O call sites are statically linked to the X86IO symbols in the same SjASMPlus translation unit. Page 04h is pinned in WIN2; no dynamic module call gate, allocator, unload, or nested overlay switching is implemented yet.
+- BIOS execution is gated until both IO_OVERLAY_READY and BIOS_IMAGE_READY are set.
+
+The current X86IO profile is a single-fragment pinned overlay, not a generic image manifest/reassembly service. Its build has passed CI, but the ATM/NeoGS transfer and WIN2 mapping still require physical target verification.
+
 ## 9. Compatibility and migration
 
 - ABI 1.0 is available only after Project126 resident firmware has started and owns GSCOM.
