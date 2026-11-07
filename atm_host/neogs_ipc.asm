@@ -245,13 +245,37 @@ p126_ipc_validate_frame::
         dec     de
         jr      .p126_frame_crc_data
 .p126_frame_crc_compare:
+        ; Capture both values before emitting diagnostics. This lets the next
+        ; hardware log distinguish a bad CRC calculation from a bad frame
+        ; write/byte order without involving the NeoGS DMA receiver.
         ld      (p126_ipc_crc_work),hl
         ld      ix,(p126_ipc_frame_ptr)
         ld      a,(ix+16)
         ld      e,a
         ld      a,(ix+17)
         ld      d,a
+        ld      (p126_ipc_crc_expected),de
+        ld      hl,p126_ipc_log_crc_calculated
+        call    p126_ipc_debug_string
         ld      hl,(p126_ipc_crc_work)
+        ld      a,h
+        call    p126_ipc_debug_hex_byte
+        ld      a,l
+        call    p126_ipc_debug_hex_byte
+        ld      hl,p126_ipc_log_crc_expected
+        call    p126_ipc_debug_string
+        ld      hl,(p126_ipc_crc_expected)
+        ld      a,h
+        call    p126_ipc_debug_hex_byte
+        ld      a,l
+        call    p126_ipc_debug_hex_byte
+        ld      bc,#00EF
+        ld      a,13
+        out     (c),a
+        ld      a,10
+        out     (c),a
+        ld      hl,(p126_ipc_crc_work)
+        ld      de,(p126_ipc_crc_expected)
         or      a
         sbc     hl,de
         jr      nz,.p126_frame_crc_bad
@@ -276,6 +300,7 @@ p126_ipc_validate_frame::
 p126_ipc_frame_ptr: dw 0
 p126_ipc_frame_size: dw 0
 p126_ipc_crc_work: dw 0
+p126_ipc_crc_expected: dw 0
 
 ; Standard CRC-16/CCITT-FALSE regression vector.
 ; OUT: Carry clear and HL=#29B1 on pass; Carry set on failure.
@@ -451,6 +476,37 @@ p126_ipc_dma_stage:  db 0
 
 p126_ipc_dma_error: db 0
 
+; Print A as two hexadecimal digits on ATM's independent #EF stream.
+; Preserves AF and BC.
+p126_ipc_debug_hex_byte:
+        push    af
+        push    bc
+        rrca
+        rrca
+        rrca
+        rrca
+        call    p126_ipc_debug_hex_nibble
+        pop     bc
+        pop     af
+        push    af
+        and     #0F
+        call    p126_ipc_debug_hex_nibble
+        pop     af
+        ret
+
+p126_ipc_debug_hex_nibble:
+        and     #0F
+        add     a,'0'
+        cp      '9'+1
+        jr      c,.p126_ipc_debug_hex_emit
+        add     a,7
+.p126_ipc_debug_hex_emit:
+        push    bc
+        ld      bc,#00EF
+        out     (c),a
+        pop     bc
+        ret
+
 ; ATM-local trace output, on ATM's own physical #EF stream.
 ; IN: HL=zero-terminated string. Preserves AF/BC; clobbers HL.
 p126_ipc_debug_string:
@@ -469,6 +525,8 @@ p126_ipc_debug_string:
         pop     af
         ret
 
+p126_ipc_log_crc_calculated:      db "[ATM IPC] CRC CALCULATED=",0
+p126_ipc_log_crc_expected:        db " FRAME CRC=",0
 p126_ipc_log_dma_tx_begin:        db "[ATM IPC] DMA TX BEGIN",13,10,0
 p126_ipc_log_dma_tx_validate_ok:  db "[ATM IPC] FRAME VALID",13,10,0
 p126_ipc_log_dma_tx_validate_bad: db "[ATM IPC] FRAME VALIDATION FAILED",13,10,0
