@@ -1973,14 +1973,36 @@ x86_exec_group1_immediate:
         call    x86_modrm_read_rm8
         ret     c
         ld      (x86_exec_group1_lhs8),a
+
+        ; Capture the operands and destination around group-1 writeback.
+        ; This diagnostic does not alter guest registers or flags.
+        ld      hl,(x86_exec_instruction_start_ip)
+        ld      (x86_group1_diag_ip),hl
+        ld      hl,(x86_reg_dx)
+        ld      (x86_group1_diag_dx_before),hl
+        ld      a,(x86_modrm_reg)
+        ld      (x86_group1_diag_ext),a
+        ld      a,(x86_ea_is_reg)
+        ld      (x86_group1_diag_ea_is_reg),a
+        ld      a,(x86_ea_reg)
+        ld      (x86_group1_diag_ea_reg),a
+        ld      a,(x86_exec_group1_lhs8)
+        ld      (x86_group1_diag_lhs),a
+        ld      a,(x86_exec_group1_imm8)
+        ld      (x86_group1_diag_imm),a
+
         ld      a,(x86_exec_group1_imm8)
         ld      c,a
         ld      a,(x86_exec_group1_lhs8)
         call    x86_exec_group1_apply8
+        ld      (x86_group1_diag_result),a
         ld      a,(x86_exec_group1_is_cmp)
         or      a
         ret     nz
-        jp      x86_modrm_write_rm8
+        call    x86_modrm_write_rm8
+        ld      hl,(x86_reg_dx)
+        ld      (x86_group1_diag_dx_after),hl
+        ret
 
 .group1_word_immediate:
         call    x86_cpu_fetch16
