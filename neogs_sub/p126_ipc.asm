@@ -554,6 +554,9 @@ p126_ngs_ipc_dispatch_once::
         ld      a,(p126_ngs_io_overlay_ready)
         or      a
         jr      z,.ngs_frame_trace_ready
+        ld      a,(p126_ngs_alu_overlay_ready)
+        or      a
+        jr      z,.ngs_frame_trace_ready
         ld      a,(p126_ngs_bios_image_ready)
         or      a
         jr      z,.ngs_frame_trace_ready
@@ -593,6 +596,8 @@ p126_ngs_image_begin:
         jr      z,.image_begin_sysbios
         cp      P126_IMAGE_KIND_X86IO
         jr      z,.image_begin_x86io
+        cp      P126_IMAGE_KIND_X86ALU
+        jr      z,.image_begin_x86alu
         jr      .image_begin_bad
 
 .image_begin_sysbios:
@@ -620,6 +625,21 @@ p126_ngs_image_begin:
         ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR ; WIN3 selector for physical page 04h
         ld      (p126_ngs_image_dest_selector),a
 
+.image_begin_x86alu:
+        ld      hl,(#C016)
+        ld      a,h
+        or      l
+        jr      z,.image_begin_bad
+        ld      de,P126_IMAGE_X86ALU_MAX_SIZE
+        or      a
+        sbc     hl,de
+        jr      c,.image_x86alu_size_ok
+        jr      z,.image_x86alu_size_ok
+        jr      .image_begin_bad
+.image_x86alu_size_ok:
+        ld      a,P126_NGS_ALU_OVERLAY_SELECTOR
+        ld      (p126_ngs_image_dest_selector),a
+
 .image_begin_common:
         ld      hl,(#C012)
         ld      (p126_ngs_image_id),hl
@@ -638,8 +658,14 @@ p126_ngs_image_begin:
         ld      (p126_ngs_bios_image_ready),a
         jr      .image_begin_ack
 .image_begin_not_bios:
+        cp      P126_IMAGE_KIND_X86IO
+        jr      nz,.image_begin_not_x86io
         xor     a
         ld      (p126_ngs_io_overlay_ready),a
+        jr      .image_begin_ack
+.image_begin_not_x86io:
+        xor     a
+        ld      (p126_ngs_alu_overlay_ready),a
 .image_begin_ack:
         xor     a
         out     (P126_NGS_CLRCBIT),a
@@ -759,11 +785,16 @@ p126_ngs_image_fragment:
         ld      (p126_ngs_image_received),a
         ld      a,(p126_ngs_image_kind)
         cp      P126_IMAGE_KIND_SYSBIOS
-        jr      nz,.image_io_verify_log
+        jr      nz,.image_not_bios_verify_log
         ld      hl,p126_ngs_image_verify_ok_log
         jr      .image_verify_log
-.image_io_verify_log:
+.image_not_bios_verify_log:
+        cp      P126_IMAGE_KIND_X86IO
+        jr      nz,.image_alu_verify_log
         ld      hl,p126_ngs_io_overlay_verify_ok_log
+        jr      .image_verify_log
+.image_alu_verify_log:
+        ld      hl,p126_ngs_alu_overlay_verify_ok_log
 .image_verify_log:
         call    p126_ngs_ipc_log
         xor     a
@@ -806,11 +837,14 @@ p126_ngs_image_finish:
         ld      (p126_ngs_image_active),a
         ld      a,(p126_ngs_image_kind)
         cp      P126_IMAGE_KIND_SYSBIOS
-        jr      nz,.image_finish_x86io
+        jr      nz,.image_finish_not_bios
         ld      a,1
         ld      (p126_ngs_bios_image_ready),a
         ld      hl,p126_ngs_image_installed_log
         jr      .image_finish_log
+.image_finish_not_bios:
+        cp      P126_IMAGE_KIND_X86IO
+        jr      nz,.image_finish_x86alu
 .image_finish_x86io:
         ; Prove that MPAG selects two distinct physical pages through WIN2.
         ; The test saves/restores the last byte of page 04h and page 05h;
@@ -836,6 +870,24 @@ p126_ngs_image_finish:
         ld      a,1
         ld      (p126_ngs_io_overlay_ready),a
         ld      hl,p126_ngs_io_overlay_installed_log
+.image_finish_x86alu:
+        ; Page05 is the fixed-origin ALU overlay. Probe it through the same
+        ; resident gate used by every arithmetic entry point.
+        call    x86_alu_overlay_probe
+        cp      #A5
+        jr      nz,.image_finish_alu_probe_bad
+        ld      a,(p126_overlay_current_selector)
+        cp      P126_NGS_X86IO_OVERLAY_SELECTOR
+        jr      nz,.image_finish_alu_probe_bad
+        ld      a,1
+        ld      (p126_ngs_alu_overlay_ready),a
+        ld      hl,p126_ngs_alu_overlay_installed_log
+        jr      .image_finish_log
+.image_finish_alu_probe_bad:
+        ld      hl,p126_ngs_alu_overlay_probe_fail_log
+        call    p126_ngs_ipc_log
+        jr      .image_finish_bad
+
 .image_finish_log:
         call    p126_ngs_ipc_log
         xor     a
@@ -1038,6 +1090,7 @@ p126_ngs_image_active:       db 0
 p126_ngs_image_received:     db 0
 p126_ngs_bios_image_ready:   db 0
 p126_ngs_io_overlay_ready:   db 0
+p126_ngs_alu_overlay_ready:  db 0
 p126_ngs_image_id:           dw 0
 p126_ngs_image_size:         dw 0
 p126_ngs_image_kind:         db 0
@@ -1051,6 +1104,9 @@ p126_ngs_image_installed_log: db "[NGS] SYSBIOS PAGE10 OK",13,10,0
 p126_ngs_image_verify_ok_log: db "[NGS] SYSBIOS READBACK OK",13,10,0
 p126_ngs_io_overlay_installed_log: db "[NGS] X86IO PAGE04 WIN2 OK",13,10,0
 p126_ngs_io_overlay_verify_ok_log: db "[NGS] X86IO PAGE04 READBACK OK",13,10,0
+p126_ngs_alu_overlay_verify_ok_log: db "[NGS] X86ALU PAGE05 READBACK OK",13,10,0
+p126_ngs_alu_overlay_installed_log: db "[NGS] X86ALU PAGE05 GATE OK",13,10,0
+p126_ngs_alu_overlay_probe_fail_log: db "[NGS] X86ALU PAGE05 GATE FAIL",13,10,0
 p126_ngs_image_begin_rejected_log: db "[NGS] IMG BEGIN BAD",13,10,0
 p126_ngs_image_fragment_rejected_log: db "[NGS] IMG FRAG BAD",13,10,0
 p126_ngs_image_finish_rejected_log: db "[NGS] IMG FINISH BAD",13,10,0
