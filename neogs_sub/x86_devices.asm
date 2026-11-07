@@ -385,29 +385,12 @@ x86_dev_pit_write8:
         or      a
         jp      nz,.pit_write_done
 .pit_write_update_out:
-        ; PCem pit_load(): channel 2 becomes active after a complete count.
+        ; A completed channel-2 count starts the virtual counter.
         ld      a,(x86_dev_pit_channel)
         cp      2
         jp      nz,.pit_write_done
-        ld      a,1
-        ld      (x86_dev_pit_loaded2),a
-        ld      a,(x86_dev_pit_mode+2)
-        cp      2
-        jr      z,.pit_write_out_high
-        cp      3
-        jr      z,.pit_write_out_high
-        cp      0
-        jr      z,.pit_write_out_low
-        cp      4
-        jr      z,.pit_write_out_low
+        call    x86_dev_pit_load_channel2
         jp      .pit_write_done
-.pit_write_out_high:
-        ld      a,1
-        ld      (x86_dev_pit_out2),a
-        jp      .pit_write_done
-.pit_write_out_low:
-        xor     a
-        ld      (x86_dev_pit_out2),a
 .pit_write_done:
         or      a
         ret
@@ -573,6 +556,10 @@ x86_dev_pit_reset_impl:
         ld      (x86_dev_pit_out2),a
         ld      (x86_dev_pit_gate2),a
         ld      (x86_dev_pit_loaded2),a
+        ld      (x86_dev_pit_cpu_cycle_remainder),a
+        ld      hl,0
+        ld      (x86_dev_pit_count2),hl
+        ld      (x86_dev_pit_half2),hl
         ret
 
 ; PCem pit_set_gate() edge behavior for XT speaker channel 2.
@@ -609,7 +596,121 @@ x86_dev_pit_gate2_write:
 .pit_gate_out_high:
         ld      a,1
         ld      (x86_dev_pit_out2),a
+        ld      a,(x86_dev_pit_mode+2)
+        cp      3
+        jr      nz,.pit_gate_reload_done
+        ld      hl,(x86_dev_pit_half2)
+        ld      (x86_dev_pit_count2),hl
+.pit_gate_reload_done:
         or      a
+        ret
+
+
+; Guest-clock service: B=8086 cycles elapsed. The initial 4.772728 MHz
+; profile has exactly four CPU clocks per 8253 input clock.
+x86_dev_pit_advance_cycles:
+        ld      a,(x86_dev_pit_cpu_cycle_remainder)
+        add     a,b
+        ld      b,a
+        and     3
+        ld      (x86_dev_pit_cpu_cycle_remainder),a
+        srl     b
+        srl     b
+        ret     z
+.pit_advance_tick_loop:
+        push    bc
+        call    x86_dev_pit_tick_channel2
+        pop     bc
+        djnz    .pit_advance_tick_loop
+        ret
+
+; Channel 2 mode 3 square-wave timing plus mode 0 terminal count.
+; Other PIT modes/channels remain explicitly outside this timing slice.
+x86_dev_pit_tick_channel2:
+        ld      a,(x86_dev_pit_loaded2)
+        or      a
+        ret     z
+        ld      a,(x86_dev_pit_gate2)
+        or      a
+        ret     z
+        ld      a,(x86_dev_pit_mode+2)
+        cp      3
+        jr      z,.pit_tick_mode3
+        cp      0
+        ret     nz
+        ld      hl,(x86_dev_pit_count2)
+        ld      a,h
+        or      l
+        ret     z
+        dec     hl
+        ld      (x86_dev_pit_count2),hl
+        ld      a,h
+        or      l
+        ret     nz
+        ld      a,1
+        ld      (x86_dev_pit_out2),a
+        ret
+.pit_tick_mode3:
+        ld      hl,(x86_dev_pit_count2)
+        ld      a,h
+        or      l
+        jr      nz,.pit_tick_mode3_dec
+        ld      hl,(x86_dev_pit_half2)
+        ld      (x86_dev_pit_count2),hl
+.pit_tick_mode3_dec:
+        dec     hl
+        ld      (x86_dev_pit_count2),hl
+        ld      a,h
+        or      l
+        ret     nz
+        ld      a,(x86_dev_pit_out2)
+        xor     1
+        ld      (x86_dev_pit_out2),a
+        ld      hl,(x86_dev_pit_half2)
+        ld      (x86_dev_pit_count2),hl
+        ret
+
+; Convert the programmed channel-2 reload to a half-period and start OUT2.
+x86_dev_pit_load_channel2:
+        ld      a,1
+        ld      (x86_dev_pit_loaded2),a
+        ld      hl,(x86_dev_pit_reload+4)
+        ld      a,h
+        or      l
+        jr      nz,.pit_load_count_nonzero
+        ld      hl,#8000
+        jr      .pit_load_half_ready
+.pit_load_count_nonzero:
+        srl     h
+        rr      l
+        ld      a,h
+        or      l
+        jr      nz,.pit_load_half_ready
+        ld      hl,1
+.pit_load_half_ready:
+        ld      (x86_dev_pit_half2),hl
+        ld      a,(x86_dev_pit_mode+2)
+        cp      3
+        jr      z,.pit_load_mode3
+        cp      0
+        jr      z,.pit_load_mode0
+        ret
+.pit_load_mode3:
+        ld      a,1
+        ld      (x86_dev_pit_out2),a
+        ld      hl,(x86_dev_pit_half2)
+        ld      (x86_dev_pit_count2),hl
+        ret
+.pit_load_mode0:
+        xor     a
+        ld      (x86_dev_pit_out2),a
+        ld      hl,(x86_dev_pit_reload+4)
+        ld      a,h
+        or      l
+        jr      nz,.pit_load_mode0_store
+        ld      hl,0
+.pit_load_mode0_store:
+        ld      (x86_dev_pit_count2),hl
         ret
 
 ; Reset-time regression for channel 0 LSB/MSB, latch/readback and channel 1 LSB.
@@ -1183,10 +1284,13 @@ x86_dev_pit_channel: db 0
 x86_dev_pit_byte_select: db 0
 x86_dev_pit_read_value: db 0
 x86_dev_pit_write_value: db 0
-; Static channel-2 OUT pin observed by XT port 62h bit 5.
+; Dynamic channel-2 OUT pin observed by XT port 62h bit 5.
 x86_dev_pit_out2: db 0
 x86_dev_pit_gate2: db 0
 x86_dev_pit_loaded2: db 0
+x86_dev_pit_cpu_cycle_remainder: db 0
+x86_dev_pit_count2: dw 0
+x86_dev_pit_half2: dw 0
 x86_dev_pit_selftest_pass: db "[NGS] X86 PIT REGISTER SELFTEST PASS",13,10,0
 x86_dev_pit_selftest_fail: db "[NGS] X86 PIT REGISTER SELFTEST FAIL",13,10,0
 x86_dev_dma_selftest_fail: db "[NGS] X86 DMA REGISTER SELFTEST FAIL",13,10,0
