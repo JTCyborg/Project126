@@ -1014,3 +1014,12 @@ NeoGS дополнен явными сообщениями `SYSBIOS IMAGE BEGIN/
 Ожидаемый следующий target log определит последний завершённый этап. Если отсутствует `BIOS SELECTION RESOLVED`, проверять поиск записи; если есть `TRDOS OPEN C=0A CALL`, но нет RETURN — точку вызова TR-DOS; аналогично для C=08h. После получения дескриптора должны появиться прежние маркеры `BIOS FILE OPEN OK`, `BIOS FILE SIZE OK`, `BIOS READ BEGIN`.
 
 Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппаратная проверка этого диагностического коммита ожидаются. BIOS read/transfer/install остаются HARDWARE PENDING.
+
+
+## 2026-11-07 — BIOS selection pointer corruption fixed
+
+- Hardware log after the pre-open trace showed BIOS SELECTION RESOLVED immediately followed by BIOS ERROR: FILE TYPE; no TR-DOS mapping or open call was reached.
+- Source inspection found the regression in p126_bios_load_selected: p126_catalog_find_index returned the selected directory-entry pointer in HL, but the diagnostic call loaded its message address into HL before the selected pointer was saved. The subsequent filename copy and type check therefore used the diagnostic string address, not the selected TR-DOS entry.
+- Fixed the register lifetime: save the returned HL pointer immediately after successful lookup, emit the diagnostic marker, restore the pointer, and only then copy the eight-character filename and inspect the type byte at entry offset 8.
+- No changes to catalogue key scanning/navigation, directory layout, TR-DOS ROM ABI, disk-sector reader, DMA, IPC or IMAGE handlers. The existing retry-on-load-error behavior remains; each retry requires a new Enter press.
+- BUILD/HARDWARE STATUS: source correction requires CI assembly/package and a fresh target run. Expected next marker for a valid .C BIOS entry: [CAT] BIOS FILE TYPE C OK, followed by TR-DOS map/open milestones. BIOS file read, transfer, install and x86 execution remain unverified.
