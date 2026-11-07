@@ -1131,7 +1131,7 @@ x86_exec_group3_imul8:
         ld      a,(x86_reg_ax)
         bit     7,a
         jr      z,.imul8_al_positive
-        neg     a
+        neg
         ld      (x86_exec_group3_abs_al),a
         ld      a,1
         ld      (x86_exec_group3_sign_quotient),a
@@ -1142,7 +1142,7 @@ x86_exec_group3_imul8:
         ld      a,(x86_exec_group3_operand8)
         bit     7,a
         jr      z,.imul8_operand_positive
-        neg     a
+        neg
         ld      (x86_exec_group3_operand8),a
         ld      a,(x86_exec_group3_sign_quotient)
         xor     1
@@ -1282,7 +1282,7 @@ x86_exec_group3_idiv8:
         ld      a,(x86_exec_group3_operand8)
         bit     7,a
         jr      z,.idiv8_divisor_positive
-        neg     a
+        neg
         ld      (x86_exec_group3_operand8),a
         ld      a,(x86_exec_group3_sign_quotient)
         xor     1
