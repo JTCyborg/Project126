@@ -528,3 +528,16 @@ User-provided target log confirms both diagnostic DMA directions end-to-end on p
 - **Selector example:** physical page 42h → MPAGEX selector byte 21h. Resident startup's existing `OUT (#10),01h` for WIN3/page 02h is consistent with this encoding.
 - **BUILD PASS:** GitHub Actions run [42357023766](https://github.com/JTCyborg/Project126/actions/runs/42357023766), built code commit `a2fa006fdd8ce5023b7949f92393934cbbd224c5`; assemble-and-package completed successfully and published `project126-trdos-disk-and-build`. Subsequent commits only update documentation.
 - **HARDWARE PENDING:** production page-42 PASS requires a new target log showing forward header `50313236` and `DMA FRAME VALID`, plus reverse response CRC D867 and full payload `00h..FFh` validation. The earlier reverse CRC 7C1C must not be treated as proof of the response path.
+
+
+
+## 2026-11-07 — Production page 42h bidirectional DMA: HARDWARE PASS
+
+User-provided physical target log (09:52:27) validates the corrected MPAGEX page selector on actual ATM/NeoGS hardware.
+
+- ATM → NeoGS: request CRC 7C1C matches; E0/READY handshake succeeds; DMA address advances 108000h→108112h; NeoGS reads header 50313236010001050000010000010000 at C000h and reports DMA FRAME VALID.
+- NeoGS → ATM: DMA ends with readback 108113h (one discarded ROM-aperture read plus 274 transferred bytes); ATM CRC D867 matches the frame CRC; DMA RX FRAME CRC VALID and DMA RX PATTERN PASS confirm the reverse frame and payload 00h..FFh.
+- HARDWARE PASS scope: production physical page 42h (108000h) selected into WIN3 via MPAGEX #10 / RRCA; both DMA directions; frame validation; CRC-16/CCITT-FALSE; deterministic 256-byte payload integrity.
+- This result supersedes earlier page-42 FAIL/PENDING entries and the misleading reverse result with CRC 7C1C. Keep those earlier entries as chronology, but treat this section as the final status for the 274-byte production-page smoke test.
+- Not yet proven: maximum-size frame, fragmentation/reassembly, sustained multi-frame streaming, error/recovery, application service dispatch, VGA frame delivery, BIOS transfer and full x86 execution.
+- Next: retain the now hardware-proven page-42 DMA mapping and protocol unchanged; extend validation to maximum-size frames, then fragment metadata/sequence/CRC integrity and sustained streaming stress.
