@@ -76,9 +76,9 @@ p126_catalog_poll_keyboard::
         bit     4, a
         jr      nz,.catalog_confirm
         bit     2, a
-        jr      nz,.catalog_page_up
+        jp      nz,.catalog_page_up
         bit     3, a
-        jr      nz,.catalog_page_down
+        jp      nz,.catalog_page_down
         bit     0, a
         jr      nz, .catalog_move_up
         bit     1, a
