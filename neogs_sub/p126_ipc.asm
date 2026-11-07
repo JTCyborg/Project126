@@ -856,6 +856,14 @@ p126_ngs_overlay_win2_selftest:
         ld      a,(#CFFF)
         ld      (p126_ngs_overlay_test_old04),a
 
+        ; Save the original last byte of physical page 05h via WIN3 too,
+        ; so every failure path can restore both pages.
+        ld      a,P126_NGS_OVERLAY_TEST_PAGE
+        rrca
+        out     (P126_NGS_MPAGEX_PORT),a
+        ld      a,(#CFFF)
+        ld      (p126_ngs_overlay_test_old05),a
+
         ; WIN2 page 04h must expose the exact same physical byte.
         ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
         out     (P126_NGS_OVERLAY_WINDOW_PORT),a
@@ -864,13 +872,6 @@ p126_ngs_overlay_win2_selftest:
         ld      a,(p126_ngs_overlay_test_old04)
         cp      b
         jr      nz,.overlay_win2_test_failed
-
-        ; Save the original last byte of physical page 05h via WIN3.
-        ld      a,P126_NGS_OVERLAY_TEST_PAGE
-        rrca
-        out     (P126_NGS_MPAGEX_PORT),a
-        ld      a,(#CFFF)
-        ld      (p126_ngs_overlay_test_old05),a
 
         ; WIN2 page 05h must expose the same byte as WIN3/MPAGEX.
         ld      a,P126_NGS_OVERLAY_TEST_PAGE
