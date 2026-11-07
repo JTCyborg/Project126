@@ -153,18 +153,8 @@ p126_host_ngs_start_done:
         ; catalogue session; run them only in the dedicated DMA test build.
 
 p126_host_idle:
-        call    p126_host_poll_neogs_debug
         call    p126_catalog_poll_keyboard
         jr      p126_host_idle
-
-; Poll one byte from NeoGS's reverse GSDAT channel without blocking the UI.
-; DBIT is asserted by NeoGS for each byte and cleared when ATM reads GSDAT.
-p126_host_poll_neogs_debug:
-        call    p126_ipc_read_status
-        bit     P126_DBIT,a
-        ret     z
-        in      a,(P126_GSDAT)
-        jp      BIOS_DebugConsole_PrintChar
 
 ; IN: HL=zero-terminated string. Writes to the lower on-screen log.
 p126_host_console_string:
