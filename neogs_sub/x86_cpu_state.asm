@@ -98,6 +98,79 @@ x86_bios_reset_vector_probe:
 ; The watchdog is only a runaway-loop safety net; it is not a BIOS slice.
 ; Progress is reported every 256 instructions to avoid flooding #EF.
 ; -------------------------------------------------------------------------
+; Compare the DMA BIOS payload, installed page-10 bytes and the normal
+; guest-memory read path before BIOS execution starts.
+; The DMA frame remains mapped and valid until IMAGE_FINISH returns.
+x86_bios_image_diag:
+        push    af
+        push    bc
+        push    de
+        push    hl
+        ld      a,#21                  ; DMA staging page 42h
+        out     (P126_NGS_BANK_WINDOW_PORT),a
+        ld      a,(#C077)              ; payload offset 005Bh
+        ld      (x86_bios_diag_src_005b),a
+        ld      a,(#E00C)              ; payload offset 1FF0h
+        ld      (x86_bios_diag_src_1ff0),a
+        ld      a,#08                  ; installed physical page 10h
+        out     (P126_NGS_BANK_WINDOW_PORT),a
+        ld      a,(#C05B)              ; installed BIOS offset 005Bh
+        ld      (x86_bios_diag_dst_005b),a
+        ld      a,(#DFF0)              ; installed BIOS offset 1FF0h
+        ld      (x86_bios_diag_dst_1ff0),a
+        ld      hl,x86_bios_diag_src_msg
+        call    x86_bios_trace_emit_string
+        ld      a,(x86_bios_diag_src_005b)
+        call    x86_bios_trace_emit_hex8
+        ld      hl,x86_bios_diag_dst_msg
+        call    x86_bios_trace_emit_string
+        ld      a,(x86_bios_diag_dst_005b)
+        call    x86_bios_trace_emit_hex8
+        ld      hl,x86_bios_diag_run_msg
+        call    x86_bios_trace_emit_string
+        ld      hl,#F000
+        ld      de,#E05B
+        call    x86_cpu_calc_phys
+        call    x86_guest_mem_read8
+        call    x86_bios_trace_emit_hex8
+        ld      hl,x86_bios_diag_vector_src_msg
+        call    x86_bios_trace_emit_string
+        ld      a,(x86_bios_diag_src_1ff0)
+        call    x86_bios_trace_emit_hex8
+        ld      hl,x86_bios_diag_vector_dst_msg
+        call    x86_bios_trace_emit_string
+        ld      a,(x86_bios_diag_dst_1ff0)
+        call    x86_bios_trace_emit_hex8
+        ld      a,13
+        call    x86_bios_trace_emit_char
+        ld      a,10
+        call    x86_bios_trace_emit_char
+        ld      a,#21                  ; restore production DMA page 42h
+        out     (P126_NGS_BANK_WINDOW_PORT),a
+        pop     hl
+        pop     de
+        pop     bc
+        pop     af
+        ret
+
+x86_bios_trace_emit_string:
+        ld      a,(hl)
+        inc     hl
+        or      a
+        ret     z
+        call    x86_bios_trace_emit_char
+        jr      x86_bios_trace_emit_string
+
+x86_bios_diag_src_msg: db "[BIOS IMAGE] SRC@005B=",0
+x86_bios_diag_dst_msg: db " DST@005B=",0
+x86_bios_diag_run_msg: db " RUN@FE05B=",0
+x86_bios_diag_vector_src_msg: db " SRC@1FF0=",0
+x86_bios_diag_vector_dst_msg: db " DST@1FF0=",0
+x86_bios_diag_src_005b: db 0
+x86_bios_diag_dst_005b: db 0
+x86_bios_diag_src_1ff0: db 0
+x86_bios_diag_dst_1ff0: db 0
+
 x86_bios_startup_trace:
         call    x86_bios_reset_vector_probe
         jr      nc,.reset_vector_ok
