@@ -66,7 +66,7 @@ p126_ngs_resident_start:
         ldir
         ld      hl,p126_overlay_alloc_state
         ld      de,p126_overlay_alloc_state+1
-        ld      bc,9
+        ld      bc,8
         ld      (hl),a
         ldir
         call    p126_overlay_allocator_selftest
