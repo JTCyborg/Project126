@@ -1129,7 +1129,7 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 - [ ] Добавить проверки размера/пересечений, page-switch restore, запрет вызова функции после выгрузки overlay, и тесты вложенных/повторных вызовов.
 - [ ] Перенести расширяемые device models (PIC/PIT/DMA/VGA/RTC/IDE) в отдельные overlay-модули после проверки менеджера. Не увеличивать лимит X86CORE.C и не менять физическую карту страниц без отдельного решения.
 
-Причина приоритета: X86CORE.C теперь занимает 16322 из 16384 байт; осталось 62 байта. Следующий полноценный контроллер нельзя безопасно добавлять в resident image — его следует выносить в отдельный overlay после завершения allocator/manifest/loader и проверки call gate на плате.
+Причина приоритета: X86CORE.C теперь занимает 15610 из 16384 байт; осталось 774 байта. Следующий полноценный контроллер нельзя безопасно добавлять в resident image — его следует выносить в отдельный overlay после завершения allocator/manifest/loader и проверки call gate на плате.
 
 
 ## 2026-11-07 — Overlay Manager: source audit and design baseline
@@ -1142,11 +1142,12 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 - [x] Определены требования к fixed-origin module linking, manifest, DMA/IPC streaming, page-42 staging, WIN3 destination copy/readback, resident call/return gate и bounded nested calls.
 - [x] Подтвердить WIN2 page-selector register/encoding по Project125 reference: MPAG #00, selector ROR8(physical_page). Project126 hardware validation остаётся отдельной задачей.
 - [ ] Реализовать manifest/IMAGE module service и ATM TR-DOS streaming loader.
-- [x] Реализовать базовый resident call gate: сохранение WIN2 selector на WIN1 stack и восстановление через resident RET trampoline; существующие X86IO API переведены на resident wrappers.
-- [ ] Реализовать dynamic page allocator и таблицу модулей; ограничить выдачу страницами 05h–0Fh, page04h оставить закреплённой за X86IO.
-- [ ] Перенести первый реальный модуль (XT PPI/keyboard) из resident image только после готовности и проверки его загрузки.
+- [x] Реализовать базовый resident call gate: сохранение WIN2 selector на WIN1 stack и восстановление через resident RET trampoline; X86IO и X86ALU API переведены на resident wrappers.
+- [ ] Реализовать dynamic page allocator и таблицу модулей; ограничить выдачу страницами 06h–0Fh, page04h закрепить за X86IO, page05h — за X86ALU.
+- [x] Вынести XT PPI/keyboard X86IO в page04 и 8086 ALU в page05; обе реализации загружаются как отдельные fixed-origin overlays.
+- [ ] После завершения generic manager переносить следующие device models в динамические страницы 06h–0Fh.
 - [ ] Добавить generic IMAGE manifest/loader и ATM streaming дополнительных overlay-модулей.
-- [x] В IMAGE_FINISH добавлен boot-time gate self-test: тестовый код на page05 вызывает resident X86IO wrapper на page04, затем продолжает выполнение на page05; исходные 4 байта page05 восстанавливаются.
+- [x] В X86IO IMAGE_FINISH добавлен boot-time gate self-test: тестовый код временно размещается на свободной page05 до загрузки ALU, вызывает resident X86IO wrapper на page04 и продолжает выполнение на page05; исходные 4 байта page05 восстанавливаются.
 - [ ] Получить физический лог [NGS] WIN2 MAP/GATE TEST PASS; отдельно проверить repeated/deeper nested calls, регистры/FLAGS и stack integrity.
 
 Полная спецификация проектного baseline: [docs/P126_OVERLAY_MANAGER_DESIGN.md](docs/P126_OVERLAY_MANAGER_DESIGN.md). Это завершённый source audit/design checkpoint, не реализация и не hardware PASS.
@@ -1200,3 +1201,14 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 - После теста WIN2 возвращается к page04h, WIN3 — к DMA page42h. При отказе gate тест сообщает общий [NGS] WIN2 MAP/GATE TEST FAIL и не публикует IO_OVERLAY_READY. Успех отмечается [NGS] WIN2 MAP/GATE TEST PASS.
 - BUILD PASS: GitHub Actions run [42398073825](https://github.com/JTCyborg/Project126/actions/runs/42398073825), commit 99f007da68aacc57dd0ff9d87a568b1d4df10600. X86CORE.C — 16,322/16,384 bytes (62 free); X86IO.C — 796/4,096. NeoGS, ATM, standalone IPC and TR-DOS packaging: 0 errors, 0 warnings.
 - Runtime execution on physical ATM/NeoGS is still unconfirmed. This is a single-level page05→page04→page05 gate exercise, not proof of arbitrary-depth nested calls or a complete dynamic module manager.
+
+
+## 2026-11-07 — X86ALU вынесен в отдельный overlay
+
+- Реализация 8086 ALU/flags (1,175 байт) вынесена из resident image в отдельный fixed-origin файл X86ALU.C, logical origin 8000h, physical page05 / MPAG selector82h. X86IO остаётся на page04 / selector02h.
+- Все 10 ALU entry points, используемых x86_exec (ADD/SUB/ADC/SBB/LOGIC 8/16), теперь resident wrappers через общий WIN2 gate. Внутренние вызовы и helpers внутри ALU overlay остаются прямыми.
+- Добавлен IMAGE kind02 для X86ALU. ATM использует общий fixed-profile loader: открывает X86IO.C и X86ALU.C, передаёт оба через ABI1.0 DMA. NeoGS копирует в page04/page05 и выполняет побайтный readback.
+- IMAGE_FINISH для X86ALU вызывает x86_alu_overlay_probe через resident gate, проверяет A=#A5 и восстановление WIN2 selector #02; только затем выставляет X86ALU_READY. BIOS теперь ждёт X86IO_READY, X86ALU_READY и BIOS_IMAGE_READY.
+- TR-DOS образ включает X86ALU.C, build script проверяет размер 1..4096 байт, CI artifact публикует файл.
+- BUILD PASS: GitHub Actions run [42398846093](https://github.com/JTCyborg/Project126/actions/runs/42398846093), commit 94ac5ba2a2cbb338af0e0bb1af8b1efd826a469a. X86CORE 15,610/16,384 bytes (774 free); X86IO 796/4,096; X86ALU 1,175/4,096. All assembly and TR-DOS packaging steps: 0 errors, 0 warnings.
+- Физическая загрузка X86ALU, probe и выполнение арифметических инструкций на ATM/NeoGS пока не подтверждены. Это второй pinned overlay, не dynamic allocator/module manager.
