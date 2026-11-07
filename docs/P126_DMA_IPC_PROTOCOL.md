@@ -290,3 +290,12 @@ The ATM frame validator must preserve the CRC accumulator in `HL` while switchin
 For the ATM→NeoGS smoke transaction, the configured destination is physical address 108000h (page 42h, offset 0000h). The host writes its frame to the 0000h..3FFFh DMA aperture; NeoGS stops DMA and maps page 42h into WIN3 at C000h.
 
 The latest target log reached the end marker but showed 00000000 at the first four bytes read through WIN3, followed by BAD_MAGIC. This proves command/CBIT lifecycle only; it does not prove payload delivery to NeoGS RAM. The next diagnostic build reports post-stop DMA address-register readback, performs a reversible WIN3 RAM test at C100h outside the 18-byte smoke frame, and dumps all 16 fixed header bytes. Address-register readback is observational until confirmed against the hardware's documented register semantics. No DMA address or ABI change is implied by these diagnostics.
+
+
+## DMA destination pre-map diagnostic (2026-11-07)
+
+The latest hardware log reports DMA address readback 108012 after an 18-byte write to target 108000, WIN3 RW TEST=PASS, but a zero-filled received header. This confirms the selected CPU window is writable while leaving the DMA payload path unproven.
+
+Project125's established command_load_x86 sequence maps its destination page into the CPU window before arming ZX DMA and keeps that mapping stable throughout the transfer. Project126 is aligned with that ordering for page 42: WIN3 is selected before DMA register setup and is not switched after DMA stop. Resident code/data/stack remain outside WIN3. The DMA address, module, aperture, ABI and CBIT/FF handshake are unchanged.
+
+This is a diagnostic ordering alignment, not a claim that CPU window mapping controls the DMA physical destination. If the next header dump remains zero, investigation must continue at the host aperture write/data-capture path.
