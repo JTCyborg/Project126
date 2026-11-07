@@ -487,3 +487,16 @@ Verification boundary: source correction is committed. CI assembly/package resul
 - Renamed the ATM diagnostic to FRAME VALIDATION FAILED with status code, avoiding the false CRC-only diagnosis.
 - DMA registers, page mapping, handshake, and Project125 transport sequence are unchanged.
 - Verification: source correction only; CI/build and a new hardware run are pending. No hardware DMA PASS is claimed.
+
+
+## 2026-11-07 — Bidirectional DMA smoke test: HARDWARE PASS
+
+User-provided target log confirms both diagnostic DMA directions end-to-end on physical ATM/NeoGS hardware.
+
+- **ATM → NeoGS:** ATM frame CRC FF5B matches; local validator reports FRAME VALID; E0/READY handshake succeeds; payload copy and FF/end complete; NeoGS stops DMA, reads the expected P126 ABI 1.0 header and reports DMA FRAME VALID. Address readback 00D012 is consistent with the 18-byte header transfer.
+- **NeoGS → ATM:** reverse DMA completes; ATM reports CRC calculated/stored D867, DMA RX FRAME CRC VALID and DMA RX PATTERN PASS for the complete deterministic 00h..FFh payload.
+- **HARDWARE PASS scope:** bidirectional DMA smoke transport, end-of-transfer handshake, frame format validation, CRC-16/CCITT-FALSE and reverse payload byte comparison.
+- **Configuration proven:** Project125 parity diagnostic path, DMA module 1, page 03h; forward destination D000h and reverse source E000h; PG1/WIN1 mapping; no dummy write on forward transfer and one discarded read on reverse transfer.
+- **Not proven:** production page 42h / physical 108000h staging, payloads beyond the tested smoke-frame sizes, multi-frame fragmentation/reassembly, sustained streaming, application service dispatch, VGA frame delivery, BIOS transfer or x86 execution. Do not promote the page-03 diagnostic carve-outs to production allocation.
+- The earlier failure entries above are historical and remain as debugging chronology; this section supersedes their pending/failed verification status for the two smoke directions only.
+- **Next:** retain the now-proven Project125 DMA path unchanged. Validate production page 42h separately, then run full-frame integrity and fragmentation/stress tests. Every fragment must be validated by its complete header, declared length and CRC; byte-count-only checks are insufficient.
