@@ -51,6 +51,16 @@ x86_cpu_step:
 
         cp      #06
         jp      c,x86_exec_add_family
+        cp      #28
+        jp      c,.not_sub_family_28
+        cp      #2E
+        jp      c,x86_exec_subcmp_family
+.not_sub_family_28:
+        cp      #38
+        jp      c,.not_sub_family_38
+        cp      #3E
+        jp      c,x86_exec_subcmp_family
+.not_sub_family_38:
         cp      #D7
         jp      z,x86_exec_xlat
         cp      #F5
@@ -255,6 +265,123 @@ x86_exec_add_family:
         ex      de,hl
         ld      hl,(x86_reg_ax)
         call    x86_alu_add16
+        ld      (x86_reg_ax),hl
+        or      a
+        ret
+
+; 28-2D SUB r/m,r and SUB AL/AX,imm; 38-3D CMP equivalents.
+; CMP performs the same subtraction/flag calculation without committing
+; the destination. Operand width and direction follow the opcode low bits.
+x86_exec_subcmp_family:
+        ld      a,(x86_exec_opcode)
+        ld      (x86_exec_alu_opcode),a
+        and     #10
+        ld      (x86_exec_alu_is_cmp),a
+        ld      a,(x86_exec_alu_opcode)
+        bit     2,a
+        jr      nz,.subcmp_accumulator
+
+        call    x86_decode_modrm16
+        ret     c
+        ld      a,(x86_exec_alu_opcode)
+        bit     0,a
+        jr      nz,.subcmp_word
+        bit     1,a
+        jr      nz,.subcmp_r8_from_rm8
+
+        ; SUB/CMP r/m8,r8
+        call    x86_modrm_read_rm8
+        ld      (x86_exec_alu_lhs8),a
+        ld      a,(x86_modrm_reg)
+        call    x86_modrm_read_reg8
+        ld      c,a
+        ld      a,(x86_exec_alu_lhs8)
+        call    x86_alu_sub8
+        ld      c,a
+        ld      a,(x86_exec_alu_is_cmp)
+        or      a
+        ret     nz
+        ld      a,(x86_exec_alu_opcode)
+        bit     1,a
+        jp      nz,x86_modrm_write_reg8
+        jp      x86_modrm_write_rm8
+
+.subcmp_r8_from_rm8:
+        ; SUB/CMP r8,r/m8
+        ld      a,(x86_modrm_reg)
+        call    x86_modrm_read_reg8
+        ld      (x86_exec_alu_lhs8),a
+        call    x86_modrm_read_rm8
+        ld      c,a
+        ld      a,(x86_exec_alu_lhs8)
+        call    x86_alu_sub8
+        ld      c,a
+        ld      a,(x86_exec_alu_is_cmp)
+        or      a
+        ret     nz
+        ld      a,(x86_modrm_reg)
+        jp      x86_modrm_write_reg8
+
+.subcmp_word:
+        bit     1,a
+        jr      nz,.subcmp_r16_from_rm16
+
+        ; SUB/CMP r/m16,r16
+        call    x86_modrm_read_rm16
+        ld      (x86_exec_alu_lhs16),hl
+        call    x86_modrm_read_reg16
+        ex      de,hl
+        ld      hl,(x86_exec_alu_lhs16)
+        call    x86_alu_sub16
+        ld      (x86_exec_alu_result16),hl
+        ld      a,(x86_exec_alu_is_cmp)
+        or      a
+        ret     nz
+        ld      hl,(x86_exec_alu_result16)
+        jp      x86_modrm_write_rm16
+
+.subcmp_r16_from_rm16:
+        ; SUB/CMP r16,r/m16
+        call    x86_modrm_read_reg16
+        ld      (x86_exec_alu_lhs16),hl
+        call    x86_modrm_read_rm16
+        ex      de,hl
+        ld      hl,(x86_exec_alu_lhs16)
+        call    x86_alu_sub16
+        ld      (x86_exec_alu_result16),hl
+        ld      a,(x86_exec_alu_is_cmp)
+        or      a
+        ret     nz
+        ld      hl,(x86_exec_alu_result16)
+        jp      x86_modrm_write_reg16
+
+.subcmp_accumulator:
+        bit     0,a
+        jr      nz,.subcmp_ax_immediate
+        call    x86_cpu_fetch8
+        ret     c
+        ld      c,a
+        ld      a,(x86_reg_ax)
+        call    x86_alu_sub8
+        ld      (x86_exec_alu_result8),a
+        ld      a,(x86_exec_alu_is_cmp)
+        or      a
+        ret     nz
+        ld      a,(x86_exec_alu_result8)
+        ld      (x86_reg_ax),a
+        or      a
+        ret
+.subcmp_ax_immediate:
+        call    x86_cpu_fetch16
+        ret     c
+        ex      de,hl
+        ld      hl,(x86_reg_ax)
+        call    x86_alu_sub16
+        ld      (x86_exec_alu_result16),hl
+        ld      a,(x86_exec_alu_is_cmp)
+        or      a
+        ret     nz
+        ld      hl,(x86_exec_alu_result16)
         ld      (x86_reg_ax),hl
         or      a
         ret
@@ -1525,6 +1652,9 @@ x86_exec_mov_opcode: db 0
 x86_exec_alu_opcode: db 0
 x86_exec_alu_lhs8: db 0
 x86_exec_alu_lhs16: dw 0
+x86_exec_alu_result8: db 0
+x86_exec_alu_result16: dw 0
+x86_exec_alu_is_cmp: db 0
 x86_exec_mov_byte: db 0
 x86_exec_sreg_opcode: db 0
 x86_exec_sreg_index: db 0
