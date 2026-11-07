@@ -100,8 +100,7 @@ p126_ngs_ipc_validate_frame::
         ld      ix,(p126_ngs_ipc_frame_ptr)
         ld      e,(ix+12)
         ld      d,(ix+13)
-        pop     hl
-        push    hl
+        ; Restore the payload pointer into IX, preserving the live CRC in HL.
         pop     ix
 .p126_ngs_frame_crc_data:
         ld      a,d
@@ -407,8 +406,8 @@ p126_ngs_ipc_dma_test_header:
         db 'P','1','2','6'
         db P126_IPC_MAJOR,P126_IPC_MINOR
         db P126_MSG_RESPONSE,P126_SERVICE_DIAGNOSTICS,P126_OP_DIAGNOSTIC,0
-        db #00,#01
         db #00,#00
+        db #00,#01
         db #00,#00
         db #00,#00
 
