@@ -831,3 +831,13 @@ Source commit: `aac9d7e60c391510150016d3b29906a7b2f90e3d`.
 - Screen messages now distinguish: reset-vector failure, normal pause at the 16-instruction slice limit, guest HLT, and unsupported opcode/guest-memory fault. The existing #EF trace remains intact.
 - No DMA frame format, image installation, CPU instruction semantics, memory map, or keyboard handling was intentionally changed.
 - **STATUS:** source committed; assembler/package CI and physical target verification are pending. The screen path depends on the ATM host returning to its idle loop and servicing the reverse DBIT byte stream; the next hardware log should confirm the stop message appears in the lower on-screen debug console.
+
+
+## 2026-11-07 — Remove the 16-instruction BIOS bring-up slice
+
+- Replaced the fixed 16-instruction stop with continuous execution after the verified BIOS reset-vector far jump.
+- BIOS execution now continues until the guest executes HLT, the CPU core reports an unsupported opcode/guest-memory fault, or a 65,535-instruction watchdog expires. The watchdog is a runaway-loop safety guard, not a 16-instruction test slice.
+- Per-instruction #EF output was reduced to one CS:IP progress record per 256 instructions to avoid flooding the diagnostic console; the final CS:IP is emitted on HLT, fault, or watchdog stop.
+- This enables a longer BIOS initialization run, but does not establish complete 8086 semantic correctness. A watchdog stop may indicate a BIOS loop, and any opcode/memory stop still requires investigation. Full BIOS POST and general CPU functional-suite status must be evaluated separately.
+- Source commits: `aa0713bf7a382620130391a471aef29010f0e1ed` (execution logic), followed by the assembly-unit comment update.
+- **STATUS:** CI assembly/package and physical ATM/NeoGS execution are pending. Do not treat this source change as a hardware PASS.
