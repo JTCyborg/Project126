@@ -1469,3 +1469,13 @@ The temporary diagnostic now targets this second terminator and runs four instru
 The target reached the second table terminator at `F000:E0BA`, read `FF`, and executed `XOR DH,03` followed by `JNZ`. It returned to `F000:E06E` with `SI=E0BB`, `DX=00B9`, and `FLAGS=0006`; this means the second XOR result was nonzero, so the loop state was not as expected. The trace alone does not identify whether the first XOR failed to set DH or whether DH was subsequently overwritten.
 
 The temporary diagnostic is therefore moved back to the first terminator and now stops after its four-instruction sequence (`CMP`, `JZ`, `XOR DH,03`, `JNZ`). Immediately after the first loop branch, the expected state is `DH=03` (with DL still `61h`, so `DX=0361h`). This isolates the first XOR result before the second table executes. No functional CPU or BIOS behavior has been changed.
+
+
+## 2026-11-07 — BIOS group-1 XOR writeback diagnostic
+
+- The latest target capture stops immediately after the first BIOS table-loop XOR DH,03 / JNZ and shows FLAGS=0006 but DX=0061. The ALU flags indicate a nonzero result, while the expected high-byte update is not visible in DX.
+- Added a diagnostic snapshot around the 8086 group-1 immediate path (opcode 80h): instruction IP, ModR/M extension, register-vs-memory destination, decoded r/m register, left operand, immediate, ALU result, DX before writeback and DX after writeback.
+- The trace emits one [X86 G1] record at the existing BIOS diagnostic stop. This isolates whether XOR returns 03h, whether ModR/M resolves register code 6 (DH), and whether the register pair changes during writeback.
+- No BIOS bytes or guest CPU semantics were intentionally changed. The group-1 writeback path now returns through a local call solely to capture the post-write DX value; architectural result and flags are unchanged.
+- Next target expectation for XOR DH,03: EXT=06, REG=01, RM=06, LHS=00, IMM=03, RES=03, with DX0=0061 and DX1=0361. Any deviation identifies the failing stage.
+- Assembly/package validation and physical ATM/NeoGS validation are pending; no BIOS POST pass is claimed.
