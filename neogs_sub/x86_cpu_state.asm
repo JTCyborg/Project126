@@ -136,6 +136,7 @@ x86_bios_startup_trace:
         ld      hl,x86_bios_trace_watchdog_log
         call    p126_ngs_resident_log
         call    x86_bios_trace_log_cs_ip
+        call    x86_bios_trace_log_registers
         scf
         ret
 .trace_fault:
@@ -144,6 +145,7 @@ x86_bios_startup_trace:
         ld      hl,x86_bios_trace_fault_log
         call    p126_ngs_resident_log
         call    x86_bios_trace_log_cs_ip
+        call    x86_bios_trace_log_registers
         scf
         ret
 .trace_halted:
@@ -152,6 +154,7 @@ x86_bios_startup_trace:
         ld      hl,x86_bios_trace_halted_log
         call    p126_ngs_resident_log
         call    x86_bios_trace_log_cs_ip
+        call    x86_bios_trace_log_registers
         or      a
         ret
 
@@ -208,6 +211,75 @@ x86_bios_trace_emit_hex8:
         and     #0F
         jp      x86_bios_trace_emit_nibble
 
+; Dump the complete architectural state at a terminal BIOS stop.
+; This distinguishes a guest wait loop from bad register/segment state.
+x86_bios_trace_log_registers:
+        push    af
+        push    bc
+        push    de
+        push    hl
+        ld      hl,x86_bios_trace_regs_ax
+        call    p126_ngs_resident_log
+        ld      hl,(x86_reg_ax)
+        call    x86_bios_trace_emit_hex16
+        ld      hl,x86_bios_trace_regs_bx
+        call    p126_ngs_resident_log
+        ld      hl,(x86_reg_bx)
+        call    x86_bios_trace_emit_hex16
+        ld      hl,x86_bios_trace_regs_cx
+        call    p126_ngs_resident_log
+        ld      hl,(x86_reg_cx)
+        call    x86_bios_trace_emit_hex16
+        ld      hl,x86_bios_trace_regs_dx
+        call    p126_ngs_resident_log
+        ld      hl,(x86_reg_dx)
+        call    x86_bios_trace_emit_hex16
+        ld      hl,x86_bios_trace_regs_si
+        call    p126_ngs_resident_log
+        ld      hl,(x86_reg_si)
+        call    x86_bios_trace_emit_hex16
+        ld      hl,x86_bios_trace_regs_di
+        call    p126_ngs_resident_log
+        ld      hl,(x86_reg_di)
+        call    x86_bios_trace_emit_hex16
+        ld      hl,x86_bios_trace_regs_bp
+        call    p126_ngs_resident_log
+        ld      hl,(x86_reg_bp)
+        call    x86_bios_trace_emit_hex16
+        ld      hl,x86_bios_trace_regs_sp
+        call    p126_ngs_resident_log
+        ld      hl,(x86_reg_sp)
+        call    x86_bios_trace_emit_hex16
+        ld      hl,x86_bios_trace_regs_ds
+        call    p126_ngs_resident_log
+        ld      hl,(x86_reg_ds)
+        call    x86_bios_trace_emit_hex16
+        ld      hl,x86_bios_trace_regs_es
+        call    p126_ngs_resident_log
+        ld      hl,(x86_reg_es)
+        call    x86_bios_trace_emit_hex16
+        ld      hl,x86_bios_trace_regs_ss
+        call    p126_ngs_resident_log
+        ld      hl,(x86_reg_ss)
+        call    x86_bios_trace_emit_hex16
+        ld      hl,x86_bios_trace_regs_flags
+        call    p126_ngs_resident_log
+        ld      hl,(x86_reg_flags)
+        call    x86_bios_trace_emit_hex16
+        ld      hl,x86_bios_trace_regs_opcode
+        call    p126_ngs_resident_log
+        ld      a,(x86_exec_opcode)
+        call    x86_bios_trace_emit_hex8
+        ld      a,13
+        out     (#EF),a
+        ld      a,10
+        out     (#EF),a
+        pop     hl
+        pop     de
+        pop     bc
+        pop     af
+        ret
+
 x86_bios_trace_emit_nibble:
         and     #0F
         add     a,'0'
@@ -225,6 +297,19 @@ x86_bios_trace_cs_ip_prefix: db "[X86] CS:IP=",0
 x86_bios_trace_fault_log: db "[NGS] X86 BIOS TRACE STOP: OPCODE OR MEMORY FAULT",13,10,0
 x86_bios_trace_halted_log: db "[NGS] X86 BIOS EXECUTION HALTED BY GUEST",13,10,0
 x86_bios_trace_watchdog_log: db "[NGS] X86 BIOS STOP: 65535-INSTRUCTION WATCHDOG",13,10,0
+x86_bios_trace_regs_ax:    db "[X86 REG] AX=",0
+x86_bios_trace_regs_bx:    db " BX=",0
+x86_bios_trace_regs_cx:    db " CX=",0
+x86_bios_trace_regs_dx:    db " DX=",0
+x86_bios_trace_regs_si:    db " SI=",0
+x86_bios_trace_regs_di:    db " DI=",0
+x86_bios_trace_regs_bp:    db " BP=",0
+x86_bios_trace_regs_sp:    db " SP=",0
+x86_bios_trace_regs_ds:    db " DS=",0
+x86_bios_trace_regs_es:    db " ES=",0
+x86_bios_trace_regs_ss:    db " SS=",0
+x86_bios_trace_regs_flags: db " FLAGS=",0
+x86_bios_trace_regs_opcode: db " OP=",0
 
 ; physical = ((segment << 4) + offset) & 0FFFFFh
 x86_cpu_calc_phys:

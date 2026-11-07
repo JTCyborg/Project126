@@ -4518,11 +4518,24 @@ x86_exec_io_instruction:
         and     1
         jr      nz,.io_input_word
         call    x86_io_read8
+        ld      (x86_io_log_value),a
+        xor     a
+        ld      (x86_io_log_direction),a
+        ld      (x86_io_log_width),a
+        call    x86_io_log_access
+        ld      a,(x86_io_log_value)
         ld      (x86_reg_ax),a
         or      a
         ret
 .io_input_word:
         call    x86_io_read16
+        ld      (x86_io_log_value),hl
+        xor     a
+        ld      (x86_io_log_direction),a
+        inc     a
+        ld      (x86_io_log_width),a
+        call    x86_io_log_access
+        ld      hl,(x86_io_log_value)
         ld      (x86_reg_ax),hl
         or      a
         ret
@@ -4531,12 +4544,23 @@ x86_exec_io_instruction:
         and     1
         jr      nz,.io_output_word
         ld      a,(x86_reg_ax)
+        ld      (x86_io_log_value),a
         call    x86_io_write8
+        ld      a,1
+        ld      (x86_io_log_direction),a
+        xor     a
+        ld      (x86_io_log_width),a
+        call    x86_io_log_access
         or      a
         ret
 .io_output_word:
         ld      hl,(x86_reg_ax)
+        ld      (x86_io_log_value),hl
         call    x86_io_write16
+        ld      a,1
+        ld      (x86_io_log_direction),a
+        ld      (x86_io_log_width),a
+        call    x86_io_log_access
         or      a
         ret
 
