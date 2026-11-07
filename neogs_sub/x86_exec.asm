@@ -1714,15 +1714,15 @@ x86_exec_group4_5:
         jp      z,x86_exec_group5_jmp_far
         cp      6
         jp      z,x86_exec_group5_push
-        scf
+        ; PCem's 8086 switch has no FF /7 case: consume ModR/M and do nothing.
+        or      a
         ret
 
 x86_exec_group4_byte:
         ld      a,(x86_exec_group45_ext)
         cp      0
         jr      z,.group4_inc
-        cp      1
-        jr      nz,.group4_invalid
+        ; PCem treats every nonzero FE /n encoding as DEC.
         call    x86_modrm_read_rm8
         ld      (x86_exec_group45_value8),a
         call    x86_exec_group45_save_cf
@@ -1744,9 +1744,7 @@ x86_exec_group4_byte:
         call    x86_exec_group45_restore_cf
         ld      a,(x86_exec_group45_value8)
         jp      x86_modrm_write_rm8
-.group4_invalid:
-        scf
-        ret
+
 
 x86_exec_group5_incdec:
         call    x86_modrm_read_rm16
@@ -2294,8 +2292,9 @@ x86_exec_mov_sreg_rm:
         or      a
         ret
 
+; PCem ignores MOV Sreg encodings with extension /4-/7.
 .mov_sreg_invalid:
-        scf
+        or      a
         ret
 
 ; A=segment-register index, stores its pointer in x86_exec_sreg_ptr.
@@ -2316,9 +2315,6 @@ x86_exec_sreg_get_pointer:
 x86_exec_pop_rm16:
         call    x86_decode_modrm16
         ret     c
-        ld      a,(x86_modrm_reg)
-        or      a
-        jr      nz,.pop_rm_invalid
         ld      hl,(x86_reg_sp)
         ld      (x86_exec_stack_offset),hl
         call    x86_exec_stack_make_address
@@ -2338,9 +2334,6 @@ x86_exec_pop_rm16:
         ld      (x86_reg_sp),hl
         ld      hl,(x86_exec_stack_value)
         jp      x86_modrm_write_rm16
-.pop_rm_invalid:
-        scf
-        ret
 
 ; 86/87 XCHG r/m8/16,r8/16. FLAGS are not modified.
 ; Memory forms use the same guest-memory accessors as MOV.
@@ -2551,9 +2544,7 @@ x86_exec_les_lds:
 x86_exec_mov_imm_rm:
         call    x86_decode_modrm16
         ret     c
-        ld      a,(x86_modrm_reg)
-        or      a
-        jr      nz,.mov_imm_rm_invalid
+        ; PCem's 8086 handler applies C6/C7 to every /n encoding.
         ld      a,(x86_exec_opcode)
         bit     0,a
         jr      nz,.mov_imm_rm_word
@@ -2564,9 +2555,6 @@ x86_exec_mov_imm_rm:
         call    x86_cpu_fetch16
         ret     c
         jp      x86_modrm_write_rm16
-.mov_imm_rm_invalid:
-        scf
-        ret
 
 ; 9A CALL FAR ptr16:16. The return IP is the address after both immediates.
 ; Stack layout after the call is [SS:SP]=return IP, [SS:SP+2]=old CS.
