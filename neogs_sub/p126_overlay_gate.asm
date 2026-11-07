@@ -24,7 +24,7 @@ p126_overlay_call:
         ex      af,af'                   ; keep caller AF while using A
         ld      a,(p126_overlay_call_depth)
         cp      P126_OVERLAY_MAX_CALL_DEPTH
-        jr      nc,.p126_overlay_depth_rejected
+        jr      nc,p126_overlay_depth_rejected
         inc     a
         ld      (p126_overlay_call_depth),a
         ld      a,(p126_overlay_current_selector)
