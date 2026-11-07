@@ -18,6 +18,8 @@ P126_BIOS_FRAGMENT_DATA   EQU #C01C
 p126_bios_load_selected::
         ld      (p126_bios_saved_sp),sp
         ld      sp,#BFFF
+        ld      hl,p126_bios_log_load_begin
+        call    p126_catalog_log
         xor     a
         ld      (p126_bios_error),a
         ld      (p126_bios_disk_mode_active),a
@@ -66,6 +68,8 @@ p126_bios_load_selected::
         ld      a,(#5D10)
         or      b
         jp      nz,p126_bios_bad_descriptor
+        ld      hl,p126_bios_log_file_open
+        call    p126_catalog_log
 
         ; All selectable BIOS files must be exactly 8192 bytes / 32 sectors.
         ld      hl,(#5CE8)
@@ -77,6 +81,10 @@ p126_bios_load_selected::
         cp      P126_BIOS_SECTOR_COUNT
         jp      nz,p126_bios_bad_size
         ld      (p126_bios_sectors_left),a
+        ld      hl,p126_bios_log_size_ok
+        call    p126_catalog_log
+        ld      hl,p126_bios_log_read_begin
+        call    p126_catalog_log
         ld      a,(#5CEB)
         cp      16
         jp      nc,p126_bios_bad_descriptor
@@ -95,10 +103,14 @@ p126_bios_load_selected::
         jr      .p126_bios_read_loop
 
 .p126_bios_read_done:
+        ld      hl,p126_bios_log_read_done
+        call    p126_catalog_log
         ; Return to the ATM video mapping before any DMA/IPC transaction.
         call    p126_bios_restore_atm_video
         xor     a
         ld      (p126_bios_disk_mode_active),a
+        ld      hl,p126_bios_log_video_restored
+        call    p126_catalog_log
 
         ; IMAGE_BEGIN payload:
         ; message-id=0001h, image-kind=SYSBIOS, reserved=00h, size=2000h.
@@ -113,11 +125,15 @@ p126_bios_load_selected::
         ld      (P126_BIOS_FRAME+23),a
         xor     a
         ld      (p126_bios_frame_flags),a
+        ld      hl,p126_bios_log_image_begin_tx
+        call    p126_catalog_log
         ld      bc,6
         ld      de,1
         xor     a
         call    p126_bios_send_frame
         jp      c,p126_bios_transport_error
+        ld      hl,p126_bios_log_image_begin_ok
+        call    p126_catalog_log
 
         ; IMAGE_FRAGMENT payload begins with the ABI 1.0 ten-byte extension:
         ; message-id=1, index=0, count=1, total logical data length=8192.
@@ -139,11 +155,15 @@ p126_bios_load_selected::
         ld      (P126_BIOS_FRAME+27),a
         ld      a,P126_FLAG_FRAGMENT
         ld      (p126_bios_frame_flags),a
+        ld      hl,p126_bios_log_image_fragment_tx
+        call    p126_catalog_log
         ld      bc,#200A
         ld      de,2
         ld      a,P126_OP_IMAGE_FRAGMENT
         call    p126_bios_send_frame
         jp      c,p126_bios_transport_error
+        ld      hl,p126_bios_log_image_fragment_ok
+        call    p126_catalog_log
 
         ; IMAGE_FINISH payload carries the same message ID.
         ld      a,1
@@ -152,11 +172,15 @@ p126_bios_load_selected::
         ld      (P126_BIOS_FRAME+19),a
         xor     a
         ld      (p126_bios_frame_flags),a
+        ld      hl,p126_bios_log_image_finish_tx
+        call    p126_catalog_log
         ld      bc,2
         ld      de,3
         ld      a,P126_OP_IMAGE_FINISH
         call    p126_bios_send_frame
         jp      c,p126_bios_transport_error
+        ld      hl,p126_bios_log_image_finish_ok
+        call    p126_catalog_log
 
         xor     a
         ld      (p126_bios_error),a
@@ -337,6 +361,28 @@ p126_bios_fail:
         ld      hl,(p126_bios_saved_sp)
         ld      sp,hl
         ld      a,(p126_bios_error)
+        cp      1
+        ld      hl,p126_bios_log_bad_selection
+        jr      z,.p126_bios_log_failure
+        cp      2
+        ld      hl,p126_bios_log_bad_type
+        jr      z,.p126_bios_log_failure
+        cp      3
+        ld      hl,p126_bios_log_not_found
+        jr      z,.p126_bios_log_failure
+        cp      4
+        ld      hl,p126_bios_log_bad_descriptor
+        jr      z,.p126_bios_log_failure
+        cp      5
+        ld      hl,p126_bios_log_bad_size
+        jr      z,.p126_bios_log_failure
+        cp      6
+        ld      hl,p126_bios_log_sector_error
+        jr      z,.p126_bios_log_failure
+        ld      hl,p126_bios_log_transport_error
+.p126_bios_log_failure:
+        call    p126_catalog_log
+        ld      a,(p126_bios_error)
         scf
         ret
 
@@ -351,4 +397,25 @@ p126_bios_operation:       db 0
 p126_bios_frame_flags:     db 0
 p126_bios_payload_length:  dw 0
 p126_bios_sequence:        dw 0
+
+; ATM-side progress markers for the selected BIOS load transaction.
+p126_bios_log_load_begin:       db "[CAT] BIOS LOAD BEGIN",13,10,0
+p126_bios_log_file_open:        db "[CAT] BIOS FILE OPEN OK",13,10,0
+p126_bios_log_size_ok:          db "[CAT] BIOS FILE SIZE OK",13,10,0
+p126_bios_log_read_begin:       db "[CAT] BIOS READ BEGIN",13,10,0
+p126_bios_log_read_done:        db "[CAT] BIOS READ COMPLETE",13,10,0
+p126_bios_log_video_restored:   db "[CAT] BIOS ATM VIDEO RESTORED",13,10,0
+p126_bios_log_image_begin_tx:   db "[CAT] IMAGE BEGIN TX",13,10,0
+p126_bios_log_image_begin_ok:   db "[CAT] IMAGE BEGIN ACK",13,10,0
+p126_bios_log_image_fragment_tx: db "[CAT] IMAGE FRAGMENT TX",13,10,0
+p126_bios_log_image_fragment_ok: db "[CAT] IMAGE FRAGMENT ACK",13,10,0
+p126_bios_log_image_finish_tx:  db "[CAT] IMAGE FINISH TX",13,10,0
+p126_bios_log_image_finish_ok:  db "[CAT] IMAGE FINISH ACK",13,10,0
+p126_bios_log_bad_selection:    db "[CAT] BIOS ERROR: BAD SELECTION",13,10,0
+p126_bios_log_bad_type:         db "[CAT] BIOS ERROR: FILE TYPE",13,10,0
+p126_bios_log_not_found:        db "[CAT] BIOS ERROR: FILE NOT FOUND",13,10,0
+p126_bios_log_bad_descriptor:   db "[CAT] BIOS ERROR: DESCRIPTOR",13,10,0
+p126_bios_log_bad_size:         db "[CAT] BIOS ERROR: SIZE/SECTORS",13,10,0
+p126_bios_log_sector_error:     db "[CAT] BIOS ERROR: SECTOR READ",13,10,0
+p126_bios_log_transport_error:  db "[CAT] BIOS ERROR: IPC/DMA",13,10,0
 
