@@ -940,16 +940,13 @@
 756+  048D 2A 13 C0             ld      hl,(P126_IPC_DMA_RX_BUFFER+P126_IPC_HEADER_SIZE+1)
 757+  0490 CD BD 04             call    p126_ipc_console_hex16
 758+  0493 3E 3A                ld      a,':'
-neogs_ipc.asm(759): error: Label not found: BIOS_DebugConsole_PrintChar
-759+  0495 CD 00 00             call    BIOS_DebugConsole_PrintChar
+759+  0495 CD 9C 08             call    BIOS_DebugConsole_PrintChar
 760+  0498 2A 15 C0             ld      hl,(P126_IPC_DMA_RX_BUFFER+P126_IPC_HEADER_SIZE+3)
 761+  049B CD BD 04             call    p126_ipc_console_hex16
 762+  049E 3E 0D                ld      a,13
-neogs_ipc.asm(763): error: Label not found: BIOS_DebugConsole_PrintChar
-763+  04A0 CD 00 00             call    BIOS_DebugConsole_PrintChar
+763+  04A0 CD 9C 08             call    BIOS_DebugConsole_PrintChar
 764+  04A3 3E 0A                ld      a,10
-neogs_ipc.asm(765): error: Label not found: BIOS_DebugConsole_PrintChar
-765+  04A5 CD 00 00             call    BIOS_DebugConsole_PrintChar
+765+  04A5 CD 9C 08             call    BIOS_DebugConsole_PrintChar
 766+  04A8 B7                   or      a
 767+  04A9 C9                   ret
 768+  04AA
@@ -964,8 +961,7 @@ neogs_ipc.asm(765): error: Label not found: BIOS_DebugConsole_PrintChar
 777+  04B3 B7                   or      a
 778+  04B4 C8                   ret     z
 779+  04B5 E5                   push    hl
-neogs_ipc.asm(780): error: Label not found: BIOS_DebugConsole_PrintChar
-780+  04B6 CD 00 00             call    BIOS_DebugConsole_PrintChar
+780+  04B6 CD 9C 08             call    BIOS_DebugConsole_PrintChar
 781+  04B9 E1                   pop     hl
 782+  04BA 23                   inc     hl
 783+  04BB 18 F5                jr      p126_ipc_console_string
@@ -995,8 +991,7 @@ neogs_ipc.asm(780): error: Label not found: BIOS_DebugConsole_PrintChar
 807+  04DF 38 02                jr      c,.console_hex_emit
 808+  04E1 C6 07                add     a,7
 809+  04E3              .console_hex_emit:
-neogs_ipc.asm(810): error: Label not found: BIOS_DebugConsole_PrintChar
-810+  04E3 C3 00 00             jp      BIOS_DebugConsole_PrintChar
+810+  04E3 C3 9C 08             jp      BIOS_DebugConsole_PrintChar
 811+  04E6
 812+  04E6 00           p126_ipc_console_hex_byte: db 0
 813+  04E7 5B 58 38 36  p126_ipc_debug_budget: db "[X86] BIOS PAUSED: 16-INSTRUCTION SLICE COMPLETE; CS:IP=",0
@@ -1299,17 +1294,24 @@ neogs_ipc.asm(810): error: Label not found: BIOS_DebugConsole_PrintChar
 # file closed: neogs_ipc.asm
  11   089C              p126_atm_ipc_module_end:
  12   089C
- 13   089C                  DISPLAY "P126_ATM_IPC_START=", /H, p126_atm_ipc_module_start
- 14   089C                  DISPLAY "P126_ATM_IPC_END=", /H, p126_atm_ipc_module_end
- 15   089C                  DISPLAY "P126_ATM_IPC_SIZE=", /D, p126_atm_ipc_module_end-p126_atm_ipc_module_start
- 16   089C
- 17   089C                  ASSERT p126_atm_ipc_module_end > p126_atm_ipc_module_start
- 18   089C                  ASSERT p126_atm_ipc_module_end <= #10000
- 19   089C
+ 13   089C              ; The standalone IPC audit unit does not link the ATM screen-console module.
+ 14   089C              ; Resolve its external renderer symbol with an audit-only stub. The production
+ 15   089C              ; ATM application links the real BIOS_DebugConsole_PrintChar implementation.
+ 16   089C              BIOS_DebugConsole_PrintChar:
+ 17   089C C9                   ret
+ 18   089D
+ 19   089D                  DISPLAY "P126_ATM_IPC_START=", /H, p126_atm_ipc_module_start
+ 20   089D                  DISPLAY "P126_ATM_IPC_END=", /H, p126_atm_ipc_module_end
+ 21   089D                  DISPLAY "P126_ATM_IPC_SIZE=", /D, p126_atm_ipc_module_end-p126_atm_ipc_module_start
+ 22   089D
+ 23   089D                  ASSERT p126_atm_ipc_module_end > p126_atm_ipc_module_start
+ 24   089D                  ASSERT p126_atm_ipc_module_end <= #10000
+ 25   089D
 # file closed: neogs_ipc_assemble.asm
 
 Value    Label
 ------ - -----------------------------------------------------------
+0x089C   BIOS_DebugConsole_PrintChar
 0x089C   p126_atm_ipc_module_end
 0x0000   p126_atm_ipc_module_start
 0x0000   P126_CBIT
