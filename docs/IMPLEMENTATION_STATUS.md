@@ -135,10 +135,10 @@ A committed source file is not automatically a successful runtime or hardware te
 | Unified DMA/IPC ABI 1.0 | IN PROGRESS; BUILD PASS for CRC primitives | Contract, common constants and ATM/NeoGS CRC routines assembled; frame codec, DMA endpoints, session/sequence handling and hardware tests remain. |
 | Directory filtering, rendering and scrolling | HARDWARE PASS | Nine-row catalogue and CAPS SHIFT+7/6 navigation confirmed by user. |
 | BIOS images in TR-DOS disk | BUILD PASS | BIOS1.C, BIOS2.C and COMPAQ.C, each 8192 bytes; included in successful disk build. |
-| BIOS choice on ENTER | PLANNED | ENTER is the proposed confirmation key only; no selection/confirmation handler implemented yet. |
-| BIOS file transfer ATM → NeoGS | PLANNED | Transfer mechanism and buffer/address contract must be checked against the approved IPC/DMA architecture before implementation. |
-| NeoGS BIOS receive, validation and x86 handoff | PLANNED | Receiver, integrity check, BIOS placement in the custom 1 MiB guest memory map, and execution entry remain unimplemented. |
-| Full x86 BIOS boot | PLANNED | Not demonstrated by this catalogue milestone. |
+| BIOS choice on ENTER | SOURCE IMPLEMENTED; BUILD PASS | ENTER confirms the selected descriptor; the one-shot catalogue is disabled and the ATM text UI is cleared after successful transfer. Hardware test pending. |
+| BIOS file transfer ATM → NeoGS | SOURCE IMPLEMENTED; BUILD PASS | Project125 TR-DOS file-open/sector-read sequence; ABI IMAGE BEGIN/one FRAGMENT/FINISH; page-42 DMA staging. Hardware test pending. |
+| NeoGS BIOS receive and placement | SOURCE IMPLEMENTED; BUILD PASS | Validated image fragment is copied to physical SYSBIOS page 10h; IMAGE_FINISH sets BIOS-ready state. Hardware page-10 readback pending. 8086 execution entry is separate and not implemented. |
+| Full x86 BIOS boot | PLANNED | 8086 execution/reset-vector loop, VGA model/BIOS integration and guest boot are not implemented or demonstrated. |
 
 
 
