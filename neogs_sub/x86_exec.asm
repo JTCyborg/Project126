@@ -1,7 +1,8 @@
 ; PROJECT126 / X86_EXEC v0.1.0
 ; Intel 8086 Real Mode instruction execution core.
 ; Semantics cross-checked against PCem/808x.c (FETCH, EA opcode and JMP paths).
-; This is the first executable slice; unsupported opcodes fail closed.
+; The primary opcode map is dispatched; PCem 8086 forms and edge cases
+; remain under source-level semantic review. Unreviewed forms fail closed.
 ;
 ; Public API:
 ;   x86_cpu_fetch8  -> A=byte, advances guest IP, carry on memory fault.
@@ -1104,8 +1105,7 @@ x86_exec_group3_neg:
         call    x86_alu_sub16
         jp      x86_modrm_write_rm16
 
-; F6 byte Group 3 arithmetic. F7 word forms are implemented in the next
-; tranche; this path deliberately rejects them rather than using wrong width.
+; F6 byte and F7 word Group 3 arithmetic, including multiply and divide.
 x86_exec_group3_muldiv:
         ld      a,(x86_exec_group3_opcode)
         bit     0,a
