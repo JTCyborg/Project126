@@ -1270,3 +1270,14 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 - Code commits: `89267ae05c2863c4debfcdbd11c4ed3423822c3d` (IRQ request/arbitration/ack logic), `6f3dc5aa2e4df8fcbda1067890847fa70fd31753` (overlay-gated PIC ACK), `66316a3ccc0dc04696ce85315acb69cbf8eac778` (8086 interrupt-boundary integration), `079e13186707237d7ecc2a313193602beead85fe` (keyboard FIFO IRQ1 regression).
 - **BUILD PASS:** GitHub Actions run [42405147079](https://github.com/JTCyborg/Project126/actions/runs/42405147079), commit `079e13186707237d7ecc2a313193602beead85fe`. All assembly/package units completed with 0 errors and 0 warnings. X86CORE.C=16,202/16,384 bytes; X86IO.C=1,848/4,096 bytes; X86ALU.C=1,220/4,096 bytes.
 - This verifies assembly/package only. The reset-time PIC test output and actual interrupt entry/IRET behavior have not been observed on ATM/NeoGS hardware. No BIOS POST pass is claimed.
+
+
+## 2026-11-07 — 8237 DMA register model
+
+- Added exact 16-bit decode for guest ports 0000h–000Fh and page registers 0080h–0083h. The register file models four channel address/count pairs, the shared low/high-byte flip-flop, command, status/terminal-count latch, software request, single-channel mask, mode, clear-flip-flop, master-clear, clear-mask and all-mask write.
+- DMA status reads expose the request bits in bits 4–7 and clear terminal-count bits 0–3. Page registers 80h–83h map channels 0–3. Master clear resets controller command/status/request/mode/flip-flop and masks all channels without erasing address/count/page registers.
+- A reset-time DMA register self-test checks channel 0 address=1234h and count=5678h programming/readback, page register 81h, channel 2 mask/unmask, and master-clear reset state. It emits `[NGS] X86 DMA REGISTER SELFTEST PASS` or `FAIL` and restores the DMA register file.
+- This is not a transfer engine: DRQ arbitration, byte/word transfers, terminal-count generation, auto-init, memory-to-memory mode, device DMA requests, and FDC/IDE service remain pending. Guest DMA port addresses are not masked or truncated; high-byte decode remains exact, so this does not explain or consume BIOS1's observed E6xx writes.
+- Code commits: `54f0aebf36484e9300ec5b801b94199b9f304b2e` (register model), `3a7b3e88e443a5182da0a52783734ffab2b2f32b` (self-test branch-range correction), `aea658f1221b27f8f24642a361adba38f44f3594` (long dispatcher branch correction), and `d9164183cf7cc79b7e84694ac242149a9e92fd2b` (coverage comments).
+- **BUILD PASS:** GitHub Actions run [42405478965](https://github.com/JTCyborg/Project126/actions/runs/42405478965), code commit `aea658f1221b27f8f24642a361adba38f44f3594`. All assembly/package units completed with 0 errors and 0 warnings. X86CORE.C=16,202/16,384 bytes; X86IO.C=2,691/4,096 bytes; X86ALU.C=1,220/4,096 bytes.
+- This verifies assembly/package only. DMA self-test output and any transfer behavior have not been observed on target hardware.
