@@ -689,3 +689,15 @@ This is diagnostic instrumentation; the next ATM log must report the letter afte
 - **Следующий диагностический критерий:** сравнить в новом логе `CRC CALCULATED=FFFF`-формат и `FRAME CRC=FFFF`-формат. Если отличаются — локализовать вычисление/подготовку; если оба `FF5B`, но валидатор всё равно возвращает 04 — проверять саму последовательность сравнения/адресацию.
 - **Проверка диагностического патча:** GitHub Actions run [42352070894](https://github.com/JTCyborg/Project126/actions/runs/42352070894), commit `6cf8fd152fb492d2c5f6c7979386cb4bde643354`, completed with BUILD PASS (ATM/NeoGS assembly and TR-DOS image packaging). Аппаратное подтверждение значений CRC ожидается от следующего запуска пользователя.
 - **Статус:** исходная аппаратная ошибка подтверждена логом; вычисленный и сохранённый CRC ещё требуется сопоставить на реальном ATM. DMA аппаратный PASS не заявляется.
+
+
+### 2026-11-07 — исправление потери CRC в ATM валидаторе
+
+- Новый аппаратный лог показал `CRC CALCULATED=7349 FRAME CRC=FF5B`. Сохранённое поле кадра совпадает с независимым эталоном `FF5B`; ошибка находится в вычислительном пути ATM.
+- Причина найдена в `p126_ipc_validate_frame`: после обработки 16 байт заголовка аккумулятор CRC находится в `HL`. Код сохранял указатель payload в стеке, а затем выполнял `pop hl`, перезаписывая CRC адресом `frame+18`. Для текущего smoke frame адрес равен `7349h`, что и появилось в логе.
+- Исправление: восстанавливать сохранённый указатель непосредственно в `IX` (`pop ix`). `HL` остаётся нетронутым и содержит CRC заголовка; цикл payload продолжает накапливать CRC в том же регистре.
+- CRC primitive, ABI CRC, test frame и DMA handshake не менялись. Исправлена только порча аккумулятора в ATM validator.
+- Граница проверки: исправление исходника и CI сборка должны быть подтверждены отдельно; аппаратный `FRAME VALID` и дальнейший DMA обмен ещё не подтверждены.
+
+
+- **CI verification:** GitHub Actions run [42352359828](https://github.com/JTCyborg/Project126/actions/runs/42352359828), source commit `7601e8e58c8c82a0bce4697de3cdcb824f743685`, completed with SUCCESS. The ATM/NeoGS assembly and TR-DOS image packaging step passed. This confirms build correctness only; hardware rerun is still required.

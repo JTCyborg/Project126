@@ -395,3 +395,24 @@ The ATM log `DMA SMOKE FRAME SENT` means the transport handshake completed; it i
 - **Следующий диагностический критерий:** сравнить в новом логе `CRC CALCULATED=FFFF`-формат и `FRAME CRC=FFFF`-формат. Если отличаются — локализовать вычисление/подготовку; если оба `FF5B`, но валидатор всё равно возвращает 04 — проверять саму последовательность сравнения/адресацию.
 - **Проверка диагностического патча:** GitHub Actions run [42352070894](https://github.com/JTCyborg/Project126/actions/runs/42352070894), commit `6cf8fd152fb492d2c5f6c7979386cb4bde643354`, completed with BUILD PASS (ATM/NeoGS assembly and TR-DOS image packaging). Аппаратное подтверждение значений CRC ожидается от следующего запуска пользователя.
 - **Статус:** исходная аппаратная ошибка подтверждена логом; вычисленный и сохранённый CRC ещё требуется сопоставить на реальном ATM. DMA аппаратный PASS не заявляется.
+
+
+## 2026-11-07 — ATM CRC accumulator clobber fixed
+
+Latest hardware trace:
+```text
+[ATM IPC] CRC CALCULATED=7349 FRAME CRC=FF5B
+[ATM IPC] FRAME VALIDATION FAILED
+[BOOT] DMA VALIDATOR ERROR=04
+```
+
+Diagnosis:
+- Stored frame CRC `FF5B` matches the independently verified CRC-16/CCITT-FALSE value for the 16-byte test header.
+- The ATM validator had a register-lifetime bug, not a CRC polynomial/byte-order bug. After calculating the header CRC in `HL`, it restored the saved payload pointer with `pop hl`, overwriting the accumulator with the address `frame+18`. The reported `7349` is that pointer value.
+- Fixed `atm_host/neogs_ipc.asm` to restore the pointer directly with `pop ix`. The CRC accumulator in `HL` now survives into the payload loop, including the zero-length payload smoke test.
+- No DMA registers, handshake order, ABI fields, or CRC algorithm were changed.
+
+Verification boundary: source correction is committed. CI assembly/package result and target hardware rerun are tracked separately; no DMA hardware PASS is claimed until ATM reports `FRAME VALID` and NeoGS independently validates the received frame.
+
+
+- **CI verification:** GitHub Actions run [42352359828](https://github.com/JTCyborg/Project126/actions/runs/42352359828), source commit `7601e8e58c8c82a0bce4697de3cdcb824f743685`, completed with SUCCESS. The ATM/NeoGS assembly and TR-DOS image packaging step passed. This confirms build correctness only; hardware rerun is still required.
