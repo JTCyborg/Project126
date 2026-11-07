@@ -1258,3 +1258,15 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 - Commits: `28a94aa5b214f598ff0ac017e1cadaf3aff5851e` (self-test) and `1f01c4fa731c9582f3618818e932ae0ffc989439` (long-branch safety).
 - **BUILD PASS:** GitHub Actions run [42404832812](https://github.com/JTCyborg/Project126/actions/runs/42404832812), commit `1f01c4fa731c9582f3618818e932ae0ffc989439`. All five assembly/package units completed with 0 errors and 0 warnings. X86CORE.C=16,171/16,384 bytes; X86IO.C=1,537/4,096 bytes; X86ALU.C=1,220/4,096 bytes; TR-DOS packaging succeeded.
 - The reset-time self-test has been assembled but not observed executing on target hardware. It is not an emulator-level or hardware PASS.
+
+
+## 2026-11-07 — virtual master PIC IRQ1 path
+
+- Extended the 8259A master model beyond register programming: software IRQ requests are latched in IRR, masked requests remain pending, fixed-priority arbitration respects the current ISR, and the CPU interrupt boundary now obtains the vector through the X86IO overlay acknowledge entry.
+- Every accepted XT keyboard FIFO byte raises virtual IRQ1. After the CPU acknowledges the request, IRQ1 moves IRR→ISR; reading port 60h consumes the scan code; EOI releases ISR. If more scan codes remain queued, EOI re-latches IRQ1 so the FIFO drains one byte per interrupt.
+- The reset-time PIC regression now exercises the real keyboard FIFO path: push scan code 1Eh, verify pending IRQ1/vector 21h, acknowledge, verify ISR=02h and IRR=00h, consume 1Eh, issue specific EOI, then verify the remaining command/EOI register tests. It restores the PIC and keyboard FIFO to reset state.
+- The CPU boundary retains a legacy direct-vector fallback if an external producer sets the pending latch without a PIC request. All intended hardware IRQ producers should use the PIC request API.
+- Still not implemented: ATM-side keyboard event producer over DMA/IPC, PIT-driven IRQ0, priority rotation, auto-EOI, cascade/special-mask modes, and target-level interrupt timing.
+- Code commits: `89267ae05c2863c4debfcdbd11c4ed3423822c3d` (IRQ request/arbitration/ack logic), `6f3dc5aa2e4df8fcbda1067890847fa70fd31753` (overlay-gated PIC ACK), `66316a3ccc0dc04696ce85315acb69cbf8eac778` (8086 interrupt-boundary integration), `079e13186707237d7ecc2a313193602beead85fe` (keyboard FIFO IRQ1 regression).
+- **BUILD PASS:** GitHub Actions run [42405147079](https://github.com/JTCyborg/Project126/actions/runs/42405147079), commit `079e13186707237d7ecc2a313193602beead85fe`. All assembly/package units completed with 0 errors and 0 warnings. X86CORE.C=16,202/16,384 bytes; X86IO.C=1,848/4,096 bytes; X86ALU.C=1,220/4,096 bytes.
+- This verifies assembly/package only. The reset-time PIC test output and actual interrupt entry/IRET behavior have not been observed on ATM/NeoGS hardware. No BIOS POST pass is claimed.
