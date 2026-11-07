@@ -152,7 +152,9 @@ try {
 
     $diskTemplate = Get-Content -Raw (Join-Path $root $diskAssembly)
     $diskGenerated = $diskTemplate.Replace("@@HOST_NAME@@", $HostName).Replace("@@BOOT_NAME@@", $BootName)
-    $generatedDiskPath = Join-Path $root "project126_disk.generated.asm"
+    # Use a repository-relative forward-slash-free filename when invoking
+    # SjASMPlus; passing an absolute Windows path causes its fileorg warning.
+    $generatedDiskPath = "project126_disk.generated.asm"
     Set-Content -Path $generatedDiskPath -Value $diskGenerated -Encoding ASCII
 
     Write-Host "[BUILD] Host program: $HostName.C"
