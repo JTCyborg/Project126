@@ -2,7 +2,7 @@
 
 **Revision:** 0.1  
 **Date:** 2026-11-07  
-**Status:** source-audited design baseline; runtime implementation not yet started
+**Status:** source-audited design baseline; MPAG/ROR8 bank-switch contract confirmed from Project125 reference; runtime implementation not yet started
 
 ## 1. Purpose
 
@@ -38,9 +38,9 @@ Candidate physical overlay pool: pages `04h–0Fh` (12 pages, 192 KiB). Pages 00
 
 ### Mapping register gate
 
-The current source proves only the startup write `OUT (#00),#80` is used to establish WIN2→page 01. It does not yet provide a complete documented page-selector encoding for arbitrary WIN2 physical pages. Do not infer a formula from that one value.
+Project125's checked-in `neogs_sub/bank_gateways.asm`, `neogs_sub/main.asm`, `shared/neogs_io.inc` and `PROJECT125_MEMORY_LAYOUT.md` establish the NeoGS mapping contract: WIN2 is selected by MPAG port `#00`; the selector is `ROR8(physical_page)` (one `RRCA`). The Project126 startup write `OUT (#00),#80` is therefore consistent with WIN2→physical page 01h. Project125's resident bank gateways also demonstrate the required pattern: switch MPAG, CALL the banked entry, restore the caller's bank before RET. Project125 uses pages 68h/69h for its own map; those page numbers and its device/memory backend are not copied into Project126.
 
-Before implementing page switching, verify the exact WIN2 register and encoding against the NeoGS hardware documentation or a known-good Project125 paging routine, then add a save/map/restore hardware test. WIN3's MPAGEX `#10` and RRCA encoding must not be reused for WIN2 without evidence.
+For Project126, the selector formula is source-backed, but it still requires a physical target test with at least two distinct approved pages before runtime allocation is enabled. WIN3's MPAGEX `#10` remains separate and must not be touched by the WIN2 manager.
 
 ## 4. Module format and linking model
 
@@ -122,7 +122,8 @@ The existing I/O module is currently embedded in the resident image. It must not
 
 The manager is not complete until all of the following are true:
 
-- [ ] WIN2 selector encoding is documented and hardware-validated for at least two approved physical pages.
+- [x] WIN2 selector register/encoding identified from Project125 reference: MPAG #00, selector ROR8(physical_page); Project126 startup #80 corresponds to page 01h.
+- [ ] Physically validate WIN2 mapping/restoration on at least two Project126-approved pages.
 - [ ] Resident/overlay link layout and size assertions pass.
 - [ ] Module manifest parser rejects malformed and out-of-pool images.
 - [ ] ATM TR-DOS module reader streams the entire module with bounded sector and frame handling.
