@@ -8,8 +8,8 @@ Later 80186/286/386 instructions are not part of the target CPU.
 
 - Denominator: 256 possible opcode-byte values in the documented original 8086 opcode map, including the 8087 ESC opcode range and undocumented 8086-compatible values where PCem has an execution path.
 - Numerator: opcode-byte values with a concrete execution path in the Project126 dispatcher.
-- Current numerator: 216.
-- **Opcode-byte dispatch coverage: 216 / 256 = 84.38%.**
+- Current numerator: 226.
+- **Opcode-byte dispatch coverage: 226 / 256 = 88.28%.**
 - This is a source-coverage metric, not a claim of full semantic correctness. ModR/M forms, memory addressing, prefixes, flags, interrupt behavior and corner cases are tracked separately and must also be complete before the CPU is called 100%.
 - An instruction family is not considered complete merely because one opcode in the family is present.
 
@@ -26,6 +26,8 @@ Later 80186/286/386 instructions are not part of the target CPU.
 | 88–8B | MOV r/m8/16 and r8/16 register-memory forms | `neogs_sub/x86_exec.asm` + `x86_modrm.asm` |
 | 8C, 8E | MOV segment register to/from r/m16 | `neogs_sub/x86_exec.asm` + `x86_modrm.asm` |
 | 8D | LEA r16,m | `neogs_sub/x86_exec.asm` + `x86_modrm.asm` |
+| A4–A7 | MOVS/CMPS byte and word string instructions | `neogs_sub/x86_exec.asm` + `x86_alu.asm` |
+| AA–AF | STOS/LODS/SCAS byte and word string instructions | `neogs_sub/x86_exec.asm` + `x86_alu.asm` |
 | A0–A3 | MOV AL/AX to/from direct DS offset (moffs16) | `neogs_sub/x86_exec.asm` |
 | A8–A9 | TEST AL/AX, immediate | `neogs_sub/x86_exec.asm` |
 | D7 | XLAT | `neogs_sub/x86_exec.asm` |
@@ -83,6 +85,8 @@ Group 1 immediate opcodes `80h`–`83h` were added in commits `dcc8af7fe1a5b73b9
 The 16 register INC/DEC opcodes were added in commits `75a3e69da4549ffe2f2346b86cac5d8263a61ca4` and `e4dfd3b34d26c778e4a8029484ad67b76c560e83`. INC/DEC use the existing 16-bit ALU flag engine and explicitly preserve CF.
 
 ## Decoder foundation
+
+String opcodes A4h–A7h and AAh–AFh are implemented with SI/DI updates controlled by DF, ES-fixed destinations, and DS/segment-override sources. REP/REPE/REPNE loops decrement CX and apply ZF termination for CMPS/SCAS. Repetition currently runs within one interpreter step; interrupt servicing between individual repeated iterations remains pending.
 
 The instruction entry now consumes segment override (`26h`, `2Eh`, `36h`, `3Eh`), LOCK (`F0h`) and REPNE/REP (`F2h`/`F3h`) prefixes before dispatch. Segment overrides are applied to ModR/M effective addresses and direct-offset/XLAT data accesses. REP state is recorded for string execution; LOCK state is recorded, with no external bus-lock side effect in the single-guest-CPU model. REP string execution is still pending.
 
