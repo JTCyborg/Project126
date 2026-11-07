@@ -588,6 +588,19 @@ p126_ipc_debug_hex_nibble:
         pop     bc
         ret
 
+; Emit CR/LF on ATM's independent #EF debug channel.
+p126_ipc_debug_crlf:
+        push    af
+        push    bc
+        ld      bc,#00EF
+        ld      a,13
+        out     (c),a
+        ld      a,10
+        out     (c),a
+        pop     bc
+        pop     af
+        ret
+
 ; ATM-local trace output, on ATM's own physical #EF stream.
 ; IN: HL=zero-terminated string. Preserves AF/BC; clobbers HL.
 p126_ipc_debug_string:
