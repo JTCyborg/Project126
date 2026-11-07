@@ -954,7 +954,7 @@ p126_ngs_overlay_win2_selftest:
         ld      (#CFFF),a
         ld      a,(#CFFF)
         cp      #3C
-        jr      nz,.overlay_win2_test_failed
+        jp      nz,.overlay_win2_test_failed
 
         ; Stage 02: WIN2 page04 must see the exact marker written via WIN3.
         ld      a,2
@@ -963,7 +963,7 @@ p126_ngs_overlay_win2_selftest:
         out     (P126_NGS_OVERLAY_WINDOW_PORT),a
         ld      a,(#BFFF)
         cp      #3C
-        jr      nz,.overlay_win2_test_failed
+        jp      nz,.overlay_win2_test_failed
 
         ; Stage 03: prove WIN3 can write/read page05 with a distinct marker.
         ld      a,3
@@ -975,7 +975,7 @@ p126_ngs_overlay_win2_selftest:
         ld      (#CFFF),a
         ld      a,(#CFFF)
         cp      #5A
-        jr      nz,.overlay_win2_test_failed
+        jp      nz,.overlay_win2_test_failed
 
         ; Stage 04: WIN2 page05 must see the marker written via WIN3.
         ld      a,4
@@ -985,7 +985,7 @@ p126_ngs_overlay_win2_selftest:
         out     (P126_NGS_OVERLAY_WINDOW_PORT),a
         ld      a,(#BFFF)
         cp      #5A
-        jr      nz,.overlay_win2_test_failed
+        jp      nz,.overlay_win2_test_failed
 
         ; Stage 05: write through WIN2 and verify the write locally.
         ld      a,5
@@ -994,7 +994,7 @@ p126_ngs_overlay_win2_selftest:
         ld      (#BFFF),a
         ld      a,(#BFFF)
         cp      #A5
-        jr      nz,.overlay_win2_test_failed
+        jp      nz,.overlay_win2_test_failed
 
         ; Stage 06: the WIN2 page05 write must be visible through WIN3.
         ld      a,6
@@ -1004,7 +1004,7 @@ p126_ngs_overlay_win2_selftest:
         out     (P126_NGS_MPAGEX_PORT),a
         ld      a,(#CFFF)
         cp      #A5
-        jr      nz,.overlay_win2_test_failed
+        jp      nz,.overlay_win2_test_failed
 
         ; Stage 07: write through WIN2 page04 and verify through WIN3.
         ld      a,7
@@ -1018,7 +1018,7 @@ p126_ngs_overlay_win2_selftest:
         out     (P126_NGS_MPAGEX_PORT),a
         ld      a,(#CFFF)
         cp      #C3
-        jr      nz,.overlay_win2_test_failed
+        jp      nz,.overlay_win2_test_failed
 
         ; Restore both original bytes through WIN3 after all checks pass.
         ld      a,(p126_ngs_overlay_test_old04)
