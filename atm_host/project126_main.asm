@@ -42,16 +42,9 @@ p126_host_entry:
         ld      bc, #EFF7
         out     (c), a
 
-        ld      hl, p126_log_trdos_begin
-        call    p126_host_debug_string
-        call    p126_catalog_read_disk
-        ld      a, 1
-        ld      (p126_catalog_preloaded), a
-        ld      hl, p126_log_trdos_done
-        call    p126_host_debug_string
-
-        ; Only after the TR-DOS directory read is complete may ATM video
-        ; paging and shadow-port decoding be enabled.
+        ; Start NeoGS and transfer its resident/overlay images first.
+        ; TR-DOS file operations may alter shared disk/ROM workspace, so
+        ; the catalogue buffer is populated only after all image transfers.
         ld      hl, p126_log_ngs_begin
         call    p126_host_debug_string
         call    p126_neogs_startup
@@ -117,6 +110,16 @@ p126_host_ngs_start_failed:
         ld      a,10
         out     (c),a
 p126_host_ngs_start_done:
+        ; Read the complete directory LAST, after all TR-DOS file operations
+        ; used by the NeoGS loader. Keep this before ATM video/paging setup.
+        ld      hl, p126_log_trdos_begin
+        call    p126_host_debug_string
+        call    p126_catalog_read_disk
+        ld      a, 1
+        ld      (p126_catalog_preloaded), a
+        ld      hl, p126_log_trdos_done
+        call    p126_host_debug_string
+
         ld      hl, p126_log_video_begin
         call    p126_host_debug_string
         call    p126_atm_video_init
