@@ -426,6 +426,7 @@ x86_exec_add_family:
 
         ; ADD r/m8,r8
         call    x86_modrm_read_rm8
+        ret     c
         ld      (x86_exec_alu_lhs8),a
         ld      a,(x86_modrm_reg)
         call    x86_modrm_read_reg8
@@ -440,6 +441,7 @@ x86_exec_add_family:
         call    x86_modrm_read_reg8
         ld      (x86_exec_alu_lhs8),a
         call    x86_modrm_read_rm8
+        ret     c
         ld      c,a
         ld      a,(x86_exec_alu_lhs8)
         call    x86_alu_add8
@@ -453,6 +455,7 @@ x86_exec_add_family:
 
         ; ADD r/m16,r16
         call    x86_modrm_read_rm16
+        ret     c
         ld      (x86_exec_alu_lhs16),hl
         call    x86_modrm_read_reg16
         ex      de,hl
@@ -465,6 +468,7 @@ x86_exec_add_family:
         call    x86_modrm_read_reg16
         ld      (x86_exec_alu_lhs16),hl
         call    x86_modrm_read_rm16
+        ret     c
         ex      de,hl
         ld      hl,(x86_exec_alu_lhs16)
         call    x86_alu_add16
@@ -513,6 +517,7 @@ x86_exec_subcmp_family:
 
         ; SUB/CMP r/m8,r8
         call    x86_modrm_read_rm8
+        ret     c
         ld      (x86_exec_alu_lhs8),a
         ld      a,(x86_modrm_reg)
         call    x86_modrm_read_reg8
@@ -534,6 +539,7 @@ x86_exec_subcmp_family:
         call    x86_modrm_read_reg8
         ld      (x86_exec_alu_lhs8),a
         call    x86_modrm_read_rm8
+        ret     c
         ld      c,a
         ld      a,(x86_exec_alu_lhs8)
         call    x86_alu_sub8
@@ -550,6 +556,7 @@ x86_exec_subcmp_family:
 
         ; SUB/CMP r/m16,r16
         call    x86_modrm_read_rm16
+        ret     c
         ld      (x86_exec_alu_lhs16),hl
         call    x86_modrm_read_reg16
         ex      de,hl
@@ -567,6 +574,7 @@ x86_exec_subcmp_family:
         call    x86_modrm_read_reg16
         ld      (x86_exec_alu_lhs16),hl
         call    x86_modrm_read_rm16
+        ret     c
         ex      de,hl
         ld      hl,(x86_exec_alu_lhs16)
         call    x86_alu_sub16
@@ -635,6 +643,7 @@ x86_exec_adc_sbb_family:
 
         ; ADC/SBB r/m8,r8
         call    x86_modrm_read_rm8
+        ret     c
         ld      (x86_exec_alu_lhs8),a
         ld      a,(x86_modrm_reg)
         call    x86_modrm_read_reg8
@@ -653,6 +662,7 @@ x86_exec_adc_sbb_family:
         call    x86_modrm_read_reg8
         ld      (x86_exec_alu_lhs8),a
         call    x86_modrm_read_rm8
+        ret     c
         ld      c,a
         ld      hl,(x86_reg_flags)
         ld      a,l
@@ -670,6 +680,7 @@ x86_exec_adc_sbb_family:
 
         ; ADC/SBB r/m16,r16
         call    x86_modrm_read_rm16
+        ret     c
         ld      (x86_exec_alu_lhs16),hl
         call    x86_modrm_read_reg16
         ex      de,hl
@@ -685,6 +696,7 @@ x86_exec_adc_sbb_family:
         call    x86_modrm_read_reg16
         ld      (x86_exec_alu_lhs16),hl
         call    x86_modrm_read_rm16
+        ret     c
         ex      de,hl
         ld      hl,(x86_exec_alu_lhs16)
         ld      a,(x86_reg_flags)
@@ -1048,6 +1060,7 @@ x86_exec_group3_test:
         ld      (x86_exec_group3_imm8),a
         call    x86_modrm_read_rm8
         ret     c
+        ret     c
         ld      (x86_exec_group3_value8),a
         ld      a,(x86_exec_group3_imm8)
         ld      c,a
@@ -1062,6 +1075,7 @@ x86_exec_group3_test:
         ld      (x86_exec_group3_imm16),hl
         call    x86_modrm_read_rm16
         ret     c
+        ret     c
         ld      de,(x86_exec_group3_imm16)
         ld      b,1
         call    x86_alu_logic16
@@ -1074,10 +1088,12 @@ x86_exec_group3_not:
         jr      nz,.group3_not_word
         call    x86_modrm_read_rm8
         ret     c
+        ret     c
         cpl
         jp      x86_modrm_write_rm8
 .group3_not_word:
         call    x86_modrm_read_rm16
+        ret     c
         ret     c
         ld      a,l
         cpl
@@ -1093,12 +1109,14 @@ x86_exec_group3_neg:
         jr      nz,.group3_neg_word
         call    x86_modrm_read_rm8
         ret     c
+        ret     c
         ld      c,a
         xor     a
         call    x86_alu_sub8
         jp      x86_modrm_write_rm8
 .group3_neg_word:
         call    x86_modrm_read_rm16
+        ret     c
         ret     c
         ex      de,hl
         ld      hl,0
@@ -1131,6 +1149,7 @@ x86_exec_group3_muldiv:
 x86_exec_group3_mul8:
         call    x86_modrm_read_rm8
         ret     c
+        ret     c
         ld      (x86_exec_group3_operand8),a
         ld      a,(x86_reg_ax)
         ld      (x86_exec_group3_original_al),a
@@ -1143,6 +1162,7 @@ x86_exec_group3_mul8:
 
 x86_exec_group3_imul8:
         call    x86_modrm_read_rm8
+        ret     c
         ret     c
         ld      (x86_exec_group3_operand8),a
         ld      a,(x86_reg_ax)
@@ -1268,6 +1288,7 @@ x86_exec_group3_mul8_flags:
 x86_exec_group3_div8:
         call    x86_modrm_read_rm8
         ret     c
+        ret     c
         or      a
         jp      z,x86_exec_group3_divide_error
         ld      c,a
@@ -1282,6 +1303,7 @@ x86_exec_group3_div8:
 
 x86_exec_group3_idiv8:
         call    x86_modrm_read_rm8
+        ret     c
         ret     c
         or      a
         jp      z,x86_exec_group3_divide_error
@@ -1381,6 +1403,7 @@ x86_exec_group3_divide_error:
 x86_exec_group3_mul16:
         call    x86_modrm_read_rm16
         ret     c
+        ret     c
         ld      (x86_exec_group3_operand16),hl
         ld      hl,(x86_reg_ax)
         ld      (x86_exec_group3_original_ax),hl
@@ -1392,6 +1415,7 @@ x86_exec_group3_mul16:
 
 x86_exec_group3_imul16:
         call    x86_modrm_read_rm16
+        ret     c
         ret     c
         ld      (x86_exec_group3_operand16),hl
         ld      hl,(x86_reg_ax)
@@ -1548,6 +1572,7 @@ x86_exec_group3_mul16_flags:
 x86_exec_group3_div16:
         call    x86_modrm_read_rm16
         ret     c
+        ret     c
         ld      (x86_exec_divisor16),hl
         ld      a,h
         or      l
@@ -1565,6 +1590,7 @@ x86_exec_group3_div16:
 
 x86_exec_group3_idiv16:
         call    x86_modrm_read_rm16
+        ret     c
         ret     c
         ld      (x86_exec_divisor16),hl
         ld      a,h
@@ -1728,6 +1754,7 @@ x86_exec_group4_byte:
         jr      z,.group4_inc
         ; PCem treats every nonzero FE /n encoding as DEC.
         call    x86_modrm_read_rm8
+        ret     c
         ld      (x86_exec_group45_value8),a
         call    x86_exec_group45_save_cf
         ld      a,(x86_exec_group45_value8)
@@ -1739,6 +1766,7 @@ x86_exec_group4_byte:
         jp      x86_modrm_write_rm8
 .group4_inc:
         call    x86_modrm_read_rm8
+        ret     c
         ld      (x86_exec_group45_value8),a
         call    x86_exec_group45_save_cf
         ld      a,(x86_exec_group45_value8)
@@ -1752,6 +1780,7 @@ x86_exec_group4_byte:
 
 x86_exec_group5_incdec:
         call    x86_modrm_read_rm16
+        ret     c
         ld      (x86_exec_group45_value16),hl
         call    x86_exec_group45_save_cf
         ld      hl,(x86_exec_group45_value16)
@@ -1771,6 +1800,7 @@ x86_exec_group5_incdec:
 
 x86_exec_group5_call_near:
         call    x86_modrm_read_rm16
+        ret     c
         ld      (x86_exec_target_ip),hl
         ld      hl,(x86_reg_ip)
         call    x86_exec_push_word
@@ -1785,12 +1815,14 @@ x86_exec_group5_call_far:
         or      a
         jr      nz,.group5_far_invalid
         call    x86_modrm_read_rm16
+        ret     c
         ld      (x86_exec_target_ip),hl
         ld      hl,(x86_ea_offset)
         inc     hl
         inc     hl
         ld      (x86_ea_offset),hl
         call    x86_modrm_read_rm16
+        ret     c
         ld      (x86_exec_target_cs),hl
         ld      hl,(x86_reg_cs)
         call    x86_exec_push_word
@@ -1810,6 +1842,7 @@ x86_exec_group5_call_far:
 
 x86_exec_group5_jmp_near:
         call    x86_modrm_read_rm16
+        ret     c
         ld      (x86_reg_ip),hl
         or      a
         ret
@@ -1819,12 +1852,14 @@ x86_exec_group5_jmp_far:
         or      a
         jr      nz,.group5_jmp_far_invalid
         call    x86_modrm_read_rm16
+        ret     c
         ld      (x86_exec_target_ip),hl
         ld      hl,(x86_ea_offset)
         inc     hl
         inc     hl
         ld      (x86_ea_offset),hl
         call    x86_modrm_read_rm16
+        ret     c
         ld      (x86_exec_target_cs),hl
         ld      hl,(x86_exec_target_cs)
         ld      (x86_reg_cs),hl
@@ -1838,6 +1873,7 @@ x86_exec_group5_jmp_far:
 
 x86_exec_group5_push:
         call    x86_modrm_read_rm16
+        ret     c
         jp      x86_exec_push_word
 
 ; PUSH helper: HL=value, decrements SP before writing low/high bytes to SS.
@@ -1906,6 +1942,7 @@ x86_exec_group1_immediate:
         ret     c
         ld      (x86_exec_group1_imm8),a
         call    x86_modrm_read_rm8
+        ret     c
         ld      (x86_exec_group1_lhs8),a
         ld      a,(x86_exec_group1_imm8)
         ld      c,a
@@ -1935,6 +1972,7 @@ x86_exec_group1_immediate:
 
 .group1_apply_word:
         call    x86_modrm_read_rm16
+        ret     c
         ld      de,(x86_exec_group1_imm16)
         call    x86_exec_group1_apply16
         ld      a,(x86_exec_group1_is_cmp)
@@ -2110,6 +2148,7 @@ x86_exec_logic_family:
 
         ; OR/AND/XOR r/m8,r8
         call    x86_modrm_read_rm8
+        ret     c
         ld      (x86_exec_alu_lhs8),a
         ld      a,(x86_modrm_reg)
         call    x86_modrm_read_reg8
@@ -2126,6 +2165,7 @@ x86_exec_logic_family:
         call    x86_modrm_read_reg8
         ld      (x86_exec_alu_lhs8),a
         call    x86_modrm_read_rm8
+        ret     c
         ld      c,a
         ld      a,(x86_exec_alu_operation)
         ld      b,a
@@ -2141,6 +2181,7 @@ x86_exec_logic_family:
 
         ; OR/AND/XOR r/m16,r16
         call    x86_modrm_read_rm16
+        ret     c
         ld      (x86_exec_alu_lhs16),hl
         call    x86_modrm_read_reg16
         ex      de,hl
@@ -2155,6 +2196,7 @@ x86_exec_logic_family:
         call    x86_modrm_read_reg16
         ld      (x86_exec_alu_lhs16),hl
         call    x86_modrm_read_rm16
+        ret     c
         ex      de,hl
         ld      hl,(x86_exec_alu_lhs16)
         ld      a,(x86_exec_alu_operation)
@@ -2169,6 +2211,7 @@ x86_exec_logic_family:
         bit     0,a
         jr      nz,.logic_test_word
         call    x86_modrm_read_rm8
+        ret     c
         ld      (x86_exec_alu_lhs8),a
         ld      a,(x86_modrm_reg)
         call    x86_modrm_read_reg8
@@ -2180,6 +2223,7 @@ x86_exec_logic_family:
         ret
 .logic_test_word:
         call    x86_modrm_read_rm16
+        ret     c
         ld      (x86_exec_alu_lhs16),hl
         call    x86_modrm_read_reg16
         ex      de,hl
@@ -2234,6 +2278,7 @@ x86_exec_mov_rm_reg:
 .mov_r8_from_rm8:
         call    x86_modrm_read_rm8
         ret     c
+        ret     c
         ld      c,a
         ld      a,(x86_modrm_reg)
         jp      x86_modrm_write_reg8
@@ -2245,6 +2290,7 @@ x86_exec_mov_rm_reg:
         jp      x86_modrm_write_rm16
 .mov_r16_from_rm16:
         call    x86_modrm_read_rm16
+        ret     c
         ret     c
         jp      x86_modrm_write_reg16
 
@@ -2288,6 +2334,7 @@ x86_exec_mov_sreg_rm:
 .mov_sreg_from_rm:
         ; Original 8086 behavior permits /1 (MOV CS,r/m16).
         call    x86_modrm_read_rm16
+        ret     c
         ld      (x86_exec_sreg_value),hl
         ld      a,(x86_exec_sreg_index)
         call    x86_exec_sreg_get_pointer
@@ -2356,6 +2403,7 @@ x86_exec_xchg_rm_reg:
 
         call    x86_modrm_read_rm8
         ret     c
+        ret     c
         ld      (x86_exec_xchg_rm_byte),a
         ld      a,(x86_modrm_reg)
         call    x86_modrm_read_reg8
@@ -2364,6 +2412,7 @@ x86_exec_xchg_rm_reg:
 
 .xchg_word:
         call    x86_modrm_read_rm16
+        ret     c
         ret     c
         ld      (x86_exec_xchg_rm_word),hl
         call    x86_modrm_read_reg16
@@ -2521,12 +2570,14 @@ x86_exec_les_lds:
 
         call    x86_modrm_read_rm16
         ret     c
+        ret     c
         ld      (x86_exec_les_lds_offset),hl
         ld      hl,(x86_ea_offset)
         inc     hl
         inc     hl
         ld      (x86_ea_offset),hl
         call    x86_modrm_read_rm16
+        ret     c
         ret     c
         ld      (x86_exec_les_lds_segment),hl
 
@@ -2921,6 +2972,7 @@ x86_exec_shift_group:
         jr      nz,.shift_word
 
         call    x86_modrm_read_rm8
+        ret     c
         ld      (x86_exec_shift_value8),a
         ld      a,(x86_exec_shift_count)
         or      a
@@ -2934,6 +2986,7 @@ x86_exec_shift_group:
 
 .shift_word:
         call    x86_modrm_read_rm16
+        ret     c
         ld      (x86_exec_shift_value16),hl
         ld      a,(x86_exec_shift_count)
         or      a
