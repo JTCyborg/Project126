@@ -1432,23 +1432,23 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 - Found the concrete cause of `X86 DMA FAIL: ADDRESS READ/FLIPFLOP` in `neogs_sub/x86_devices.asm`: `x86_dev_dma_read8` loaded the guest register byte into A, then called `x86_dev_dma_toggle_flipflop`, which overwrote A with the flip-flop state. Consequently, the self-test read the pointer bit instead of the address byte. The read handler now preserves AF across the toggle helper and returns the original byte; the low/high flip-flop sequencing remains unchanged.
 - Validation required on the next target run: expect `X86 DMA REGISTER SELFTEST PASS` if no additional issue is exposed; BIOS trace should progress beyond the two port-table terminators. Build validation is pending. No BIOS POST pass or complete DMA transfer engine is claimed.
 
-## 2026-11-07 — BIOS ROM-byte and CMP/JZ boundary diagnostics
+## 2026-11-07 — BIOS port-table terminator branch trace
 
 The latest target log stops at the 512-instruction diagnostic watchdog with
 CS:IP=F000:E06E, SI=E0FE, AL=00, FLAGS=0093, OP=EB. The rolling history
 shows the BIOS port-table loop executing LODSB, CMP AL,FF, JZ, MOV DL,AL,
-LODSB, OUT DX,AL and JMP. The last observed CMP compares AL=EB, so that
-snapshot alone does not establish whether either FF terminator was read or
-whether JZ mishandled a set ZF.
+LODSB, OUT DX,AL and JMP. The final recorded CMP compares AL=EB, so the
+terminal snapshot does not prove whether either FF terminator was fetched
+or whether JZ mishandled a set ZF.
 
-Added target-side observations through the production guest-memory mapper
-for BIOS bytes at F000:E06E, E079, E0AF, E0B0, E0BA and E0BB. The code also
-logs AL and FLAGS immediately after CMP at candidate post-LODSB SI values,
-then logs the resulting IP after JZ. Both candidate address alignments are
-covered so the next run can distinguish an image/mapping offset from an
-8086 CMP/JZ execution defect. These diagnostics are observational only and
-do not modify guest registers or flags.
+The trace now watches the first CMP AL,FF at the candidate first-terminator
+boundary. It arms a two-instruction stop so the following JZ executes before
+the existing register and 16-instruction history dump. The SI window E0B0-E0B1
+covers the two possible one-byte image alignments. The resulting CS:IP and
+history will show whether JZ branches to F000:E0BF or falls through to
+F000:E073, alongside the actual AL and FLAGS values.
 
-No BIOS POST pass is claimed. The next hardware log must be used to select
-the actual corrective change rather than changing CMP/JZ or the ROM map
-based only on the terminal watchdog snapshot.
+This is an observational diagnostic; it does not change guest CPU state.
+No BIOS POST pass is claimed. Use the next target log to identify whether
+the defect is in BIOS image mapping, CMP flag generation, or JZ condition
+handling before applying a functional fix.
