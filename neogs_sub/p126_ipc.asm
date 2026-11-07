@@ -238,17 +238,6 @@ p126_ngs_ipc_dma_receive_frame::
         ld      (p126_ngs_ipc_dma_end_lad),a
         call    p126_ngs_ipc_log_hex_byte_inline
         call    p126_ngs_ipc_log_crlf
-        ; Exactly 4000h bytes must end at 10C000h, immediately after page 42h.
-        ld      a,(p126_ngs_ipc_dma_end_had)
-        cp      #10
-        jp      nz,.p126_ngs_dma_bad_length
-        ld      a,(p126_ngs_ipc_dma_end_mad)
-        cp      #C0
-        jp      nz,.p126_ngs_dma_bad_length
-        ld      a,(p126_ngs_ipc_dma_end_lad)
-        or      a
-        jp      nz,.p126_ngs_dma_bad_length
-
         ; WIN3 remains mapped to physical page 42h; CPU view is C000h.
         ld      hl,p126_ngs_ipc_log_dma_page42_mapped
         call    p126_ngs_ipc_log
@@ -283,6 +272,21 @@ p126_ngs_ipc_dma_receive_frame::
         jp      .p126_ngs_dma_bad_length
 .p126_ngs_dma_size_ok:
         ld      (p126_ngs_ipc_rx_size),hl
+        ; Compare DMA counter with base + the declared frame size. This
+        ; validates exact byte count for every legal frame length; for the
+        ; 16 KiB test the expected end address is 10C000h.
+        ld      hl,(p126_ngs_ipc_rx_size)
+        ld      de,#8000
+        add     hl,de
+        ld      a,(p126_ngs_ipc_dma_end_had)
+        cp      #10
+        jp      nz,.p126_ngs_dma_bad_length
+        ld      a,(p126_ngs_ipc_dma_end_mad)
+        cp      h
+        jp      nz,.p126_ngs_dma_bad_length
+        ld      a,(p126_ngs_ipc_dma_end_lad)
+        cp      l
+        jp      nz,.p126_ngs_dma_bad_length
         ld      bc,(p126_ngs_ipc_rx_size)
         ld      hl,#C000
         call    p126_ngs_ipc_validate_frame
