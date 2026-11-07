@@ -875,8 +875,15 @@ p126_ngs_image_finish:
 .image_finish_x86alu:
         ; Page05 is the fixed-origin ALU overlay. Probe it through the same
         ; resident gate used by every arithmetic entry point.
+        ld      a,#3C
+        scf
+        ld      hl,#1234
         call    x86_alu_overlay_probe
         cp      #A5
+        jr      nz,.image_finish_alu_probe_bad
+        ld      de,#5AA5
+        or      a
+        sbc     hl,de
         jr      nz,.image_finish_alu_probe_bad
         ld      a,(p126_overlay_current_selector)
         cp      P126_NGS_X86IO_OVERLAY_SELECTOR
