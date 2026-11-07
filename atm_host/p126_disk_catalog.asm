@@ -75,9 +75,9 @@ p126_catalog_poll_keyboard::
         ld      a, (p126_catalog_key)
         bit     4, a
         jr      nz,.catalog_confirm
-        bit     5, a
+        bit     2, a
         jr      nz,.catalog_page_up
-        bit     6, a
+        bit     3, a
         jr      nz,.catalog_page_down
         bit     0, a
         jr      nz, .catalog_move_up
@@ -86,7 +86,7 @@ p126_catalog_poll_keyboard::
         ret
 
 .catalog_page_up:
-        ; CAPS SHIFT+3: move the selection one complete visible page up.
+        ; CAPS SHIFT+5 (left): move one complete visible page up.
         ld      a,(p126_catalog_selected)
         cp      P126_CATALOG_VISIBLE_ROWS
         jr      nc,.catalog_page_up_subtract
@@ -102,7 +102,7 @@ p126_catalog_poll_keyboard::
         ret
 
 .catalog_page_down:
-        ; CAPS SHIFT+4: move one visible page down, clamped to last file.
+        ; CAPS SHIFT+8 (right): move one visible page down, clamped to last file.
         ld      a,(p126_catalog_total)
         or      a
         ret     z
@@ -247,7 +247,7 @@ p126_catalog_scan_keys:
         ld      (p126_catalog_scan_result), a
 
 .catalog_check_other_arrows:
-        ; CAPS SHIFT+5 = left; CAPS SHIFT+3/4 = page up/down.
+        ; CAPS SHIFT+5 = page up; CAPS SHIFT+8 = page down.
         ld      bc,#F7FE
         in      a,(c)
         bit     4,a
@@ -257,24 +257,16 @@ p126_catalog_scan_keys:
         ld      (p126_catalog_scan_result),a
 
 .catalog_check_page_up:
-        ld      bc,#F7FE
+        ; Reuse the left/right cursor combinations as page navigation.
+.catalog_check_right:
+        ld      bc,#EFFE
         in      a,(c)
         bit     2,a
-        jr      nz,.catalog_check_page_down
+        jr      nz,.catalog_keys_done
         ld      a,(p126_catalog_scan_result)
-        or      32
+        or      8
         ld      (p126_catalog_scan_result),a
 
-.catalog_check_page_down:
-        ld      bc,#F7FE
-        in      a,(c)
-        bit     3,a
-        jr      nz,.catalog_check_right
-        ld      a,(p126_catalog_scan_result)
-        or      64
-        ld      (p126_catalog_scan_result),a
-
-.catalog_check_right:
         ld      bc, #EFFE
         in      a, (c)
         bit     2, a
