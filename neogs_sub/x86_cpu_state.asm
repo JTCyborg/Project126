@@ -180,6 +180,7 @@ x86_bios_startup_trace:
         call    x86_bios_trace_capture_event
         ret
 .reset_vector_ok:
+        call    x86_bios_table_probe
         xor     a
         ld      (x86_bios_trace_event_status),a
         ld      (x86_bios_trace_first_count),a
@@ -196,6 +197,7 @@ x86_bios_startup_trace:
         call    x86_cpu_step
         jr      c,.trace_fault
         call    x86_bios_trace_capture_instruction
+        call    x86_bios_trace_marker_probe
         ; OBSOLETE: first-32 register dump disabled; terminal fault snapshot remains active.
         ld      hl,(x86_bios_trace_executed)
         inc     hl
@@ -578,6 +580,194 @@ x86_bios_trace_log_history:
         pop     af
         ret
 
+; Read selected SYSBIOS bytes through the production guest-memory mapper.
+; This distinguishes the installed image's actual byte offsets from the
+; source ROM offsets before interpreting the BIOS port-table loop.
+x86_bios_table_probe:
+        push    af
+        push    bc
+        push    de
+        push    hl
+        ld      hl,#F000
+        ld      de,#E06E
+        call    x86_cpu_calc_phys
+        call    x86_guest_mem_read8
+        jr      nc,.code_ok
+        ld      a,#EE
+.code_ok:
+        ld      (x86_bios_probe_code),a
+        ld      hl,#F000
+        ld      de,#E079
+        call    x86_cpu_calc_phys
+        call    x86_guest_mem_read8
+        jr      nc,.table_ok
+        ld      a,#EE
+.table_ok:
+        ld      (x86_bios_probe_table),a
+        ld      hl,#F000
+        ld      de,#E0AF
+        call    x86_cpu_calc_phys
+        call    x86_guest_mem_read8
+        jr      nc,.term1a_ok
+        ld      a,#EE
+.term1a_ok:
+        ld      (x86_bios_probe_term1a),a
+        ld      hl,#F000
+        ld      de,#E0B0
+        call    x86_cpu_calc_phys
+        call    x86_guest_mem_read8
+        jr      nc,.term1b_ok
+        ld      a,#EE
+.term1b_ok:
+        ld      (x86_bios_probe_term1b),a
+        ld      hl,#F000
+        ld      de,#E0BA
+        call    x86_cpu_calc_phys
+        call    x86_guest_mem_read8
+        jr      nc,.term2a_ok
+        ld      a,#EE
+.term2a_ok:
+        ld      (x86_bios_probe_term2a),a
+        ld      hl,#F000
+        ld      de,#E0BB
+        call    x86_cpu_calc_phys
+        call    x86_guest_mem_read8
+        jr      nc,.term2b_ok
+        ld      a,#EE
+.term2b_ok:
+        ld      (x86_bios_probe_term2b),a
+
+        ld      hl,x86_bios_probe_log
+        call    p126_ngs_resident_log
+        ld      a,(x86_bios_probe_code)
+        call    x86_bios_trace_emit_hex8
+        ld      hl,x86_bios_probe_table_text
+        call    p126_ngs_resident_log
+        ld      a,(x86_bios_probe_table)
+        call    x86_bios_trace_emit_hex8
+        ld      hl,x86_bios_probe_term1a_text
+        call    p126_ngs_resident_log
+        ld      a,(x86_bios_probe_term1a)
+        call    x86_bios_trace_emit_hex8
+        ld      hl,x86_bios_probe_term1b_text
+        call    p126_ngs_resident_log
+        ld      a,(x86_bios_probe_term1b)
+        call    x86_bios_trace_emit_hex8
+        ld      hl,x86_bios_probe_term2a_text
+        call    p126_ngs_resident_log
+        ld      a,(x86_bios_probe_term2a)
+        call    x86_bios_trace_emit_hex8
+        ld      hl,x86_bios_probe_term2b_text
+        call    p126_ngs_resident_log
+        ld      a,(x86_bios_probe_term2b)
+        call    x86_bios_trace_emit_hex8
+        ld      a,13
+        call    x86_bios_trace_emit_char
+        ld      a,10
+        call    x86_bios_trace_emit_char
+        pop     hl
+        pop     de
+        pop     bc
+        pop     af
+        ret
+
+; Capture the actual CMP/JZ state at both candidate terminator boundaries.
+; Candidate SI values account for either a zero-based or one-byte-shifted
+; BIOS image mapping. The helper only observes guest state.
+x86_bios_trace_marker_probe:
+        push    af
+        push    bc
+        push    de
+        push    hl
+        ld      hl,(x86_exec_instruction_start_ip)
+        ld      de,#E06F
+        or      a
+        sbc     hl,de
+        jr      z,.marker_cmp
+        ld      hl,(x86_exec_instruction_start_ip)
+        ld      de,#E071
+        or      a
+        sbc     hl,de
+        jr      z,.marker_jz
+        jr      .marker_done
+.marker_cmp:
+        call    x86_bios_trace_marker_si_match
+        jr      nc,.marker_done
+        ld      hl,x86_bios_probe_cmp_log
+        call    p126_ngs_resident_log
+        call    x86_bios_trace_marker_log_state
+        jr      .marker_done
+.marker_jz:
+        call    x86_bios_trace_marker_si_match
+        jr      nc,.marker_done
+        ld      hl,x86_bios_probe_jz_log
+        call    p126_ngs_resident_log
+        ld      hl,(x86_reg_si)
+        call    x86_bios_trace_emit_hex16
+        ld      hl,x86_bios_probe_next_text
+        call    p126_ngs_resident_log
+        ld      hl,(x86_reg_ip)
+        call    x86_bios_trace_emit_hex16
+        ld      hl,x86_bios_probe_flags_text
+        call    p126_ngs_resident_log
+        ld      hl,(x86_reg_flags)
+        call    x86_bios_trace_emit_hex16
+        ld      a,13
+        call    x86_bios_trace_emit_char
+        ld      a,10
+        call    x86_bios_trace_emit_char
+.marker_done:
+        pop     hl
+        pop     de
+        pop     bc
+        pop     af
+        ret
+
+; Carry set when post-LODSB SI is one of the candidate marker positions.
+x86_bios_trace_marker_si_match:
+        ld      hl,(x86_reg_si)
+        ld      de,#E0B0
+        or      a
+        sbc     hl,de
+        jr      z,.marker_si_match
+        ld      hl,(x86_reg_si)
+        ld      de,#E0B1
+        or      a
+        sbc     hl,de
+        jr      z,.marker_si_match
+        ld      hl,(x86_reg_si)
+        ld      de,#E0BB
+        or      a
+        sbc     hl,de
+        jr      z,.marker_si_match
+        ld      hl,(x86_reg_si)
+        ld      de,#E0BC
+        or      a
+        sbc     hl,de
+        jr      z,.marker_si_match
+        or      a
+        ret
+.marker_si_match:
+        scf
+        ret
+
+x86_bios_trace_marker_log_state:
+        ld      hl,(x86_reg_si)
+        call    x86_bios_trace_emit_hex16
+        ld      hl,x86_bios_probe_al_text
+        call    p126_ngs_resident_log
+        ld      a,(x86_reg_ax)
+        call    x86_bios_trace_emit_hex8
+        ld      hl,x86_bios_probe_flags_text
+        call    p126_ngs_resident_log
+        ld      hl,(x86_reg_flags)
+        call    x86_bios_trace_emit_hex16
+        ld      a,13
+        call    x86_bios_trace_emit_char
+        ld      a,10
+        call    x86_bios_trace_emit_char
+        ret
+
 ; Capture a compact stop event for the DMA diagnostics response.
 ; A=1 slice budget, 2 guest HLT, 3 opcode/memory fault, 4 reset-vector fault.
 x86_bios_trace_capture_event:
@@ -765,6 +955,24 @@ x86_bios_trace_history_al_text: db " AL=",0
 x86_bios_trace_history_flags_text: db " FL=",0
 x86_bios_trace_history_opcode_text: db " OP=",0
 x86_bios_trace_history: BLOCK 16*9,0
+
+x86_bios_probe_code: db 0
+x86_bios_probe_table: db 0
+x86_bios_probe_term1a: db 0
+x86_bios_probe_term1b: db 0
+x86_bios_probe_term2a: db 0
+x86_bios_probe_term2b: db 0
+x86_bios_probe_log: db "[BIOS ROM] E06E=",0
+x86_bios_probe_table_text: db " E079=",0
+x86_bios_probe_term1a_text: db " E0AF=",0
+x86_bios_probe_term1b_text: db " E0B0=",0
+x86_bios_probe_term2a_text: db " E0BA=",0
+x86_bios_probe_term2b_text: db " E0BB=",0
+x86_bios_probe_cmp_log: db "[BIOS CMP] SI=",0
+x86_bios_probe_jz_log: db "[BIOS JZ] SI=",0
+x86_bios_probe_al_text: db " AL=",0
+x86_bios_probe_flags_text: db " FLAGS=",0
+x86_bios_probe_next_text: db " NEXT=",0
 
 x86_bios_trace_remaining: dw 0
 x86_bios_trace_executed:  dw 0
