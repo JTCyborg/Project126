@@ -268,14 +268,15 @@ x86_bios_trace_screen_emit_hex16:
         jp      x86_bios_trace_screen_emit_hex8
 
 x86_bios_trace_screen_emit_hex8:
-        push    af
+        ld      (x86_bios_trace_screen_hex_byte),a
         rrca
         rrca
         rrca
         rrca
+        and     #0F
         call    x86_bios_trace_screen_emit_nibble
-        pop     af
         ret     c
+        ld      a,(x86_bios_trace_screen_hex_byte)
         and     #0F
         jp      x86_bios_trace_screen_emit_nibble
 
@@ -289,6 +290,7 @@ x86_bios_trace_screen_emit_nibble:
         jp      x86_bios_trace_screen_send_char
 
 x86_bios_trace_screen_char: db 0
+x86_bios_trace_screen_hex_byte: db 0
 x86_bios_screen_reset_fail: db "[X86] BIOS RESET VECTOR FAILED AT CS:IP=",0
 x86_bios_screen_budget:    db "[X86] BIOS PAUSED: 16-INSTRUCTION SLICE COMPLETE; CS:IP=",0
 x86_bios_screen_fault:     db "[X86] BIOS STOPPED: OPCODE OR MEMORY FAULT; CS:IP=",0
