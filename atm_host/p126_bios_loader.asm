@@ -16,6 +16,8 @@ P126_BIOS_FRAGMENT_DATA   EQU #C01C
 ; Called by the catalogue after Enter has been pressed and released.
 ; OUT: carry clear after NeoGS has acknowledged all three IMAGE operations.
 p126_bios_load_selected::
+        ; Match the Project125 BIOS loader entry contract explicitly.
+        di
         ld      (p126_bios_saved_sp),sp
         ld      sp,#BFFF
         ld      hl,p126_bios_log_load_begin
@@ -28,6 +30,8 @@ p126_bios_load_selected::
         ld      a,(p126_catalog_selected)
         call    p126_catalog_find_index
         jp      c,p126_bios_bad_selection
+        ld      hl,p126_bios_log_selection_resolved
+        call    p126_catalog_log
         push    hl
         ld      de,#5CDD
         ld      bc,8
@@ -38,10 +42,16 @@ p126_bios_load_selected::
         ld      a,(hl)
         cp      'C'
         jp      nz,p126_bios_bad_file_type
+        ld      hl,p126_bios_log_file_type_ok
+        call    p126_catalog_log
 
         ; Enter the same legacy mapping used before ATM video initialization.
         ; Disk reads must not run with the alternate ATM window mapping active.
+        ld      hl,p126_bios_log_trdos_map_begin
+        call    p126_catalog_log
         call    p126_bios_enter_trdos_mode
+        ld      hl,p126_bios_log_trdos_map_done
+        call    p126_catalog_log
         ld      a,1
         ld      (p126_bios_disk_mode_active),a
 
@@ -51,8 +61,12 @@ p126_bios_load_selected::
         ld      (#5CE5),a
         ld      a,9
         ld      (#5D06),a
+        ld      hl,p126_bios_log_open_call
+        call    p126_catalog_log
         ld      c,10
         call    #3D13
+        ld      hl,p126_bios_log_open_return
+        call    p126_catalog_log
         ld      a,c
         cp      #FF
         jp      z,p126_bios_file_not_found
@@ -61,8 +75,12 @@ p126_bios_load_selected::
         ld      (#5D0F),a
         ld      (#5D10),a
         pop     af
+        ld      hl,p126_bios_log_descriptor_call
+        call    p126_catalog_log
         ld      c,8
         call    #3D13
+        ld      hl,p126_bios_log_descriptor_return
+        call    p126_catalog_log
         ld      a,(#5D0F)
         ld      b,a
         ld      a,(#5D10)
@@ -400,6 +418,14 @@ p126_bios_sequence:        dw 0
 
 ; ATM-side progress markers for the selected BIOS load transaction.
 p126_bios_log_load_begin:       db "[CAT] BIOS LOAD BEGIN",13,10,0
+p126_bios_log_selection_resolved: db "[CAT] BIOS SELECTION RESOLVED",13,10,0
+p126_bios_log_file_type_ok:      db "[CAT] BIOS FILE TYPE C OK",13,10,0
+p126_bios_log_trdos_map_begin:   db "[CAT] TRDOS MAP SWITCH BEGIN",13,10,0
+p126_bios_log_trdos_map_done:    db "[CAT] TRDOS MAP SWITCH DONE",13,10,0
+p126_bios_log_open_call:         db "[CAT] TRDOS OPEN C=0A CALL",13,10,0
+p126_bios_log_open_return:       db "[CAT] TRDOS OPEN C=0A RETURN",13,10,0
+p126_bios_log_descriptor_call:   db "[CAT] TRDOS DESCRIPTOR C=08 CALL",13,10,0
+p126_bios_log_descriptor_return: db "[CAT] TRDOS DESCRIPTOR C=08 RETURN",13,10,0
 p126_bios_log_file_open:        db "[CAT] BIOS FILE OPEN OK",13,10,0
 p126_bios_log_size_ok:          db "[CAT] BIOS FILE SIZE OK",13,10,0
 p126_bios_log_read_begin:       db "[CAT] BIOS READ BEGIN",13,10,0

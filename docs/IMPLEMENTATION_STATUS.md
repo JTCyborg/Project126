@@ -629,3 +629,12 @@ Source commit: `aac9d7e60c391510150016d3b29906a7b2f90e3d`.
 - ATM's final catalogue message now says the IMAGE sequence was sent and directs verification to the NeoGS installation result; it no longer claims successful SYSBIOS installation based only on CBIT completion.
 - **HARDWARE PENDING:** selected BIOS file read, all three IMAGE operations, and installation/readback in physical page 10h. Required positive marker: `[NGS] SYSBIOS IMAGE INSTALLED AT PAGE 10`. Rejection markers distinguish handler validation failures.
 - **BUILD PENDING:** the diagnostic source changes require a fresh CI assembly/package run. No BIOS transfer/install PASS is claimed.
+
+
+## 2026-11-07 — BIOS loader pre-open trace added
+
+- Target log stopped at `[CAT] BIOS LOAD BEGIN`; therefore the selected-entry lookup, file-type check, TR-DOS mapping transition and both TR-DOS open/descriptor calls were not yet evidenced.
+- Compared the Project126 loader against the proven `Project125/zx_main/bios_file_loader.asm`. Preserved the exact TR-DOS filename setup and C=0Ah then C=08h call sequence; no ABI or sector-reader changes were made.
+- Added explicit `DI` at loader entry, matching Project125, plus markers after selection resolution/type validation, around TR-DOS mapping, and immediately before/after each #3D13 call.
+- These markers are diagnostic boundaries only; they do not assert a root cause. The last visible marker in the next hardware log will isolate the failing stage.
+- Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build and hardware retest pending. BIOS read/transfer/install remain **HARDWARE PENDING**.
