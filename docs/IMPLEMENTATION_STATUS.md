@@ -648,3 +648,21 @@ Source commit: `aac9d7e60c391510150016d3b29906a7b2f90e3d`.
 - Catalogue keyboard handling and renderer, TR-DOS ABI/sector reading, DMA and IMAGE protocol are unchanged.
 - Expected target evidence: BIOS FILE TYPE C OK, TRDOS MAP SWITCH DONE, then the C=0Ah/C=08h call/return markers.
 - CI assembly/package and physical BIOS read/transfer/install verification are pending. Do not claim BIOS hardware PASS yet.
+
+
+## 2026-11-07 — Preserve DOSEN while restoring TR-DOS mapping (hardware pending)
+
+- Target trace reaches the TR-DOS open ROM call C=0Ah at #3D13 but does not return.
+- Project125 performs BIOS disk I/O before ATM video initialization. Project126 performs it afterwards, when p126_atm_video_init has already enabled DOSEN through the #3D2F trampoline and configured automatic TR-DOS ROM selection with #3FF7=#BF.
+- The previous p126_bios_enter_trdos_mode reset #EFF7 after DOSEN setup. This contradicted the explicit ordering constraint in p126_screen_console.asm: resetting #EFF7 after shadow-port/DOSEN setup can undo the TR-DOS overlay state.
+- Updated the routine to switch only #7FFD to #10 and update #5C3B, leaving #EFF7/DOSEN and #3FF7 untouched.
+- Keyboard/catalogue code, TR-DOS ABI, disk-sector reader, DMA, IPC and IMAGE protocol are unchanged.
+- Hardware verification pending; require C=0Ah return and subsequent C=08h descriptor markers before declaring this stage successful.
+
+
+## 2026-11-07 — Selected BIOS filename diagnostic (build/hardware pending)
+
+- Added a timestamped #EF diagnostic line immediately after successful file-type validation: [CAT] BIOS FILE SELECTED: NAME    .C
+- The filename is emitted from the same eight-byte #5CDD field that the TR-DOS C=0Ah open routine uses, with the validated C extension appended.
+- The logger preserves AF/BC/DE/HL. No catalogue, TR-DOS ABI, disk I/O, DMA, IPC or IMAGE behavior was changed.
+- CI and hardware verification pending.

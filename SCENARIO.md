@@ -1023,3 +1023,21 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 - Fixed the register lifetime: save the returned HL pointer immediately after successful lookup, emit the diagnostic marker, restore the pointer, and only then copy the eight-character filename and inspect the type byte at entry offset 8.
 - No changes to catalogue key scanning/navigation, directory layout, TR-DOS ROM ABI, disk-sector reader, DMA, IPC or IMAGE handlers. The existing retry-on-load-error behavior remains; each retry requires a new Enter press.
 - BUILD/HARDWARE STATUS: source correction requires CI assembly/package and a fresh target run. Expected next marker for a valid .C BIOS entry: [CAT] BIOS FILE TYPE C OK, followed by TR-DOS map/open milestones. BIOS file read, transfer, install and x86 execution remain unverified.
+
+
+## 2026-11-07 — TR-DOS ROM mapping correction after ATM video initialization
+
+- Hardware trace now reaches BIOS selection, validates type C, completes the map-switch routine, and then stops inside the TR-DOS ROM open call C=0Ah at #3D13.
+- Comparison with Project125 showed that its BIOS disk loader runs before ATM video initialization, under the untouched legacy ROM mapping. Project126 runs the BIOS loader after p126_atm_video_init has enabled the permanent DOSEN state via the #3D2F trampoline and selected the automatic TR-DOS ROM mapping via #3FF7=#BF.
+- p126_bios_enter_trdos_mode incorrectly wrote zero to #EFF7 both before and after changing #7FFD. The Project126 video initializer explicitly documents that resetting #EFF7 after the #0177/#3D2F shadow-port/DOSEN setup can undo the state required by the TR-DOS overlay. The post-video disk path must not repeat that reset.
+- Corrected p126_bios_enter_trdos_mode to restore only #7FFD=#10 and the corresponding system variable #5C3B, preserving the already-configured #EFF7/DOSEN and #3FF7 automatic TR-DOS selection.
+- No changes to catalogue selection/navigation, file-name/type validation, TR-DOS C=0Ah/C=08h ABI, sector reader, DMA, IPC or IMAGE handlers.
+- Hardware verification pending. Expected next trace: TRDOS OPEN C=0A RETURN, then DESCRIPTOR C=08 CALL/RETURN. This correction is a reasoned mapping fix, not yet a hardware PASS.
+
+
+## 2026-11-07 — Log selected BIOS filename
+
+- After the directory-entry lookup and type-C validation, the ATM now emits the exact selected TR-DOS 8.3 filename to debug port #EF as a timestamped line: [CAT] BIOS FILE SELECTED: NAME    .C
+- The eight filename bytes are read from the already prepared TR-DOS system filename field at #5CDD; the validated extension C is appended explicitly. This keeps the diagnostic tied to the exact filename passed to the TR-DOS open routine.
+- Logging preserves AF/BC/DE/HL and does not alter catalogue selection, TR-DOS mapping, ROM calls, sector reads, DMA or IPC.
+- CI build and target hardware verification pending.
