@@ -770,7 +770,7 @@ Source commit: `aac9d7e60c391510150016d3b29906a7b2f90e3d`.
 ## 2026-11-07 — Initial BIOS execution gate (superseded)
 
 - The previous resident loop consumed p126_ngs_bios_image_ready but did not invoke x86_bios_reset_vector_probe. That gate prevented all guest instruction execution while the complete PCem semantic port remained unfinished.
-- The gate is superseded by the bounded bring-up path below. This does not authorize a full BIOS POST, general CPU functional suite, or guest-program execution.
+- The gate was superseded by the bounded bring-up path below. This does not authorize a full BIOS POST, general CPU functional suite, or guest-program execution.
 
 
 ## Intel 8086 execution core — opcode coverage ledger
@@ -779,7 +779,7 @@ Source commit: `aac9d7e60c391510150016d3b29906a7b2f90e3d`.
 - Current implementation: neogs_sub/x86_exec.asm contains execution paths for the complete 256-byte primary opcode dispatch map, with ModR/M, ALU, stack, interrupt, string and virtual-I/O handlers. This is dispatch coverage, not proof that all 8086 forms and edge cases are semantically complete.
 - **Current primary opcode-byte dispatch coverage: 256 / 256 = 100.00%.** Semantic completeness remains below 100% and is not yet assigned a percentage; PCem form-by-form review and integration gaps remain.
 - The 16 MOV-immediate encodings were added in commit `28575e385d5d2a66c5ca448e72f7b4e2f01d2391`.
-- The full CPU functional suite, BIOS POST and guest-program execution remain blocked until the complete 8086 implementation is ported and reviewed. The explicitly requested initial BIOS bring-up is a bounded exception: reset-vector execution plus at most 16 subsequent instructions, stopping on HLT, unsupported opcode or memory fault. Assembly/package CI validates only syntax, linkage and image size; target execution still requires a hardware log.
+- The full CPU functional suite, full BIOS POST and guest-program execution remain blocked until the complete 8086 implementation is ported and reviewed. The explicitly requested initial BIOS bring-up is a bounded exception: reset-vector execution plus at most 16 subsequent instructions, stopping on HLT, unsupported opcode or memory fault. Assembly/package CI validates syntax, linkage and image size; target execution still requires a hardware log.
 
 - Added original 8086 register INC/DEC encodings `40–4F`; result flags are calculated by the 16-bit ALU path and CF is restored unchanged. Compile-only CI is pending; no CPU or BIOS functional tests were run.
 
@@ -806,6 +806,7 @@ Source commit: `aac9d7e60c391510150016d3b29906a7b2f90e3d`.
 - After the resident loop consumes the BIOS-ready event (which is set only after IMAGE_FINISH and the page-10 byte-for-byte readback pass), it calls x86_bios_startup_trace.
 - The routine resets the 8086 to FFFF:0000, executes the reset-vector far jump through x86_cpu_step, verifies CS:IP = F000:E05B, then executes at most 16 more guest instructions.
 - Each successful instruction emits the post-instruction CS:IP on NeoGS #EF. HLT ends the slice normally. An unsupported opcode or guest-memory fault stops the slice and logs the stop location.
+- **BUILD PASS:** GitHub Actions run [42378305671](https://github.com/JTCyborg/Project126/actions/runs/42378305671), source commit `306bd08edbd95e4aeb102657a3b005d8a02651b5`; NeoGS, ATM and TR-DOS images assembled and packaged successfully.
 - This is an intentionally bounded BIOS bring-up, not full POST or a claim of complete 8086 semantics. No unbounded guest loop, VGA POST, or guest OS boot is enabled. Target runtime confirmation is pending.
 
 ## 2026-11-07 — SYSBIOS page-10 installation integrity
@@ -820,4 +821,4 @@ Source commit: `aac9d7e60c391510150016d3b29906a7b2f90e3d`.
 - IRET now restores the FLAGS image exactly as PCem's 8086 path does: the stacked word masked with 0FFFh, without synthesizing reserved bit 1.
 - The coverage ledger was reconciled with the implemented REP iteration scheduler and the CPU-side interrupt-inhibit consumer; earlier statements that these pieces were wholly pending were stale.
 - **Readiness: NOT READY for CPU functional tests.** Remaining blockers include the host/IPC IRQ/NMI producer and vector source, interrupt servicing between REP iterations, form-by-form PCem semantic review, and TF/NMI/IRQ/HLT plus address-wrap/fault corner-case verification.
-- Only assembly/package validation is permitted at this stage. No CPU functional tests, BIOS POST, reset-vector execution or guest programs have been run or enabled.
+- At the time of this checkpoint, only assembly/package validation was permitted and reset-vector execution was disabled. This checkpoint is superseded by the bounded BIOS bring-up section below; the full CPU functional suite and full BIOS POST remain blocked.
