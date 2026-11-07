@@ -352,3 +352,10 @@ The ATM log `DMA SMOKE FRAME SENT` means the transport handshake completed; it i
 - NeoGS now logs E0 command reception, DMA armed/READY, and FF/end detection directly through the resident logger on NeoGS's independent #EF port. The resident main loop retains its existing DMA FRAME VALID and DMA FRAME REJECTED outcome messages.
 - Fixed the receiver lifecycle against ABI 1.0 section 3.1: CBIT is no longer cleared immediately when FFh is detected. DMA is stopped, page 42h is mapped, frame length and CRC are validated, and only then is CBIT cleared. Malformed-length and validation-error paths also clear CBIT after recording the failure; timeout still disables DMA before releasing the host.
 - Verification status: source-level change only until the corresponding GitHub Actions build completes. Hardware READY/payload/FF/CRC exchange remains unverified. The next target log must correlate both independent #EF streams; no DMA PASS is inferred from ATM alone.
+
+
+## NeoGS IPC standalone build dependency correction (2026-11-07)
+
+- Build log exposed that `p126_ipc.asm` is assembled independently as `NEOGS_IPC` as well as included by the resident core. Calls from this shared source to `p126_ngs_resident_log` failed in the standalone assembly because that symbol belongs to the other assembly unit.
+- Replaced those references with a self-contained `p126_ngs_ipc_log` routine inside the IPC module. It writes directly to NeoGS's independent `#EF` output and preserves AF/BC, so the same source assembles in both contexts.
+- The fix addresses the exact undefined symbol errors reported by the local SjASMPlus build. Full build/CI confirmation remains pending.

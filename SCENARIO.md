@@ -645,3 +645,10 @@ This is diagnostic instrumentation; the next ATM log must report the letter afte
 - Corrected the receive transaction ordering: after FFh, NeoGS disables DMA and maps the staging page, validates frame bounds and CRC while CBIT remains asserted, then clears CBIT. Invalid-length and CRC/frame-error paths also release CBIT after validation has failed; timeout cleanup still disables DMA before release.
 - The stage marker localizes the host-side wait that failed but does not, by itself, prove payload integrity. Correlate ATM and NeoGS independent logs.
 - Verification: source changes committed; CI build and target hardware DMA transfer remain pending. No DMA runtime PASS is claimed.
+
+
+## Standalone NeoGS IPC assembly dependency fix (2026-11-07)
+
+- The NeoGS IPC source is assembled twice by the build: once as the standalone `NEOGS_IPC` diagnostic/module image and once included in the resident core image.
+- DMA lifecycle diagnostics now use a small logger implemented inside `p126_ipc.asm`, writing directly to NeoGS's own `#EF` port. The IPC module no longer references `p126_ngs_resident_log`, which is defined only by the resident core assembly unit and therefore cannot resolve in the standalone IPC build.
+- This fixes the three reported undefined-label errors without changing the resident entry point or merging ATM and NeoGS debug streams.

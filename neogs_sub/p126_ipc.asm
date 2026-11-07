@@ -174,7 +174,7 @@ p126_ngs_ipc_dma_receive_frame::
         ld      a,#80
         out     (P126_NGS_DMA_CST),a
         ld      hl,p126_ngs_ipc_log_dma_ready
-        call    p126_ngs_resident_log
+        call    p126_ngs_ipc_log
         xor     a
         out     (P126_NGS_CLRCBIT),a
 
@@ -203,7 +203,7 @@ p126_ngs_ipc_dma_receive_frame::
         ld      a,P126_NGS_DMA_TARGET_PAGE
         out     (P126_NGS_WIN3_PORT),a
         ld      hl,p126_ngs_ipc_log_dma_end
-        call    p126_ngs_resident_log
+        call    p126_ngs_ipc_log
 
         ; Derive exact frame size from the fixed header's payload length.
         ld      a,(#C00C)
@@ -290,7 +290,7 @@ p126_ngs_ipc_dispatch_once::
 
 .p126_ngs_dispatch_host_frame:
         ld      hl,p126_ngs_ipc_log_dma_e0
-        call    p126_ngs_resident_log
+        call    p126_ngs_ipc_log
         call    p126_ngs_ipc_dma_receive_frame
         ret     c
         ld      a,1
@@ -333,3 +333,22 @@ p126_ngs_ipc_crc16_test_vector:
 p126_ngs_ipc_log_dma_e0:    db "[NGS] DMA E0 RECEIVED",13,10,0
 p126_ngs_ipc_log_dma_ready: db "[NGS] DMA READY",13,10,0
 p126_ngs_ipc_log_dma_end:   db "[NGS] DMA END RECEIVED",13,10,0
+
+; This IPC module is assembled both standalone and into the resident image.
+; Keep its diagnostics self-contained instead of importing the resident logger.
+; IN: HL = zero-terminated message. OUT: AF/BC preserved; HL advanced to NUL.
+p126_ngs_ipc_log:
+        push    af
+        push    bc
+        ld      bc,#00EF
+.p126_ngs_ipc_log_loop:
+        ld      a,(hl)
+        inc     hl
+        or      a
+        jr      z,.p126_ngs_ipc_log_done
+        out     (c),a
+        jr      .p126_ngs_ipc_log_loop
+.p126_ngs_ipc_log_done:
+        pop     bc
+        pop     af
+        ret
