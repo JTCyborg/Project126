@@ -1626,7 +1626,7 @@
 174+  088B 3E 80                ld      a,#80
 175+  088D D3 1F                out     (P126_NGS_DMA_CST),a
 176+  088F 21 6D 09             ld      hl,p126_ngs_ipc_log_dma_ready
-177+  0892 CD 6D 00             call    p126_ngs_resident_log
+177+  0892 CD 98 09             call    p126_ngs_ipc_log
 178+  0895 AF                   xor     a
 179+  0896 D3 05                out     (P126_NGS_CLRCBIT),a
 180+  0898
@@ -1655,7 +1655,7 @@
 203+  08B2 3E 42                ld      a,P126_NGS_DMA_TARGET_PAGE
 204+  08B4 D3 23                out     (P126_NGS_WIN3_PORT),a
 205+  08B6 21 7F 09             ld      hl,p126_ngs_ipc_log_dma_end
-206+  08B9 CD 6D 00             call    p126_ngs_resident_log
+206+  08B9 CD 98 09             call    p126_ngs_ipc_log
 207+  08BC
 208+  08BC                      ; Derive exact frame size from the fixed header's payload length.
 209+  08BC 3A 0C C0             ld      a,(#C00C)
@@ -1743,7 +1743,7 @@
 290+  091A
 291+  091A              .p126_ngs_dispatch_host_frame:
 292+  091A 21 55 09             ld      hl,p126_ngs_ipc_log_dma_e0
-293+  091D CD 6D 00             call    p126_ngs_resident_log
+293+  091D CD 98 09             call    p126_ngs_ipc_log
 294+  0920 CD 7C 08             call    p126_ngs_ipc_dma_receive_frame
 295+  0923 D8                   ret     c
 296+  0924 3E 01                ld      a,1
@@ -1805,34 +1805,53 @@
 335+  0993 45 44 0D 0A
 335+  0997 00
 336+  0998
+337+  0998              ; This IPC module is assembled both standalone and into the resident image.
+338+  0998              ; Keep its diagnostics self-contained instead of importing the resident logger.
+339+  0998              ; IN: HL = zero-terminated message. OUT: AF/BC preserved; HL advanced to NUL.
+340+  0998              p126_ngs_ipc_log:
+341+  0998 F5                   push    af
+342+  0999 C5                   push    bc
+343+  099A 01 EF 00             ld      bc,#00EF
+344+  099D              .p126_ngs_ipc_log_loop:
+345+  099D 7E                   ld      a,(hl)
+346+  099E 23                   inc     hl
+347+  099F B7                   or      a
+348+  09A0 28 04                jr      z,.p126_ngs_ipc_log_done
+349+  09A2 ED 79                out     (c),a
+350+  09A4 18 F7                jr      .p126_ngs_ipc_log_loop
+351+  09A6              .p126_ngs_ipc_log_done:
+352+  09A6 C1                   pop     bc
+353+  09A7 F1                   pop     af
+354+  09A8 C9                   ret
+355+  09A9
 # file closed: p126_ipc.asm
-162   0998              p126_ngs_ipc_module_end:
-163   0998
-164   0998              ; Export explicit boundaries for build/map inspection.
-165   0998                  DISPLAY "P126_NGS_RESIDENT_START=", /H, p126_ngs_resident_entry_vector
-166   0998                  DISPLAY "P126_NGS_RESIDENT_END=", /H, x86_cpu_state_module_start
-167   0998                  DISPLAY "P126_NGS_RESIDENT_SIZE=", /D, x86_cpu_state_module_start-p126_ngs_resident_entry_vector
-168   0998                  DISPLAY "P126_X86_STATE_START=", /H, x86_cpu_state_module_start
-169   0998                  DISPLAY "P126_X86_STATE_END=", /H, x86_cpu_state_module_end
-170   0998                  DISPLAY "P126_X86_STATE_SIZE=", /D, x86_cpu_state_module_end-x86_cpu_state_module_start
-171   0998                  DISPLAY "P126_X86_ALU_START=", /H, x86_alu_module_start
-172   0998                  DISPLAY "P126_X86_ALU_END=", /H, x86_alu_module_end
-173   0998                  DISPLAY "P126_X86_ALU_SIZE=", /D, x86_alu_module_end-x86_alu_module_start
-174   0998                  DISPLAY "P126_NGS_IPC_START=", /H, p126_ngs_ipc_module_start
-175   0998                  DISPLAY "P126_NGS_IPC_END=", /H, p126_ngs_ipc_module_end
-176   0998                  DISPLAY "P126_NGS_IPC_SIZE=", /D, p126_ngs_ipc_module_end-p126_ngs_ipc_module_start
-177   0998                  DISPLAY "P126_X86_IMAGE_END=", /H, p126_ngs_ipc_module_end
-178   0998                  DISPLAY "P126_X86_IMAGE_SIZE=", /D, p126_ngs_ipc_module_end
-179   0998
-180   0998                  ASSERT p126_ngs_resident_entry_vector = 0
-181   0998                  ASSERT x86_cpu_state_module_start > p126_ngs_resident_entry_vector
-182   0998                  ASSERT x86_cpu_state_module_end > x86_cpu_state_module_start
-183   0998                  ASSERT x86_alu_module_end > x86_alu_module_start
-184   0998                  ASSERT x86_alu_module_start = x86_cpu_state_module_end
-185   0998                  ASSERT p126_ngs_ipc_module_end > p126_ngs_ipc_module_start
-186   0998                  ASSERT p126_ngs_ipc_module_start = x86_alu_module_end
-187   0998                  ASSERT p126_ngs_ipc_module_end <= #4000
-188   0998
+162   09A9              p126_ngs_ipc_module_end:
+163   09A9
+164   09A9              ; Export explicit boundaries for build/map inspection.
+165   09A9                  DISPLAY "P126_NGS_RESIDENT_START=", /H, p126_ngs_resident_entry_vector
+166   09A9                  DISPLAY "P126_NGS_RESIDENT_END=", /H, x86_cpu_state_module_start
+167   09A9                  DISPLAY "P126_NGS_RESIDENT_SIZE=", /D, x86_cpu_state_module_start-p126_ngs_resident_entry_vector
+168   09A9                  DISPLAY "P126_X86_STATE_START=", /H, x86_cpu_state_module_start
+169   09A9                  DISPLAY "P126_X86_STATE_END=", /H, x86_cpu_state_module_end
+170   09A9                  DISPLAY "P126_X86_STATE_SIZE=", /D, x86_cpu_state_module_end-x86_cpu_state_module_start
+171   09A9                  DISPLAY "P126_X86_ALU_START=", /H, x86_alu_module_start
+172   09A9                  DISPLAY "P126_X86_ALU_END=", /H, x86_alu_module_end
+173   09A9                  DISPLAY "P126_X86_ALU_SIZE=", /D, x86_alu_module_end-x86_alu_module_start
+174   09A9                  DISPLAY "P126_NGS_IPC_START=", /H, p126_ngs_ipc_module_start
+175   09A9                  DISPLAY "P126_NGS_IPC_END=", /H, p126_ngs_ipc_module_end
+176   09A9                  DISPLAY "P126_NGS_IPC_SIZE=", /D, p126_ngs_ipc_module_end-p126_ngs_ipc_module_start
+177   09A9                  DISPLAY "P126_X86_IMAGE_END=", /H, p126_ngs_ipc_module_end
+178   09A9                  DISPLAY "P126_X86_IMAGE_SIZE=", /D, p126_ngs_ipc_module_end
+179   09A9
+180   09A9                  ASSERT p126_ngs_resident_entry_vector = 0
+181   09A9                  ASSERT x86_cpu_state_module_start > p126_ngs_resident_entry_vector
+182   09A9                  ASSERT x86_cpu_state_module_end > x86_cpu_state_module_start
+183   09A9                  ASSERT x86_alu_module_end > x86_alu_module_start
+184   09A9                  ASSERT x86_alu_module_start = x86_cpu_state_module_end
+185   09A9                  ASSERT p126_ngs_ipc_module_end > p126_ngs_ipc_module_start
+186   09A9                  ASSERT p126_ngs_ipc_module_start = x86_alu_module_end
+187   09A9                  ASSERT p126_ngs_ipc_module_end <= #4000
+188   09A9
 # file closed: x86_cpu_state_assemble.asm
 
 Value    Label
@@ -1921,10 +1940,13 @@ Value    Label
 0x0876   p126_ngs_ipc_frame_ptr
 0x0878   p126_ngs_ipc_frame_size
 0x110000 X P126_NGS_IPC_LIMIT
+0x0998   p126_ngs_ipc_log
+0x09A6   p126_ngs_ipc_log.p126_ngs_ipc_log_done
+0x099D   p126_ngs_ipc_log.p126_ngs_ipc_log_loop
 0x0955   p126_ngs_ipc_log_dma_e0
 0x097F   p126_ngs_ipc_log_dma_end
 0x096D   p126_ngs_ipc_log_dma_ready
-0x0998   p126_ngs_ipc_module_end
+0x09A9   p126_ngs_ipc_module_end
 0x0796   p126_ngs_ipc_module_start
 0x0043   P126_NGS_IPC_PAGE
 0x0001   P126_NGS_IPC_PAGES

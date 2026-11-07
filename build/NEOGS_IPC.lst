@@ -281,8 +281,7 @@
 174+  00F5 3E 80                ld      a,#80
 175+  00F7 D3 1F                out     (P126_NGS_DMA_CST),a
 176+  00F9 21 D7 01             ld      hl,p126_ngs_ipc_log_dma_ready
-p126_ipc.asm(177): error: Label not found: p126_ngs_resident_log
-177+  00FC CD 00 00             call    p126_ngs_resident_log
+177+  00FC CD 02 02             call    p126_ngs_ipc_log
 178+  00FF AF                   xor     a
 179+  0100 D3 05                out     (P126_NGS_CLRCBIT),a
 180+  0102
@@ -311,8 +310,7 @@ p126_ipc.asm(177): error: Label not found: p126_ngs_resident_log
 203+  011C 3E 42                ld      a,P126_NGS_DMA_TARGET_PAGE
 204+  011E D3 23                out     (P126_NGS_WIN3_PORT),a
 205+  0120 21 E9 01             ld      hl,p126_ngs_ipc_log_dma_end
-p126_ipc.asm(206): error: Label not found: p126_ngs_resident_log
-206+  0123 CD 00 00             call    p126_ngs_resident_log
+206+  0123 CD 02 02             call    p126_ngs_ipc_log
 207+  0126
 208+  0126                      ; Derive exact frame size from the fixed header's payload length.
 209+  0126 3A 0C C0             ld      a,(#C00C)
@@ -400,8 +398,7 @@ p126_ipc.asm(206): error: Label not found: p126_ngs_resident_log
 290+  0184
 291+  0184              .p126_ngs_dispatch_host_frame:
 292+  0184 21 BF 01             ld      hl,p126_ngs_ipc_log_dma_e0
-p126_ipc.asm(293): error: Label not found: p126_ngs_resident_log
-293+  0187 CD 00 00             call    p126_ngs_resident_log
+293+  0187 CD 02 02             call    p126_ngs_ipc_log
 294+  018A CD E6 00             call    p126_ngs_ipc_dma_receive_frame
 295+  018D D8                   ret     c
 296+  018E 3E 01                ld      a,1
@@ -463,16 +460,35 @@ p126_ipc.asm(293): error: Label not found: p126_ngs_resident_log
 335+  01FD 45 44 0D 0A
 335+  0201 00
 336+  0202
+337+  0202              ; This IPC module is assembled both standalone and into the resident image.
+338+  0202              ; Keep its diagnostics self-contained instead of importing the resident logger.
+339+  0202              ; IN: HL = zero-terminated message. OUT: AF/BC preserved; HL advanced to NUL.
+340+  0202              p126_ngs_ipc_log:
+341+  0202 F5                   push    af
+342+  0203 C5                   push    bc
+343+  0204 01 EF 00             ld      bc,#00EF
+344+  0207              .p126_ngs_ipc_log_loop:
+345+  0207 7E                   ld      a,(hl)
+346+  0208 23                   inc     hl
+347+  0209 B7                   or      a
+348+  020A 28 04                jr      z,.p126_ngs_ipc_log_done
+349+  020C ED 79                out     (c),a
+350+  020E 18 F7                jr      .p126_ngs_ipc_log_loop
+351+  0210              .p126_ngs_ipc_log_done:
+352+  0210 C1                   pop     bc
+353+  0211 F1                   pop     af
+354+  0212 C9                   ret
+355+  0213
 # file closed: p126_ipc.asm
- 10   0202              p126_ngs_ipc_module_end:
- 11   0202
- 12   0202                  DISPLAY "P126_NGS_IPC_START=", /H, p126_ngs_ipc_module_start
- 13   0202                  DISPLAY "P126_NGS_IPC_END=", /H, p126_ngs_ipc_module_end
- 14   0202                  DISPLAY "P126_NGS_IPC_SIZE=", /D, p126_ngs_ipc_module_end-p126_ngs_ipc_module_start
- 15   0202
- 16   0202                  ASSERT p126_ngs_ipc_module_end > p126_ngs_ipc_module_start
- 17   0202                  ASSERT p126_ngs_ipc_module_end <= #10000
- 18   0202
+ 10   0213              p126_ngs_ipc_module_end:
+ 11   0213
+ 12   0213                  DISPLAY "P126_NGS_IPC_START=", /H, p126_ngs_ipc_module_start
+ 13   0213                  DISPLAY "P126_NGS_IPC_END=", /H, p126_ngs_ipc_module_end
+ 14   0213                  DISPLAY "P126_NGS_IPC_SIZE=", /D, p126_ngs_ipc_module_end-p126_ngs_ipc_module_start
+ 15   0213
+ 16   0213                  ASSERT p126_ngs_ipc_module_end > p126_ngs_ipc_module_start
+ 17   0213                  ASSERT p126_ngs_ipc_module_end <= #10000
+ 18   0213
 # file closed: p126_ipc_assemble.asm
 
 Value    Label
@@ -540,10 +556,13 @@ Value    Label
 0x0105   p126_ngs_ipc_dma_receive_frame.p126_ngs_dma_wait_end
 0x00E0   p126_ngs_ipc_frame_ptr
 0x00E2   p126_ngs_ipc_frame_size
+0x0202   p126_ngs_ipc_log
+0x0210   p126_ngs_ipc_log.p126_ngs_ipc_log_done
+0x0207   p126_ngs_ipc_log.p126_ngs_ipc_log_loop
 0x01BF   p126_ngs_ipc_log_dma_e0
 0x01E9   p126_ngs_ipc_log_dma_end
 0x01D7   p126_ngs_ipc_log_dma_ready
-0x0202   p126_ngs_ipc_module_end
+0x0213   p126_ngs_ipc_module_end
 0x0000   p126_ngs_ipc_module_start
 0x016D   p126_ngs_ipc_rx_size
 0x0014   p126_ngs_ipc_validate_frame
