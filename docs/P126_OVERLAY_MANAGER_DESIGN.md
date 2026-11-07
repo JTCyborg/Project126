@@ -6,7 +6,7 @@
 
 ## 1. Purpose
 
-The resident `X86CORE.C` has a hard 16 KiB loader limit. The first overlay split now produces a 15,756-byte resident image and a separate 796-byte `X86IO.C` module at logical origin `8000h`. The NeoGS physical map reserves pages `00h–0Fh` (256 KiB) for the kernel/runtime.
+The resident `X86CORE.C` has a hard 16 KiB loader limit. The first overlay split now produces a 15,994-byte resident image and a separate 796-byte `X86IO.C` module at logical origin `8000h`. The NeoGS physical map reserves pages `00h–0Fh` (256 KiB) for the kernel/runtime.
 
 The manager must use that existing allocation without changing the physical map, enlarging the `X86CORE.C` limit, taking ownership of WIN3, or moving the operational stack.
 
@@ -133,7 +133,7 @@ The manager is not complete until all of the following are true:
 - [ ] General call/return trampoline preserves arbitrary WIN2 mappings and WIN1 stack.
 - [ ] Nested and repeated dynamic overlay calls restore mappings correctly.
 - [ ] Invalid/unloaded dynamic module calls fail closed.
-- [x] CI build/package passes (run 42396608945, commit 079c53a1; X86CORE 15756 bytes, X86IO 796 bytes; NeoGS assembly 0 errors/0 warnings).
+- [x] CI build/package passes (run 42396918560, commit 477bd340; X86CORE 15994 bytes, X86IO 796 bytes; NeoGS assembly and TR-DOS packaging 0 errors/0 warnings).
 - [ ] Physical ATM/NeoGS log confirms X86IO module load, page-04 readback, `[NGS] WIN2 PAGE04/05 TEST PASS`, and final WIN2 mapping.
 
 No PIC/PIT/DMA/VGA/RTC/IDE implementation is to be added to the resident image before these gates are met. No CPU functional suite, full BIOS POST, or guest operating-system test is implied by overlay infrastructure validation.
