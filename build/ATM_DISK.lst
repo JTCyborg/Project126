@@ -67,9 +67,9 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
  44+  6024
  45+  6024 21 A7 63             ld      hl, p126_log_trdos_begin
  46+  6027 CD D2 61             call    p126_host_debug_string
- 47+  602A CD D9 6E             call    p126_catalog_read_disk
+ 47+  602A CD E0 6E             call    p126_catalog_read_disk
  48+  602D 3E 01                ld      a, 1
- 49+  602F 32 EC 71             ld      (p126_catalog_preloaded), a
+ 49+  602F 32 F3 71             ld      (p126_catalog_preloaded), a
  50+  6032 21 CB 63             ld      hl, p126_log_trdos_done
  51+  6035 CD D2 61             call    p126_host_debug_string
  52+  6038
@@ -77,7 +77,7 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
  54+  6038                      ; paging and shadow-port decoding be enabled.
  55+  6038 21 72 62             ld      hl, p126_log_ngs_begin
  56+  603B CD D2 61             call    p126_host_debug_string
- 57+  603E CD 2B 72             call    p126_neogs_startup
+ 57+  603E CD 32 72             call    p126_neogs_startup
  58+  6041 38 0D                jr      c,p126_host_ngs_start_failed
  59+  6043 3E 01                ld      a,1
  60+  6045 32 71 62             ld      (p126_host_ngs_ready),a
@@ -133,7 +133,7 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
 110+  60AE ED 79                out     (c),a
 111+  60B0 3E 3D                ld      a,'='
 112+  60B2 ED 79                out     (c),a
-113+  60B4 3A 1E 76             ld      a,(p126_neogs_startup_stage)
+113+  60B4 3A 25 76             ld      a,(p126_neogs_startup_stage)
 114+  60B7 ED 79                out     (c),a
 115+  60B9 3E 0D                ld      a,13
 116+  60BB ED 79                out     (c),a
@@ -167,7 +167,7 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
 144+  60F7 CD 6F 61             call    p126_host_console_string
 145+  60FA 21 61 64             ld      hl, p126_log_console_done
 146+  60FD CD D2 61             call    p126_host_debug_string
-147+  6100 CD BC 6D             call    p126_catalog_initialize
+147+  6100 CD C3 6D             call    p126_catalog_initialize
 148+  6103 21 7C 64             ld      hl, p126_log_catalog_return
 149+  6106 CD D2 61             call    p126_host_debug_string
 150+  6109
@@ -178,7 +178,7 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
 155+  610D 28 5B                jr      z,p126_host_idle
 156+  610F 21 D9 62             ld      hl,p126_log_dma_test_begin
 157+  6112 CD D2 61             call    p126_host_debug_string
-158+  6115 CD 1F 76             call    p126_neogs_dma_smoke_test
+158+  6115 CD 26 76             call    p126_neogs_dma_smoke_test
 159+  6118 38 1B                jr      c,p126_host_dma_test_failed
 160+  611A 21 F7 62             ld      hl,p126_log_dma_test_sent
 161+  611D CD D2 61             call    p126_host_debug_string
@@ -216,7 +216,7 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
 193+  6168 ED 79                out     (c),a
 194+  616A
 195+  616A              p126_host_idle:
-196+  616A CD 15 6E             call    p126_catalog_poll_keyboard
+196+  616A CD 1C 6E             call    p126_catalog_poll_keyboard
 197+  616D 18 FB                jr      p126_host_idle
 198+  616F
 199+  616F              ; IN: HL=zero-terminated string. Writes to the lower on-screen log.
@@ -1618,7 +1618,7 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
 498++ 69A6 21 00 00             ld      hl,0
 499++ 69A9 7E                   ld      a,(hl)                  ; required discarded first read
 500++ 69AA 21 00 00             ld      hl,0
-501++ 69AD 11 AA 6C             ld      de,p126_ipc_dma_rx_buffer
+501++ 69AD 11 B1 6C             ld      de,p126_ipc_dma_rx_buffer
 502++ 69B0 01 12 01             ld      bc,P126_IPC_DMA_RX_TEST_SIZE
 503++ 69B3 ED B0                ldir
 504++ 69B5 21 D7 6B             ld      hl,p126_ipc_log_dma_rx_copy_done
@@ -1631,7 +1631,7 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
 511++ 69C6              .rx_end_ack:
 512++ 69C6 3E 02                ld      a,2
 513++ 69C8 32 2C 6A             ld      (p126_ipc_dma_rx_stage),a
-514++ 69CB 21 AA 6C             ld      hl,p126_ipc_dma_rx_buffer
+514++ 69CB 21 B1 6C             ld      hl,p126_ipc_dma_rx_buffer
 515++ 69CE 01 12 01             ld      bc,P126_IPC_DMA_RX_TEST_SIZE
 516++ 69D1 CD 6A 67             call    p126_ipc_validate_frame
 517++ 69D4 30 14                jr      nc,.rx_crc_ok
@@ -1646,7 +1646,7 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
 526++ 69EA              .rx_crc_ok:
 527++ 69EA 21 F4 6B             ld      hl,p126_ipc_log_dma_rx_crc_ok
 528++ 69ED CD 63 6A             call    p126_ipc_debug_string
-529++ 69F0 21 BC 6C             ld      hl,p126_ipc_dma_rx_buffer+P126_IPC_HEADER_SIZE
+529++ 69F0 21 C3 6C             ld      hl,p126_ipc_dma_rx_buffer+P126_IPC_HEADER_SIZE
 530++ 69F3 AF                   xor     a
 531++ 69F4 06 00                ld      b,0
 532++ 69F6              .rx_pattern:
@@ -1655,7 +1655,7 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
 535++ 69F9 23                   inc     hl
 536++ 69FA 3C                   inc     a
 537++ 69FB 10 F9                djnz    .rx_pattern
-538++ 69FD 21 41 6C             ld      hl,p126_ipc_log_dma_rx_pattern_ok
+538++ 69FD 21 48 6C             ld      hl,p126_ipc_log_dma_rx_pattern_ok
 539++ 6A00 CD 63 6A             call    p126_ipc_debug_string
 540++ 6A03 AF                   xor     a
 541++ 6A04 32 2C 6A             ld      (p126_ipc_dma_rx_stage),a
@@ -1664,13 +1664,13 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
 544++ 6A0B              .rx_pattern_bad:
 545++ 6A0B 3E 03                ld      a,3
 546++ 6A0D 32 2D 6A             ld      (p126_ipc_dma_rx_error),a
-547++ 6A10 21 61 6C             ld      hl,p126_ipc_log_dma_rx_pattern_bad
+547++ 6A10 21 68 6C             ld      hl,p126_ipc_log_dma_rx_pattern_bad
 548++ 6A13 CD 63 6A             call    p126_ipc_debug_string
 549++ 6A16 37                   scf
 550++ 6A17 C9                   ret
 551++ 6A18              .rx_failed:
 552++ 6A18 32 2D 6A             ld      (p126_ipc_dma_rx_error),a
-553++ 6A1B 21 81 6C             ld      hl,p126_ipc_log_dma_rx_transport_bad
+553++ 6A1B 21 88 6C             ld      hl,p126_ipc_log_dma_rx_transport_bad
 554++ 6A1E CD 63 6A             call    p126_ipc_debug_string
 555++ 6A21 3A 2D 6A             ld      a,(p126_ipc_dma_rx_error)
 556++ 6A24 CD 2E 6A             call    p126_ipc_debug_hex_byte
@@ -1851,1359 +1851,1361 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
 640++ 6C0C 52 43 20 56
 640++ 6C10 41 4C 49 44
 640++ 6C14 0D 0A 00
-641++ 6C17 5B 41 54 4D  p126_ipc_log_dma_rx_crc_bad:      db "[ATM IPC] DMA RX FRAME CRC FAILED STATUS=",0
+641++ 6C17 5B 41 54 4D  p126_ipc_log_dma_rx_crc_bad:      db "[ATM IPC] DMA RX FRAME VALIDATION FAILED STATUS=",0
 641++ 6C1B 20 49 50 43
 641++ 6C1F 5D 20 44 4D
 641++ 6C23 41 20 52 58
 641++ 6C27 20 46 52 41
-641++ 6C2B 4D 45 20 43
-641++ 6C2F 52 43 20 46
-641++ 6C33 41 49 4C 45
-641++ 6C37 44 20 53 54
-641++ 6C3B 41 54 55 53
-641++ 6C3F 3D 00
-642++ 6C41 5B 41 54 4D  p126_ipc_log_dma_rx_pattern_ok:   db "[ATM IPC] DMA RX PATTERN PASS",13,10,0
-642++ 6C45 20 49 50 43
-642++ 6C49 5D 20 44 4D
-642++ 6C4D 41 20 52 58
-642++ 6C51 20 50 41 54
-642++ 6C55 54 45 52 4E
-642++ 6C59 20 50 41 53
-642++ 6C5D 53 0D 0A 00
-643++ 6C61 5B 41 54 4D  p126_ipc_log_dma_rx_pattern_bad:  db "[ATM IPC] DMA RX PATTERN FAIL",13,10,0
-643++ 6C65 20 49 50 43
-643++ 6C69 5D 20 44 4D
-643++ 6C6D 41 20 52 58
-643++ 6C71 20 50 41 54
-643++ 6C75 54 45 52 4E
-643++ 6C79 20 46 41 49
-643++ 6C7D 4C 0D 0A 00
-644++ 6C81 5B 41 54 4D  p126_ipc_log_dma_rx_transport_bad: db "[ATM IPC] DMA RX TRANSPORT FAILED STAGE=",0
-644++ 6C85 20 49 50 43
-644++ 6C89 5D 20 44 4D
-644++ 6C8D 41 20 52 58
-644++ 6C91 20 54 52 41
-644++ 6C95 4E 53 50 4F
-644++ 6C99 52 54 20 46
-644++ 6C9D 41 49 4C 45
-644++ 6CA1 44 20 53 54
-644++ 6CA5 41 47 45 3D
-644++ 6CA9 00
-645++ 6CAA 00 00 00...  p126_ipc_dma_rx_buffer:           defs P126_IPC_DMA_RX_TEST_SIZE,0
-646++ 6DBC
+641++ 6C2B 4D 45 20 56
+641++ 6C2F 41 4C 49 44
+641++ 6C33 41 54 49 4F
+641++ 6C37 4E 20 46 41
+641++ 6C3B 49 4C 45 44
+641++ 6C3F 20 53 54 41
+641++ 6C43 54 55 53 3D
+641++ 6C47 00
+642++ 6C48 5B 41 54 4D  p126_ipc_log_dma_rx_pattern_ok:   db "[ATM IPC] DMA RX PATTERN PASS",13,10,0
+642++ 6C4C 20 49 50 43
+642++ 6C50 5D 20 44 4D
+642++ 6C54 41 20 52 58
+642++ 6C58 20 50 41 54
+642++ 6C5C 54 45 52 4E
+642++ 6C60 20 50 41 53
+642++ 6C64 53 0D 0A 00
+643++ 6C68 5B 41 54 4D  p126_ipc_log_dma_rx_pattern_bad:  db "[ATM IPC] DMA RX PATTERN FAIL",13,10,0
+643++ 6C6C 20 49 50 43
+643++ 6C70 5D 20 44 4D
+643++ 6C74 41 20 52 58
+643++ 6C78 20 50 41 54
+643++ 6C7C 54 45 52 4E
+643++ 6C80 20 46 41 49
+643++ 6C84 4C 0D 0A 00
+644++ 6C88 5B 41 54 4D  p126_ipc_log_dma_rx_transport_bad: db "[ATM IPC] DMA RX TRANSPORT FAILED STAGE=",0
+644++ 6C8C 20 49 50 43
+644++ 6C90 5D 20 44 4D
+644++ 6C94 41 20 52 58
+644++ 6C98 20 54 52 41
+644++ 6C9C 4E 53 50 4F
+644++ 6CA0 52 54 20 46
+644++ 6CA4 41 49 4C 45
+644++ 6CA8 44 20 53 54
+644++ 6CAC 41 47 45 3D
+644++ 6CB0 00
+645++ 6CB1 00 00 00...  p126_ipc_dma_rx_buffer:           defs P126_IPC_DMA_RX_TEST_SIZE,0
+646++ 6DC3
 # file closed: neogs_ipc.asm
-343+  6DBC                      INCLUDE "atm_host/p126_disk_catalog.asm"
+343+  6DC3                      INCLUDE "atm_host/p126_disk_catalog.asm"
 # file opened: p126_disk_catalog.asm
-  1++ 6DBC              ; =========================================================================
-  2++ 6DBC              ; PROJECT126 — ATM-side TR-DOS directory browser
-  3++ 6DBC              ; Reads the native TR-DOS catalogue and allows cursor navigation.
-  4++ 6DBC              ; The directory is read from track 0 into the page-0 buffer at #C800.
-  5++ 6DBC              ; =========================================================================
-  6++ 6DBC
-  7++ 6DBC              P126_CATALOG_BUFFER       EQU #C800
-  8++ 6DBC              P126_CATALOG_ENTRY_COUNT  EQU 128
-  9++ 6DBC              P126_CATALOG_ENTRY_SIZE   EQU 16
- 10++ 6DBC              P126_CATALOG_VISIBLE_ROWS EQU 9
- 11++ 6DBC              P126_CATALOG_FIRST_ROW    EQU 2
- 12++ 6DBC
- 13++ 6DBC              ; Called after ATM video, RTC and console initialization.
- 14++ 6DBC              ; Disk I/O has already been completed during the legacy TR-DOS boot phase.
- 15++ 6DBC              p126_catalog_initialize:
- 15++ 6DBC
- 16++ 6DBC 21 6A 70             ld      hl, p126_log_catalog_enter
- 17++ 6DBF CD 5E 70             call    p126_catalog_log
- 18++ 6DC2 AF                   xor     a
- 19++ 6DC3 32 E3 71             ld      (p126_catalog_enabled), a
- 20++ 6DC6 32 E4 71             ld      (p126_catalog_selected), a
- 21++ 6DC9 32 E5 71             ld      (p126_catalog_scroll), a
- 22++ 6DCC
- 23++ 6DCC 3A EC 71             ld      a, (p126_catalog_preloaded)
- 24++ 6DCF B7                   or      a
- 25++ 6DD0 20 08                jr      nz, .catalog_data_preloaded
- 26++ 6DD2                      ; Defensive fallback for standalone callers; normal startup preloads
- 27++ 6DD2                      ; the directory before ATM video initialization.
- 28++ 6DD2 CD D9 6E             call    p126_catalog_read_disk
- 29++ 6DD5 3E 01                ld      a, 1
- 30++ 6DD7 32 EC 71             ld      (p126_catalog_preloaded), a
- 31++ 6DDA
- 32++ 6DDA              .catalog_data_preloaded:
- 33++ 6DDA 3A EB 71             ld      a, (p126_catalog_io_result)
- 34++ 6DDD B7                   or      a
- 35++ 6DDE 20 24                jr      nz, .catalog_read_failed
- 36++ 6DE0
- 37++ 6DE0 21 56 71             ld      hl, p126_log_read_ok
- 38++ 6DE3 CD 5E 70             call    p126_catalog_log
- 39++ 6DE6 CD 99 6F             call    p126_catalog_count_files
- 40++ 6DE9 21 85 71             ld      hl, p126_log_count_done
- 41++ 6DEC CD 5E 70             call    p126_catalog_log
- 42++ 6DEF 3E 01                ld      a, 1
- 43++ 6DF1 32 E3 71             ld      (p126_catalog_enabled), a
- 44++ 6DF4 21 A2 71             ld      hl, p126_log_draw_begin
- 45++ 6DF7 CD 5E 70             call    p126_catalog_log
- 46++ 6DFA CD D5 6F             call    p126_catalog_draw
- 47++ 6DFD 21 B5 71             ld      hl, p126_log_draw_done
- 48++ 6E00 CD 5E 70             call    p126_catalog_log
- 49++ 6E03 C9                   ret
- 50++ 6E04
- 51++ 6E04              .catalog_read_failed:
- 52++ 6E04 21 6B 71             ld      hl, p126_log_read_failed
- 53++ 6E07 CD 5E 70             call    p126_catalog_log
- 54++ 6E0A 21 0F 72             ld      hl, p126_catalog_error_text
- 55++ 6E0D 3E 02                ld      a, P126_CATALOG_FIRST_ROW
- 56++ 6E0F 0E 01                ld      c, 1
- 57++ 6E11 CD 33 A1             call    BIOS_DebugConsole_PrintAt
- 58++ 6E14 C9                   ret
- 59++ 6E15
- 60++ 6E15              ; One key press produces one movement. Holding a key does not run the
- 61++ 6E15              ; selection continuously: the routine waits for its release before returning.
- 62++ 6E15              p126_catalog_poll_keyboard:
- 62++ 6E15
- 63++ 6E15 3A E3 71             ld      a, (p126_catalog_enabled)
- 64++ 6E18 B7                   or      a
- 65++ 6E19 C8                   ret     z
- 66++ 6E1A
- 67++ 6E1A CD 77 6E             call    p126_catalog_scan_keys
- 68++ 6E1D B7                   or      a
- 69++ 6E1E C8                   ret     z
- 70++ 6E1F 32 E9 71             ld      (p126_catalog_key), a
- 71++ 6E22 21 C7 71             ld      hl, p126_log_key_seen
- 72++ 6E25 CD 5E 70             call    p126_catalog_log
- 73++ 6E28 CD D2 6E             call    p126_catalog_wait_release
- 74++ 6E2B
- 75++ 6E2B 3A E9 71             ld      a, (p126_catalog_key)
- 76++ 6E2E CB 47                bit     0, a
- 77++ 6E30 20 05                jr      nz, .catalog_move_up
- 78++ 6E32 CB 4F                bit     1, a
- 79++ 6E34 20 19                jr      nz, .catalog_move_down
- 80++ 6E36 C9                   ret
- 81++ 6E37
- 82++ 6E37              .catalog_move_up:
- 83++ 6E37 3A E4 71             ld      a, (p126_catalog_selected)
- 84++ 6E3A B7                   or      a
- 85++ 6E3B C8                   ret     z
- 86++ 6E3C 3D                   dec     a
- 87++ 6E3D 32 E4 71             ld      (p126_catalog_selected), a
- 88++ 6E40
- 89++ 6E40 47                   ld      b, a
- 90++ 6E41 3A E5 71             ld      a, (p126_catalog_scroll)
- 91++ 6E44 B8                   cp      b
- 92++ 6E45 38 2C                jr      c, .catalog_redraw
- 93++ 6E47 28 2A                jr      z, .catalog_redraw
- 94++ 6E49 3D                   dec     a
- 95++ 6E4A 32 E5 71             ld      (p126_catalog_scroll), a
- 96++ 6E4D 18 24                jr      .catalog_redraw
- 97++ 6E4F
- 98++ 6E4F              .catalog_move_down:
- 99++ 6E4F 3A E4 71             ld      a, (p126_catalog_selected)
-100++ 6E52 3C                   inc     a
-101++ 6E53 47                   ld      b, a
-102++ 6E54 3A E6 71             ld      a, (p126_catalog_total)
-103++ 6E57 B8                   cp      b
-104++ 6E58 C8                   ret     z
-105++ 6E59 D8                   ret     c
-106++ 6E5A
-107++ 6E5A 78                   ld      a, b
-108++ 6E5B 32 E4 71             ld      (p126_catalog_selected), a
-109++ 6E5E
-110++ 6E5E                      ; The last visible index is scroll + 8. This cannot overflow because
-111++ 6E5E                      ; the catalogue contains at most 128 entries (indices 0..127).
-112++ 6E5E 3A E5 71             ld      a, (p126_catalog_scroll)
-113++ 6E61 C6 08                add     a, P126_CATALOG_VISIBLE_ROWS-1
-114++ 6E63 47                   ld      b, a
-115++ 6E64 3A E4 71             ld      a, (p126_catalog_selected)
-116++ 6E67 B8                   cp      b
-117++ 6E68 38 09                jr      c, .catalog_redraw
-118++ 6E6A 28 07                jr      z, .catalog_redraw
-119++ 6E6C 3A E5 71             ld      a, (p126_catalog_scroll)
-120++ 6E6F 3C                   inc     a
-121++ 6E70 32 E5 71             ld      (p126_catalog_scroll), a
-122++ 6E73
-123++ 6E73              .catalog_redraw:
-124++ 6E73 CD D5 6F             call    p126_catalog_draw
-125++ 6E76 C9                   ret
-126++ 6E77
-127++ 6E77              ; -------------------------------------------------------------------------
-128++ 6E77              ; Spectrum/ATM keyboard matrix cursor mapping:
-129++ 6E77              ; CAPS SHIFT+7 = up, CAPS SHIFT+6 = down.
-130++ 6E77              ; CAPS SHIFT+5 and CAPS SHIFT+8 are also sampled for left/right, although
-131++ 6E77              ; this vertical file list only consumes up/down.
-132++ 6E77              ; -------------------------------------------------------------------------
-133++ 6E77              p126_catalog_scan_keys:
-134++ 6E77 C5                   push    bc
-135++ 6E78 D5                   push    de
-136++ 6E79 E5                   push    hl
-137++ 6E7A
-138++ 6E7A AF                   xor     a
-139++ 6E7B 32 EA 71             ld      (p126_catalog_scan_result), a
-140++ 6E7E
-141++ 6E7E                      ; CAPS SHIFT is bit 0 in the #FE row.
-142++ 6E7E 01 FE FE             ld      bc, #FEFE
-143++ 6E81 ED 78                in      a, (c)
-144++ 6E83 CB 47                bit     0, a
-145++ 6E85 20 44                jr      nz, .catalog_keys_done
-146++ 6E87
-147++ 6E87                      ; Row #EF: key 7 (bit 3) = up, key 6 (bit 4) = down.
-148++ 6E87 01 FE EF             ld      bc, #EFFE
-149++ 6E8A ED 78                in      a, (c)
-150++ 6E8C CB 5F                bit     3, a
-151++ 6E8E 20 08                jr      nz, .catalog_check_down
-152++ 6E90 3A EA 71             ld      a, (p126_catalog_scan_result)
-153++ 6E93 F6 01                or      1
-154++ 6E95 32 EA 71             ld      (p126_catalog_scan_result), a
-155++ 6E98
-156++ 6E98              .catalog_check_down:
-157++ 6E98 01 FE EF             ld      bc, #EFFE
-158++ 6E9B ED 78                in      a, (c)
-159++ 6E9D CB 67                bit     4, a
-160++ 6E9F 20 08                jr      nz, .catalog_check_other_arrows
-161++ 6EA1 3A EA 71             ld      a, (p126_catalog_scan_result)
-162++ 6EA4 F6 02                or      2
-163++ 6EA6 32 EA 71             ld      (p126_catalog_scan_result), a
-164++ 6EA9
-165++ 6EA9              .catalog_check_other_arrows:
-166++ 6EA9                      ; Read the remaining cursor combinations to keep the matrix scan
-167++ 6EA9                      ; compatible with the Project125 ATM/Spectrum keyboard convention.
-168++ 6EA9 01 FE F7             ld      bc, #F7FE
-169++ 6EAC ED 78                in      a, (c)
-170++ 6EAE CB 67                bit     4, a
-171++ 6EB0 20 08                jr      nz, .catalog_check_right
-172++ 6EB2 3A EA 71             ld      a, (p126_catalog_scan_result)
-173++ 6EB5 F6 04                or      4
-174++ 6EB7 32 EA 71             ld      (p126_catalog_scan_result), a
-175++ 6EBA
-176++ 6EBA              .catalog_check_right:
-177++ 6EBA 01 FE EF             ld      bc, #EFFE
-178++ 6EBD ED 78                in      a, (c)
-179++ 6EBF CB 57                bit     2, a
-180++ 6EC1 20 08                jr      nz, .catalog_keys_done
-181++ 6EC3 3A EA 71             ld      a, (p126_catalog_scan_result)
-182++ 6EC6 F6 08                or      8
-183++ 6EC8 32 EA 71             ld      (p126_catalog_scan_result), a
-184++ 6ECB
-185++ 6ECB              .catalog_keys_done:
-186++ 6ECB 3A EA 71             ld      a, (p126_catalog_scan_result)
-187++ 6ECE E1                   pop     hl
-188++ 6ECF D1                   pop     de
-189++ 6ED0 C1                   pop     bc
-190++ 6ED1 C9                   ret
-191++ 6ED2
-192++ 6ED2              p126_catalog_wait_release:
-193++ 6ED2 CD 77 6E             call    p126_catalog_scan_keys
-194++ 6ED5 B7                   or      a
-195++ 6ED6 20 FA                jr      nz, p126_catalog_wait_release
-196++ 6ED8 C9                   ret
-197++ 6ED9
-198++ 6ED9              ; -------------------------------------------------------------------------
-199++ 6ED9              ; TR-DOS directory read.
-200++ 6ED9              ; Executed before p126_atm_video_init, using Project125's legacy mapping.
-201++ 6ED9              ; C=5 reads exactly one 256-byte sector (B=1); eight calls stage the
-202++ 6ED9              ; 2 KiB directory at #C800..#CFFF.
-203++ 6ED9              ; -------------------------------------------------------------------------
-204++ 6ED9              p126_catalog_read_disk:
-205++ 6ED9 21 9B 70             ld      hl, p126_log_disk_enter
-206++ 6EDC CD 5E 70             call    p126_catalog_log
-207++ 6EDF F5                   push    af
-208++ 6EE0 C5                   push    bc
-209++ 6EE1 D5                   push    de
-210++ 6EE2 E5                   push    hl
-211++ 6EE3 DD E5                push    ix
-212++ 6EE5 FD E5                push    iy
-213++ 6EE7
-214++ 6EE7 D9                   exx
-215++ 6EE8 C5                   push    bc
-216++ 6EE9 D5                   push    de
-217++ 6EEA E5                   push    hl
-218++ 6EEB D9                   exx
-219++ 6EEC 08                   ex      af, af'
-220++ 6EED F5                   push    af
-221++ 6EEE 08                   ex      af, af'
-222++ 6EEF
-223++ 6EEF ED 73 F0 71          ld      (p126_catalog_saved_sp), sp
-224++ 6EF3 31 FF BF             ld      sp, #BFFF
-225++ 6EF6
-226++ 6EF6 AF                   xor     a
-227++ 6EF7 32 EB 71             ld      (p126_catalog_io_result), a
-228++ 6EFA 32 ED 71             ld      (p126_catalog_sector_index), a
-229++ 6EFD 3E C8                ld      a, #C8
-230++ 6EFF 32 EF 71             ld      (p126_catalog_buffer_ptr+1), a
-231++ 6F02 AF                   xor     a
-232++ 6F03 32 EE 71             ld      (p126_catalog_buffer_ptr), a
-233++ 6F06
-234++ 6F06              .catalog_read_sector:
-235++ 6F06 3A ED 71             ld      a, (p126_catalog_sector_index)
-236++ 6F09 FE 08                cp      8
-237++ 6F0B 30 34                jr      nc, .catalog_sectors_complete
-238++ 6F0D
-239++ 6F0D 3A ED 71             ld      a, (p126_catalog_sector_index)
-240++ 6F10 5F                   ld      e, a
-241++ 6F11 16 00                ld      d, 0
-242++ 6F13 2A EE 71             ld      hl, (p126_catalog_buffer_ptr)
-243++ 6F16 06 01                ld      b, 1
-244++ 6F18 0E 05                ld      c, 5
-245++ 6F1A AF                   xor     a
-246++ 6F1B 32 0F 5D             ld      (#5D0F), a
-247++ 6F1E 32 10 5D             ld      (#5D10), a
-248++ 6F21 CD 13 3D             call    #3D13
-249++ 6F24
-250++ 6F24 3A 0F 5D             ld      a, (#5D0F)
-251++ 6F27 47                   ld      b, a
-252++ 6F28 3A 10 5D             ld      a, (#5D10)
-253++ 6F2B B0                   or      b
-254++ 6F2C 20 19                jr      nz, .catalog_sector_error
-255++ 6F2E
-256++ 6F2E 2A EE 71             ld      hl, (p126_catalog_buffer_ptr)
-257++ 6F31 11 00 01             ld      de, #0100
-258++ 6F34 19                   add     hl, de
-259++ 6F35 22 EE 71             ld      (p126_catalog_buffer_ptr), hl
-260++ 6F38 3A ED 71             ld      a, (p126_catalog_sector_index)
-261++ 6F3B 3C                   inc     a
-262++ 6F3C 32 ED 71             ld      (p126_catalog_sector_index), a
-263++ 6F3F 18 C5                jr      .catalog_read_sector
-264++ 6F41
-265++ 6F41              .catalog_sectors_complete:
-266++ 6F41 AF                   xor     a
-267++ 6F42 32 EB 71             ld      (p126_catalog_io_result), a
-268++ 6F45 18 05                jr      .catalog_restore_stack
-269++ 6F47
-270++ 6F47              .catalog_sector_error:
-271++ 6F47 3E 01                ld      a, 1
-272++ 6F49 32 EB 71             ld      (p126_catalog_io_result), a
-273++ 6F4C
-274++ 6F4C              .catalog_restore_stack:
-275++ 6F4C ED 7B F0 71          ld      sp, (p126_catalog_saved_sp)
-276++ 6F50
-277++ 6F50 08                   ex      af, af'
-278++ 6F51 F1                   pop     af
-279++ 6F52 08                   ex      af, af'
-280++ 6F53 D9                   exx
-281++ 6F54 E1                   pop     hl
-282++ 6F55 D1                   pop     de
-283++ 6F56 C1                   pop     bc
-284++ 6F57 D9                   exx
-285++ 6F58
-286++ 6F58 FD E1                pop     iy
-287++ 6F5A DD E1                pop     ix
-288++ 6F5C E1                   pop     hl
-289++ 6F5D D1                   pop     de
-290++ 6F5E C1                   pop     bc
-291++ 6F5F F1                   pop     af
-292++ 6F60
-293++ 6F60 3A EB 71             ld      a, (p126_catalog_io_result)
-294++ 6F63 B7                   or      a
-295++ 6F64 28 08                jr      z, .catalog_read_return_ok
-296++ 6F66 21 29 71             ld      hl, p126_log_io_error
-297++ 6F69 CD 5E 70             call    p126_catalog_log
-298++ 6F6C 37                   scf
-299++ 6F6D C9                   ret
-300++ 6F6E              .catalog_read_return_ok:
-301++ 6F6E 21 41 71             ld      hl, p126_log_io_success
-302++ 6F71 CD 5E 70             call    p126_catalog_log
-303++ 6F74 B7                   or      a
-304++ 6F75 C9                   ret
-305++ 6F76
-306++ 6F76              ; -------------------------------------------------------------------------
-307++ 6F76              ; A directory descriptor is valid when its first byte is neither 00h nor
-308++ 6F76              ; 01h and its TR-DOS type byte is B, C, D or #.
-309++ 6F76              ; IN: HL=16-byte descriptor. OUT: carry clear if valid, set if unused.
-310++ 6F76              ; HL and BC are preserved.
-311++ 6F76              ; -------------------------------------------------------------------------
-312++ 6F76              p126_catalog_entry_valid:
-313++ 6F76 7E                   ld      a, (hl)
-314++ 6F77 B7                   or      a
-315++ 6F78 28 1B                jr      z, .catalog_entry_invalid
-316++ 6F7A FE 01                cp      1
-317++ 6F7C 28 17                jr      z, .catalog_entry_invalid
-318++ 6F7E
-319++ 6F7E E5                   push    hl
-320++ 6F7F 11 08 00             ld      de, 8
-321++ 6F82 19                   add     hl, de
-322++ 6F83 7E                   ld      a, (hl)
-323++ 6F84 E1                   pop     hl
-324++ 6F85
-325++ 6F85 FE 42                cp      'B'
-326++ 6F87 28 0E                jr      z, .catalog_entry_valid
-327++ 6F89 FE 43                cp      'C'
-328++ 6F8B 28 0A                jr      z, .catalog_entry_valid
-329++ 6F8D FE 44                cp      'D'
-330++ 6F8F 28 06                jr      z, .catalog_entry_valid
-331++ 6F91 FE 23                cp      '#'
-332++ 6F93 28 02                jr      z, .catalog_entry_valid
-333++ 6F95
-334++ 6F95              .catalog_entry_invalid:
-335++ 6F95 37                   scf
-336++ 6F96 C9                   ret
-337++ 6F97
-338++ 6F97              .catalog_entry_valid:
-339++ 6F97 B7                   or      a
-340++ 6F98 C9                   ret
-341++ 6F99
-342++ 6F99              ; Count valid entries in the 128-entry TR-DOS directory.
-343++ 6F99              p126_catalog_count_files:
-344++ 6F99 AF                   xor     a
-345++ 6F9A 32 E6 71             ld      (p126_catalog_total), a
-346++ 6F9D 21 00 C8             ld      hl, P126_CATALOG_BUFFER
-347++ 6FA0 06 80                ld      b, P126_CATALOG_ENTRY_COUNT
-348++ 6FA2
-349++ 6FA2              .catalog_count_loop:
-350++ 6FA2 CD 76 6F             call    p126_catalog_entry_valid
-351++ 6FA5 38 07                jr      c, .catalog_count_next
-352++ 6FA7 3A E6 71             ld      a, (p126_catalog_total)
-353++ 6FAA 3C                   inc     a
-354++ 6FAB 32 E6 71             ld      (p126_catalog_total), a
-355++ 6FAE
-356++ 6FAE              .catalog_count_next:
-357++ 6FAE 11 10 00             ld      de, P126_CATALOG_ENTRY_SIZE
-358++ 6FB1 19                   add     hl, de
-359++ 6FB2 10 EE                djnz    .catalog_count_loop
-360++ 6FB4 C9                   ret
-361++ 6FB5
-362++ 6FB5              ; IN: A=zero-based index among valid files.
-363++ 6FB5              ; OUT: HL=descriptor, carry clear; carry set when index is out of range.
-364++ 6FB5              p126_catalog_find_index:
-365++ 6FB5 32 E7 71             ld      (p126_catalog_target), a
-366++ 6FB8 21 00 C8             ld      hl, P126_CATALOG_BUFFER
-367++ 6FBB 06 80                ld      b, P126_CATALOG_ENTRY_COUNT
-368++ 6FBD 0E 00                ld      c, 0
-369++ 6FBF
-370++ 6FBF              .catalog_find_loop:
-371++ 6FBF CD 76 6F             call    p126_catalog_entry_valid
-372++ 6FC2 38 07                jr      c, .catalog_find_next
-373++ 6FC4
-374++ 6FC4 3A E7 71             ld      a, (p126_catalog_target)
-375++ 6FC7 B9                   cp      c
-376++ 6FC8 28 09                jr      z, .catalog_find_found
-377++ 6FCA 0C                   inc     c
-378++ 6FCB
-379++ 6FCB              .catalog_find_next:
-380++ 6FCB 11 10 00             ld      de, P126_CATALOG_ENTRY_SIZE
-381++ 6FCE 19                   add     hl, de
-382++ 6FCF 10 EE                djnz    .catalog_find_loop
-383++ 6FD1 37                   scf
-384++ 6FD2 C9                   ret
-385++ 6FD3
-386++ 6FD3              .catalog_find_found:
-387++ 6FD3 B7                   or      a
-388++ 6FD4 C9                   ret
-389++ 6FD5
-390++ 6FD5              ; Draw nine visible entries. A leading '>' marks the current selection.
-391++ 6FD5              p126_catalog_draw:
-392++ 6FD5 F5                   push    af
-393++ 6FD6 C5                   push    bc
-394++ 6FD7 D5                   push    de
-395++ 6FD8 E5                   push    hl
-396++ 6FD9
-397++ 6FD9 3A E6 71             ld      a, (p126_catalog_total)
-398++ 6FDC B7                   or      a
-399++ 6FDD 20 0C                jr      nz, .catalog_draw_rows
-400++ 6FDF 21 FF 71             ld      hl, p126_catalog_empty_text
-401++ 6FE2 3E 02                ld      a, P126_CATALOG_FIRST_ROW
-402++ 6FE4 0E 01                ld      c, 1
-403++ 6FE6 CD 33 A1             call    BIOS_DebugConsole_PrintAt
-404++ 6FE9 18 6E                jr      .catalog_draw_done
-405++ 6FEB
-406++ 6FEB              .catalog_draw_rows:
-407++ 6FEB AF                   xor     a
-408++ 6FEC 32 E8 71             ld      (p126_catalog_row), a
-409++ 6FEF
-410++ 6FEF              .catalog_draw_loop:
-411++ 6FEF                      ; Logical file index = scroll offset + visible row.
-412++ 6FEF 3A E5 71             ld      a, (p126_catalog_scroll)
-413++ 6FF2 47                   ld      b, a
-414++ 6FF3 3A E8 71             ld      a, (p126_catalog_row)
-415++ 6FF6 80                   add     a, b
-416++ 6FF7 32 E7 71             ld      (p126_catalog_target), a
-417++ 6FFA
-418++ 6FFA                      ; Start with a blank fixed-width line so old text is erased on scroll.
-419++ 6FFA 21 F2 71             ld      hl, p126_catalog_line
-420++ 6FFD 06 0C                ld      b, 12
-421++ 6FFF 3E 20                ld      a, ' '
-422++ 7001              .catalog_clear_line:
-423++ 7001 77                   ld      (hl), a
-424++ 7002 23                   inc     hl
-425++ 7003 10 FC                djnz    .catalog_clear_line
-426++ 7005 AF                   xor     a
-427++ 7006 77                   ld      (hl), a
-428++ 7007 3E 2E                ld      a, '.'
-429++ 7009 32 FB 71             ld      (p126_catalog_line+9), a
-430++ 700C
-431++ 700C 3A E7 71             ld      a, (p126_catalog_target)
-432++ 700F 47                   ld      b, a
-433++ 7010 3A E6 71             ld      a, (p126_catalog_total)
-434++ 7013 B8                   cp      b
-435++ 7014 38 2A                jr      c, .catalog_print_line
-436++ 7016 28 28                jr      z, .catalog_print_line
-437++ 7018
-438++ 7018 3A E7 71             ld      a, (p126_catalog_target)
-439++ 701B CD B5 6F             call    p126_catalog_find_index
-440++ 701E 38 20                jr      c, .catalog_print_line
-441++ 7020
-442++ 7020                      ; Selection marker.
-443++ 7020 3A E7 71             ld      a, (p126_catalog_target)
-444++ 7023 47                   ld      b, a
-445++ 7024 3A E4 71             ld      a, (p126_catalog_selected)
-446++ 7027 B8                   cp      b
-447++ 7028 3E 20                ld      a, ' '
-448++ 702A 20 02                jr      nz, .catalog_store_marker
-449++ 702C 3E 3E                ld      a, '>'
-450++ 702E              .catalog_store_marker:
-451++ 702E 32 F2 71             ld      (p126_catalog_line), a
-452++ 7031
-453++ 7031                      ; Copy the eight-character TR-DOS filename and its one-byte type.
-454++ 7031 11 F3 71             ld      de, p126_catalog_line+1
-455++ 7034 06 08                ld      b, 8
-456++ 7036              .catalog_copy_name:
-457++ 7036 7E                   ld      a, (hl)
-458++ 7037 12                   ld      (de), a
-459++ 7038 23                   inc     hl
-460++ 7039 13                   inc     de
-461++ 703A 10 FA                djnz    .catalog_copy_name
-462++ 703C 7E                   ld      a, (hl)
-463++ 703D 32 FC 71             ld      (p126_catalog_line+10), a
-464++ 7040
-465++ 7040              .catalog_print_line:
-466++ 7040 21 F2 71             ld      hl, p126_catalog_line
-467++ 7043 3A E8 71             ld      a, (p126_catalog_row)
-468++ 7046 C6 02                add     a, P126_CATALOG_FIRST_ROW
-469++ 7048 0E 01                ld      c, 1
-470++ 704A CD 33 A1             call    BIOS_DebugConsole_PrintAt
-471++ 704D
-472++ 704D 3A E8 71             ld      a, (p126_catalog_row)
-473++ 7050 3C                   inc     a
-474++ 7051 32 E8 71             ld      (p126_catalog_row), a
-475++ 7054 FE 09                cp      P126_CATALOG_VISIBLE_ROWS
-476++ 7056 C2 EF 6F             jp      nz, .catalog_draw_loop
-477++ 7059
-478++ 7059              .catalog_draw_done:
-479++ 7059 E1                   pop     hl
-480++ 705A D1                   pop     de
-481++ 705B C1                   pop     bc
-482++ 705C F1                   pop     af
-483++ 705D C9                   ret
-484++ 705E
-485++ 705E              p126_catalog_log:
-486++ 705E F5                   push    af
-487++ 705F C5                   push    bc
-488++ 7060 D5                   push    de
-489++ 7061 E5                   push    hl
-490++ 7062 CD D2 61             call    p126_host_debug_string
-491++ 7065 E1                   pop     hl
-492++ 7066 D1                   pop     de
-493++ 7067 C1                   pop     bc
-494++ 7068 F1                   pop     af
-495++ 7069 C9                   ret
-496++ 706A
-497++ 706A 5B 43 41 54  p126_log_catalog_enter:       db "[CAT] initialize ENTER",13,10,0
-497++ 706E 5D 20 69 6E
-497++ 7072 69 74 69 61
-497++ 7076 6C 69 7A 65
-497++ 707A 20 45 4E 54
-497++ 707E 45 52 0D 0A
-497++ 7082 00
-498++ 7083 5B 43 41 54  p126_log_read_begin:           db "[CAT] read_disk BEGIN",13,10,0
-498++ 7087 5D 20 72 65
-498++ 708B 61 64 5F 64
-498++ 708F 69 73 6B 20
-498++ 7093 42 45 47 49
-498++ 7097 4E 0D 0A 00
-499++ 709B 5B 43 41 54  p126_log_disk_enter:           db "[CAT] TRDOS routine ENTER",13,10,0
-499++ 709F 5D 20 54 52
-499++ 70A3 44 4F 53 20
-499++ 70A7 72 6F 75 74
-499++ 70AB 69 6E 65 20
-499++ 70AF 45 4E 54 45
-499++ 70B3 52 0D 0A 00
-500++ 70B7 5B 43 41 54  p126_log_drive_selected:       db "[CAT] drive-select RETURN",13,10,0
-500++ 70BB 5D 20 64 72
-500++ 70BF 69 76 65 2D
-500++ 70C3 73 65 6C 65
-500++ 70C7 63 74 20 52
-500++ 70CB 45 54 55 52
-500++ 70CF 4E 0D 0A 00
-501++ 70D3 5B 43 41 54  p126_log_sector_read_call:     db "[CAT] directory READ CALL C=5 B=1",13,10,0
-501++ 70D7 5D 20 64 69
-501++ 70DB 72 65 63 74
-501++ 70DF 6F 72 79 20
-501++ 70E3 52 45 41 44
-501++ 70E7 20 43 41 4C
-501++ 70EB 4C 20 43 3D
-501++ 70EF 35 20 42 3D
-501++ 70F3 31 0D 0A 00
-502++ 70F7 5B 43 41 54  p126_log_sector_read_return:   db "[CAT] directory SECTOR RETURN",13,10,0
-502++ 70FB 5D 20 64 69
-502++ 70FF 72 65 63 74
-502++ 7103 6F 72 79 20
-502++ 7107 53 45 43 54
-502++ 710B 4F 52 20 52
-502++ 710F 45 54 55 52
-502++ 7113 4E 0D 0A 00
-503++ 7117 5B 43 41 54  p126_log_vg93_idle:            db "[CAT] VG93 IDLE",13,10,0
-503++ 711B 5D 20 56 47
-503++ 711F 39 33 20 49
-503++ 7123 44 4C 45 0D
-503++ 7127 0A 00
-504++ 7129 5B 43 41 54  p126_log_io_error:             db "[CAT] IO RESULT=ERROR",13,10,0
-504++ 712D 5D 20 49 4F
-504++ 7131 20 52 45 53
-504++ 7135 55 4C 54 3D
-504++ 7139 45 52 52 4F
-504++ 713D 52 0D 0A 00
-505++ 7141 5B 43 41 54  p126_log_io_success:           db "[CAT] IO RESULT=OK",13,10,0
-505++ 7145 5D 20 49 4F
-505++ 7149 20 52 45 53
-505++ 714D 55 4C 54 3D
-505++ 7151 4F 4B 0D 0A
-505++ 7155 00
-506++ 7156 5B 43 41 54  p126_log_read_ok:              db "[CAT] read_disk OK",13,10,0
-506++ 715A 5D 20 72 65
-506++ 715E 61 64 5F 64
-506++ 7162 69 73 6B 20
-506++ 7166 4F 4B 0D 0A
-506++ 716A 00
-507++ 716B 5B 43 41 54  p126_log_read_failed:          db "[CAT] read_disk CARRY=1",13,10,0
-507++ 716F 5D 20 72 65
-507++ 7173 61 64 5F 64
-507++ 7177 69 73 6B 20
-507++ 717B 43 41 52 52
-507++ 717F 59 3D 31 0D
-507++ 7183 0A 00
-508++ 7185 5B 43 41 54  p126_log_count_done:           db "[CAT] directory COUNT DONE",13,10,0
-508++ 7189 5D 20 64 69
-508++ 718D 72 65 63 74
-508++ 7191 6F 72 79 20
-508++ 7195 43 4F 55 4E
-508++ 7199 54 20 44 4F
-508++ 719D 4E 45 0D 0A
-508++ 71A1 00
-509++ 71A2 5B 43 41 54  p126_log_draw_begin:           db "[CAT] DRAW BEGIN",13,10,0
-509++ 71A6 5D 20 44 52
-509++ 71AA 41 57 20 42
-509++ 71AE 45 47 49 4E
-509++ 71B2 0D 0A 00
-510++ 71B5 5B 43 41 54  p126_log_draw_done:            db "[CAT] DRAW DONE",13,10,0
-510++ 71B9 5D 20 44 52
-510++ 71BD 41 57 20 44
-510++ 71C1 4F 4E 45 0D
-510++ 71C5 0A 00
-511++ 71C7 5B 43 41 54  p126_log_key_seen:             db "[CAT] CURSOR KEY DETECTED",13,10,0
-511++ 71CB 5D 20 43 55
-511++ 71CF 52 53 4F 52
-511++ 71D3 20 4B 45 59
-511++ 71D7 20 44 45 54
-511++ 71DB 45 43 54 45
-511++ 71DF 44 0D 0A 00
-512++ 71E3
-513++ 71E3 00           p126_catalog_enabled:  db 0
-514++ 71E4 00           p126_catalog_selected: db 0
-515++ 71E5 00           p126_catalog_scroll:   db 0
-516++ 71E6 00           p126_catalog_total:    db 0
-517++ 71E7 00           p126_catalog_target:   db 0
-518++ 71E8 00           p126_catalog_row:      db 0
-519++ 71E9 00           p126_catalog_key:      db 0
-520++ 71EA 00           p126_catalog_scan_result: db 0
-521++ 71EB 00           p126_catalog_io_result: db 0
-522++ 71EC 00           p126_catalog_preloaded: db 0
-523++ 71ED 00           p126_catalog_sector_index: db 0
-524++ 71EE 00 C8        p126_catalog_buffer_ptr: dw P126_CATALOG_BUFFER
-525++ 71F0 00 00        p126_catalog_saved_sp: dw 0
-526++ 71F2 20 20 20 20  p126_catalog_line:     db "            ", 0
-526++ 71F6 20 20 20 20
-526++ 71FA 20 20 20 20
-526++ 71FE 00
-527++ 71FF 4E 4F 20 54  p126_catalog_empty_text: db "NO TR-DOS FILES", 0
-527++ 7203 52 2D 44 4F
-527++ 7207 53 20 46 49
-527++ 720B 4C 45 53 00
-528++ 720F 54 52 2D 44  p126_catalog_error_text: db "TR-DOS DIRECTORY READ ERROR", 0
-528++ 7213 4F 53 20 44
-528++ 7217 49 52 45 43
-528++ 721B 54 4F 52 59
-528++ 721F 20 52 45 41
-528++ 7223 44 20 45 52
-528++ 7227 52 4F 52 00
-529++ 722B
+  1++ 6DC3              ; =========================================================================
+  2++ 6DC3              ; PROJECT126 — ATM-side TR-DOS directory browser
+  3++ 6DC3              ; Reads the native TR-DOS catalogue and allows cursor navigation.
+  4++ 6DC3              ; The directory is read from track 0 into the page-0 buffer at #C800.
+  5++ 6DC3              ; =========================================================================
+  6++ 6DC3
+  7++ 6DC3              P126_CATALOG_BUFFER       EQU #C800
+  8++ 6DC3              P126_CATALOG_ENTRY_COUNT  EQU 128
+  9++ 6DC3              P126_CATALOG_ENTRY_SIZE   EQU 16
+ 10++ 6DC3              P126_CATALOG_VISIBLE_ROWS EQU 9
+ 11++ 6DC3              P126_CATALOG_FIRST_ROW    EQU 2
+ 12++ 6DC3
+ 13++ 6DC3              ; Called after ATM video, RTC and console initialization.
+ 14++ 6DC3              ; Disk I/O has already been completed during the legacy TR-DOS boot phase.
+ 15++ 6DC3              p126_catalog_initialize:
+ 15++ 6DC3
+ 16++ 6DC3 21 71 70             ld      hl, p126_log_catalog_enter
+ 17++ 6DC6 CD 65 70             call    p126_catalog_log
+ 18++ 6DC9 AF                   xor     a
+ 19++ 6DCA 32 EA 71             ld      (p126_catalog_enabled), a
+ 20++ 6DCD 32 EB 71             ld      (p126_catalog_selected), a
+ 21++ 6DD0 32 EC 71             ld      (p126_catalog_scroll), a
+ 22++ 6DD3
+ 23++ 6DD3 3A F3 71             ld      a, (p126_catalog_preloaded)
+ 24++ 6DD6 B7                   or      a
+ 25++ 6DD7 20 08                jr      nz, .catalog_data_preloaded
+ 26++ 6DD9                      ; Defensive fallback for standalone callers; normal startup preloads
+ 27++ 6DD9                      ; the directory before ATM video initialization.
+ 28++ 6DD9 CD E0 6E             call    p126_catalog_read_disk
+ 29++ 6DDC 3E 01                ld      a, 1
+ 30++ 6DDE 32 F3 71             ld      (p126_catalog_preloaded), a
+ 31++ 6DE1
+ 32++ 6DE1              .catalog_data_preloaded:
+ 33++ 6DE1 3A F2 71             ld      a, (p126_catalog_io_result)
+ 34++ 6DE4 B7                   or      a
+ 35++ 6DE5 20 24                jr      nz, .catalog_read_failed
+ 36++ 6DE7
+ 37++ 6DE7 21 5D 71             ld      hl, p126_log_read_ok
+ 38++ 6DEA CD 65 70             call    p126_catalog_log
+ 39++ 6DED CD A0 6F             call    p126_catalog_count_files
+ 40++ 6DF0 21 8C 71             ld      hl, p126_log_count_done
+ 41++ 6DF3 CD 65 70             call    p126_catalog_log
+ 42++ 6DF6 3E 01                ld      a, 1
+ 43++ 6DF8 32 EA 71             ld      (p126_catalog_enabled), a
+ 44++ 6DFB 21 A9 71             ld      hl, p126_log_draw_begin
+ 45++ 6DFE CD 65 70             call    p126_catalog_log
+ 46++ 6E01 CD DC 6F             call    p126_catalog_draw
+ 47++ 6E04 21 BC 71             ld      hl, p126_log_draw_done
+ 48++ 6E07 CD 65 70             call    p126_catalog_log
+ 49++ 6E0A C9                   ret
+ 50++ 6E0B
+ 51++ 6E0B              .catalog_read_failed:
+ 52++ 6E0B 21 72 71             ld      hl, p126_log_read_failed
+ 53++ 6E0E CD 65 70             call    p126_catalog_log
+ 54++ 6E11 21 16 72             ld      hl, p126_catalog_error_text
+ 55++ 6E14 3E 02                ld      a, P126_CATALOG_FIRST_ROW
+ 56++ 6E16 0E 01                ld      c, 1
+ 57++ 6E18 CD 33 A1             call    BIOS_DebugConsole_PrintAt
+ 58++ 6E1B C9                   ret
+ 59++ 6E1C
+ 60++ 6E1C              ; One key press produces one movement. Holding a key does not run the
+ 61++ 6E1C              ; selection continuously: the routine waits for its release before returning.
+ 62++ 6E1C              p126_catalog_poll_keyboard:
+ 62++ 6E1C
+ 63++ 6E1C 3A EA 71             ld      a, (p126_catalog_enabled)
+ 64++ 6E1F B7                   or      a
+ 65++ 6E20 C8                   ret     z
+ 66++ 6E21
+ 67++ 6E21 CD 7E 6E             call    p126_catalog_scan_keys
+ 68++ 6E24 B7                   or      a
+ 69++ 6E25 C8                   ret     z
+ 70++ 6E26 32 F0 71             ld      (p126_catalog_key), a
+ 71++ 6E29 21 CE 71             ld      hl, p126_log_key_seen
+ 72++ 6E2C CD 65 70             call    p126_catalog_log
+ 73++ 6E2F CD D9 6E             call    p126_catalog_wait_release
+ 74++ 6E32
+ 75++ 6E32 3A F0 71             ld      a, (p126_catalog_key)
+ 76++ 6E35 CB 47                bit     0, a
+ 77++ 6E37 20 05                jr      nz, .catalog_move_up
+ 78++ 6E39 CB 4F                bit     1, a
+ 79++ 6E3B 20 19                jr      nz, .catalog_move_down
+ 80++ 6E3D C9                   ret
+ 81++ 6E3E
+ 82++ 6E3E              .catalog_move_up:
+ 83++ 6E3E 3A EB 71             ld      a, (p126_catalog_selected)
+ 84++ 6E41 B7                   or      a
+ 85++ 6E42 C8                   ret     z
+ 86++ 6E43 3D                   dec     a
+ 87++ 6E44 32 EB 71             ld      (p126_catalog_selected), a
+ 88++ 6E47
+ 89++ 6E47 47                   ld      b, a
+ 90++ 6E48 3A EC 71             ld      a, (p126_catalog_scroll)
+ 91++ 6E4B B8                   cp      b
+ 92++ 6E4C 38 2C                jr      c, .catalog_redraw
+ 93++ 6E4E 28 2A                jr      z, .catalog_redraw
+ 94++ 6E50 3D                   dec     a
+ 95++ 6E51 32 EC 71             ld      (p126_catalog_scroll), a
+ 96++ 6E54 18 24                jr      .catalog_redraw
+ 97++ 6E56
+ 98++ 6E56              .catalog_move_down:
+ 99++ 6E56 3A EB 71             ld      a, (p126_catalog_selected)
+100++ 6E59 3C                   inc     a
+101++ 6E5A 47                   ld      b, a
+102++ 6E5B 3A ED 71             ld      a, (p126_catalog_total)
+103++ 6E5E B8                   cp      b
+104++ 6E5F C8                   ret     z
+105++ 6E60 D8                   ret     c
+106++ 6E61
+107++ 6E61 78                   ld      a, b
+108++ 6E62 32 EB 71             ld      (p126_catalog_selected), a
+109++ 6E65
+110++ 6E65                      ; The last visible index is scroll + 8. This cannot overflow because
+111++ 6E65                      ; the catalogue contains at most 128 entries (indices 0..127).
+112++ 6E65 3A EC 71             ld      a, (p126_catalog_scroll)
+113++ 6E68 C6 08                add     a, P126_CATALOG_VISIBLE_ROWS-1
+114++ 6E6A 47                   ld      b, a
+115++ 6E6B 3A EB 71             ld      a, (p126_catalog_selected)
+116++ 6E6E B8                   cp      b
+117++ 6E6F 38 09                jr      c, .catalog_redraw
+118++ 6E71 28 07                jr      z, .catalog_redraw
+119++ 6E73 3A EC 71             ld      a, (p126_catalog_scroll)
+120++ 6E76 3C                   inc     a
+121++ 6E77 32 EC 71             ld      (p126_catalog_scroll), a
+122++ 6E7A
+123++ 6E7A              .catalog_redraw:
+124++ 6E7A CD DC 6F             call    p126_catalog_draw
+125++ 6E7D C9                   ret
+126++ 6E7E
+127++ 6E7E              ; -------------------------------------------------------------------------
+128++ 6E7E              ; Spectrum/ATM keyboard matrix cursor mapping:
+129++ 6E7E              ; CAPS SHIFT+7 = up, CAPS SHIFT+6 = down.
+130++ 6E7E              ; CAPS SHIFT+5 and CAPS SHIFT+8 are also sampled for left/right, although
+131++ 6E7E              ; this vertical file list only consumes up/down.
+132++ 6E7E              ; -------------------------------------------------------------------------
+133++ 6E7E              p126_catalog_scan_keys:
+134++ 6E7E C5                   push    bc
+135++ 6E7F D5                   push    de
+136++ 6E80 E5                   push    hl
+137++ 6E81
+138++ 6E81 AF                   xor     a
+139++ 6E82 32 F1 71             ld      (p126_catalog_scan_result), a
+140++ 6E85
+141++ 6E85                      ; CAPS SHIFT is bit 0 in the #FE row.
+142++ 6E85 01 FE FE             ld      bc, #FEFE
+143++ 6E88 ED 78                in      a, (c)
+144++ 6E8A CB 47                bit     0, a
+145++ 6E8C 20 44                jr      nz, .catalog_keys_done
+146++ 6E8E
+147++ 6E8E                      ; Row #EF: key 7 (bit 3) = up, key 6 (bit 4) = down.
+148++ 6E8E 01 FE EF             ld      bc, #EFFE
+149++ 6E91 ED 78                in      a, (c)
+150++ 6E93 CB 5F                bit     3, a
+151++ 6E95 20 08                jr      nz, .catalog_check_down
+152++ 6E97 3A F1 71             ld      a, (p126_catalog_scan_result)
+153++ 6E9A F6 01                or      1
+154++ 6E9C 32 F1 71             ld      (p126_catalog_scan_result), a
+155++ 6E9F
+156++ 6E9F              .catalog_check_down:
+157++ 6E9F 01 FE EF             ld      bc, #EFFE
+158++ 6EA2 ED 78                in      a, (c)
+159++ 6EA4 CB 67                bit     4, a
+160++ 6EA6 20 08                jr      nz, .catalog_check_other_arrows
+161++ 6EA8 3A F1 71             ld      a, (p126_catalog_scan_result)
+162++ 6EAB F6 02                or      2
+163++ 6EAD 32 F1 71             ld      (p126_catalog_scan_result), a
+164++ 6EB0
+165++ 6EB0              .catalog_check_other_arrows:
+166++ 6EB0                      ; Read the remaining cursor combinations to keep the matrix scan
+167++ 6EB0                      ; compatible with the Project125 ATM/Spectrum keyboard convention.
+168++ 6EB0 01 FE F7             ld      bc, #F7FE
+169++ 6EB3 ED 78                in      a, (c)
+170++ 6EB5 CB 67                bit     4, a
+171++ 6EB7 20 08                jr      nz, .catalog_check_right
+172++ 6EB9 3A F1 71             ld      a, (p126_catalog_scan_result)
+173++ 6EBC F6 04                or      4
+174++ 6EBE 32 F1 71             ld      (p126_catalog_scan_result), a
+175++ 6EC1
+176++ 6EC1              .catalog_check_right:
+177++ 6EC1 01 FE EF             ld      bc, #EFFE
+178++ 6EC4 ED 78                in      a, (c)
+179++ 6EC6 CB 57                bit     2, a
+180++ 6EC8 20 08                jr      nz, .catalog_keys_done
+181++ 6ECA 3A F1 71             ld      a, (p126_catalog_scan_result)
+182++ 6ECD F6 08                or      8
+183++ 6ECF 32 F1 71             ld      (p126_catalog_scan_result), a
+184++ 6ED2
+185++ 6ED2              .catalog_keys_done:
+186++ 6ED2 3A F1 71             ld      a, (p126_catalog_scan_result)
+187++ 6ED5 E1                   pop     hl
+188++ 6ED6 D1                   pop     de
+189++ 6ED7 C1                   pop     bc
+190++ 6ED8 C9                   ret
+191++ 6ED9
+192++ 6ED9              p126_catalog_wait_release:
+193++ 6ED9 CD 7E 6E             call    p126_catalog_scan_keys
+194++ 6EDC B7                   or      a
+195++ 6EDD 20 FA                jr      nz, p126_catalog_wait_release
+196++ 6EDF C9                   ret
+197++ 6EE0
+198++ 6EE0              ; -------------------------------------------------------------------------
+199++ 6EE0              ; TR-DOS directory read.
+200++ 6EE0              ; Executed before p126_atm_video_init, using Project125's legacy mapping.
+201++ 6EE0              ; C=5 reads exactly one 256-byte sector (B=1); eight calls stage the
+202++ 6EE0              ; 2 KiB directory at #C800..#CFFF.
+203++ 6EE0              ; -------------------------------------------------------------------------
+204++ 6EE0              p126_catalog_read_disk:
+205++ 6EE0 21 A2 70             ld      hl, p126_log_disk_enter
+206++ 6EE3 CD 65 70             call    p126_catalog_log
+207++ 6EE6 F5                   push    af
+208++ 6EE7 C5                   push    bc
+209++ 6EE8 D5                   push    de
+210++ 6EE9 E5                   push    hl
+211++ 6EEA DD E5                push    ix
+212++ 6EEC FD E5                push    iy
+213++ 6EEE
+214++ 6EEE D9                   exx
+215++ 6EEF C5                   push    bc
+216++ 6EF0 D5                   push    de
+217++ 6EF1 E5                   push    hl
+218++ 6EF2 D9                   exx
+219++ 6EF3 08                   ex      af, af'
+220++ 6EF4 F5                   push    af
+221++ 6EF5 08                   ex      af, af'
+222++ 6EF6
+223++ 6EF6 ED 73 F7 71          ld      (p126_catalog_saved_sp), sp
+224++ 6EFA 31 FF BF             ld      sp, #BFFF
+225++ 6EFD
+226++ 6EFD AF                   xor     a
+227++ 6EFE 32 F2 71             ld      (p126_catalog_io_result), a
+228++ 6F01 32 F4 71             ld      (p126_catalog_sector_index), a
+229++ 6F04 3E C8                ld      a, #C8
+230++ 6F06 32 F6 71             ld      (p126_catalog_buffer_ptr+1), a
+231++ 6F09 AF                   xor     a
+232++ 6F0A 32 F5 71             ld      (p126_catalog_buffer_ptr), a
+233++ 6F0D
+234++ 6F0D              .catalog_read_sector:
+235++ 6F0D 3A F4 71             ld      a, (p126_catalog_sector_index)
+236++ 6F10 FE 08                cp      8
+237++ 6F12 30 34                jr      nc, .catalog_sectors_complete
+238++ 6F14
+239++ 6F14 3A F4 71             ld      a, (p126_catalog_sector_index)
+240++ 6F17 5F                   ld      e, a
+241++ 6F18 16 00                ld      d, 0
+242++ 6F1A 2A F5 71             ld      hl, (p126_catalog_buffer_ptr)
+243++ 6F1D 06 01                ld      b, 1
+244++ 6F1F 0E 05                ld      c, 5
+245++ 6F21 AF                   xor     a
+246++ 6F22 32 0F 5D             ld      (#5D0F), a
+247++ 6F25 32 10 5D             ld      (#5D10), a
+248++ 6F28 CD 13 3D             call    #3D13
+249++ 6F2B
+250++ 6F2B 3A 0F 5D             ld      a, (#5D0F)
+251++ 6F2E 47                   ld      b, a
+252++ 6F2F 3A 10 5D             ld      a, (#5D10)
+253++ 6F32 B0                   or      b
+254++ 6F33 20 19                jr      nz, .catalog_sector_error
+255++ 6F35
+256++ 6F35 2A F5 71             ld      hl, (p126_catalog_buffer_ptr)
+257++ 6F38 11 00 01             ld      de, #0100
+258++ 6F3B 19                   add     hl, de
+259++ 6F3C 22 F5 71             ld      (p126_catalog_buffer_ptr), hl
+260++ 6F3F 3A F4 71             ld      a, (p126_catalog_sector_index)
+261++ 6F42 3C                   inc     a
+262++ 6F43 32 F4 71             ld      (p126_catalog_sector_index), a
+263++ 6F46 18 C5                jr      .catalog_read_sector
+264++ 6F48
+265++ 6F48              .catalog_sectors_complete:
+266++ 6F48 AF                   xor     a
+267++ 6F49 32 F2 71             ld      (p126_catalog_io_result), a
+268++ 6F4C 18 05                jr      .catalog_restore_stack
+269++ 6F4E
+270++ 6F4E              .catalog_sector_error:
+271++ 6F4E 3E 01                ld      a, 1
+272++ 6F50 32 F2 71             ld      (p126_catalog_io_result), a
+273++ 6F53
+274++ 6F53              .catalog_restore_stack:
+275++ 6F53 ED 7B F7 71          ld      sp, (p126_catalog_saved_sp)
+276++ 6F57
+277++ 6F57 08                   ex      af, af'
+278++ 6F58 F1                   pop     af
+279++ 6F59 08                   ex      af, af'
+280++ 6F5A D9                   exx
+281++ 6F5B E1                   pop     hl
+282++ 6F5C D1                   pop     de
+283++ 6F5D C1                   pop     bc
+284++ 6F5E D9                   exx
+285++ 6F5F
+286++ 6F5F FD E1                pop     iy
+287++ 6F61 DD E1                pop     ix
+288++ 6F63 E1                   pop     hl
+289++ 6F64 D1                   pop     de
+290++ 6F65 C1                   pop     bc
+291++ 6F66 F1                   pop     af
+292++ 6F67
+293++ 6F67 3A F2 71             ld      a, (p126_catalog_io_result)
+294++ 6F6A B7                   or      a
+295++ 6F6B 28 08                jr      z, .catalog_read_return_ok
+296++ 6F6D 21 30 71             ld      hl, p126_log_io_error
+297++ 6F70 CD 65 70             call    p126_catalog_log
+298++ 6F73 37                   scf
+299++ 6F74 C9                   ret
+300++ 6F75              .catalog_read_return_ok:
+301++ 6F75 21 48 71             ld      hl, p126_log_io_success
+302++ 6F78 CD 65 70             call    p126_catalog_log
+303++ 6F7B B7                   or      a
+304++ 6F7C C9                   ret
+305++ 6F7D
+306++ 6F7D              ; -------------------------------------------------------------------------
+307++ 6F7D              ; A directory descriptor is valid when its first byte is neither 00h nor
+308++ 6F7D              ; 01h and its TR-DOS type byte is B, C, D or #.
+309++ 6F7D              ; IN: HL=16-byte descriptor. OUT: carry clear if valid, set if unused.
+310++ 6F7D              ; HL and BC are preserved.
+311++ 6F7D              ; -------------------------------------------------------------------------
+312++ 6F7D              p126_catalog_entry_valid:
+313++ 6F7D 7E                   ld      a, (hl)
+314++ 6F7E B7                   or      a
+315++ 6F7F 28 1B                jr      z, .catalog_entry_invalid
+316++ 6F81 FE 01                cp      1
+317++ 6F83 28 17                jr      z, .catalog_entry_invalid
+318++ 6F85
+319++ 6F85 E5                   push    hl
+320++ 6F86 11 08 00             ld      de, 8
+321++ 6F89 19                   add     hl, de
+322++ 6F8A 7E                   ld      a, (hl)
+323++ 6F8B E1                   pop     hl
+324++ 6F8C
+325++ 6F8C FE 42                cp      'B'
+326++ 6F8E 28 0E                jr      z, .catalog_entry_valid
+327++ 6F90 FE 43                cp      'C'
+328++ 6F92 28 0A                jr      z, .catalog_entry_valid
+329++ 6F94 FE 44                cp      'D'
+330++ 6F96 28 06                jr      z, .catalog_entry_valid
+331++ 6F98 FE 23                cp      '#'
+332++ 6F9A 28 02                jr      z, .catalog_entry_valid
+333++ 6F9C
+334++ 6F9C              .catalog_entry_invalid:
+335++ 6F9C 37                   scf
+336++ 6F9D C9                   ret
+337++ 6F9E
+338++ 6F9E              .catalog_entry_valid:
+339++ 6F9E B7                   or      a
+340++ 6F9F C9                   ret
+341++ 6FA0
+342++ 6FA0              ; Count valid entries in the 128-entry TR-DOS directory.
+343++ 6FA0              p126_catalog_count_files:
+344++ 6FA0 AF                   xor     a
+345++ 6FA1 32 ED 71             ld      (p126_catalog_total), a
+346++ 6FA4 21 00 C8             ld      hl, P126_CATALOG_BUFFER
+347++ 6FA7 06 80                ld      b, P126_CATALOG_ENTRY_COUNT
+348++ 6FA9
+349++ 6FA9              .catalog_count_loop:
+350++ 6FA9 CD 7D 6F             call    p126_catalog_entry_valid
+351++ 6FAC 38 07                jr      c, .catalog_count_next
+352++ 6FAE 3A ED 71             ld      a, (p126_catalog_total)
+353++ 6FB1 3C                   inc     a
+354++ 6FB2 32 ED 71             ld      (p126_catalog_total), a
+355++ 6FB5
+356++ 6FB5              .catalog_count_next:
+357++ 6FB5 11 10 00             ld      de, P126_CATALOG_ENTRY_SIZE
+358++ 6FB8 19                   add     hl, de
+359++ 6FB9 10 EE                djnz    .catalog_count_loop
+360++ 6FBB C9                   ret
+361++ 6FBC
+362++ 6FBC              ; IN: A=zero-based index among valid files.
+363++ 6FBC              ; OUT: HL=descriptor, carry clear; carry set when index is out of range.
+364++ 6FBC              p126_catalog_find_index:
+365++ 6FBC 32 EE 71             ld      (p126_catalog_target), a
+366++ 6FBF 21 00 C8             ld      hl, P126_CATALOG_BUFFER
+367++ 6FC2 06 80                ld      b, P126_CATALOG_ENTRY_COUNT
+368++ 6FC4 0E 00                ld      c, 0
+369++ 6FC6
+370++ 6FC6              .catalog_find_loop:
+371++ 6FC6 CD 7D 6F             call    p126_catalog_entry_valid
+372++ 6FC9 38 07                jr      c, .catalog_find_next
+373++ 6FCB
+374++ 6FCB 3A EE 71             ld      a, (p126_catalog_target)
+375++ 6FCE B9                   cp      c
+376++ 6FCF 28 09                jr      z, .catalog_find_found
+377++ 6FD1 0C                   inc     c
+378++ 6FD2
+379++ 6FD2              .catalog_find_next:
+380++ 6FD2 11 10 00             ld      de, P126_CATALOG_ENTRY_SIZE
+381++ 6FD5 19                   add     hl, de
+382++ 6FD6 10 EE                djnz    .catalog_find_loop
+383++ 6FD8 37                   scf
+384++ 6FD9 C9                   ret
+385++ 6FDA
+386++ 6FDA              .catalog_find_found:
+387++ 6FDA B7                   or      a
+388++ 6FDB C9                   ret
+389++ 6FDC
+390++ 6FDC              ; Draw nine visible entries. A leading '>' marks the current selection.
+391++ 6FDC              p126_catalog_draw:
+392++ 6FDC F5                   push    af
+393++ 6FDD C5                   push    bc
+394++ 6FDE D5                   push    de
+395++ 6FDF E5                   push    hl
+396++ 6FE0
+397++ 6FE0 3A ED 71             ld      a, (p126_catalog_total)
+398++ 6FE3 B7                   or      a
+399++ 6FE4 20 0C                jr      nz, .catalog_draw_rows
+400++ 6FE6 21 06 72             ld      hl, p126_catalog_empty_text
+401++ 6FE9 3E 02                ld      a, P126_CATALOG_FIRST_ROW
+402++ 6FEB 0E 01                ld      c, 1
+403++ 6FED CD 33 A1             call    BIOS_DebugConsole_PrintAt
+404++ 6FF0 18 6E                jr      .catalog_draw_done
+405++ 6FF2
+406++ 6FF2              .catalog_draw_rows:
+407++ 6FF2 AF                   xor     a
+408++ 6FF3 32 EF 71             ld      (p126_catalog_row), a
+409++ 6FF6
+410++ 6FF6              .catalog_draw_loop:
+411++ 6FF6                      ; Logical file index = scroll offset + visible row.
+412++ 6FF6 3A EC 71             ld      a, (p126_catalog_scroll)
+413++ 6FF9 47                   ld      b, a
+414++ 6FFA 3A EF 71             ld      a, (p126_catalog_row)
+415++ 6FFD 80                   add     a, b
+416++ 6FFE 32 EE 71             ld      (p126_catalog_target), a
+417++ 7001
+418++ 7001                      ; Start with a blank fixed-width line so old text is erased on scroll.
+419++ 7001 21 F9 71             ld      hl, p126_catalog_line
+420++ 7004 06 0C                ld      b, 12
+421++ 7006 3E 20                ld      a, ' '
+422++ 7008              .catalog_clear_line:
+423++ 7008 77                   ld      (hl), a
+424++ 7009 23                   inc     hl
+425++ 700A 10 FC                djnz    .catalog_clear_line
+426++ 700C AF                   xor     a
+427++ 700D 77                   ld      (hl), a
+428++ 700E 3E 2E                ld      a, '.'
+429++ 7010 32 02 72             ld      (p126_catalog_line+9), a
+430++ 7013
+431++ 7013 3A EE 71             ld      a, (p126_catalog_target)
+432++ 7016 47                   ld      b, a
+433++ 7017 3A ED 71             ld      a, (p126_catalog_total)
+434++ 701A B8                   cp      b
+435++ 701B 38 2A                jr      c, .catalog_print_line
+436++ 701D 28 28                jr      z, .catalog_print_line
+437++ 701F
+438++ 701F 3A EE 71             ld      a, (p126_catalog_target)
+439++ 7022 CD BC 6F             call    p126_catalog_find_index
+440++ 7025 38 20                jr      c, .catalog_print_line
+441++ 7027
+442++ 7027                      ; Selection marker.
+443++ 7027 3A EE 71             ld      a, (p126_catalog_target)
+444++ 702A 47                   ld      b, a
+445++ 702B 3A EB 71             ld      a, (p126_catalog_selected)
+446++ 702E B8                   cp      b
+447++ 702F 3E 20                ld      a, ' '
+448++ 7031 20 02                jr      nz, .catalog_store_marker
+449++ 7033 3E 3E                ld      a, '>'
+450++ 7035              .catalog_store_marker:
+451++ 7035 32 F9 71             ld      (p126_catalog_line), a
+452++ 7038
+453++ 7038                      ; Copy the eight-character TR-DOS filename and its one-byte type.
+454++ 7038 11 FA 71             ld      de, p126_catalog_line+1
+455++ 703B 06 08                ld      b, 8
+456++ 703D              .catalog_copy_name:
+457++ 703D 7E                   ld      a, (hl)
+458++ 703E 12                   ld      (de), a
+459++ 703F 23                   inc     hl
+460++ 7040 13                   inc     de
+461++ 7041 10 FA                djnz    .catalog_copy_name
+462++ 7043 7E                   ld      a, (hl)
+463++ 7044 32 03 72             ld      (p126_catalog_line+10), a
+464++ 7047
+465++ 7047              .catalog_print_line:
+466++ 7047 21 F9 71             ld      hl, p126_catalog_line
+467++ 704A 3A EF 71             ld      a, (p126_catalog_row)
+468++ 704D C6 02                add     a, P126_CATALOG_FIRST_ROW
+469++ 704F 0E 01                ld      c, 1
+470++ 7051 CD 33 A1             call    BIOS_DebugConsole_PrintAt
+471++ 7054
+472++ 7054 3A EF 71             ld      a, (p126_catalog_row)
+473++ 7057 3C                   inc     a
+474++ 7058 32 EF 71             ld      (p126_catalog_row), a
+475++ 705B FE 09                cp      P126_CATALOG_VISIBLE_ROWS
+476++ 705D C2 F6 6F             jp      nz, .catalog_draw_loop
+477++ 7060
+478++ 7060              .catalog_draw_done:
+479++ 7060 E1                   pop     hl
+480++ 7061 D1                   pop     de
+481++ 7062 C1                   pop     bc
+482++ 7063 F1                   pop     af
+483++ 7064 C9                   ret
+484++ 7065
+485++ 7065              p126_catalog_log:
+486++ 7065 F5                   push    af
+487++ 7066 C5                   push    bc
+488++ 7067 D5                   push    de
+489++ 7068 E5                   push    hl
+490++ 7069 CD D2 61             call    p126_host_debug_string
+491++ 706C E1                   pop     hl
+492++ 706D D1                   pop     de
+493++ 706E C1                   pop     bc
+494++ 706F F1                   pop     af
+495++ 7070 C9                   ret
+496++ 7071
+497++ 7071 5B 43 41 54  p126_log_catalog_enter:       db "[CAT] initialize ENTER",13,10,0
+497++ 7075 5D 20 69 6E
+497++ 7079 69 74 69 61
+497++ 707D 6C 69 7A 65
+497++ 7081 20 45 4E 54
+497++ 7085 45 52 0D 0A
+497++ 7089 00
+498++ 708A 5B 43 41 54  p126_log_read_begin:           db "[CAT] read_disk BEGIN",13,10,0
+498++ 708E 5D 20 72 65
+498++ 7092 61 64 5F 64
+498++ 7096 69 73 6B 20
+498++ 709A 42 45 47 49
+498++ 709E 4E 0D 0A 00
+499++ 70A2 5B 43 41 54  p126_log_disk_enter:           db "[CAT] TRDOS routine ENTER",13,10,0
+499++ 70A6 5D 20 54 52
+499++ 70AA 44 4F 53 20
+499++ 70AE 72 6F 75 74
+499++ 70B2 69 6E 65 20
+499++ 70B6 45 4E 54 45
+499++ 70BA 52 0D 0A 00
+500++ 70BE 5B 43 41 54  p126_log_drive_selected:       db "[CAT] drive-select RETURN",13,10,0
+500++ 70C2 5D 20 64 72
+500++ 70C6 69 76 65 2D
+500++ 70CA 73 65 6C 65
+500++ 70CE 63 74 20 52
+500++ 70D2 45 54 55 52
+500++ 70D6 4E 0D 0A 00
+501++ 70DA 5B 43 41 54  p126_log_sector_read_call:     db "[CAT] directory READ CALL C=5 B=1",13,10,0
+501++ 70DE 5D 20 64 69
+501++ 70E2 72 65 63 74
+501++ 70E6 6F 72 79 20
+501++ 70EA 52 45 41 44
+501++ 70EE 20 43 41 4C
+501++ 70F2 4C 20 43 3D
+501++ 70F6 35 20 42 3D
+501++ 70FA 31 0D 0A 00
+502++ 70FE 5B 43 41 54  p126_log_sector_read_return:   db "[CAT] directory SECTOR RETURN",13,10,0
+502++ 7102 5D 20 64 69
+502++ 7106 72 65 63 74
+502++ 710A 6F 72 79 20
+502++ 710E 53 45 43 54
+502++ 7112 4F 52 20 52
+502++ 7116 45 54 55 52
+502++ 711A 4E 0D 0A 00
+503++ 711E 5B 43 41 54  p126_log_vg93_idle:            db "[CAT] VG93 IDLE",13,10,0
+503++ 7122 5D 20 56 47
+503++ 7126 39 33 20 49
+503++ 712A 44 4C 45 0D
+503++ 712E 0A 00
+504++ 7130 5B 43 41 54  p126_log_io_error:             db "[CAT] IO RESULT=ERROR",13,10,0
+504++ 7134 5D 20 49 4F
+504++ 7138 20 52 45 53
+504++ 713C 55 4C 54 3D
+504++ 7140 45 52 52 4F
+504++ 7144 52 0D 0A 00
+505++ 7148 5B 43 41 54  p126_log_io_success:           db "[CAT] IO RESULT=OK",13,10,0
+505++ 714C 5D 20 49 4F
+505++ 7150 20 52 45 53
+505++ 7154 55 4C 54 3D
+505++ 7158 4F 4B 0D 0A
+505++ 715C 00
+506++ 715D 5B 43 41 54  p126_log_read_ok:              db "[CAT] read_disk OK",13,10,0
+506++ 7161 5D 20 72 65
+506++ 7165 61 64 5F 64
+506++ 7169 69 73 6B 20
+506++ 716D 4F 4B 0D 0A
+506++ 7171 00
+507++ 7172 5B 43 41 54  p126_log_read_failed:          db "[CAT] read_disk CARRY=1",13,10,0
+507++ 7176 5D 20 72 65
+507++ 717A 61 64 5F 64
+507++ 717E 69 73 6B 20
+507++ 7182 43 41 52 52
+507++ 7186 59 3D 31 0D
+507++ 718A 0A 00
+508++ 718C 5B 43 41 54  p126_log_count_done:           db "[CAT] directory COUNT DONE",13,10,0
+508++ 7190 5D 20 64 69
+508++ 7194 72 65 63 74
+508++ 7198 6F 72 79 20
+508++ 719C 43 4F 55 4E
+508++ 71A0 54 20 44 4F
+508++ 71A4 4E 45 0D 0A
+508++ 71A8 00
+509++ 71A9 5B 43 41 54  p126_log_draw_begin:           db "[CAT] DRAW BEGIN",13,10,0
+509++ 71AD 5D 20 44 52
+509++ 71B1 41 57 20 42
+509++ 71B5 45 47 49 4E
+509++ 71B9 0D 0A 00
+510++ 71BC 5B 43 41 54  p126_log_draw_done:            db "[CAT] DRAW DONE",13,10,0
+510++ 71C0 5D 20 44 52
+510++ 71C4 41 57 20 44
+510++ 71C8 4F 4E 45 0D
+510++ 71CC 0A 00
+511++ 71CE 5B 43 41 54  p126_log_key_seen:             db "[CAT] CURSOR KEY DETECTED",13,10,0
+511++ 71D2 5D 20 43 55
+511++ 71D6 52 53 4F 52
+511++ 71DA 20 4B 45 59
+511++ 71DE 20 44 45 54
+511++ 71E2 45 43 54 45
+511++ 71E6 44 0D 0A 00
+512++ 71EA
+513++ 71EA 00           p126_catalog_enabled:  db 0
+514++ 71EB 00           p126_catalog_selected: db 0
+515++ 71EC 00           p126_catalog_scroll:   db 0
+516++ 71ED 00           p126_catalog_total:    db 0
+517++ 71EE 00           p126_catalog_target:   db 0
+518++ 71EF 00           p126_catalog_row:      db 0
+519++ 71F0 00           p126_catalog_key:      db 0
+520++ 71F1 00           p126_catalog_scan_result: db 0
+521++ 71F2 00           p126_catalog_io_result: db 0
+522++ 71F3 00           p126_catalog_preloaded: db 0
+523++ 71F4 00           p126_catalog_sector_index: db 0
+524++ 71F5 00 C8        p126_catalog_buffer_ptr: dw P126_CATALOG_BUFFER
+525++ 71F7 00 00        p126_catalog_saved_sp: dw 0
+526++ 71F9 20 20 20 20  p126_catalog_line:     db "            ", 0
+526++ 71FD 20 20 20 20
+526++ 7201 20 20 20 20
+526++ 7205 00
+527++ 7206 4E 4F 20 54  p126_catalog_empty_text: db "NO TR-DOS FILES", 0
+527++ 720A 52 2D 44 4F
+527++ 720E 53 20 46 49
+527++ 7212 4C 45 53 00
+528++ 7216 54 52 2D 44  p126_catalog_error_text: db "TR-DOS DIRECTORY READ ERROR", 0
+528++ 721A 4F 53 20 44
+528++ 721E 49 52 45 43
+528++ 7222 54 4F 52 59
+528++ 7226 20 52 45 41
+528++ 722A 44 20 45 52
+528++ 722E 52 4F 52 00
+529++ 7232
 # file closed: p126_disk_catalog.asm
-344+  722B                      INCLUDE "atm_host/p126_neogs_loader.asm"
+344+  7232                      INCLUDE "atm_host/p126_neogs_loader.asm"
 # file opened: p126_neogs_loader.asm
-  1++ 722B              ; =========================================================================
-  2++ 722B              ; PROJECT126 — ATM host NeoGS bootstrap/firmware loader
-  3++ 722B              ; Runs before ATM video paging is enabled. TR-DOS sector reads use the same
-  4++ 722B              ; C=5/B=1 ABI already validated by p126_catalog_read_disk.
-  5++ 722B              ; =========================================================================
-  6++ 722B              P126_NGS_GSCOM EQU #BB
-  7++ 722B              P126_NGS_GSSTAT EQU #BB
-  8++ 722B              P126_NGS_GSDAT EQU #B3
-  9++ 722B              P126_NGS_GSCTR EQU #33
- 10++ 722B              P126_NGS_CBIT EQU 0
- 11++ 722B              P126_NGS_DBIT EQU 7
- 12++ 722B              P126_NGS_CMD_RAM EQU #20
- 13++ 722B              P126_NGS_CMD_JUMP EQU #13
- 14++ 722B              P126_NGS_CMD_RECV EQU #14
- 15++ 722B              P126_NGS_ACK_READY EQU #A1
- 16++ 722B              P126_NGS_ACK_LENGTH EQU #A3
- 17++ 722B              P126_NGS_ACK_DONE EQU #A2
- 18++ 722B              P126_NGS_TIMEOUT EQU #FFFF
- 19++ 722B
- 20++ 722B              ; Called after directory preload and before ATM video initialization.
- 21++ 722B              ; Carry clear means the resident image sent its A2h ready acknowledgement.
- 22++ 722B              p126_neogs_startup:
- 22++ 722B
- 23++ 722B 3E 31                ld      a,'1'
- 24++ 722D 32 1E 76             ld      (p126_neogs_startup_stage),a
- 25++ 7230 21 E6 75             ld      hl,p126_neogs_boot_name
- 26++ 7233 CD B9 73             call    p126_neogs_open_file
- 27++ 7236 D8                   ret     c
- 28++ 7237 3E 32                ld      a,'2'
- 29++ 7239 32 1E 76             ld      (p126_neogs_startup_stage),a
- 30++ 723C                      ; The build deliberately permits a full 256-byte ROM #14 block.
- 31++ 723C                      ; Accept lengths 1..255 and exactly 256 (0100h); reject 0 and >256.
- 32++ 723C 2A F8 75             ld      hl,(p126_neogs_file_length)
- 33++ 723F 7C                   ld      a,h
- 34++ 7240 B7                   or      a
- 35++ 7241 28 0C                jr      z,.p126_neogs_boot_length_low
- 36++ 7243 FE 01                cp      1
- 37++ 7245 C2 A6 73             jp      nz,p126_neogs_boot_file_bad
- 38++ 7248 7D                   ld      a,l
- 39++ 7249 B7                   or      a
- 40++ 724A C2 A6 73             jp      nz,p126_neogs_boot_file_bad
- 41++ 724D 18 05                jr      .p126_neogs_boot_length_ok
- 42++ 724F              .p126_neogs_boot_length_low:
- 43++ 724F 7D                   ld      a,l
- 44++ 7250 B7                   or      a
- 45++ 7251 CA A6 73             jp      z,p126_neogs_boot_file_bad
- 46++ 7254              .p126_neogs_boot_length_ok:
- 47++ 7254
- 48++ 7254                      ; Cold-restart the GS105a ROM only to enter its known bootstrap
- 49++ 7254                      ; receive state. Do NOT query #20: its RAM-size report is not an
- 50++ 7254                      ; authority for Project126 physical memory and must not gate startup.
- 51++ 7254 3E 41                ld      a,'A'
- 52++ 7256 32 1E 76             ld      (p126_neogs_startup_stage),a
- 53++ 7259 3E F4                ld      a,#F4
- 54++ 725B CD 55 75             call    p126_neogs_send_command_long
- 55++ 725E DA AE 73             jp      c,p126_neogs_ram_bad
- 56++ 7261
- 57++ 7261
- 58++ 7261
- 59++ 7261                      ; GS105a #14 receives P126BOOT at logical 4000h.
- 60++ 7261 3E 34                ld      a,'4'
- 61++ 7263 32 1E 76             ld      (p126_neogs_startup_stage),a
- 62++ 7266 21 00 00             ld      hl,0
- 63++ 7269 ED 5B F8 75          ld      de,(p126_neogs_file_length)
- 64++ 726D B7                   or      a
- 65++ 726E ED 52                sbc     hl,de
- 66++ 7270 22 FC 75             ld      (p126_neogs_block_length),hl
- 67++ 7273 7D                   ld      a,l
- 68++ 7274 CD 91 75             call    p126_neogs_send_argument
- 69++ 7277 D8                   ret     c
- 70++ 7278 3E 14                ld      a,P126_NGS_CMD_RECV
- 71++ 727A CD 77 75             call    p126_neogs_send_command
- 72++ 727D D8                   ret     c
- 73++ 727E 3A FD 75             ld      a,(p126_neogs_block_length+1)
- 74++ 7281 CD 9F 75             call    p126_neogs_send_byte
- 75++ 7284 D8                   ret     c
- 76++ 7285 AF                   xor     a
- 77++ 7286 CD 9F 75             call    p126_neogs_send_byte
- 78++ 7289 D8                   ret     c
- 79++ 728A 3E 40                ld      a,#40
- 80++ 728C CD 9F 75             call    p126_neogs_send_byte
- 81++ 728F D8                   ret     c
- 82++ 7290 21 00 C0             ld      hl,#C000
- 83++ 7293 ED 5B F8 75          ld      de,(p126_neogs_file_length)
- 84++ 7297              .p126_neogs_boot_stream:
- 85++ 7297 7A                   ld      a,d
- 86++ 7298 B3                   or      e
- 87++ 7299 28 09                jr      z,.p126_neogs_boot_loaded
- 88++ 729B 7E                   ld      a,(hl)
- 89++ 729C CD 9F 75             call    p126_neogs_send_byte
- 90++ 729F D8                   ret     c
- 91++ 72A0 23                   inc     hl
- 92++ 72A1 1B                   dec     de
- 93++ 72A2 18 F3                jr      .p126_neogs_boot_stream
- 94++ 72A4              .p126_neogs_boot_loaded:
- 95++ 72A4                      ; Read the first resident-image sector before starting stage-0.
- 96++ 72A4 3E 35                ld      a,'5'
- 97++ 72A6 32 1E 76             ld      (p126_neogs_startup_stage),a
- 98++ 72A9 21 EE 75             ld      hl,p126_neogs_core_name
- 99++ 72AC CD B9 73             call    p126_neogs_open_file
-100++ 72AF D8                   ret     c
-101++ 72B0 3E 36                ld      a,'6'
-102++ 72B2 32 1E 76             ld      (p126_neogs_startup_stage),a
-103++ 72B5 2A F8 75             ld      hl,(p126_neogs_file_length)
-104++ 72B8 7C                   ld      a,h
-105++ 72B9 FE 40                cp      #40
-106++ 72BB 38 08                jr      c,.p126_neogs_core_size_low
-107++ 72BD C2 AA 73             jp      nz,p126_neogs_core_file_bad
-108++ 72C0 7D                   ld      a,l
-109++ 72C1 B7                   or      a
-110++ 72C2 C2 AA 73             jp      nz,p126_neogs_core_file_bad
-111++ 72C5              .p126_neogs_core_size_low:
-112++ 72C5 7C                   ld      a,h
-113++ 72C6 B5                   or      l
-114++ 72C7 CA AA 73             jp      z,p126_neogs_core_file_bad
-115++ 72CA 2A F8 75             ld      hl,(p126_neogs_file_length)
-116++ 72CD 22 FA 75             ld      (p126_neogs_core_length),hl
-117++ 72D0
-118++ 72D0                      ; Enter stage-0 at 4000h; it publishes A1h when ready.
-119++ 72D0 3E 37                ld      a,'7'
-120++ 72D2 32 1E 76             ld      (p126_neogs_startup_stage),a
-121++ 72D5 AF                   xor     a
-122++ 72D6 CD 91 75             call    p126_neogs_send_argument
-123++ 72D9 D8                   ret     c
-124++ 72DA 3E 13                ld      a,P126_NGS_CMD_JUMP
-125++ 72DC CD 77 75             call    p126_neogs_send_command
-126++ 72DF D8                   ret     c
-127++ 72E0 3E 40                ld      a,#40
-128++ 72E2 CD 9F 75             call    p126_neogs_send_byte
-129++ 72E5 30 12                jr      nc,.p126_neogs_jump_tx_done
-130++ 72E7 DB BB                in      a,(P126_NGS_GSSTAT)
-131++ 72E9 CB 7F                bit     P126_NGS_DBIT,a
-132++ 72EB CA B2 73             jp      z,p126_neogs_transport_error
-133++ 72EE CD AE 75             call    p126_neogs_receive_byte
-134++ 72F1 D8                   ret     c
-135++ 72F2 FE A1                cp      P126_NGS_ACK_READY
-136++ 72F4 C2 B2 73             jp      nz,p126_neogs_transport_error
-137++ 72F7 18 09                jr      .p126_neogs_stage0_ready
-138++ 72F9              .p126_neogs_jump_tx_done:
-139++ 72F9 CD AE 75             call    p126_neogs_receive_byte
-140++ 72FC D8                   ret     c
-141++ 72FD FE A1                cp      P126_NGS_ACK_READY
-142++ 72FF C2 B2 73             jp      nz,p126_neogs_transport_error
-143++ 7302
-144++ 7302              .p126_neogs_stage0_ready:
-145++ 7302                      ; Length exchange; A3h confirms the resident image size.
-146++ 7302 3E 38                ld      a,'8'
-147++ 7304 32 1E 76             ld      (p126_neogs_startup_stage),a
-148++ 7307 2A FA 75             ld      hl,(p126_neogs_core_length)
-149++ 730A 7D                   ld      a,l
-150++ 730B CD 9F 75             call    p126_neogs_send_byte
-151++ 730E D8                   ret     c
-152++ 730F 7C                   ld      a,h
-153++ 7310 CD 9F 75             call    p126_neogs_send_byte
-154++ 7313 30 12                jr      nc,.p126_neogs_length_sent
-155++ 7315 DB BB                in      a,(P126_NGS_GSSTAT)
-156++ 7317 CB 7F                bit     P126_NGS_DBIT,a
-157++ 7319 CA B2 73             jp      z,p126_neogs_transport_error
-158++ 731C CD AE 75             call    p126_neogs_receive_byte
-159++ 731F D8                   ret     c
-160++ 7320 FE A3                cp      P126_NGS_ACK_LENGTH
-161++ 7322 C2 B2 73             jp      nz,p126_neogs_transport_error
-162++ 7325 18 09                jr      .p126_neogs_stream_begin
-163++ 7327              .p126_neogs_length_sent:
-164++ 7327 CD AE 75             call    p126_neogs_receive_byte
-165++ 732A D8                   ret     c
-166++ 732B FE A3                cp      P126_NGS_ACK_LENGTH
-167++ 732D C2 B2 73             jp      nz,p126_neogs_transport_error
-168++ 7330
-169++ 7330              .p126_neogs_stream_begin:
-170++ 7330 3E 39                ld      a,'9'
-171++ 7332 32 1E 76             ld      (p126_neogs_startup_stage),a
-172++ 7335 21 00 C0             ld      hl,#C000
-173++ 7338 22 FE 75             ld      (p126_neogs_buffer_ptr),hl
-174++ 733B 21 00 01             ld      hl,256
-175++ 733E 22 00 76             ld      (p126_neogs_buffer_remaining),hl
-176++ 7341 ED 5B FA 75          ld      de,(p126_neogs_core_length)
-177++ 7345              .p126_neogs_core_stream:
-178++ 7345 7A                   ld      a,d
-179++ 7346 B3                   or      e
-180++ 7347 28 4D                jr      z,.p126_neogs_core_stream_done
-181++ 7349 2A 00 76             ld      hl,(p126_neogs_buffer_remaining)
-182++ 734C 7C                   ld      a,h
-183++ 734D B5                   or      l
-184++ 734E 20 12                jr      nz,.p126_neogs_core_buffer_ready
-185++ 7350 D5                   push    de
-186++ 7351 CD 23 74             call    p126_neogs_read_next_sector
-187++ 7354 D1                   pop     de
-188++ 7355 D8                   ret     c
-189++ 7356 21 00 C0             ld      hl,#C000
-190++ 7359 22 FE 75             ld      (p126_neogs_buffer_ptr),hl
-191++ 735C 21 00 01             ld      hl,256
-192++ 735F 22 00 76             ld      (p126_neogs_buffer_remaining),hl
-193++ 7362              .p126_neogs_core_buffer_ready:
-194++ 7362 2A FE 75             ld      hl,(p126_neogs_buffer_ptr)
-195++ 7365 7E                   ld      a,(hl)
-196++ 7366 CD 9F 75             call    p126_neogs_send_byte
-197++ 7369 30 1D                jr      nc,.p126_neogs_core_byte_sent
-198++ 736B                      ; The resident can publish A2h immediately after consuming the final
-199++ 736B                      ; byte. In that case one byte remains in DE and DBIT is already set.
-200++ 736B 7A                   ld      a,d
-201++ 736C B7                   or      a
-202++ 736D C2 B2 73             jp      nz,p126_neogs_transport_error
-203++ 7370 7B                   ld      a,e
-204++ 7371 FE 01                cp      1
-205++ 7373 C2 B2 73             jp      nz,p126_neogs_transport_error
-206++ 7376 DB BB                in      a,(P126_NGS_GSSTAT)
-207++ 7378 CB 7F                bit     P126_NGS_DBIT,a
-208++ 737A CA B2 73             jp      z,p126_neogs_transport_error
-209++ 737D CD AE 75             call    p126_neogs_receive_byte
-210++ 7380 D8                   ret     c
-211++ 7381 FE A2                cp      P126_NGS_ACK_DONE
-212++ 7383 C2 B2 73             jp      nz,p126_neogs_transport_error
-213++ 7386 18 17                jr      .p126_neogs_startup_done
-214++ 7388              .p126_neogs_core_byte_sent:
-215++ 7388 23                   inc     hl
-216++ 7389 22 FE 75             ld      (p126_neogs_buffer_ptr),hl
-217++ 738C 2A 00 76             ld      hl,(p126_neogs_buffer_remaining)
-218++ 738F 2B                   dec     hl
-219++ 7390 22 00 76             ld      (p126_neogs_buffer_remaining),hl
-220++ 7393 1B                   dec     de
-221++ 7394 18 AF                jr      .p126_neogs_core_stream
-222++ 7396
-223++ 7396              .p126_neogs_core_stream_done:
-224++ 7396 CD AE 75             call    p126_neogs_receive_byte
-225++ 7399 D8                   ret     c
-226++ 739A FE A2                cp      P126_NGS_ACK_DONE
-227++ 739C C2 B2 73             jp      nz,p126_neogs_transport_error
-228++ 739F              .p126_neogs_startup_done:
-229++ 739F 3E 30                ld      a,'0'
-230++ 73A1 32 1E 76             ld      (p126_neogs_startup_stage),a
-231++ 73A4 AF                   xor     a
-232++ 73A5 C9                   ret
-233++ 73A6
-234++ 73A6              p126_neogs_boot_file_bad:
-235++ 73A6 3E 01                ld      a,1
-236++ 73A8 18 0A                jr      p126_neogs_store_error
-237++ 73AA              p126_neogs_core_file_bad:
-238++ 73AA 3E 02                ld      a,2
-239++ 73AC 18 06                jr      p126_neogs_store_error
-240++ 73AE              p126_neogs_ram_bad:
-241++ 73AE 3E 03                ld      a,3
-242++ 73B0 18 02                jr      p126_neogs_store_error
-243++ 73B2              p126_neogs_transport_error:
-244++ 73B2 3E 04                ld      a,4
-245++ 73B4              p126_neogs_store_error:
-246++ 73B4 32 1D 76             ld      (p126_neogs_startup_error),a
-247++ 73B7 37                   scf
-248++ 73B8 C9                   ret
-249++ 73B9
-250++ 73B9              ; IN HL=exact 8-character filename. Directory was preloaded at C800h.
-251++ 73B9              ; OUT: carry clear, first sector at C000h, metadata initialized.
-252++ 73B9              p126_neogs_open_file:
-253++ 73B9 22 F6 75             ld      (p126_neogs_name_ptr),hl
-254++ 73BC DD 21 00 C8          ld      ix,#C800
-255++ 73C0 06 80                ld      b,128
-256++ 73C2              .p126_neogs_find_loop:
-257++ 73C2 DD E5                push    ix
-258++ 73C4 C5                   push    bc
-259++ 73C5 2A F6 75             ld      hl,(p126_neogs_name_ptr)
-260++ 73C8 0E 08                ld      c,8
-261++ 73CA              .p126_neogs_compare:
-262++ 73CA 7E                   ld      a,(hl)
-263++ 73CB DD BE 00             cp      (ix+0)
-264++ 73CE 20 0D                jr      nz,.p126_neogs_find_miss
-265++ 73D0 23                   inc     hl
-266++ 73D1 DD 23                inc     ix
-267++ 73D3 0D                   dec     c
-268++ 73D4 20 F4                jr      nz,.p126_neogs_compare
-269++ 73D6 DD 7E 00             ld      a,(ix+0)
-270++ 73D9 FE 43                cp      'C'
-271++ 73DB 28 0C                jr      z,.p126_neogs_find_hit
-272++ 73DD              .p126_neogs_find_miss:
-273++ 73DD C1                   pop     bc
-274++ 73DE DD E1                pop     ix
-275++ 73E0 11 10 00             ld      de,16
-276++ 73E3 DD 19                add     ix,de
-277++ 73E5 10 DB                djnz    .p126_neogs_find_loop
-278++ 73E7 37                   scf
-279++ 73E8 C9                   ret
-280++ 73E9              .p126_neogs_find_hit:
-281++ 73E9 C1                   pop     bc
-282++ 73EA D1                   pop     de
-283++ 73EB DD 7E 03             ld      a,(ix+3)
-284++ 73EE 32 F8 75             ld      (p126_neogs_file_length),a
-285++ 73F1 DD 7E 04             ld      a,(ix+4)
-286++ 73F4 32 F9 75             ld      (p126_neogs_file_length+1),a
-287++ 73F7 DD 7E 05             ld      a,(ix+5)
-288++ 73FA 32 18 76             ld      (p126_neogs_file_sectors_left),a
-289++ 73FD DD 7E 06             ld      a,(ix+6)
-290++ 7400 32 19 76             ld      (p126_neogs_file_sector),a
-291++ 7403 DD 7E 07             ld      a,(ix+7)
-292++ 7406 32 1A 76             ld      (p126_neogs_file_track),a
-293++ 7409 3A 18 76             ld      a,(p126_neogs_file_sectors_left)
-294++ 740C B7                   or      a
-295++ 740D 20 02                jr      nz,.p126_neogs_file_meta_ok
-296++ 740F 37                   scf
-297++ 7410 C9                   ret
-298++ 7411              .p126_neogs_file_meta_ok:
-299++ 7411 CD 23 74             call    p126_neogs_read_next_sector
-300++ 7414 D8                   ret     c
-301++ 7415 21 00 C0             ld      hl,#C000
-302++ 7418 22 FE 75             ld      (p126_neogs_buffer_ptr),hl
-303++ 741B 21 00 01             ld      hl,256
-304++ 741E 22 00 76             ld      (p126_neogs_buffer_remaining),hl
-305++ 7421 AF                   xor     a
-306++ 7422 C9                   ret
-307++ 7423
-308++ 7423              ; Read one sector at the current TR-DOS cursor. Preserves all Z80 registers.
-309++ 7423              p126_neogs_read_next_sector:
-310++ 7423 3A 18 76             ld      a,(p126_neogs_file_sectors_left)
-311++ 7426 B7                   or      a
-312++ 7427 20 02                jr      nz,.p126_neogs_read_sector_ready
-313++ 7429 37                   scf
-314++ 742A C9                   ret
-315++ 742B              .p126_neogs_read_sector_ready:
-316++ 742B F5                   push    af
-317++ 742C C5                   push    bc
-318++ 742D D5                   push    de
-319++ 742E E5                   push    hl
-320++ 742F DD E5                push    ix
-321++ 7431 FD E5                push    iy
-322++ 7433 D9                   exx
-323++ 7434 C5                   push    bc
-324++ 7435 D5                   push    de
-325++ 7436 E5                   push    hl
-326++ 7437 D9                   exx
-327++ 7438 08                   ex      af,af'
-328++ 7439 F5                   push    af
-329++ 743A 08                   ex      af,af'
-330++ 743B ED 73 02 76          ld      (p126_neogs_saved_sp),sp
-331++ 743F 31 FF BF             ld      sp,#BFFF
-332++ 7442
-333++ 7442 3A 1A 76             ld      a,(p126_neogs_file_track)
-334++ 7445 57                   ld      d,a
-335++ 7446 3A 19 76             ld      a,(p126_neogs_file_sector)
-336++ 7449 5F                   ld      e,a
-337++ 744A 21 00 C0             ld      hl,#C000
-338++ 744D 06 01                ld      b,1
-339++ 744F 0E 05                ld      c,5
-340++ 7451 AF                   xor     a
-341++ 7452 32 0F 5D             ld      (#5D0F),a
-342++ 7455 32 10 5D             ld      (#5D10),a
-343++ 7458 CD 13 3D             call    #3D13
-344++ 745B 3A 0F 5D             ld      a,(#5D0F)
-345++ 745E 47                   ld      b,a
-346++ 745F 3A 10 5D             ld      a,(#5D10)
-347++ 7462 B0                   or      b
-348++ 7463 32 1B 76             ld      (p126_neogs_io_error),a
-349++ 7466 20 1F                jr      nz,.p126_neogs_read_restore
-350++ 7468
-351++ 7468 3A 19 76             ld      a,(p126_neogs_file_sector)
-352++ 746B 3C                   inc     a
-353++ 746C FE 10                cp      16
-354++ 746E 38 0D                jr      c,.p126_neogs_sector_advanced
-355++ 7470 AF                   xor     a
-356++ 7471 32 19 76             ld      (p126_neogs_file_sector),a
-357++ 7474 3A 1A 76             ld      a,(p126_neogs_file_track)
-358++ 7477 3C                   inc     a
-359++ 7478 32 1A 76             ld      (p126_neogs_file_track),a
-360++ 747B 18 03                jr      .p126_neogs_sector_count
-361++ 747D              .p126_neogs_sector_advanced:
-362++ 747D 32 19 76             ld      (p126_neogs_file_sector),a
-363++ 7480              .p126_neogs_sector_count:
-364++ 7480 3A 18 76             ld      a,(p126_neogs_file_sectors_left)
-365++ 7483 3D                   dec     a
-366++ 7484 32 18 76             ld      (p126_neogs_file_sectors_left),a
-367++ 7487
-368++ 7487              .p126_neogs_read_restore:
-369++ 7487 ED 7B 02 76          ld      sp,(p126_neogs_saved_sp)
-370++ 748B 08                   ex      af,af'
-371++ 748C F1                   pop     af
-372++ 748D 08                   ex      af,af'
-373++ 748E D9                   exx
-374++ 748F E1                   pop     hl
-375++ 7490 D1                   pop     de
-376++ 7491 C1                   pop     bc
-377++ 7492 D9                   exx
-378++ 7493 FD E1                pop     iy
-379++ 7495 DD E1                pop     ix
-380++ 7497 E1                   pop     hl
-381++ 7498 D1                   pop     de
-382++ 7499 C1                   pop     bc
-383++ 749A F1                   pop     af
-384++ 749B 3A 1B 76             ld      a,(p126_neogs_io_error)
-385++ 749E B7                   or      a
-386++ 749F 28 02                jr      z,.p126_neogs_read_ok
-387++ 74A1 37                   scf
-388++ 74A2 C9                   ret
-389++ 74A3              .p126_neogs_read_ok:
-390++ 74A3 B7                   or      a
-391++ 74A4 C9                   ret
-392++ 74A5
-393++ 74A5              ; ATM-side diagnostic for the three bytes returned by GS105a #20.
-394++ 74A5              ; Format: [time][ATM] [NGS ROM] RAM24=HH:MM:LL
-395++ 74A5              ; This is intentionally emitted by ATM: Project126's NeoGS bootstrap is not
-396++ 74A5              ; executing yet while the stock ROM handles the #20 probe.
-397++ 74A5              p126_neogs_log_ram_size:
-398++ 74A5 F5                   push    af
-399++ 74A6 C5                   push    bc
-400++ 74A7 D5                   push    de
-401++ 74A8 E5                   push    hl
-402++ 74A9 CD E6 61             call    p126_host_log_prefix
-403++ 74AC 21 07 76             ld      hl,p126_neogs_ram_log_text
-404++ 74AF CD E2 74             call    p126_neogs_log_text
-405++ 74B2 3A 06 76             ld      a,(p126_neogs_ram_size+2)
-406++ 74B5 CD F1 74             call    p126_neogs_log_hex_byte
-407++ 74B8 3E 3A                ld      a,':'
-408++ 74BA 01 EF 00             ld      bc,#00EF
-409++ 74BD ED 79                out     (c),a
-410++ 74BF 3A 05 76             ld      a,(p126_neogs_ram_size+1)
-411++ 74C2 CD F1 74             call    p126_neogs_log_hex_byte
-412++ 74C5 3E 3A                ld      a,':'
-413++ 74C7 01 EF 00             ld      bc,#00EF
-414++ 74CA ED 79                out     (c),a
-415++ 74CC 3A 04 76             ld      a,(p126_neogs_ram_size)
-416++ 74CF CD F1 74             call    p126_neogs_log_hex_byte
-417++ 74D2 3E 0D                ld      a,13
-418++ 74D4 01 EF 00             ld      bc,#00EF
-419++ 74D7 ED 79                out     (c),a
-420++ 74D9 3E 0A                ld      a,10
-421++ 74DB ED 79                out     (c),a
-422++ 74DD E1                   pop     hl
-423++ 74DE D1                   pop     de
-424++ 74DF C1                   pop     bc
-425++ 74E0 F1                   pop     af
-426++ 74E1 C9                   ret
-427++ 74E2
-428++ 74E2              p126_neogs_log_text:
-429++ 74E2 C5                   push    bc
-430++ 74E3 01 EF 00             ld      bc,#00EF
-431++ 74E6              .p126_neogs_log_text_loop:
-432++ 74E6 7E                   ld      a,(hl)
-433++ 74E7 23                   inc     hl
-434++ 74E8 B7                   or      a
-435++ 74E9 28 04                jr      z,.p126_neogs_log_text_done
-436++ 74EB ED 79                out     (c),a
-437++ 74ED 18 F7                jr      .p126_neogs_log_text_loop
-438++ 74EF              .p126_neogs_log_text_done:
-439++ 74EF C1                   pop     bc
-440++ 74F0 C9                   ret
-441++ 74F1
-442++ 74F1              ; IN A=byte; writes two uppercase hexadecimal digits to ATM #EF.
-443++ 74F1              p126_neogs_log_hex_byte:
-444++ 74F1 C5                   push    bc
-445++ 74F2 0E EF                ld      c,#EF
-446++ 74F4 47                   ld      b,a
-447++ 74F5 0F                   rrca
-448++ 74F6 0F                   rrca
-449++ 74F7 0F                   rrca
-450++ 74F8 0F                   rrca
-451++ 74F9 E6 0F                and     #0F
-452++ 74FB CD 06 75             call    p126_neogs_log_hex_nibble
-453++ 74FE 78                   ld      a,b
-454++ 74FF E6 0F                and     #0F
-455++ 7501 CD 06 75             call    p126_neogs_log_hex_nibble
-456++ 7504 C1                   pop     bc
-457++ 7505 C9                   ret
-458++ 7506
-459++ 7506              p126_neogs_log_hex_nibble:
-460++ 7506 FE 0A                cp      10
-461++ 7508 38 04                jr      c,.p126_neogs_log_hex_digit
-462++ 750A C6 37                add     'A'-10
-463++ 750C 18 02                jr      .p126_neogs_log_hex_out
-464++ 750E              .p126_neogs_log_hex_digit:
-465++ 750E C6 30                add     '0'
-466++ 7510              .p126_neogs_log_hex_out:
-467++ 7510 ED 79                out     (c),a
-468++ 7512 C9                   ret
-469++ 7513
-470++ 7513               ; Query the stock ROM for its 24-bit RAM size. Project126 requires 4 MiB.
-471++ 7513              p126_neogs_probe_rom_ram:
-472++ 7513 3E 43                ld      a,'C'                 ; C: send #20 and wait for CBIT
-473++ 7515 32 1E 76             ld      (p126_neogs_startup_stage),a
-474++ 7518 3E 20                ld      a,P126_NGS_CMD_RAM
-475++ 751A CD 55 75             call    p126_neogs_send_command_long
-476++ 751D D8                   ret     c
-477++ 751E 3E 44                ld      a,'D'                 ; D: wait for/read RAM byte 0
-478++ 7520 32 1E 76             ld      (p126_neogs_startup_stage),a
-479++ 7523 CD AE 75             call    p126_neogs_receive_byte
-480++ 7526 D8                   ret     c
-481++ 7527 32 04 76             ld      (p126_neogs_ram_size),a
-482++ 752A 3E 45                ld      a,'E'                 ; E: wait for/read RAM byte 1
-483++ 752C 32 1E 76             ld      (p126_neogs_startup_stage),a
-484++ 752F CD AE 75             call    p126_neogs_receive_byte
-485++ 7532 D8                   ret     c
-486++ 7533 32 05 76             ld      (p126_neogs_ram_size+1),a
-487++ 7536 3E 46                ld      a,'F'                 ; F: wait for/read RAM byte 2
-488++ 7538 32 1E 76             ld      (p126_neogs_startup_stage),a
-489++ 753B CD AE 75             call    p126_neogs_receive_byte
-490++ 753E D8                   ret     c
-491++ 753F 32 06 76             ld      (p126_neogs_ram_size+2),a
-492++ 7542 3E 47                ld      a,'G'                 ; G: validate reported 24-bit RAM size
-493++ 7544 32 1E 76             ld      (p126_neogs_startup_stage),a
-494++ 7547                      ; At this point the stock GS105a ROM still owns the NeoGS CPU.
-495++ 7547                      ; Capture the exact response on the ATM's independent #EF channel.
-496++ 7547 CD A5 74             call    p126_neogs_log_ram_size
-497++ 754A 3A 06 76             ld      a,(p126_neogs_ram_size+2)
-498++ 754D FE 40                cp      #40
-499++ 754F 38 02                jr      c,.p126_neogs_ram_probe_bad
-500++ 7551 B7                   or      a
-501++ 7552 C9                   ret
-502++ 7553              .p126_neogs_ram_probe_bad:
-503++ 7553 37                   scf
-504++ 7554 C9                   ret
-505++ 7555
-506++ 7555              ; Extended CBIT wait based on the known-working Project125 GS105a driver.
-507++ 7555              p126_neogs_send_command_long:
-508++ 7555 32 1C 76             ld      (p126_neogs_tx_byte),a
-509++ 7558 3A 1C 76             ld      a,(p126_neogs_tx_byte)
-510++ 755B D3 BB                out     (P126_NGS_GSCOM),a
-511++ 755D D5                   push    de
-512++ 755E 16 10                ld      d,16
-513++ 7560              .p126_neogs_command_long_outer:
-514++ 7560 01 FF FF             ld      bc,#FFFF
-515++ 7563              .p126_neogs_command_long_inner:
-516++ 7563 DB BB                in      a,(P126_NGS_GSSTAT)
-517++ 7565 CB 47                bit     P126_NGS_CBIT,a
-518++ 7567 28 0B                jr      z,.p126_neogs_command_long_done
-519++ 7569 0B                   dec     bc
-520++ 756A 78                   ld      a,b
-521++ 756B B1                   or      c
-522++ 756C 20 F5                jr      nz,.p126_neogs_command_long_inner
-523++ 756E 15                   dec     d
-524++ 756F 20 EF                jr      nz,.p126_neogs_command_long_outer
-525++ 7571 D1                   pop     de
-526++ 7572 37                   scf
-527++ 7573 C9                   ret
-528++ 7574              .p126_neogs_command_long_done:
-529++ 7574 D1                   pop     de
-530++ 7575 B7                   or      a
-531++ 7576 C9                   ret
-532++ 7577
-533++ 7577              ; Stock GS105a command/data primitives. Application payloads do not use these.
-534++ 7577              p126_neogs_send_command:
-535++ 7577 32 1C 76             ld      (p126_neogs_tx_byte),a
-536++ 757A 3A 1C 76             ld      a,(p126_neogs_tx_byte)
-537++ 757D D3 BB                out     (P126_NGS_GSCOM),a
-538++ 757F 01 FF FF             ld      bc,P126_NGS_TIMEOUT
-539++ 7582              .p126_neogs_command_wait:
-540++ 7582 DB BB                in      a,(P126_NGS_GSSTAT)
-541++ 7584 CB 47                bit     P126_NGS_CBIT,a
-542++ 7586 28 07                jr      z,.p126_neogs_command_ok
-543++ 7588 0B                   dec     bc
-544++ 7589 78                   ld      a,b
-545++ 758A B1                   or      c
-546++ 758B 20 F5                jr      nz,.p126_neogs_command_wait
-547++ 758D 37                   scf
-548++ 758E C9                   ret
-549++ 758F              .p126_neogs_command_ok:
-550++ 758F B7                   or      a
-551++ 7590 C9                   ret
-552++ 7591
-553++ 7591              p126_neogs_send_argument:
-554++ 7591                      ; GS105a #13/#14 consume their first argument byte before command
-555++ 7591                      ; dispatch. The DBIT wait clobbers A with GSSTAT, so preserve the
-556++ 7591                      ; argument exactly as Project125's gs_boot_write_command_argument does.
-557++ 7591 32 1C 76             ld      (p126_neogs_tx_byte),a
-558++ 7594 CD C2 75             call    p126_neogs_wait_dbit_clear
-559++ 7597 D8                   ret     c
-560++ 7598 3A 1C 76             ld      a,(p126_neogs_tx_byte)
-561++ 759B D3 B3                out     (P126_NGS_GSDAT),a
-562++ 759D B7                   or      a
-563++ 759E C9                   ret
-564++ 759F
-565++ 759F              p126_neogs_send_byte:
-566++ 759F 32 1C 76             ld      (p126_neogs_tx_byte),a
-567++ 75A2 CD C2 75             call    p126_neogs_wait_dbit_clear
-568++ 75A5 D8                   ret     c
-569++ 75A6 3A 1C 76             ld      a,(p126_neogs_tx_byte)
-570++ 75A9 D3 B3                out     (P126_NGS_GSDAT),a
-571++ 75AB C3 C2 75             jp      p126_neogs_wait_dbit_clear
-572++ 75AE
-573++ 75AE              p126_neogs_receive_byte:
-574++ 75AE CD D4 75             call    p126_neogs_wait_dbit_set
-575++ 75B1 D8                   ret     c
-576++ 75B2 DB B3                in      a,(P126_NGS_GSDAT)
-577++ 75B4                      ; Give the GS105a sender time to observe DBIT being cleared.
-578++ 75B4 F5                   push    af
-579++ 75B5 C5                   push    bc
-580++ 75B6 01 00 04             ld      bc,#0400
-581++ 75B9              .p126_neogs_receive_turnaround:
-582++ 75B9 0B                   dec     bc
-583++ 75BA 78                   ld      a,b
-584++ 75BB B1                   or      c
-585++ 75BC 20 FB                jr      nz,.p126_neogs_receive_turnaround
-586++ 75BE C1                   pop     bc
-587++ 75BF F1                   pop     af
-588++ 75C0 B7                   or      a
-589++ 75C1 C9                   ret
-590++ 75C2
-591++ 75C2              p126_neogs_wait_dbit_clear:
-592++ 75C2 01 FF FF             ld      bc,P126_NGS_TIMEOUT
-593++ 75C5              .p126_neogs_dbit_clear_loop:
-594++ 75C5 DB BB                in      a,(P126_NGS_GSSTAT)
-595++ 75C7 CB 7F                bit     P126_NGS_DBIT,a
-596++ 75C9 28 07                jr      z,.p126_neogs_dbit_clear_ok
-597++ 75CB 0B                   dec     bc
-598++ 75CC 78                   ld      a,b
-599++ 75CD B1                   or      c
-600++ 75CE 20 F5                jr      nz,.p126_neogs_dbit_clear_loop
-601++ 75D0 37                   scf
-602++ 75D1 C9                   ret
-603++ 75D2              .p126_neogs_dbit_clear_ok:
-604++ 75D2 B7                   or      a
-605++ 75D3 C9                   ret
-606++ 75D4
-607++ 75D4              p126_neogs_wait_dbit_set:
-608++ 75D4 01 FF FF             ld      bc,P126_NGS_TIMEOUT
-609++ 75D7              .p126_neogs_dbit_set_loop:
-610++ 75D7 DB BB                in      a,(P126_NGS_GSSTAT)
-611++ 75D9 CB 7F                bit     P126_NGS_DBIT,a
-612++ 75DB 20 07                jr      nz,.p126_neogs_dbit_set_ok
-613++ 75DD 0B                   dec     bc
-614++ 75DE 78                   ld      a,b
-615++ 75DF B1                   or      c
-616++ 75E0 20 F5                jr      nz,.p126_neogs_dbit_set_loop
-617++ 75E2 37                   scf
-618++ 75E3 C9                   ret
-619++ 75E4              .p126_neogs_dbit_set_ok:
-620++ 75E4 B7                   or      a
-621++ 75E5 C9                   ret
-622++ 75E6
-623++ 75E6 50 31 32 36  p126_neogs_boot_name: db "P126BOOT"
-623++ 75EA 42 4F 4F 54
-624++ 75EE 58 38 36 43  p126_neogs_core_name: db "X86CORE "
-624++ 75F2 4F 52 45 20
-625++ 75F6 00 00        p126_neogs_name_ptr: dw 0
-626++ 75F8 00 00        p126_neogs_file_length: dw 0
-627++ 75FA 00 00        p126_neogs_core_length: dw 0
-628++ 75FC 00 00        p126_neogs_block_length: dw 0
-629++ 75FE 00 C0        p126_neogs_buffer_ptr: dw #C000
-630++ 7600 00 00        p126_neogs_buffer_remaining: dw 0
-631++ 7602 00 00        p126_neogs_saved_sp: dw 0
-632++ 7604 00 00 00     p126_neogs_ram_size: db 0,0,0
-633++ 7607 5B 4E 47 53  p126_neogs_ram_log_text: db "[NGS ROM] RAM24=",0
-633++ 760B 20 52 4F 4D
-633++ 760F 5D 20 52 41
-633++ 7613 4D 32 34 3D
-633++ 7617 00
-634++ 7618 00           p126_neogs_file_sectors_left: db 0
-635++ 7619 00           p126_neogs_file_sector: db 0
-636++ 761A 00           p126_neogs_file_track: db 0
-637++ 761B 00           p126_neogs_io_error: db 0
-638++ 761C 00           p126_neogs_tx_byte: db 0
-639++ 761D 00           p126_neogs_startup_error: db 0
-640++ 761E 30           p126_neogs_startup_stage: db '0'
-641++ 761F
-642++ 761F
-643++ 761F              ; Build and send one valid 18-byte diagnostics request through the application
-644++ 761F              ; DMA transport. The NeoGS resident loop independently validates CRC and
-645++ 761F              ; emits DMA FRAME VALID / DMA FRAME REJECTED on its own #EF channel.
-646++ 761F              p126_neogs_dma_smoke_test:
-646++ 761F
-647++ 761F 21 FF FF             ld      hl,#FFFF
-648++ 7622 11 3A 76             ld      de,p126_neogs_dma_test_frame
-649++ 7625 06 10                ld      b,16
-650++ 7627              .p126_neogs_dma_crc_loop:
-651++ 7627 1A                   ld      a,(de)
-652++ 7628 13                   inc     de
-653++ 7629 CD 56 67             call    p126_ipc_crc16_update
-654++ 762C 10 F9                djnz    .p126_neogs_dma_crc_loop
-655++ 762E 22 4A 76             ld      (p126_neogs_dma_test_frame+16),hl
-656++ 7631 21 3A 76             ld      hl,p126_neogs_dma_test_frame
-657++ 7634 01 12 00             ld      bc,18
-658++ 7637 C3 CF 68             jp      p126_ipc_dma_send_frame
-659++ 763A
-660++ 763A              p126_neogs_dma_test_frame:
-661++ 763A 50 31 32 36          db      'P','1','2','6',1,0,1,5,0,0,1,0,0,0,0,0,0,0
-661++ 763E 01 00 01 05
-661++ 7642 00 00 01 00
-661++ 7646 00 00 00 00
-661++ 764A 00 00
-662++ 764C
+  1++ 7232              ; =========================================================================
+  2++ 7232              ; PROJECT126 — ATM host NeoGS bootstrap/firmware loader
+  3++ 7232              ; Runs before ATM video paging is enabled. TR-DOS sector reads use the same
+  4++ 7232              ; C=5/B=1 ABI already validated by p126_catalog_read_disk.
+  5++ 7232              ; =========================================================================
+  6++ 7232              P126_NGS_GSCOM EQU #BB
+  7++ 7232              P126_NGS_GSSTAT EQU #BB
+  8++ 7232              P126_NGS_GSDAT EQU #B3
+  9++ 7232              P126_NGS_GSCTR EQU #33
+ 10++ 7232              P126_NGS_CBIT EQU 0
+ 11++ 7232              P126_NGS_DBIT EQU 7
+ 12++ 7232              P126_NGS_CMD_RAM EQU #20
+ 13++ 7232              P126_NGS_CMD_JUMP EQU #13
+ 14++ 7232              P126_NGS_CMD_RECV EQU #14
+ 15++ 7232              P126_NGS_ACK_READY EQU #A1
+ 16++ 7232              P126_NGS_ACK_LENGTH EQU #A3
+ 17++ 7232              P126_NGS_ACK_DONE EQU #A2
+ 18++ 7232              P126_NGS_TIMEOUT EQU #FFFF
+ 19++ 7232
+ 20++ 7232              ; Called after directory preload and before ATM video initialization.
+ 21++ 7232              ; Carry clear means the resident image sent its A2h ready acknowledgement.
+ 22++ 7232              p126_neogs_startup:
+ 22++ 7232
+ 23++ 7232 3E 31                ld      a,'1'
+ 24++ 7234 32 25 76             ld      (p126_neogs_startup_stage),a
+ 25++ 7237 21 ED 75             ld      hl,p126_neogs_boot_name
+ 26++ 723A CD C0 73             call    p126_neogs_open_file
+ 27++ 723D D8                   ret     c
+ 28++ 723E 3E 32                ld      a,'2'
+ 29++ 7240 32 25 76             ld      (p126_neogs_startup_stage),a
+ 30++ 7243                      ; The build deliberately permits a full 256-byte ROM #14 block.
+ 31++ 7243                      ; Accept lengths 1..255 and exactly 256 (0100h); reject 0 and >256.
+ 32++ 7243 2A FF 75             ld      hl,(p126_neogs_file_length)
+ 33++ 7246 7C                   ld      a,h
+ 34++ 7247 B7                   or      a
+ 35++ 7248 28 0C                jr      z,.p126_neogs_boot_length_low
+ 36++ 724A FE 01                cp      1
+ 37++ 724C C2 AD 73             jp      nz,p126_neogs_boot_file_bad
+ 38++ 724F 7D                   ld      a,l
+ 39++ 7250 B7                   or      a
+ 40++ 7251 C2 AD 73             jp      nz,p126_neogs_boot_file_bad
+ 41++ 7254 18 05                jr      .p126_neogs_boot_length_ok
+ 42++ 7256              .p126_neogs_boot_length_low:
+ 43++ 7256 7D                   ld      a,l
+ 44++ 7257 B7                   or      a
+ 45++ 7258 CA AD 73             jp      z,p126_neogs_boot_file_bad
+ 46++ 725B              .p126_neogs_boot_length_ok:
+ 47++ 725B
+ 48++ 725B                      ; Cold-restart the GS105a ROM only to enter its known bootstrap
+ 49++ 725B                      ; receive state. Do NOT query #20: its RAM-size report is not an
+ 50++ 725B                      ; authority for Project126 physical memory and must not gate startup.
+ 51++ 725B 3E 41                ld      a,'A'
+ 52++ 725D 32 25 76             ld      (p126_neogs_startup_stage),a
+ 53++ 7260 3E F4                ld      a,#F4
+ 54++ 7262 CD 5C 75             call    p126_neogs_send_command_long
+ 55++ 7265 DA B5 73             jp      c,p126_neogs_ram_bad
+ 56++ 7268
+ 57++ 7268
+ 58++ 7268
+ 59++ 7268                      ; GS105a #14 receives P126BOOT at logical 4000h.
+ 60++ 7268 3E 34                ld      a,'4'
+ 61++ 726A 32 25 76             ld      (p126_neogs_startup_stage),a
+ 62++ 726D 21 00 00             ld      hl,0
+ 63++ 7270 ED 5B FF 75          ld      de,(p126_neogs_file_length)
+ 64++ 7274 B7                   or      a
+ 65++ 7275 ED 52                sbc     hl,de
+ 66++ 7277 22 03 76             ld      (p126_neogs_block_length),hl
+ 67++ 727A 7D                   ld      a,l
+ 68++ 727B CD 98 75             call    p126_neogs_send_argument
+ 69++ 727E D8                   ret     c
+ 70++ 727F 3E 14                ld      a,P126_NGS_CMD_RECV
+ 71++ 7281 CD 7E 75             call    p126_neogs_send_command
+ 72++ 7284 D8                   ret     c
+ 73++ 7285 3A 04 76             ld      a,(p126_neogs_block_length+1)
+ 74++ 7288 CD A6 75             call    p126_neogs_send_byte
+ 75++ 728B D8                   ret     c
+ 76++ 728C AF                   xor     a
+ 77++ 728D CD A6 75             call    p126_neogs_send_byte
+ 78++ 7290 D8                   ret     c
+ 79++ 7291 3E 40                ld      a,#40
+ 80++ 7293 CD A6 75             call    p126_neogs_send_byte
+ 81++ 7296 D8                   ret     c
+ 82++ 7297 21 00 C0             ld      hl,#C000
+ 83++ 729A ED 5B FF 75          ld      de,(p126_neogs_file_length)
+ 84++ 729E              .p126_neogs_boot_stream:
+ 85++ 729E 7A                   ld      a,d
+ 86++ 729F B3                   or      e
+ 87++ 72A0 28 09                jr      z,.p126_neogs_boot_loaded
+ 88++ 72A2 7E                   ld      a,(hl)
+ 89++ 72A3 CD A6 75             call    p126_neogs_send_byte
+ 90++ 72A6 D8                   ret     c
+ 91++ 72A7 23                   inc     hl
+ 92++ 72A8 1B                   dec     de
+ 93++ 72A9 18 F3                jr      .p126_neogs_boot_stream
+ 94++ 72AB              .p126_neogs_boot_loaded:
+ 95++ 72AB                      ; Read the first resident-image sector before starting stage-0.
+ 96++ 72AB 3E 35                ld      a,'5'
+ 97++ 72AD 32 25 76             ld      (p126_neogs_startup_stage),a
+ 98++ 72B0 21 F5 75             ld      hl,p126_neogs_core_name
+ 99++ 72B3 CD C0 73             call    p126_neogs_open_file
+100++ 72B6 D8                   ret     c
+101++ 72B7 3E 36                ld      a,'6'
+102++ 72B9 32 25 76             ld      (p126_neogs_startup_stage),a
+103++ 72BC 2A FF 75             ld      hl,(p126_neogs_file_length)
+104++ 72BF 7C                   ld      a,h
+105++ 72C0 FE 40                cp      #40
+106++ 72C2 38 08                jr      c,.p126_neogs_core_size_low
+107++ 72C4 C2 B1 73             jp      nz,p126_neogs_core_file_bad
+108++ 72C7 7D                   ld      a,l
+109++ 72C8 B7                   or      a
+110++ 72C9 C2 B1 73             jp      nz,p126_neogs_core_file_bad
+111++ 72CC              .p126_neogs_core_size_low:
+112++ 72CC 7C                   ld      a,h
+113++ 72CD B5                   or      l
+114++ 72CE CA B1 73             jp      z,p126_neogs_core_file_bad
+115++ 72D1 2A FF 75             ld      hl,(p126_neogs_file_length)
+116++ 72D4 22 01 76             ld      (p126_neogs_core_length),hl
+117++ 72D7
+118++ 72D7                      ; Enter stage-0 at 4000h; it publishes A1h when ready.
+119++ 72D7 3E 37                ld      a,'7'
+120++ 72D9 32 25 76             ld      (p126_neogs_startup_stage),a
+121++ 72DC AF                   xor     a
+122++ 72DD CD 98 75             call    p126_neogs_send_argument
+123++ 72E0 D8                   ret     c
+124++ 72E1 3E 13                ld      a,P126_NGS_CMD_JUMP
+125++ 72E3 CD 7E 75             call    p126_neogs_send_command
+126++ 72E6 D8                   ret     c
+127++ 72E7 3E 40                ld      a,#40
+128++ 72E9 CD A6 75             call    p126_neogs_send_byte
+129++ 72EC 30 12                jr      nc,.p126_neogs_jump_tx_done
+130++ 72EE DB BB                in      a,(P126_NGS_GSSTAT)
+131++ 72F0 CB 7F                bit     P126_NGS_DBIT,a
+132++ 72F2 CA B9 73             jp      z,p126_neogs_transport_error
+133++ 72F5 CD B5 75             call    p126_neogs_receive_byte
+134++ 72F8 D8                   ret     c
+135++ 72F9 FE A1                cp      P126_NGS_ACK_READY
+136++ 72FB C2 B9 73             jp      nz,p126_neogs_transport_error
+137++ 72FE 18 09                jr      .p126_neogs_stage0_ready
+138++ 7300              .p126_neogs_jump_tx_done:
+139++ 7300 CD B5 75             call    p126_neogs_receive_byte
+140++ 7303 D8                   ret     c
+141++ 7304 FE A1                cp      P126_NGS_ACK_READY
+142++ 7306 C2 B9 73             jp      nz,p126_neogs_transport_error
+143++ 7309
+144++ 7309              .p126_neogs_stage0_ready:
+145++ 7309                      ; Length exchange; A3h confirms the resident image size.
+146++ 7309 3E 38                ld      a,'8'
+147++ 730B 32 25 76             ld      (p126_neogs_startup_stage),a
+148++ 730E 2A 01 76             ld      hl,(p126_neogs_core_length)
+149++ 7311 7D                   ld      a,l
+150++ 7312 CD A6 75             call    p126_neogs_send_byte
+151++ 7315 D8                   ret     c
+152++ 7316 7C                   ld      a,h
+153++ 7317 CD A6 75             call    p126_neogs_send_byte
+154++ 731A 30 12                jr      nc,.p126_neogs_length_sent
+155++ 731C DB BB                in      a,(P126_NGS_GSSTAT)
+156++ 731E CB 7F                bit     P126_NGS_DBIT,a
+157++ 7320 CA B9 73             jp      z,p126_neogs_transport_error
+158++ 7323 CD B5 75             call    p126_neogs_receive_byte
+159++ 7326 D8                   ret     c
+160++ 7327 FE A3                cp      P126_NGS_ACK_LENGTH
+161++ 7329 C2 B9 73             jp      nz,p126_neogs_transport_error
+162++ 732C 18 09                jr      .p126_neogs_stream_begin
+163++ 732E              .p126_neogs_length_sent:
+164++ 732E CD B5 75             call    p126_neogs_receive_byte
+165++ 7331 D8                   ret     c
+166++ 7332 FE A3                cp      P126_NGS_ACK_LENGTH
+167++ 7334 C2 B9 73             jp      nz,p126_neogs_transport_error
+168++ 7337
+169++ 7337              .p126_neogs_stream_begin:
+170++ 7337 3E 39                ld      a,'9'
+171++ 7339 32 25 76             ld      (p126_neogs_startup_stage),a
+172++ 733C 21 00 C0             ld      hl,#C000
+173++ 733F 22 05 76             ld      (p126_neogs_buffer_ptr),hl
+174++ 7342 21 00 01             ld      hl,256
+175++ 7345 22 07 76             ld      (p126_neogs_buffer_remaining),hl
+176++ 7348 ED 5B 01 76          ld      de,(p126_neogs_core_length)
+177++ 734C              .p126_neogs_core_stream:
+178++ 734C 7A                   ld      a,d
+179++ 734D B3                   or      e
+180++ 734E 28 4D                jr      z,.p126_neogs_core_stream_done
+181++ 7350 2A 07 76             ld      hl,(p126_neogs_buffer_remaining)
+182++ 7353 7C                   ld      a,h
+183++ 7354 B5                   or      l
+184++ 7355 20 12                jr      nz,.p126_neogs_core_buffer_ready
+185++ 7357 D5                   push    de
+186++ 7358 CD 2A 74             call    p126_neogs_read_next_sector
+187++ 735B D1                   pop     de
+188++ 735C D8                   ret     c
+189++ 735D 21 00 C0             ld      hl,#C000
+190++ 7360 22 05 76             ld      (p126_neogs_buffer_ptr),hl
+191++ 7363 21 00 01             ld      hl,256
+192++ 7366 22 07 76             ld      (p126_neogs_buffer_remaining),hl
+193++ 7369              .p126_neogs_core_buffer_ready:
+194++ 7369 2A 05 76             ld      hl,(p126_neogs_buffer_ptr)
+195++ 736C 7E                   ld      a,(hl)
+196++ 736D CD A6 75             call    p126_neogs_send_byte
+197++ 7370 30 1D                jr      nc,.p126_neogs_core_byte_sent
+198++ 7372                      ; The resident can publish A2h immediately after consuming the final
+199++ 7372                      ; byte. In that case one byte remains in DE and DBIT is already set.
+200++ 7372 7A                   ld      a,d
+201++ 7373 B7                   or      a
+202++ 7374 C2 B9 73             jp      nz,p126_neogs_transport_error
+203++ 7377 7B                   ld      a,e
+204++ 7378 FE 01                cp      1
+205++ 737A C2 B9 73             jp      nz,p126_neogs_transport_error
+206++ 737D DB BB                in      a,(P126_NGS_GSSTAT)
+207++ 737F CB 7F                bit     P126_NGS_DBIT,a
+208++ 7381 CA B9 73             jp      z,p126_neogs_transport_error
+209++ 7384 CD B5 75             call    p126_neogs_receive_byte
+210++ 7387 D8                   ret     c
+211++ 7388 FE A2                cp      P126_NGS_ACK_DONE
+212++ 738A C2 B9 73             jp      nz,p126_neogs_transport_error
+213++ 738D 18 17                jr      .p126_neogs_startup_done
+214++ 738F              .p126_neogs_core_byte_sent:
+215++ 738F 23                   inc     hl
+216++ 7390 22 05 76             ld      (p126_neogs_buffer_ptr),hl
+217++ 7393 2A 07 76             ld      hl,(p126_neogs_buffer_remaining)
+218++ 7396 2B                   dec     hl
+219++ 7397 22 07 76             ld      (p126_neogs_buffer_remaining),hl
+220++ 739A 1B                   dec     de
+221++ 739B 18 AF                jr      .p126_neogs_core_stream
+222++ 739D
+223++ 739D              .p126_neogs_core_stream_done:
+224++ 739D CD B5 75             call    p126_neogs_receive_byte
+225++ 73A0 D8                   ret     c
+226++ 73A1 FE A2                cp      P126_NGS_ACK_DONE
+227++ 73A3 C2 B9 73             jp      nz,p126_neogs_transport_error
+228++ 73A6              .p126_neogs_startup_done:
+229++ 73A6 3E 30                ld      a,'0'
+230++ 73A8 32 25 76             ld      (p126_neogs_startup_stage),a
+231++ 73AB AF                   xor     a
+232++ 73AC C9                   ret
+233++ 73AD
+234++ 73AD              p126_neogs_boot_file_bad:
+235++ 73AD 3E 01                ld      a,1
+236++ 73AF 18 0A                jr      p126_neogs_store_error
+237++ 73B1              p126_neogs_core_file_bad:
+238++ 73B1 3E 02                ld      a,2
+239++ 73B3 18 06                jr      p126_neogs_store_error
+240++ 73B5              p126_neogs_ram_bad:
+241++ 73B5 3E 03                ld      a,3
+242++ 73B7 18 02                jr      p126_neogs_store_error
+243++ 73B9              p126_neogs_transport_error:
+244++ 73B9 3E 04                ld      a,4
+245++ 73BB              p126_neogs_store_error:
+246++ 73BB 32 24 76             ld      (p126_neogs_startup_error),a
+247++ 73BE 37                   scf
+248++ 73BF C9                   ret
+249++ 73C0
+250++ 73C0              ; IN HL=exact 8-character filename. Directory was preloaded at C800h.
+251++ 73C0              ; OUT: carry clear, first sector at C000h, metadata initialized.
+252++ 73C0              p126_neogs_open_file:
+253++ 73C0 22 FD 75             ld      (p126_neogs_name_ptr),hl
+254++ 73C3 DD 21 00 C8          ld      ix,#C800
+255++ 73C7 06 80                ld      b,128
+256++ 73C9              .p126_neogs_find_loop:
+257++ 73C9 DD E5                push    ix
+258++ 73CB C5                   push    bc
+259++ 73CC 2A FD 75             ld      hl,(p126_neogs_name_ptr)
+260++ 73CF 0E 08                ld      c,8
+261++ 73D1              .p126_neogs_compare:
+262++ 73D1 7E                   ld      a,(hl)
+263++ 73D2 DD BE 00             cp      (ix+0)
+264++ 73D5 20 0D                jr      nz,.p126_neogs_find_miss
+265++ 73D7 23                   inc     hl
+266++ 73D8 DD 23                inc     ix
+267++ 73DA 0D                   dec     c
+268++ 73DB 20 F4                jr      nz,.p126_neogs_compare
+269++ 73DD DD 7E 00             ld      a,(ix+0)
+270++ 73E0 FE 43                cp      'C'
+271++ 73E2 28 0C                jr      z,.p126_neogs_find_hit
+272++ 73E4              .p126_neogs_find_miss:
+273++ 73E4 C1                   pop     bc
+274++ 73E5 DD E1                pop     ix
+275++ 73E7 11 10 00             ld      de,16
+276++ 73EA DD 19                add     ix,de
+277++ 73EC 10 DB                djnz    .p126_neogs_find_loop
+278++ 73EE 37                   scf
+279++ 73EF C9                   ret
+280++ 73F0              .p126_neogs_find_hit:
+281++ 73F0 C1                   pop     bc
+282++ 73F1 D1                   pop     de
+283++ 73F2 DD 7E 03             ld      a,(ix+3)
+284++ 73F5 32 FF 75             ld      (p126_neogs_file_length),a
+285++ 73F8 DD 7E 04             ld      a,(ix+4)
+286++ 73FB 32 00 76             ld      (p126_neogs_file_length+1),a
+287++ 73FE DD 7E 05             ld      a,(ix+5)
+288++ 7401 32 1F 76             ld      (p126_neogs_file_sectors_left),a
+289++ 7404 DD 7E 06             ld      a,(ix+6)
+290++ 7407 32 20 76             ld      (p126_neogs_file_sector),a
+291++ 740A DD 7E 07             ld      a,(ix+7)
+292++ 740D 32 21 76             ld      (p126_neogs_file_track),a
+293++ 7410 3A 1F 76             ld      a,(p126_neogs_file_sectors_left)
+294++ 7413 B7                   or      a
+295++ 7414 20 02                jr      nz,.p126_neogs_file_meta_ok
+296++ 7416 37                   scf
+297++ 7417 C9                   ret
+298++ 7418              .p126_neogs_file_meta_ok:
+299++ 7418 CD 2A 74             call    p126_neogs_read_next_sector
+300++ 741B D8                   ret     c
+301++ 741C 21 00 C0             ld      hl,#C000
+302++ 741F 22 05 76             ld      (p126_neogs_buffer_ptr),hl
+303++ 7422 21 00 01             ld      hl,256
+304++ 7425 22 07 76             ld      (p126_neogs_buffer_remaining),hl
+305++ 7428 AF                   xor     a
+306++ 7429 C9                   ret
+307++ 742A
+308++ 742A              ; Read one sector at the current TR-DOS cursor. Preserves all Z80 registers.
+309++ 742A              p126_neogs_read_next_sector:
+310++ 742A 3A 1F 76             ld      a,(p126_neogs_file_sectors_left)
+311++ 742D B7                   or      a
+312++ 742E 20 02                jr      nz,.p126_neogs_read_sector_ready
+313++ 7430 37                   scf
+314++ 7431 C9                   ret
+315++ 7432              .p126_neogs_read_sector_ready:
+316++ 7432 F5                   push    af
+317++ 7433 C5                   push    bc
+318++ 7434 D5                   push    de
+319++ 7435 E5                   push    hl
+320++ 7436 DD E5                push    ix
+321++ 7438 FD E5                push    iy
+322++ 743A D9                   exx
+323++ 743B C5                   push    bc
+324++ 743C D5                   push    de
+325++ 743D E5                   push    hl
+326++ 743E D9                   exx
+327++ 743F 08                   ex      af,af'
+328++ 7440 F5                   push    af
+329++ 7441 08                   ex      af,af'
+330++ 7442 ED 73 09 76          ld      (p126_neogs_saved_sp),sp
+331++ 7446 31 FF BF             ld      sp,#BFFF
+332++ 7449
+333++ 7449 3A 21 76             ld      a,(p126_neogs_file_track)
+334++ 744C 57                   ld      d,a
+335++ 744D 3A 20 76             ld      a,(p126_neogs_file_sector)
+336++ 7450 5F                   ld      e,a
+337++ 7451 21 00 C0             ld      hl,#C000
+338++ 7454 06 01                ld      b,1
+339++ 7456 0E 05                ld      c,5
+340++ 7458 AF                   xor     a
+341++ 7459 32 0F 5D             ld      (#5D0F),a
+342++ 745C 32 10 5D             ld      (#5D10),a
+343++ 745F CD 13 3D             call    #3D13
+344++ 7462 3A 0F 5D             ld      a,(#5D0F)
+345++ 7465 47                   ld      b,a
+346++ 7466 3A 10 5D             ld      a,(#5D10)
+347++ 7469 B0                   or      b
+348++ 746A 32 22 76             ld      (p126_neogs_io_error),a
+349++ 746D 20 1F                jr      nz,.p126_neogs_read_restore
+350++ 746F
+351++ 746F 3A 20 76             ld      a,(p126_neogs_file_sector)
+352++ 7472 3C                   inc     a
+353++ 7473 FE 10                cp      16
+354++ 7475 38 0D                jr      c,.p126_neogs_sector_advanced
+355++ 7477 AF                   xor     a
+356++ 7478 32 20 76             ld      (p126_neogs_file_sector),a
+357++ 747B 3A 21 76             ld      a,(p126_neogs_file_track)
+358++ 747E 3C                   inc     a
+359++ 747F 32 21 76             ld      (p126_neogs_file_track),a
+360++ 7482 18 03                jr      .p126_neogs_sector_count
+361++ 7484              .p126_neogs_sector_advanced:
+362++ 7484 32 20 76             ld      (p126_neogs_file_sector),a
+363++ 7487              .p126_neogs_sector_count:
+364++ 7487 3A 1F 76             ld      a,(p126_neogs_file_sectors_left)
+365++ 748A 3D                   dec     a
+366++ 748B 32 1F 76             ld      (p126_neogs_file_sectors_left),a
+367++ 748E
+368++ 748E              .p126_neogs_read_restore:
+369++ 748E ED 7B 09 76          ld      sp,(p126_neogs_saved_sp)
+370++ 7492 08                   ex      af,af'
+371++ 7493 F1                   pop     af
+372++ 7494 08                   ex      af,af'
+373++ 7495 D9                   exx
+374++ 7496 E1                   pop     hl
+375++ 7497 D1                   pop     de
+376++ 7498 C1                   pop     bc
+377++ 7499 D9                   exx
+378++ 749A FD E1                pop     iy
+379++ 749C DD E1                pop     ix
+380++ 749E E1                   pop     hl
+381++ 749F D1                   pop     de
+382++ 74A0 C1                   pop     bc
+383++ 74A1 F1                   pop     af
+384++ 74A2 3A 22 76             ld      a,(p126_neogs_io_error)
+385++ 74A5 B7                   or      a
+386++ 74A6 28 02                jr      z,.p126_neogs_read_ok
+387++ 74A8 37                   scf
+388++ 74A9 C9                   ret
+389++ 74AA              .p126_neogs_read_ok:
+390++ 74AA B7                   or      a
+391++ 74AB C9                   ret
+392++ 74AC
+393++ 74AC              ; ATM-side diagnostic for the three bytes returned by GS105a #20.
+394++ 74AC              ; Format: [time][ATM] [NGS ROM] RAM24=HH:MM:LL
+395++ 74AC              ; This is intentionally emitted by ATM: Project126's NeoGS bootstrap is not
+396++ 74AC              ; executing yet while the stock ROM handles the #20 probe.
+397++ 74AC              p126_neogs_log_ram_size:
+398++ 74AC F5                   push    af
+399++ 74AD C5                   push    bc
+400++ 74AE D5                   push    de
+401++ 74AF E5                   push    hl
+402++ 74B0 CD E6 61             call    p126_host_log_prefix
+403++ 74B3 21 0E 76             ld      hl,p126_neogs_ram_log_text
+404++ 74B6 CD E9 74             call    p126_neogs_log_text
+405++ 74B9 3A 0D 76             ld      a,(p126_neogs_ram_size+2)
+406++ 74BC CD F8 74             call    p126_neogs_log_hex_byte
+407++ 74BF 3E 3A                ld      a,':'
+408++ 74C1 01 EF 00             ld      bc,#00EF
+409++ 74C4 ED 79                out     (c),a
+410++ 74C6 3A 0C 76             ld      a,(p126_neogs_ram_size+1)
+411++ 74C9 CD F8 74             call    p126_neogs_log_hex_byte
+412++ 74CC 3E 3A                ld      a,':'
+413++ 74CE 01 EF 00             ld      bc,#00EF
+414++ 74D1 ED 79                out     (c),a
+415++ 74D3 3A 0B 76             ld      a,(p126_neogs_ram_size)
+416++ 74D6 CD F8 74             call    p126_neogs_log_hex_byte
+417++ 74D9 3E 0D                ld      a,13
+418++ 74DB 01 EF 00             ld      bc,#00EF
+419++ 74DE ED 79                out     (c),a
+420++ 74E0 3E 0A                ld      a,10
+421++ 74E2 ED 79                out     (c),a
+422++ 74E4 E1                   pop     hl
+423++ 74E5 D1                   pop     de
+424++ 74E6 C1                   pop     bc
+425++ 74E7 F1                   pop     af
+426++ 74E8 C9                   ret
+427++ 74E9
+428++ 74E9              p126_neogs_log_text:
+429++ 74E9 C5                   push    bc
+430++ 74EA 01 EF 00             ld      bc,#00EF
+431++ 74ED              .p126_neogs_log_text_loop:
+432++ 74ED 7E                   ld      a,(hl)
+433++ 74EE 23                   inc     hl
+434++ 74EF B7                   or      a
+435++ 74F0 28 04                jr      z,.p126_neogs_log_text_done
+436++ 74F2 ED 79                out     (c),a
+437++ 74F4 18 F7                jr      .p126_neogs_log_text_loop
+438++ 74F6              .p126_neogs_log_text_done:
+439++ 74F6 C1                   pop     bc
+440++ 74F7 C9                   ret
+441++ 74F8
+442++ 74F8              ; IN A=byte; writes two uppercase hexadecimal digits to ATM #EF.
+443++ 74F8              p126_neogs_log_hex_byte:
+444++ 74F8 C5                   push    bc
+445++ 74F9 0E EF                ld      c,#EF
+446++ 74FB 47                   ld      b,a
+447++ 74FC 0F                   rrca
+448++ 74FD 0F                   rrca
+449++ 74FE 0F                   rrca
+450++ 74FF 0F                   rrca
+451++ 7500 E6 0F                and     #0F
+452++ 7502 CD 0D 75             call    p126_neogs_log_hex_nibble
+453++ 7505 78                   ld      a,b
+454++ 7506 E6 0F                and     #0F
+455++ 7508 CD 0D 75             call    p126_neogs_log_hex_nibble
+456++ 750B C1                   pop     bc
+457++ 750C C9                   ret
+458++ 750D
+459++ 750D              p126_neogs_log_hex_nibble:
+460++ 750D FE 0A                cp      10
+461++ 750F 38 04                jr      c,.p126_neogs_log_hex_digit
+462++ 7511 C6 37                add     'A'-10
+463++ 7513 18 02                jr      .p126_neogs_log_hex_out
+464++ 7515              .p126_neogs_log_hex_digit:
+465++ 7515 C6 30                add     '0'
+466++ 7517              .p126_neogs_log_hex_out:
+467++ 7517 ED 79                out     (c),a
+468++ 7519 C9                   ret
+469++ 751A
+470++ 751A               ; Query the stock ROM for its 24-bit RAM size. Project126 requires 4 MiB.
+471++ 751A              p126_neogs_probe_rom_ram:
+472++ 751A 3E 43                ld      a,'C'                 ; C: send #20 and wait for CBIT
+473++ 751C 32 25 76             ld      (p126_neogs_startup_stage),a
+474++ 751F 3E 20                ld      a,P126_NGS_CMD_RAM
+475++ 7521 CD 5C 75             call    p126_neogs_send_command_long
+476++ 7524 D8                   ret     c
+477++ 7525 3E 44                ld      a,'D'                 ; D: wait for/read RAM byte 0
+478++ 7527 32 25 76             ld      (p126_neogs_startup_stage),a
+479++ 752A CD B5 75             call    p126_neogs_receive_byte
+480++ 752D D8                   ret     c
+481++ 752E 32 0B 76             ld      (p126_neogs_ram_size),a
+482++ 7531 3E 45                ld      a,'E'                 ; E: wait for/read RAM byte 1
+483++ 7533 32 25 76             ld      (p126_neogs_startup_stage),a
+484++ 7536 CD B5 75             call    p126_neogs_receive_byte
+485++ 7539 D8                   ret     c
+486++ 753A 32 0C 76             ld      (p126_neogs_ram_size+1),a
+487++ 753D 3E 46                ld      a,'F'                 ; F: wait for/read RAM byte 2
+488++ 753F 32 25 76             ld      (p126_neogs_startup_stage),a
+489++ 7542 CD B5 75             call    p126_neogs_receive_byte
+490++ 7545 D8                   ret     c
+491++ 7546 32 0D 76             ld      (p126_neogs_ram_size+2),a
+492++ 7549 3E 47                ld      a,'G'                 ; G: validate reported 24-bit RAM size
+493++ 754B 32 25 76             ld      (p126_neogs_startup_stage),a
+494++ 754E                      ; At this point the stock GS105a ROM still owns the NeoGS CPU.
+495++ 754E                      ; Capture the exact response on the ATM's independent #EF channel.
+496++ 754E CD AC 74             call    p126_neogs_log_ram_size
+497++ 7551 3A 0D 76             ld      a,(p126_neogs_ram_size+2)
+498++ 7554 FE 40                cp      #40
+499++ 7556 38 02                jr      c,.p126_neogs_ram_probe_bad
+500++ 7558 B7                   or      a
+501++ 7559 C9                   ret
+502++ 755A              .p126_neogs_ram_probe_bad:
+503++ 755A 37                   scf
+504++ 755B C9                   ret
+505++ 755C
+506++ 755C              ; Extended CBIT wait based on the known-working Project125 GS105a driver.
+507++ 755C              p126_neogs_send_command_long:
+508++ 755C 32 23 76             ld      (p126_neogs_tx_byte),a
+509++ 755F 3A 23 76             ld      a,(p126_neogs_tx_byte)
+510++ 7562 D3 BB                out     (P126_NGS_GSCOM),a
+511++ 7564 D5                   push    de
+512++ 7565 16 10                ld      d,16
+513++ 7567              .p126_neogs_command_long_outer:
+514++ 7567 01 FF FF             ld      bc,#FFFF
+515++ 756A              .p126_neogs_command_long_inner:
+516++ 756A DB BB                in      a,(P126_NGS_GSSTAT)
+517++ 756C CB 47                bit     P126_NGS_CBIT,a
+518++ 756E 28 0B                jr      z,.p126_neogs_command_long_done
+519++ 7570 0B                   dec     bc
+520++ 7571 78                   ld      a,b
+521++ 7572 B1                   or      c
+522++ 7573 20 F5                jr      nz,.p126_neogs_command_long_inner
+523++ 7575 15                   dec     d
+524++ 7576 20 EF                jr      nz,.p126_neogs_command_long_outer
+525++ 7578 D1                   pop     de
+526++ 7579 37                   scf
+527++ 757A C9                   ret
+528++ 757B              .p126_neogs_command_long_done:
+529++ 757B D1                   pop     de
+530++ 757C B7                   or      a
+531++ 757D C9                   ret
+532++ 757E
+533++ 757E              ; Stock GS105a command/data primitives. Application payloads do not use these.
+534++ 757E              p126_neogs_send_command:
+535++ 757E 32 23 76             ld      (p126_neogs_tx_byte),a
+536++ 7581 3A 23 76             ld      a,(p126_neogs_tx_byte)
+537++ 7584 D3 BB                out     (P126_NGS_GSCOM),a
+538++ 7586 01 FF FF             ld      bc,P126_NGS_TIMEOUT
+539++ 7589              .p126_neogs_command_wait:
+540++ 7589 DB BB                in      a,(P126_NGS_GSSTAT)
+541++ 758B CB 47                bit     P126_NGS_CBIT,a
+542++ 758D 28 07                jr      z,.p126_neogs_command_ok
+543++ 758F 0B                   dec     bc
+544++ 7590 78                   ld      a,b
+545++ 7591 B1                   or      c
+546++ 7592 20 F5                jr      nz,.p126_neogs_command_wait
+547++ 7594 37                   scf
+548++ 7595 C9                   ret
+549++ 7596              .p126_neogs_command_ok:
+550++ 7596 B7                   or      a
+551++ 7597 C9                   ret
+552++ 7598
+553++ 7598              p126_neogs_send_argument:
+554++ 7598                      ; GS105a #13/#14 consume their first argument byte before command
+555++ 7598                      ; dispatch. The DBIT wait clobbers A with GSSTAT, so preserve the
+556++ 7598                      ; argument exactly as Project125's gs_boot_write_command_argument does.
+557++ 7598 32 23 76             ld      (p126_neogs_tx_byte),a
+558++ 759B CD C9 75             call    p126_neogs_wait_dbit_clear
+559++ 759E D8                   ret     c
+560++ 759F 3A 23 76             ld      a,(p126_neogs_tx_byte)
+561++ 75A2 D3 B3                out     (P126_NGS_GSDAT),a
+562++ 75A4 B7                   or      a
+563++ 75A5 C9                   ret
+564++ 75A6
+565++ 75A6              p126_neogs_send_byte:
+566++ 75A6 32 23 76             ld      (p126_neogs_tx_byte),a
+567++ 75A9 CD C9 75             call    p126_neogs_wait_dbit_clear
+568++ 75AC D8                   ret     c
+569++ 75AD 3A 23 76             ld      a,(p126_neogs_tx_byte)
+570++ 75B0 D3 B3                out     (P126_NGS_GSDAT),a
+571++ 75B2 C3 C9 75             jp      p126_neogs_wait_dbit_clear
+572++ 75B5
+573++ 75B5              p126_neogs_receive_byte:
+574++ 75B5 CD DB 75             call    p126_neogs_wait_dbit_set
+575++ 75B8 D8                   ret     c
+576++ 75B9 DB B3                in      a,(P126_NGS_GSDAT)
+577++ 75BB                      ; Give the GS105a sender time to observe DBIT being cleared.
+578++ 75BB F5                   push    af
+579++ 75BC C5                   push    bc
+580++ 75BD 01 00 04             ld      bc,#0400
+581++ 75C0              .p126_neogs_receive_turnaround:
+582++ 75C0 0B                   dec     bc
+583++ 75C1 78                   ld      a,b
+584++ 75C2 B1                   or      c
+585++ 75C3 20 FB                jr      nz,.p126_neogs_receive_turnaround
+586++ 75C5 C1                   pop     bc
+587++ 75C6 F1                   pop     af
+588++ 75C7 B7                   or      a
+589++ 75C8 C9                   ret
+590++ 75C9
+591++ 75C9              p126_neogs_wait_dbit_clear:
+592++ 75C9 01 FF FF             ld      bc,P126_NGS_TIMEOUT
+593++ 75CC              .p126_neogs_dbit_clear_loop:
+594++ 75CC DB BB                in      a,(P126_NGS_GSSTAT)
+595++ 75CE CB 7F                bit     P126_NGS_DBIT,a
+596++ 75D0 28 07                jr      z,.p126_neogs_dbit_clear_ok
+597++ 75D2 0B                   dec     bc
+598++ 75D3 78                   ld      a,b
+599++ 75D4 B1                   or      c
+600++ 75D5 20 F5                jr      nz,.p126_neogs_dbit_clear_loop
+601++ 75D7 37                   scf
+602++ 75D8 C9                   ret
+603++ 75D9              .p126_neogs_dbit_clear_ok:
+604++ 75D9 B7                   or      a
+605++ 75DA C9                   ret
+606++ 75DB
+607++ 75DB              p126_neogs_wait_dbit_set:
+608++ 75DB 01 FF FF             ld      bc,P126_NGS_TIMEOUT
+609++ 75DE              .p126_neogs_dbit_set_loop:
+610++ 75DE DB BB                in      a,(P126_NGS_GSSTAT)
+611++ 75E0 CB 7F                bit     P126_NGS_DBIT,a
+612++ 75E2 20 07                jr      nz,.p126_neogs_dbit_set_ok
+613++ 75E4 0B                   dec     bc
+614++ 75E5 78                   ld      a,b
+615++ 75E6 B1                   or      c
+616++ 75E7 20 F5                jr      nz,.p126_neogs_dbit_set_loop
+617++ 75E9 37                   scf
+618++ 75EA C9                   ret
+619++ 75EB              .p126_neogs_dbit_set_ok:
+620++ 75EB B7                   or      a
+621++ 75EC C9                   ret
+622++ 75ED
+623++ 75ED 50 31 32 36  p126_neogs_boot_name: db "P126BOOT"
+623++ 75F1 42 4F 4F 54
+624++ 75F5 58 38 36 43  p126_neogs_core_name: db "X86CORE "
+624++ 75F9 4F 52 45 20
+625++ 75FD 00 00        p126_neogs_name_ptr: dw 0
+626++ 75FF 00 00        p126_neogs_file_length: dw 0
+627++ 7601 00 00        p126_neogs_core_length: dw 0
+628++ 7603 00 00        p126_neogs_block_length: dw 0
+629++ 7605 00 C0        p126_neogs_buffer_ptr: dw #C000
+630++ 7607 00 00        p126_neogs_buffer_remaining: dw 0
+631++ 7609 00 00        p126_neogs_saved_sp: dw 0
+632++ 760B 00 00 00     p126_neogs_ram_size: db 0,0,0
+633++ 760E 5B 4E 47 53  p126_neogs_ram_log_text: db "[NGS ROM] RAM24=",0
+633++ 7612 20 52 4F 4D
+633++ 7616 5D 20 52 41
+633++ 761A 4D 32 34 3D
+633++ 761E 00
+634++ 761F 00           p126_neogs_file_sectors_left: db 0
+635++ 7620 00           p126_neogs_file_sector: db 0
+636++ 7621 00           p126_neogs_file_track: db 0
+637++ 7622 00           p126_neogs_io_error: db 0
+638++ 7623 00           p126_neogs_tx_byte: db 0
+639++ 7624 00           p126_neogs_startup_error: db 0
+640++ 7625 30           p126_neogs_startup_stage: db '0'
+641++ 7626
+642++ 7626
+643++ 7626              ; Build and send one valid 18-byte diagnostics request through the application
+644++ 7626              ; DMA transport. The NeoGS resident loop independently validates CRC and
+645++ 7626              ; emits DMA FRAME VALID / DMA FRAME REJECTED on its own #EF channel.
+646++ 7626              p126_neogs_dma_smoke_test:
+646++ 7626
+647++ 7626 21 FF FF             ld      hl,#FFFF
+648++ 7629 11 41 76             ld      de,p126_neogs_dma_test_frame
+649++ 762C 06 10                ld      b,16
+650++ 762E              .p126_neogs_dma_crc_loop:
+651++ 762E 1A                   ld      a,(de)
+652++ 762F 13                   inc     de
+653++ 7630 CD 56 67             call    p126_ipc_crc16_update
+654++ 7633 10 F9                djnz    .p126_neogs_dma_crc_loop
+655++ 7635 22 51 76             ld      (p126_neogs_dma_test_frame+16),hl
+656++ 7638 21 41 76             ld      hl,p126_neogs_dma_test_frame
+657++ 763B 01 12 00             ld      bc,18
+658++ 763E C3 CF 68             jp      p126_ipc_dma_send_frame
+659++ 7641
+660++ 7641              p126_neogs_dma_test_frame:
+661++ 7641 50 31 32 36          db      'P','1','2','6',1,0,1,5,0,0,1,0,0,0,0,0,0,0
+661++ 7645 01 00 01 05
+661++ 7649 00 00 01 00
+661++ 764D 00 00 00 00
+661++ 7651 00 00
+662++ 7653
 # file closed: p126_neogs_loader.asm
-345+  764C
-346+  764C              ; Project125-derived ATM-native text console, relocated to window 2.
-347+  764C              ; Its renderer maps video pages only for each write and restores host pages.
-348+  764C                      PAGE 0
-349+  764C                      ORG #A000
+345+  7653
+346+  7653              ; Project125-derived ATM-native text console, relocated to window 2.
+347+  7653              ; Its renderer maps video pages only for each write and restores host pages.
+348+  7653                      PAGE 0
+349+  7653                      ORG #A000
 350+  A000                      INCLUDE "atm_host/p126_screen_console.asm"
 # file opened: p126_screen_console.asm
   1++ A000              ; =========================================================================
@@ -4133,17 +4135,17 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
  51   C100                      ORG #C000
  52   C000              p126_x86_core_file_start:
  53   C000                      INCBIN "build/x86_cpu_state.bin"
- 54   CCD6              p126_x86_core_file_end:
- 55   CCD6                      ASSERT p126_x86_core_file_end > p126_x86_core_file_start
- 56   CCD6                      ASSERT p126_x86_core_file_end-p126_x86_core_file_start <= #4000
- 57   CCD6                      SAVETRD "disk_A.trd", "X86CORE.C", #C000, p126_x86_core_file_end-p126_x86_core_file_start
- 58   CCD6
- 59   CCD6              ; -------------------------------------------------------------------------
- 60   CCD6              ; Three 8 KiB BIOS images, packaged under TR-DOS-compatible 8.3 names.
- 61   CCD6              ; The long Compaq source filename is represented on disk as COMPAQ.C.
- 62   CCD6              ; -------------------------------------------------------------------------
- 63   CCD6                      PAGE 2
- 64   CCD6                      ORG #C000
+ 54   CCD4              p126_x86_core_file_end:
+ 55   CCD4                      ASSERT p126_x86_core_file_end > p126_x86_core_file_start
+ 56   CCD4                      ASSERT p126_x86_core_file_end-p126_x86_core_file_start <= #4000
+ 57   CCD4                      SAVETRD "disk_A.trd", "X86CORE.C", #C000, p126_x86_core_file_end-p126_x86_core_file_start
+ 58   CCD4
+ 59   CCD4              ; -------------------------------------------------------------------------
+ 60   CCD4              ; Three 8 KiB BIOS images, packaged under TR-DOS-compatible 8.3 names.
+ 61   CCD4              ; The long Compaq source filename is represented on disk as COMPAQ.C.
+ 62   CCD4              ; -------------------------------------------------------------------------
+ 63   CCD4                      PAGE 2
+ 64   CCD4                      ORG #C000
  65   C000              p126_bios1_file_start:
  66   C000                      INCBIN "bios/27c64d.bin"
  67   E000              p126_bios1_file_end:
@@ -4287,64 +4289,64 @@ Value    Label
 0xC100   p126_bootstrap_file_end
 0xC000   p126_bootstrap_file_start
 0xC800   P126_CATALOG_BUFFER
-0x71EE   p126_catalog_buffer_ptr
-0x6F99   p126_catalog_count_files
-0x6FA2   p126_catalog_count_files.catalog_count_loop
-0x6FAE   p126_catalog_count_files.catalog_count_next
-0x6FD5   p126_catalog_draw
-0x7001   p126_catalog_draw.catalog_clear_line
-0x7036   p126_catalog_draw.catalog_copy_name
-0x7059   p126_catalog_draw.catalog_draw_done
-0x6FEF   p126_catalog_draw.catalog_draw_loop
-0x6FEB   p126_catalog_draw.catalog_draw_rows
-0x7040   p126_catalog_draw.catalog_print_line
-0x702E   p126_catalog_draw.catalog_store_marker
-0x71FF   p126_catalog_empty_text
-0x71E3   p126_catalog_enabled
+0x71F5   p126_catalog_buffer_ptr
+0x6FA0   p126_catalog_count_files
+0x6FA9   p126_catalog_count_files.catalog_count_loop
+0x6FB5   p126_catalog_count_files.catalog_count_next
+0x6FDC   p126_catalog_draw
+0x7008   p126_catalog_draw.catalog_clear_line
+0x703D   p126_catalog_draw.catalog_copy_name
+0x7060   p126_catalog_draw.catalog_draw_done
+0x6FF6   p126_catalog_draw.catalog_draw_loop
+0x6FF2   p126_catalog_draw.catalog_draw_rows
+0x7047   p126_catalog_draw.catalog_print_line
+0x7035   p126_catalog_draw.catalog_store_marker
+0x7206   p126_catalog_empty_text
+0x71EA   p126_catalog_enabled
 0x0080   P126_CATALOG_ENTRY_COUNT
 0x0010   P126_CATALOG_ENTRY_SIZE
-0x6F76   p126_catalog_entry_valid
-0x6F95   p126_catalog_entry_valid.catalog_entry_invalid
-0x6F97   p126_catalog_entry_valid.catalog_entry_valid
-0x720F   p126_catalog_error_text
-0x6FB5   p126_catalog_find_index
-0x6FD3   p126_catalog_find_index.catalog_find_found
-0x6FBF   p126_catalog_find_index.catalog_find_loop
-0x6FCB   p126_catalog_find_index.catalog_find_next
+0x6F7D   p126_catalog_entry_valid
+0x6F9C   p126_catalog_entry_valid.catalog_entry_invalid
+0x6F9E   p126_catalog_entry_valid.catalog_entry_valid
+0x7216   p126_catalog_error_text
+0x6FBC   p126_catalog_find_index
+0x6FDA   p126_catalog_find_index.catalog_find_found
+0x6FC6   p126_catalog_find_index.catalog_find_loop
+0x6FD2   p126_catalog_find_index.catalog_find_next
 0x0002   P126_CATALOG_FIRST_ROW
-0x6DBC   p126_catalog_initialize
-0x6DDA   p126_catalog_initialize.catalog_data_preloaded
-0x6E04   p126_catalog_initialize.catalog_read_failed
-0x71EB   p126_catalog_io_result
-0x71E9   p126_catalog_key
-0x71F2   p126_catalog_line
-0x705E   p126_catalog_log
-0x6E15   p126_catalog_poll_keyboard
-0x6E4F   p126_catalog_poll_keyboard.catalog_move_down
-0x6E37   p126_catalog_poll_keyboard.catalog_move_up
-0x6E73   p126_catalog_poll_keyboard.catalog_redraw
-0x71EC   p126_catalog_preloaded
-0x6ED9   p126_catalog_read_disk
-0x6F6E   p126_catalog_read_disk.catalog_read_return_ok
-0x6F06   p126_catalog_read_disk.catalog_read_sector
-0x6F4C   p126_catalog_read_disk.catalog_restore_stack
-0x6F47   p126_catalog_read_disk.catalog_sector_error
-0x6F41   p126_catalog_read_disk.catalog_sectors_complete
-0x71E8   p126_catalog_row
-0x71F0   p126_catalog_saved_sp
-0x6E77   p126_catalog_scan_keys
-0x6E98   p126_catalog_scan_keys.catalog_check_down
-0x6EA9   p126_catalog_scan_keys.catalog_check_other_arrows
-0x6EBA   p126_catalog_scan_keys.catalog_check_right
-0x6ECB   p126_catalog_scan_keys.catalog_keys_done
-0x71EA   p126_catalog_scan_result
-0x71E5   p126_catalog_scroll
-0x71ED   p126_catalog_sector_index
-0x71E4   p126_catalog_selected
-0x71E7   p126_catalog_target
-0x71E6   p126_catalog_total
+0x6DC3   p126_catalog_initialize
+0x6DE1   p126_catalog_initialize.catalog_data_preloaded
+0x6E0B   p126_catalog_initialize.catalog_read_failed
+0x71F2   p126_catalog_io_result
+0x71F0   p126_catalog_key
+0x71F9   p126_catalog_line
+0x7065   p126_catalog_log
+0x6E1C   p126_catalog_poll_keyboard
+0x6E56   p126_catalog_poll_keyboard.catalog_move_down
+0x6E3E   p126_catalog_poll_keyboard.catalog_move_up
+0x6E7A   p126_catalog_poll_keyboard.catalog_redraw
+0x71F3   p126_catalog_preloaded
+0x6EE0   p126_catalog_read_disk
+0x6F75   p126_catalog_read_disk.catalog_read_return_ok
+0x6F0D   p126_catalog_read_disk.catalog_read_sector
+0x6F53   p126_catalog_read_disk.catalog_restore_stack
+0x6F4E   p126_catalog_read_disk.catalog_sector_error
+0x6F48   p126_catalog_read_disk.catalog_sectors_complete
+0x71EF   p126_catalog_row
+0x71F7   p126_catalog_saved_sp
+0x6E7E   p126_catalog_scan_keys
+0x6E9F   p126_catalog_scan_keys.catalog_check_down
+0x6EB0   p126_catalog_scan_keys.catalog_check_other_arrows
+0x6EC1   p126_catalog_scan_keys.catalog_check_right
+0x6ED2   p126_catalog_scan_keys.catalog_keys_done
+0x71F1   p126_catalog_scan_result
+0x71EC   p126_catalog_scroll
+0x71F4   p126_catalog_sector_index
+0x71EB   p126_catalog_selected
+0x71EE   p126_catalog_target
+0x71ED   p126_catalog_total
 0x0009   P126_CATALOG_VISIBLE_ROWS
-0x6ED2   p126_catalog_wait_release
+0x6ED9   p126_catalog_wait_release
 0x0000   P126_CBIT
 0x00E3 X P126_CMD_CAPABILITIES
 0x00FF   P126_CMD_DMA_END
@@ -4419,7 +4421,7 @@ Value    Label
 0x69F6   p126_ipc_dma_receive_test.rx_pattern
 0x6A0B   p126_ipc_dma_receive_test.rx_pattern_bad
 0x69A5   p126_ipc_dma_receive_test.rx_ready
-0x6CAA   p126_ipc_dma_rx_buffer
+0x6CB1   p126_ipc_dma_rx_buffer
 0x6A2D   p126_ipc_dma_rx_error
 0x6A2C   p126_ipc_dma_rx_stage
 0x0112   P126_IPC_DMA_RX_TEST_SIZE
@@ -4447,9 +4449,9 @@ Value    Label
 0x6BD7   p126_ipc_log_dma_rx_copy_done
 0x6C17   p126_ipc_log_dma_rx_crc_bad
 0x6BF4   p126_ipc_log_dma_rx_crc_ok
-0x6C61   p126_ipc_log_dma_rx_pattern_bad
-0x6C41   p126_ipc_log_dma_rx_pattern_ok
-0x6C81   p126_ipc_log_dma_rx_transport_bad
+0x6C68   p126_ipc_log_dma_rx_pattern_bad
+0x6C48   p126_ipc_log_dma_rx_pattern_ok
+0x6C88   p126_ipc_log_dma_rx_transport_bad
 0x6A9A   p126_ipc_log_dma_tx_begin
 0x6B39   p126_ipc_log_dma_tx_copy_begin
 0x6B54   p126_ipc_log_dma_tx_copy_done
@@ -4505,12 +4507,12 @@ Value    Label
 0x670A   p126_ipc_wait_dbit_set
 0x670D   p126_ipc_wait_dbit_set.p126_dbit_set_loop
 0x671E   p126_ipc_wait_dbit_set.p126_dbit_set_ready
-0x706A   p126_log_catalog_enter
+0x7071   p126_log_catalog_enter
 0x647C   p126_log_catalog_return
 0x6445   p126_log_console_begin
 0x6461   p126_log_console_done
-0x7185   p126_log_count_done
-0x709B   p126_log_disk_enter
+0x718C   p126_log_count_done
+0x70A2   p126_log_disk_enter
 0x638B   p126_log_dma_error_prefix
 0x6353   p126_log_dma_rx_test_failed
 0x6334   p126_log_dma_rx_test_pass
@@ -4518,24 +4520,24 @@ Value    Label
 0x62D9   p126_log_dma_test_begin
 0x6315   p126_log_dma_test_failed
 0x62F7   p126_log_dma_test_sent
-0x71A2   p126_log_draw_begin
-0x71B5   p126_log_draw_done
-0x70B7 X p126_log_drive_selected
-0x7129   p126_log_io_error
-0x7141   p126_log_io_success
-0x71C7   p126_log_key_seen
+0x71A9   p126_log_draw_begin
+0x71BC   p126_log_draw_done
+0x70BE X p126_log_drive_selected
+0x7130   p126_log_io_error
+0x7148   p126_log_io_success
+0x71CE   p126_log_key_seen
 0x6272   p126_log_ngs_begin
 0x62B4   p126_log_ngs_failed
 0x6296   p126_log_ngs_ready
-0x7083 X p126_log_read_begin
-0x716B   p126_log_read_failed
-0x7156   p126_log_read_ok
+0x708A X p126_log_read_begin
+0x7172   p126_log_read_failed
+0x715D   p126_log_read_ok
 0x642B   p126_log_rtc_done
-0x70D3 X p126_log_sector_read_call
-0x70F7 X p126_log_sector_read_return
+0x70DA X p126_log_sector_read_call
+0x70FE X p126_log_sector_read_return
 0x63A7   p126_log_trdos_begin
 0x63CB   p126_log_trdos_done
-0x7117 X p126_log_vg93_idle
+0x711E X p126_log_vg93_idle
 0x63F0   p126_log_video_begin
 0x640E   p126_log_video_done
 0x0001 X P126_M_CBIT
@@ -4544,86 +4546,86 @@ Value    Label
 0x0003   P126_MSG_EVENT
 0x0001   P126_MSG_REQUEST
 0x0002   P126_MSG_RESPONSE
-0x75FC   p126_neogs_block_length
-0x73A6   p126_neogs_boot_file_bad
-0x75E6   p126_neogs_boot_name
-0x75FE   p126_neogs_buffer_ptr
-0x7600   p126_neogs_buffer_remaining
-0x73AA   p126_neogs_core_file_bad
-0x75FA   p126_neogs_core_length
-0x75EE   p126_neogs_core_name
-0x761F   p126_neogs_dma_smoke_test
-0x7627   p126_neogs_dma_smoke_test.p126_neogs_dma_crc_loop
-0x763A   p126_neogs_dma_test_frame
-0x75F8   p126_neogs_file_length
-0x7619   p126_neogs_file_sector
-0x7618   p126_neogs_file_sectors_left
-0x761A   p126_neogs_file_track
-0x761B   p126_neogs_io_error
-0x74F1   p126_neogs_log_hex_byte
-0x7506   p126_neogs_log_hex_nibble
-0x750E   p126_neogs_log_hex_nibble.p126_neogs_log_hex_digit
-0x7510   p126_neogs_log_hex_nibble.p126_neogs_log_hex_out
-0x74A5   p126_neogs_log_ram_size
-0x74E2   p126_neogs_log_text
-0x74EF   p126_neogs_log_text.p126_neogs_log_text_done
-0x74E6   p126_neogs_log_text.p126_neogs_log_text_loop
-0x75F6   p126_neogs_name_ptr
-0x73B9   p126_neogs_open_file
-0x73CA   p126_neogs_open_file.p126_neogs_compare
-0x7411   p126_neogs_open_file.p126_neogs_file_meta_ok
-0x73E9   p126_neogs_open_file.p126_neogs_find_hit
-0x73C2   p126_neogs_open_file.p126_neogs_find_loop
-0x73DD   p126_neogs_open_file.p126_neogs_find_miss
-0x7513 X p126_neogs_probe_rom_ram
-0x7553   p126_neogs_probe_rom_ram.p126_neogs_ram_probe_bad
-0x73AE   p126_neogs_ram_bad
-0x7607   p126_neogs_ram_log_text
-0x7604   p126_neogs_ram_size
-0x7423   p126_neogs_read_next_sector
-0x74A3   p126_neogs_read_next_sector.p126_neogs_read_ok
-0x7487   p126_neogs_read_next_sector.p126_neogs_read_restore
-0x742B   p126_neogs_read_next_sector.p126_neogs_read_sector_ready
-0x747D   p126_neogs_read_next_sector.p126_neogs_sector_advanced
-0x7480   p126_neogs_read_next_sector.p126_neogs_sector_count
-0x75AE   p126_neogs_receive_byte
-0x75B9   p126_neogs_receive_byte.p126_neogs_receive_turnaround
-0x7602   p126_neogs_saved_sp
-0x7591   p126_neogs_send_argument
-0x759F   p126_neogs_send_byte
-0x7577   p126_neogs_send_command
-0x758F   p126_neogs_send_command.p126_neogs_command_ok
-0x7582   p126_neogs_send_command.p126_neogs_command_wait
-0x7555   p126_neogs_send_command_long
-0x7574   p126_neogs_send_command_long.p126_neogs_command_long_done
-0x7563   p126_neogs_send_command_long.p126_neogs_command_long_inner
-0x7560   p126_neogs_send_command_long.p126_neogs_command_long_outer
-0x722B   p126_neogs_startup
-0x724F   p126_neogs_startup.p126_neogs_boot_length_low
-0x7254   p126_neogs_startup.p126_neogs_boot_length_ok
-0x72A4   p126_neogs_startup.p126_neogs_boot_loaded
-0x7297   p126_neogs_startup.p126_neogs_boot_stream
-0x7362   p126_neogs_startup.p126_neogs_core_buffer_ready
-0x7388   p126_neogs_startup.p126_neogs_core_byte_sent
-0x72C5   p126_neogs_startup.p126_neogs_core_size_low
-0x7345   p126_neogs_startup.p126_neogs_core_stream
-0x7396   p126_neogs_startup.p126_neogs_core_stream_done
-0x72F9   p126_neogs_startup.p126_neogs_jump_tx_done
-0x7327   p126_neogs_startup.p126_neogs_length_sent
-0x7302   p126_neogs_startup.p126_neogs_stage0_ready
-0x739F   p126_neogs_startup.p126_neogs_startup_done
-0x7330   p126_neogs_startup.p126_neogs_stream_begin
-0x761D   p126_neogs_startup_error
-0x761E   p126_neogs_startup_stage
-0x73B4   p126_neogs_store_error
-0x73B2   p126_neogs_transport_error
-0x761C   p126_neogs_tx_byte
-0x75C2   p126_neogs_wait_dbit_clear
-0x75C5   p126_neogs_wait_dbit_clear.p126_neogs_dbit_clear_loop
-0x75D2   p126_neogs_wait_dbit_clear.p126_neogs_dbit_clear_ok
-0x75D4   p126_neogs_wait_dbit_set
-0x75D7   p126_neogs_wait_dbit_set.p126_neogs_dbit_set_loop
-0x75E4   p126_neogs_wait_dbit_set.p126_neogs_dbit_set_ok
+0x7603   p126_neogs_block_length
+0x73AD   p126_neogs_boot_file_bad
+0x75ED   p126_neogs_boot_name
+0x7605   p126_neogs_buffer_ptr
+0x7607   p126_neogs_buffer_remaining
+0x73B1   p126_neogs_core_file_bad
+0x7601   p126_neogs_core_length
+0x75F5   p126_neogs_core_name
+0x7626   p126_neogs_dma_smoke_test
+0x762E   p126_neogs_dma_smoke_test.p126_neogs_dma_crc_loop
+0x7641   p126_neogs_dma_test_frame
+0x75FF   p126_neogs_file_length
+0x7620   p126_neogs_file_sector
+0x761F   p126_neogs_file_sectors_left
+0x7621   p126_neogs_file_track
+0x7622   p126_neogs_io_error
+0x74F8   p126_neogs_log_hex_byte
+0x750D   p126_neogs_log_hex_nibble
+0x7515   p126_neogs_log_hex_nibble.p126_neogs_log_hex_digit
+0x7517   p126_neogs_log_hex_nibble.p126_neogs_log_hex_out
+0x74AC   p126_neogs_log_ram_size
+0x74E9   p126_neogs_log_text
+0x74F6   p126_neogs_log_text.p126_neogs_log_text_done
+0x74ED   p126_neogs_log_text.p126_neogs_log_text_loop
+0x75FD   p126_neogs_name_ptr
+0x73C0   p126_neogs_open_file
+0x73D1   p126_neogs_open_file.p126_neogs_compare
+0x7418   p126_neogs_open_file.p126_neogs_file_meta_ok
+0x73F0   p126_neogs_open_file.p126_neogs_find_hit
+0x73C9   p126_neogs_open_file.p126_neogs_find_loop
+0x73E4   p126_neogs_open_file.p126_neogs_find_miss
+0x751A X p126_neogs_probe_rom_ram
+0x755A   p126_neogs_probe_rom_ram.p126_neogs_ram_probe_bad
+0x73B5   p126_neogs_ram_bad
+0x760E   p126_neogs_ram_log_text
+0x760B   p126_neogs_ram_size
+0x742A   p126_neogs_read_next_sector
+0x74AA   p126_neogs_read_next_sector.p126_neogs_read_ok
+0x748E   p126_neogs_read_next_sector.p126_neogs_read_restore
+0x7432   p126_neogs_read_next_sector.p126_neogs_read_sector_ready
+0x7484   p126_neogs_read_next_sector.p126_neogs_sector_advanced
+0x7487   p126_neogs_read_next_sector.p126_neogs_sector_count
+0x75B5   p126_neogs_receive_byte
+0x75C0   p126_neogs_receive_byte.p126_neogs_receive_turnaround
+0x7609   p126_neogs_saved_sp
+0x7598   p126_neogs_send_argument
+0x75A6   p126_neogs_send_byte
+0x757E   p126_neogs_send_command
+0x7596   p126_neogs_send_command.p126_neogs_command_ok
+0x7589   p126_neogs_send_command.p126_neogs_command_wait
+0x755C   p126_neogs_send_command_long
+0x757B   p126_neogs_send_command_long.p126_neogs_command_long_done
+0x756A   p126_neogs_send_command_long.p126_neogs_command_long_inner
+0x7567   p126_neogs_send_command_long.p126_neogs_command_long_outer
+0x7232   p126_neogs_startup
+0x7256   p126_neogs_startup.p126_neogs_boot_length_low
+0x725B   p126_neogs_startup.p126_neogs_boot_length_ok
+0x72AB   p126_neogs_startup.p126_neogs_boot_loaded
+0x729E   p126_neogs_startup.p126_neogs_boot_stream
+0x7369   p126_neogs_startup.p126_neogs_core_buffer_ready
+0x738F   p126_neogs_startup.p126_neogs_core_byte_sent
+0x72CC   p126_neogs_startup.p126_neogs_core_size_low
+0x734C   p126_neogs_startup.p126_neogs_core_stream
+0x739D   p126_neogs_startup.p126_neogs_core_stream_done
+0x7300   p126_neogs_startup.p126_neogs_jump_tx_done
+0x732E   p126_neogs_startup.p126_neogs_length_sent
+0x7309   p126_neogs_startup.p126_neogs_stage0_ready
+0x73A6   p126_neogs_startup.p126_neogs_startup_done
+0x7337   p126_neogs_startup.p126_neogs_stream_begin
+0x7624   p126_neogs_startup_error
+0x7625   p126_neogs_startup_stage
+0x73BB   p126_neogs_store_error
+0x73B9   p126_neogs_transport_error
+0x7623   p126_neogs_tx_byte
+0x75C9   p126_neogs_wait_dbit_clear
+0x75CC   p126_neogs_wait_dbit_clear.p126_neogs_dbit_clear_loop
+0x75D9   p126_neogs_wait_dbit_clear.p126_neogs_dbit_clear_ok
+0x75DB   p126_neogs_wait_dbit_set
+0x75DE   p126_neogs_wait_dbit_set.p126_neogs_dbit_set_loop
+0x75EB   p126_neogs_wait_dbit_set.p126_neogs_dbit_set_ok
 0x00A2   P126_NGS_ACK_DONE
 0x00A3   P126_NGS_ACK_LENGTH
 0x00A1   P126_NGS_ACK_READY
@@ -4685,7 +4687,7 @@ Value    Label
 0xA435   p126_ui_line11_ready
 0x007C   P126_VIDEO_PAGE3
 0x0078   P126_VIDEO_PAGE7
-0xCCD6   p126_x86_core_file_end
+0xCCD4   p126_x86_core_file_end
 0xC000   p126_x86_core_file_start
 0x00F9   RANDOMIZE
 0x6508   READ_CURRENT_TIME

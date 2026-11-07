@@ -673,7 +673,7 @@
 498+  02D4 21 00 00             ld      hl,0
 499+  02D7 7E                   ld      a,(hl)                  ; required discarded first read
 500+  02D8 21 00 00             ld      hl,0
-501+  02DB 11 D8 05             ld      de,p126_ipc_dma_rx_buffer
+501+  02DB 11 DF 05             ld      de,p126_ipc_dma_rx_buffer
 502+  02DE 01 12 01             ld      bc,P126_IPC_DMA_RX_TEST_SIZE
 503+  02E1 ED B0                ldir
 504+  02E3 21 05 05             ld      hl,p126_ipc_log_dma_rx_copy_done
@@ -686,7 +686,7 @@
 511+  02F4              .rx_end_ack:
 512+  02F4 3E 02                ld      a,2
 513+  02F6 32 5A 03             ld      (p126_ipc_dma_rx_stage),a
-514+  02F9 21 D8 05             ld      hl,p126_ipc_dma_rx_buffer
+514+  02F9 21 DF 05             ld      hl,p126_ipc_dma_rx_buffer
 515+  02FC 01 12 01             ld      bc,P126_IPC_DMA_RX_TEST_SIZE
 516+  02FF CD 98 00             call    p126_ipc_validate_frame
 517+  0302 30 14                jr      nc,.rx_crc_ok
@@ -701,7 +701,7 @@
 526+  0318              .rx_crc_ok:
 527+  0318 21 22 05             ld      hl,p126_ipc_log_dma_rx_crc_ok
 528+  031B CD 91 03             call    p126_ipc_debug_string
-529+  031E 21 EA 05             ld      hl,p126_ipc_dma_rx_buffer+P126_IPC_HEADER_SIZE
+529+  031E 21 F1 05             ld      hl,p126_ipc_dma_rx_buffer+P126_IPC_HEADER_SIZE
 530+  0321 AF                   xor     a
 531+  0322 06 00                ld      b,0
 532+  0324              .rx_pattern:
@@ -710,7 +710,7 @@
 535+  0327 23                   inc     hl
 536+  0328 3C                   inc     a
 537+  0329 10 F9                djnz    .rx_pattern
-538+  032B 21 6F 05             ld      hl,p126_ipc_log_dma_rx_pattern_ok
+538+  032B 21 76 05             ld      hl,p126_ipc_log_dma_rx_pattern_ok
 539+  032E CD 91 03             call    p126_ipc_debug_string
 540+  0331 AF                   xor     a
 541+  0332 32 5A 03             ld      (p126_ipc_dma_rx_stage),a
@@ -719,13 +719,13 @@
 544+  0339              .rx_pattern_bad:
 545+  0339 3E 03                ld      a,3
 546+  033B 32 5B 03             ld      (p126_ipc_dma_rx_error),a
-547+  033E 21 8F 05             ld      hl,p126_ipc_log_dma_rx_pattern_bad
+547+  033E 21 96 05             ld      hl,p126_ipc_log_dma_rx_pattern_bad
 548+  0341 CD 91 03             call    p126_ipc_debug_string
 549+  0344 37                   scf
 550+  0345 C9                   ret
 551+  0346              .rx_failed:
 552+  0346 32 5B 03             ld      (p126_ipc_dma_rx_error),a
-553+  0349 21 AF 05             ld      hl,p126_ipc_log_dma_rx_transport_bad
+553+  0349 21 B6 05             ld      hl,p126_ipc_log_dma_rx_transport_bad
 554+  034C CD 91 03             call    p126_ipc_debug_string
 555+  034F 3A 5B 03             ld      a,(p126_ipc_dma_rx_error)
 556+  0352 CD 5C 03             call    p126_ipc_debug_hex_byte
@@ -906,61 +906,63 @@
 640+  053A 52 43 20 56
 640+  053E 41 4C 49 44
 640+  0542 0D 0A 00
-641+  0545 5B 41 54 4D  p126_ipc_log_dma_rx_crc_bad:      db "[ATM IPC] DMA RX FRAME CRC FAILED STATUS=",0
+641+  0545 5B 41 54 4D  p126_ipc_log_dma_rx_crc_bad:      db "[ATM IPC] DMA RX FRAME VALIDATION FAILED STATUS=",0
 641+  0549 20 49 50 43
 641+  054D 5D 20 44 4D
 641+  0551 41 20 52 58
 641+  0555 20 46 52 41
-641+  0559 4D 45 20 43
-641+  055D 52 43 20 46
-641+  0561 41 49 4C 45
-641+  0565 44 20 53 54
-641+  0569 41 54 55 53
-641+  056D 3D 00
-642+  056F 5B 41 54 4D  p126_ipc_log_dma_rx_pattern_ok:   db "[ATM IPC] DMA RX PATTERN PASS",13,10,0
-642+  0573 20 49 50 43
-642+  0577 5D 20 44 4D
-642+  057B 41 20 52 58
-642+  057F 20 50 41 54
-642+  0583 54 45 52 4E
-642+  0587 20 50 41 53
-642+  058B 53 0D 0A 00
-643+  058F 5B 41 54 4D  p126_ipc_log_dma_rx_pattern_bad:  db "[ATM IPC] DMA RX PATTERN FAIL",13,10,0
-643+  0593 20 49 50 43
-643+  0597 5D 20 44 4D
-643+  059B 41 20 52 58
-643+  059F 20 50 41 54
-643+  05A3 54 45 52 4E
-643+  05A7 20 46 41 49
-643+  05AB 4C 0D 0A 00
-644+  05AF 5B 41 54 4D  p126_ipc_log_dma_rx_transport_bad: db "[ATM IPC] DMA RX TRANSPORT FAILED STAGE=",0
-644+  05B3 20 49 50 43
-644+  05B7 5D 20 44 4D
-644+  05BB 41 20 52 58
-644+  05BF 20 54 52 41
-644+  05C3 4E 53 50 4F
-644+  05C7 52 54 20 46
-644+  05CB 41 49 4C 45
-644+  05CF 44 20 53 54
-644+  05D3 41 47 45 3D
-644+  05D7 00
-645+  05D8 00 00 00...  p126_ipc_dma_rx_buffer:           defs P126_IPC_DMA_RX_TEST_SIZE,0
-646+  06EA
+641+  0559 4D 45 20 56
+641+  055D 41 4C 49 44
+641+  0561 41 54 49 4F
+641+  0565 4E 20 46 41
+641+  0569 49 4C 45 44
+641+  056D 20 53 54 41
+641+  0571 54 55 53 3D
+641+  0575 00
+642+  0576 5B 41 54 4D  p126_ipc_log_dma_rx_pattern_ok:   db "[ATM IPC] DMA RX PATTERN PASS",13,10,0
+642+  057A 20 49 50 43
+642+  057E 5D 20 44 4D
+642+  0582 41 20 52 58
+642+  0586 20 50 41 54
+642+  058A 54 45 52 4E
+642+  058E 20 50 41 53
+642+  0592 53 0D 0A 00
+643+  0596 5B 41 54 4D  p126_ipc_log_dma_rx_pattern_bad:  db "[ATM IPC] DMA RX PATTERN FAIL",13,10,0
+643+  059A 20 49 50 43
+643+  059E 5D 20 44 4D
+643+  05A2 41 20 52 58
+643+  05A6 20 50 41 54
+643+  05AA 54 45 52 4E
+643+  05AE 20 46 41 49
+643+  05B2 4C 0D 0A 00
+644+  05B6 5B 41 54 4D  p126_ipc_log_dma_rx_transport_bad: db "[ATM IPC] DMA RX TRANSPORT FAILED STAGE=",0
+644+  05BA 20 49 50 43
+644+  05BE 5D 20 44 4D
+644+  05C2 41 20 52 58
+644+  05C6 20 54 52 41
+644+  05CA 4E 53 50 4F
+644+  05CE 52 54 20 46
+644+  05D2 41 49 4C 45
+644+  05D6 44 20 53 54
+644+  05DA 41 47 45 3D
+644+  05DE 00
+645+  05DF 00 00 00...  p126_ipc_dma_rx_buffer:           defs P126_IPC_DMA_RX_TEST_SIZE,0
+646+  06F1
 # file closed: neogs_ipc.asm
- 11   06EA              p126_atm_ipc_module_end:
- 12   06EA
- 13   06EA                  DISPLAY "P126_ATM_IPC_START=", /H, p126_atm_ipc_module_start
- 14   06EA                  DISPLAY "P126_ATM_IPC_END=", /H, p126_atm_ipc_module_end
- 15   06EA                  DISPLAY "P126_ATM_IPC_SIZE=", /D, p126_atm_ipc_module_end-p126_atm_ipc_module_start
- 16   06EA
- 17   06EA                  ASSERT p126_atm_ipc_module_end > p126_atm_ipc_module_start
- 18   06EA                  ASSERT p126_atm_ipc_module_end <= #10000
- 19   06EA
+ 11   06F1              p126_atm_ipc_module_end:
+ 12   06F1
+ 13   06F1                  DISPLAY "P126_ATM_IPC_START=", /H, p126_atm_ipc_module_start
+ 14   06F1                  DISPLAY "P126_ATM_IPC_END=", /H, p126_atm_ipc_module_end
+ 15   06F1                  DISPLAY "P126_ATM_IPC_SIZE=", /D, p126_atm_ipc_module_end-p126_atm_ipc_module_start
+ 16   06F1
+ 17   06F1                  ASSERT p126_atm_ipc_module_end > p126_atm_ipc_module_start
+ 18   06F1                  ASSERT p126_atm_ipc_module_end <= #10000
+ 19   06F1
 # file closed: neogs_ipc_assemble.asm
 
 Value    Label
 ------ - -----------------------------------------------------------
-0x06EA   p126_atm_ipc_module_end
+0x06F1   p126_atm_ipc_module_end
 0x0000   p126_atm_ipc_module_start
 0x0000   P126_CBIT
 0x00E3 X P126_CMD_CAPABILITIES
@@ -1010,7 +1012,7 @@ Value    Label
 0x0324   p126_ipc_dma_receive_test.rx_pattern
 0x0339   p126_ipc_dma_receive_test.rx_pattern_bad
 0x02D3   p126_ipc_dma_receive_test.rx_ready
-0x05D8   p126_ipc_dma_rx_buffer
+0x05DF   p126_ipc_dma_rx_buffer
 0x035B   p126_ipc_dma_rx_error
 0x035A   p126_ipc_dma_rx_stage
 0x0112   P126_IPC_DMA_RX_TEST_SIZE
@@ -1038,9 +1040,9 @@ Value    Label
 0x0505   p126_ipc_log_dma_rx_copy_done
 0x0545   p126_ipc_log_dma_rx_crc_bad
 0x0522   p126_ipc_log_dma_rx_crc_ok
-0x058F   p126_ipc_log_dma_rx_pattern_bad
-0x056F   p126_ipc_log_dma_rx_pattern_ok
-0x05AF   p126_ipc_log_dma_rx_transport_bad
+0x0596   p126_ipc_log_dma_rx_pattern_bad
+0x0576   p126_ipc_log_dma_rx_pattern_ok
+0x05B6   p126_ipc_log_dma_rx_transport_bad
 0x03C8   p126_ipc_log_dma_tx_begin
 0x0467   p126_ipc_log_dma_tx_copy_begin
 0x0482   p126_ipc_log_dma_tx_copy_done
