@@ -22,6 +22,10 @@ p126_overlay_current_selector: db #80
 x86_io_reset:
         ret
 
+; Standalone IPC audit substitutes the fixed-origin X86DEV reset entry.
+x86_dev_reset:
+        ret
+
 ; Standalone IPC audit substitutes the fixed-origin ALU probe entry.
 x86_alu_overlay_probe:
         ld      a,#A5
