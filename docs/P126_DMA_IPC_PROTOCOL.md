@@ -230,3 +230,30 @@ DBIT/GSDAT is used only for stock-ROM bootstrap compatibility. After A2h, applic
 The resident image must fit within one 16 KiB WIN0 page. The 256 KiB kernel allocation remains reserved for future overlays; this startup revision does not claim that the entire allocation is populated. P126BOOT.C is limited to one 256-byte TR-DOS sector.
 
 Hardware verification remains outstanding: stock-ROM reset/probe timing, #14/#13 transfer, DBIT turnaround, RAM-over-ROM paging, stack page 03, A2 ready acknowledgement and the first E0/DMA/FF frame exchange must be exercised on target hardware.
+
+
+## DMA/IPC end-to-end diagnostic trace (2026-11-07)
+
+The ATM host and NeoGS resident emit independent trace messages directly to their own physical debug port #EF. The identical port number does not mean a shared CPU channel; do not synthesize one processor's messages from the other processor.
+
+ATM sender trace, in expected order:
+- [ATM IPC] DMA TX BEGIN
+- FRAME VALID or FRAME VALIDATION FAILED
+- SEND E0, followed by E0 ACK / READY (or E0 ACK TIMEOUT)
+- DMA COPY BEGIN / DMA COPY DONE
+- SEND FF, followed by DMA TX COMPLETE (or FF ACK TIMEOUT)
+
+NeoGS receiver trace, in expected order:
+- DMA E0 RECEIVED
+- DMA CONFIG BEGIN, DMA ARMED, DMA READY (after CBIT release)
+- DMA HOST END DETECTED, DMA STOPPED, DMA PAGE 42 MAPPED, DMA END RECEIVED
+- DMA FRAME VALID, or DMA FRAME REJECTED STATUS=HH
+- Explicit DMA WAIT TIMEOUT and invalid-frame-length diagnostics are emitted on those error paths.
+
+Interpretation: if ATM reports local FRAME VALIDATION FAILED, the receiver was never called. If ATM reaches SEND E0 but NeoGS has no DMA E0 RECEIVED, inspect command/CBIT visibility. If NeoGS reports READY but ATM times out waiting for E0 acknowledgement, inspect CBIT release. If ATM reports COPY DONE but NeoGS never sees HOST END DETECTED, inspect the DMA transfer/end-marker path. If NeoGS reports FRAME REJECTED STATUS=04, compare the frame bytes and CRC calculation; statuses 01/02/03 identify magic/version/structural rejection.
+
+Both frame validators now keep the frame pointer intact during CRC calculation and begin payload CRC at byte offset 18, after the two stored CRC bytes. This correction applies to non-empty payloads as well as the zero-payload smoke frame.
+
+Diagnostic output adds timing overhead, especially around the DMA copy. It is intentionally placed at transaction boundaries rather than inside polling loops. If timing-sensitive hardware behavior changes, retain the stage markers but disable or reduce verbose strings for the final transport implementation.
+
+**Verification:** source instrumentation only. Assembly/CI and hardware correlation of both independent #EF streams are still required; no DMA hardware PASS is claimed.
