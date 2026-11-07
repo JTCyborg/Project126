@@ -342,3 +342,8 @@ Physical ATM/NeoGS log at 09:52:27 confirms both directions on the corrected pro
 ## Maximum-size frame validation stage — 2026-11-07
 
 Before enabling fragmentation, the target diagnostic sends one ABI 1.0 frame of exactly 4000h bytes (18-byte header + 3FEEh payload) in each direction. The payload repeats 00h..FFh and is checked byte-for-byte on reverse reception; CRC-16/CCITT-FALSE covers the complete payload on both endpoints. The forward DMA counter must read 10C000h after the transfer. The reverse counter must read 10C001h, accounting for the single discarded ROM-aperture read. ATM reuses its C000h..FFFFh RAM page-0 TR-DOS staging window for TX and RX sequentially. This is a diagnostic extension only: ABI 1.0, page-42 mapping, module 1, and E0/E1/FF handshake are unchanged. A successful 274-byte hardware test does not imply the 16 KiB test has passed.
+
+
+## ATM max-frame test staging requirement
+
+The ATM host binary is packaged only through `p126_host_program_end` (currently constrained to `A800h`). A staging buffer at `C000h` is runtime RAM and must not rely on static `db/defs` bytes placed outside the packaged host image. The max-frame test must initialize its complete 18-byte header at runtime before payload fill and CRC calculation. The 2026-11-07 hardware diagnostic `PTR=C000 DATA=20444D41` exposed this exact defect; commit `b366a37318d89f02f613e848e106db9f3fcf219c` implements the runtime header initialization. Build and target verification remain pending.
