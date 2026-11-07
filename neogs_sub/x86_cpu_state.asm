@@ -44,71 +44,42 @@ x86_cpu_reset:
         ld      (x86_halted),a
         ld      (x86_pending_irq),a
         ld      (x86_pending_nmi),a
+        ld      (x86_irq_inhibit),a
+        ld      (x86_tf_pending),a
+        ld      a,8
+        ld      (x86_irq_vector),a
         ret
 
 ; -------------------------------------------------------------------------
-; BIOS reset-vector fetch/decode gate.
-; This is deliberately NOT an instruction execution loop. It proves that
-; the installed SYSBIOS overlay is readable through the production guest
-; memory backend, validates the five-byte 8086 reset-vector FAR JMP, and
-; seeds CS:IP with its decoded target. The next stage supplies the decoder.
+; BIOS reset-vector execution gate.
+; The 8086 starts at FFFF:0000. Execute the first guest instruction through
+; the production fetch/decode/execute path; BIOS1 contains EA 5B E0 00 F0
+; (JMP FAR F000:E05B). This is a real instruction step, not operand seeding.
 ; Entry: called once after IMAGE_FINISH has set BIOS_IMAGE_READY.
 ; -------------------------------------------------------------------------
 x86_bios_reset_vector_probe:
         call    x86_cpu_reset
-        ld      hl,#FFFF
-        ld      de,0
-        call    x86_cpu_calc_phys
-        ld      ix,x86_bios_reset_vector_bytes
-        ld      a,5
-        ld      (x86_bios_probe_remaining),a
-.read_loop:
-        call    x86_guest_mem_read8
-        jr      c,.read_failed
-        ld      (ix+0),a
-        inc     ix
-        ld      a,(x86_phys_addr)
-        inc     a
-        ld      (x86_phys_addr),a
-        jr      nz,.address_ready
-        ld      a,(x86_phys_addr+1)
-        inc     a
-        ld      (x86_phys_addr+1),a
-        jr      nz,.address_ready
-        ld      a,(x86_phys_addr+2)
-        inc     a
-        and     #0F
-        ld      (x86_phys_addr+2),a
-.address_ready:
-        ld      a,(x86_bios_probe_remaining)
-        dec     a
-        ld      (x86_bios_probe_remaining),a
-        jr      nz,.read_loop
+        call    x86_cpu_step
+        jr      c,.execution_failed
 
-        ld      hl,x86_bios_reset_vector_bytes
-        ld      de,x86_bios_reset_vector_expected
-        ld      b,5
-.compare_loop:
-        ld      a,(de)
-        cp      (hl)
+        ld      hl,(x86_reg_ip)
+        ld      de,#E05B
+        or      a
+        sbc     hl,de
         jr      nz,.vector_mismatch
-        inc     de
-        inc     hl
-        djnz    .compare_loop
+        ld      hl,(x86_reg_cs)
+        ld      de,#F000
+        or      a
+        sbc     hl,de
+        jr      nz,.vector_mismatch
 
-        ; BIOS1 reset vector is EA 5B E0 00 F0:
-        ; JMP FAR F000:E05B. Decode the immediate operands into CPU state.
-        ld      hl,#E05B
-        ld      (x86_reg_ip),hl
-        ld      hl,#F000
-        ld      (x86_reg_cs),hl
         ld      hl,x86_bios_reset_vector_pass_log
         call    p126_ngs_resident_log
         ld      hl,x86_bios_reset_target_log
         call    p126_ngs_resident_log
         or      a
         ret
-.read_failed:
+.execution_failed:
         ld      hl,x86_bios_reset_read_fail_log
         call    p126_ngs_resident_log
         scf
@@ -599,6 +570,10 @@ x86_reg_flags: dw X86_FLAGS_RESET
 x86_halted:      db 0
 x86_pending_irq: db 0
 x86_pending_nmi: db 0
+x86_irq_inhibit: db 0
+; Set from TF at instruction start; consumed at the following boundary.
+x86_tf_pending: db 0
+x86_irq_vector: db 8
 x86_phys_addr: db 0,0,0
 x86_mem_data:  db 0
 

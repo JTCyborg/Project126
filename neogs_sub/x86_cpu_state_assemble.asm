@@ -79,7 +79,11 @@ p126_ngs_resident_main_loop:
         ; Consume the installation event before probing: one-shot transition.
         xor     a
         ld      (p126_ngs_bios_image_ready),a
-        call    x86_bios_reset_vector_probe
+        ; CPU/BIOS execution remains deliberately gated until the complete
+        ; PCem 8086 semantic port has been reviewed. Image installation is
+        ; acknowledged, but no guest instruction is executed here.
+        ld      hl,p126_ngs_bios_exec_gated
+        call    p126_ngs_resident_log
         jr      p126_ngs_resident_main_loop
 
 p126_ngs_resident_frame_error:
@@ -153,15 +157,28 @@ p126_ngs_resident_crc_bad: db "[NGS] ABI CRC16 FAIL",13,10,0
 p126_ngs_resident_ack_bad: db "[NGS] HOST READY ACK TIMEOUT",13,10,0
 p126_ngs_resident_frame_ok: db "[NGS] DMA FRAME VALID",13,10,0
 p126_ngs_resident_frame_bad: db "[NGS] DMA FRAME REJECTED",13,10,0
+p126_ngs_bios_exec_gated: db "[NGS] BIOS IMAGE READY; X86 EXECUTION GATED",13,10,0
 p126_ngs_resident_tx: db 0
 
 x86_cpu_state_module_start:
         INCLUDE "neogs_sub/x86_cpu_state.asm"
 x86_cpu_state_module_end:
 
+x86_cpu_exec_module_start:
+        INCLUDE "neogs_sub/x86_exec.asm"
+x86_cpu_exec_module_end:
+
+x86_modrm_module_start:
+        INCLUDE "neogs_sub/x86_modrm.asm"
+x86_modrm_module_end:
+
 x86_alu_module_start:
         INCLUDE "neogs_sub/x86_alu.asm"
 x86_alu_module_end:
+
+x86_io_module_start:
+        INCLUDE "neogs_sub/x86_io.asm"
+x86_io_module_end:
 
 ; Link the ABI 1.0 DMA receiver/dispatcher into the core image.
 ; The final resident loader and main-loop placement remain separate work.
@@ -176,9 +193,18 @@ p126_ngs_ipc_module_end:
     DISPLAY "P126_X86_STATE_START=", /H, x86_cpu_state_module_start
     DISPLAY "P126_X86_STATE_END=", /H, x86_cpu_state_module_end
     DISPLAY "P126_X86_STATE_SIZE=", /D, x86_cpu_state_module_end-x86_cpu_state_module_start
+    DISPLAY "P126_X86_EXEC_START=", /H, x86_cpu_exec_module_start
+    DISPLAY "P126_X86_EXEC_END=", /H, x86_cpu_exec_module_end
+    DISPLAY "P126_X86_EXEC_SIZE=", /D, x86_cpu_exec_module_end-x86_cpu_exec_module_start
+    DISPLAY "P126_X86_MODRM_START=", /H, x86_modrm_module_start
+    DISPLAY "P126_X86_MODRM_END=", /H, x86_modrm_module_end
+    DISPLAY "P126_X86_MODRM_SIZE=", /D, x86_modrm_module_end-x86_modrm_module_start
     DISPLAY "P126_X86_ALU_START=", /H, x86_alu_module_start
     DISPLAY "P126_X86_ALU_END=", /H, x86_alu_module_end
     DISPLAY "P126_X86_ALU_SIZE=", /D, x86_alu_module_end-x86_alu_module_start
+    DISPLAY "P126_X86_IO_START=", /H, x86_io_module_start
+    DISPLAY "P126_X86_IO_END=", /H, x86_io_module_end
+    DISPLAY "P126_X86_IO_SIZE=", /D, x86_io_module_end-x86_io_module_start
     DISPLAY "P126_NGS_IPC_START=", /H, p126_ngs_ipc_module_start
     DISPLAY "P126_NGS_IPC_END=", /H, p126_ngs_ipc_module_end
     DISPLAY "P126_NGS_IPC_SIZE=", /D, p126_ngs_ipc_module_end-p126_ngs_ipc_module_start
@@ -188,8 +214,14 @@ p126_ngs_ipc_module_end:
     ASSERT p126_ngs_resident_entry_vector = 0
     ASSERT x86_cpu_state_module_start > p126_ngs_resident_entry_vector
     ASSERT x86_cpu_state_module_end > x86_cpu_state_module_start
+    ASSERT x86_cpu_exec_module_end > x86_cpu_exec_module_start
+    ASSERT x86_cpu_exec_module_start = x86_cpu_state_module_end
+    ASSERT x86_modrm_module_end > x86_modrm_module_start
+    ASSERT x86_modrm_module_start = x86_cpu_exec_module_end
+    ASSERT x86_alu_module_start = x86_modrm_module_end
     ASSERT x86_alu_module_end > x86_alu_module_start
-    ASSERT x86_alu_module_start = x86_cpu_state_module_end
+    ASSERT x86_io_module_end > x86_io_module_start
+    ASSERT x86_io_module_start = x86_alu_module_end
     ASSERT p126_ngs_ipc_module_end > p126_ngs_ipc_module_start
-    ASSERT p126_ngs_ipc_module_start = x86_alu_module_end
+    ASSERT p126_ngs_ipc_module_start = x86_io_module_end
     ASSERT p126_ngs_ipc_module_end <= #4000

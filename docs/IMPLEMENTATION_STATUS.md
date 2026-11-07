@@ -389,7 +389,17 @@ The ATM log `DMA SMOKE FRAME SENT` means the transport handshake completed; it i
 - **Verification:** GitHub Actions run [42351776510](https://github.com/JTCyborg/Project126/actions/runs/42351776510), commit `d9b2a391ddaf0bbf4ccd918b34a58cbecc17f40e`, completed successfully. ATM IPC and NeoGS assembly, including the new trace code, passed; TR-DOS image packaging and artifact publication also completed. This is BUILD PASS only. No hardware trace or DMA runtime PASS is claimed.
 
 
-### 2026-11-07 — локализация ATM CRC_ERROR и сверка с Project125
+#
+## 2026-11-07 — First executable 8086 instruction core
+
+- Added `neogs_sub/x86_exec.asm` as the Project126 8086 execution module.
+- Implemented guest instruction fetch through the production CS:IP → 20-bit physical address → guest-memory backend.
+- Added one-instruction execution for `JMP FAR ptr16:16` (EA), near relative JMP (E9), short relative JMP (EB), NOP (90), and HLT (F4).
+- The post-install BIOS reset gate now resets the guest to FFFF:0000 and executes the actual first BIOS instruction. It verifies the resulting F000:E05B state instead of manually reading bytes and writing the decoded target into registers.
+- PCem/808x.c is the semantic reference; unsupported instructions still stop with carry. This is an initial executable slice, **not a complete 8086 implementation**. ModR/M, general register operations, ALU dispatch, stack, interrupts, strings, and virtual I/O remain to be ported.
+- No claim of BIOS POST or VGA initialization is made by this stage.
+
+## 2026-11-07 — локализация ATM CRC_ERROR и сверка с Project125
 
 - **Аппаратный лог пользователя:** ATM выводит `[ATM IPC] FRAME VALIDATION FAILED`, затем `DMA FAIL STAGE=1` и `DMA VALIDATOR ERROR=04`. Это `P126_STATUS_CRC_ERROR`; отказ происходит в локальном ATM валидаторе до команды E0. NeoGS receiver и DMA engine на этом запуске ещё не задействованы.
 - **Сверка с Project125:** изучены `PROJECT125_DMA_IPC.md`, `NeoGS/dma_zx_doc.txt`, `NeoGS/ports.inc`, `zx_main/neogs_transport_v2.asm` и `shared/neogs_io.inc`. Для ATM→NeoGS запись Project125 использует host write в DMA aperture `0000h..3FFFh`; NeoGS настраивает DMA module 1, HAD/MAD/LAD и CST bit 7. Dummy read из документа относится к обратному направлению NeoGS→ATM; dummy write перед ATM→NeoGS не требуется. Отдельно учтено предупреждение Project125 о задержке после включения DMA в сценариях, где управление DMA идёт через штатный GS105a ROM. Текущий P126 обмен выполняется уже резидентной прошивкой, поэтому это предупреждение проверяется на аппаратном этапе, а не объявляется причиной текущего CRC отказа.
@@ -758,8 +768,43 @@ Source commit: `aac9d7e60c391510150016d3b29906a7b2f90e3d`.
 
 ## 2026-11-07 — BIOS reset-vector fetch/decode gate added
 
-- The resident NeoGS main loop now consumes `p126_ngs_bios_image_ready` once after a validated IMAGE_FINISH event and invokes a dedicated reset-vector probe. The ready flag is cleared before the probe, preventing repeated reset attempts.
-- The probe initializes the 8086 architectural reset state (`CS:IP=FFFF:0000`, `FLAGS=0002h`), computes the reset physical address through `x86_cpu_calc_phys`, and reads five bytes through the production `x86_guest_mem_read8` backend. It therefore exercises the SYSBIOS overlay and WIN3 page selector, not a hard-coded physical-page peek.
-- The expected BIOS1 vector is verified byte-for-byte as `EA 5B E0 00 F0`. On match, the immediate FAR JMP operands are decoded and stored as `CS:IP=F000:E05B`; success/failure is emitted on NeoGS debug port EFh.
-- This is a reset-vector memory-fetch and FAR JMP decode gate only. It does **not** execute the JMP, implement the 8086 instruction loop, run BIOS POST, or establish VGA operation. Those remain separate stages.
-- **VERIFICATION REQUIRED:** CI assembly and physical hardware log must show `X86 BIOS RESET VECTOR FETCH PASS` followed by `X86 FAR JMP DECODED F000:E05B`. No hardware PASS is claimed by this source change.
+- The resident NeoGS main loop consumes p126_ngs_bios_image_ready once after a validated IMAGE_FINISH event. It deliberately does NOT invoke the reset-vector probe: automatic guest execution is gated until the full PCem 8086 semantic port is complete.
+- A dormant diagnostic routine x86_bios_reset_vector_probe remains in source for later use. It must not be called before the full CPU port is complete.
+- BIOS image installation is currently acknowledged only with the log "[NGS] BIOS IMAGE READY; X86 EXECUTION GATED". No reset-vector fetch, instruction execution, or BIOS POST is performed.
+- This is an explicit execution safety gate, not a reset-vector test. BIOS execution and guest program execution remain disabled.
+- The gate itself is compile/package verified; no CPU or BIOS functional tests are run.
+
+
+## Intel 8086 execution core — opcode coverage ledger
+
+- Detailed ledger: `docs/8086_PCEM_OPCODE_COVERAGE.md`.
+- Current implementation: neogs_sub/x86_exec.asm contains execution paths for the complete 256-byte primary opcode dispatch map, with ModR/M, ALU, stack, interrupt, string and virtual-I/O handlers. This is dispatch coverage, not proof that all 8086 forms and edge cases are semantically complete.
+- **Current primary opcode-byte dispatch coverage: 256 / 256 = 100.00%.** Semantic completeness remains below 100% and is not yet assigned a percentage; PCem form-by-form review and integration gaps remain.
+- The 16 MOV-immediate encodings were added in commit `28575e385d5d2a66c5ca448e72f7b4e2f01d2391`.
+- CPU functional tests and BIOS execution remain blocked until the complete 8086 implementation is ported. Assembly-only build checks are permitted solely for syntax, linkage and image-size validation.
+
+- Added original 8086 register INC/DEC encodings `40–4F`; result flags are calculated by the 16-bit ALU path and CF is restored unchanged. Compile-only CI is pending; no CPU or BIOS functional tests were run.
+
+- Added `XCHG AX,r16` encodings `91–97`; swaps AX with CX, DX, BX, SP, BP, SI or DI without modifying FLAGS. No CPU functional tests were run.
+
+- Added A0–A3 direct-offset MOV AL/AX transfers. Reads and writes route through x86_guest_mem_read8/write8; segment overrides are now applied by the prefix layer. No CPU functional tests were run.
+
+
+## 2026-11-07 — Latest PCem 8086 semantic review
+
+- Corrected 8Eh MOV Sreg,r/m16: the original PCem 8086 path permits loading CS through selector /1; this is not restricted as it is on later x86 profiles. The PCem one-instruction maskable-IRQ inhibit latch is also applied after every 8Eh selector, including ignored /4-/7 encodings; 8Ch does not arm it.
+- Matched PCem's ModR/M extension behavior: 8F POP and C6/C7 MOV immediate execute for every /n selector; FE treats /0 as INC and every nonzero selector as DEC; FF /7 consumes ModR/M and has no operation; 8C/8E /4-/7 are ignored.
+- REP/REPE/REPNE string instructions now yield after each iteration, restore IP to the first prefix byte when continuing, and pass through the normal IRQ/NMI boundary before the next iteration. REPE/REPNE initialize ZF as PCem does, including when CX is zero.
+- BIOS image installation no longer triggers automatic reset-vector probing or guest execution. It only logs that x86 execution is gated.
+- Audited every x86_exec call to x86_modrm_read_rm8/rm16 and added an immediate carry check at all 53 call sites, so guest-memory faults cannot be cleared by later ALU/stack operations. Existing write helpers were also checked: all call sites propagate carry, and direct guest-memory read/write calls in the executor already return on faults. The source change and duplicate-check normalization both passed compile/package CI (runs 42376263313 and 42376288583).
+- Compile/package CI passed for the ModR/M behavior update (run 42375880001), MOV CS support (run 42375777549), BIOS execution gate (run 42375738280), REP iteration scheduling (run 42375954899), and MOV Sreg IRQ-inhibit timing (run 42376049909). The final comment/documentation sync also assembled and packaged successfully in run 42376060530.
+- No CPU functional tests, BIOS POST, or guest programs have been run. Only assembler/linker/package checks are permitted until the complete Intel 8086 core has been ported and reviewed.
+
+
+## 2026-11-07 — 8086 pre-test readiness checkpoint
+
+- PCem comparison corrected STI behavior: STI sets IF but does not arm the `noint` interrupt-inhibit latch; only MOV Sreg (8Eh) and POP SS arm it in the reviewed paths.
+- IRET now restores the FLAGS image exactly as PCem's 8086 path does: the stacked word masked with 0FFFh, without synthesizing reserved bit 1.
+- The coverage ledger was reconciled with the implemented REP iteration scheduler and the CPU-side interrupt-inhibit consumer; earlier statements that these pieces were wholly pending were stale.
+- **Readiness: NOT READY for CPU functional tests.** Remaining blockers include the host/IPC IRQ/NMI producer and vector source, interrupt servicing between REP iterations, form-by-form PCem semantic review, and TF/NMI/IRQ/HLT plus address-wrap/fault corner-case verification.
+- Only assembly/package validation is permitted at this stage. No CPU functional tests, BIOS POST, reset-vector execution or guest programs have been run or enabled.
