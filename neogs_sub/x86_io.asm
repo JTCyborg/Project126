@@ -5,7 +5,7 @@
 ; Implemented:
 ;   00E0h: retained 16-bit diagnostic test latch.
 ;   0060h-0063h: initial XT-compatible 8255 PPI / keyboard interface.
-;   x86_io_keyboard_push: host/IPC producer API for XT scan-code bytes.
+;   x86_io_keyboard_push_impl: host/IPC producer API for XT scan-code bytes.
 ;
 ; PPI compatibility slice:
 ;   60h = port A / keyboard data (FIFO consumer when configured input).
@@ -18,7 +18,7 @@
 ; Keyboard bytes are queued here only. ATM input delivery and PIC IRQ1
 ; signaling are separate services and are not claimed implemented yet.
 
-x86_io_reset:
+x86_io_reset_impl:
         ld      hl,0
         ld      (x86_io_count_in),hl
         ld      (x86_io_count_out),hl
@@ -38,7 +38,7 @@ x86_io_reset:
 ; A=XT keyboard scan-code byte. Carry set means FIFO full (byte rejected).
 ; This is the software input-service API; the caller is the future IPC
 ; keyboard event handler, never a physical NeoGS port operation.
-x86_io_keyboard_push:
+x86_io_keyboard_push_impl:
         ld      b,a
         ld      a,(x86_io_keyboard_count)
         cp      16
@@ -63,17 +63,17 @@ x86_io_keyboard_push:
         ret
 
 ; Reset XT keyboard input state and queue the standard BAT completion byte.
-x86_io_keyboard_reset:
+x86_io_keyboard_reset_impl:
         xor     a
         ld      (x86_io_keyboard_head),a
         ld      (x86_io_keyboard_tail),a
         ld      (x86_io_keyboard_count),a
         ld      (x86_io_keyboard_last),a
         ld      a,#AA
-        jp      x86_io_keyboard_push
+        jp      x86_io_keyboard_push_impl
 
 ; A=next keyboard byte, or last data latch if FIFO empty.
-x86_io_keyboard_read:
+x86_io_keyboard_read_impl:
         ld      a,(x86_io_keyboard_count)
         or      a
         jr      z,.keyboard_read_empty
@@ -98,15 +98,15 @@ x86_io_keyboard_read:
         ret
 
 ; Read one byte from the guest I/O bus. A=read value.
-x86_io_read8:
+x86_io_read8_impl:
         ld      hl,(x86_io_count_in)
         inc     hl
         ld      (x86_io_count_in),hl
-        call    x86_io_read8_device
+        call    x86_io_read8_impl_device
         ret
 
 ; Internal byte read. Does not change the operation counter.
-x86_io_read8_device:
+x86_io_read8_impl_device:
         ld      hl,(x86_io_port)
         ld      de,#00E0
         or      a
@@ -133,7 +133,7 @@ x86_io_ppi_read8:
         scf                             ; control register is write-only
         ret
 .ppi_read_a:
-        jp      x86_io_keyboard_read
+        jp      x86_io_keyboard_read_impl
 .ppi_read_b:
         ld      a,(x86_io_ppi_pb)
         or      a
@@ -191,15 +191,15 @@ x86_io_ppi_decode:
         ret
 
 ; Write one byte to the guest I/O bus. A=value.
-x86_io_write8:
+x86_io_write8_impl:
         ld      hl,(x86_io_count_out)
         inc     hl
         ld      (x86_io_count_out),hl
-        jp      x86_io_write8_device
+        jp      x86_io_write8_impl_device
 
 ; Internal byte write. Does not change the operation counter.
 ; A=value.
-x86_io_write8_device:
+x86_io_write8_impl_device:
         ld      hl,(x86_io_port)
         ld      de,#00E0
         or      a
@@ -239,7 +239,7 @@ x86_io_ppi_write8:
         ld      a,b
         or      a
         jr      nz,.ppi_pb_store
-        call    x86_io_keyboard_reset
+        call    x86_io_keyboard_reset_impl
 .ppi_pb_store:
         ld      a,c
         ld      (x86_io_ppi_pb),a
@@ -295,7 +295,7 @@ x86_io_ppi_write8:
 
 ; Read a 16-bit value. PCem io.c fallback for 8-bit devices reads port and
 ; port+1; the 00E0h test device retains its explicit 16-bit latch behavior.
-x86_io_read16:
+x86_io_read16_impl:
         ld      hl,(x86_io_count_in)
         inc     hl
         ld      (x86_io_count_in),hl
@@ -309,12 +309,12 @@ x86_io_read16:
 .io_read16_split:
         ld      hl,(x86_io_port)
         ld      (x86_io_saved_port),hl
-        call    x86_io_read8_device
+        call    x86_io_read8_impl_device
         ld      (x86_io_word_low),a
         ld      hl,(x86_io_saved_port)
         inc     hl
         ld      (x86_io_port),hl
-        call    x86_io_read8_device
+        call    x86_io_read8_impl_device
         ld      (x86_io_word_high),a
         ld      hl,(x86_io_saved_port)
         ld      (x86_io_port),hl
@@ -326,7 +326,7 @@ x86_io_read16:
 
 ; Write a 16-bit value. The 00E0h test device has a native word latch;
 ; other ports use PCem's byte fallback at port and port+1.
-x86_io_write16:
+x86_io_write16_impl:
         ld      (x86_io_word_value),hl
         ld      hl,(x86_io_count_out)
         inc     hl
@@ -343,19 +343,19 @@ x86_io_write16:
         ld      hl,(x86_io_port)
         ld      (x86_io_saved_port),hl
         ld      a,(x86_io_word_value)
-        call    x86_io_write8_device
+        call    x86_io_write8_impl_device
         ld      hl,(x86_io_saved_port)
         inc     hl
         ld      (x86_io_port),hl
         ld      a,(x86_io_word_value+1)
-        call    x86_io_write8_device
+        call    x86_io_write8_impl_device
         ld      hl,(x86_io_saved_port)
         ld      (x86_io_port),hl
         ret
 
 ; Diagnostic output only: guest ports remain software-modeled.
 ; Format: [IO] IN8 P=03DA V=FF @F000:E05B
-x86_io_log_access:
+x86_io_log_access_impl:
         push    af
         push    bc
         push    de
