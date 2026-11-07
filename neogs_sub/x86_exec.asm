@@ -2220,8 +2220,8 @@ x86_exec_aam:
         ld      (x86_reg_ax),a
         ld      a,b
         ld      (x86_reg_ax+1),a
-        ld      a,(x86_reg_ax)
-        jp      x86_exec_update_szp8
+        ld      hl,(x86_reg_ax)
+        jp      x86_exec_update_szp16
 
 x86_exec_aad:
         call    x86_cpu_fetch8
@@ -2249,8 +2249,8 @@ x86_exec_aad:
         ld      (x86_reg_ax),a
         xor     a
         ld      (x86_reg_ax+1),a
-        ld      a,(x86_reg_ax)
-        jp      x86_exec_update_szp8
+        ld      hl,(x86_reg_ax)
+        jp      x86_exec_update_szp16
 
 ; SALC: AL=FFh when CF=1, otherwise AL=00h; FLAGS are unchanged.
 x86_exec_salc:
