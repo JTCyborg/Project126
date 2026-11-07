@@ -241,9 +241,11 @@ The NeoGS IPC module exports `p126_ngs_ipc_dispatch_once`. It samples ZXSTAT/CBI
 
 The receiver restores the validated frame pointer and exact byte count after the validator returns (the validator clobbers BC/HL). A valid frame returns HL=C000h and BC=18+payload_length; errors return carry set and the ABI status in A. Version mismatches use the shared `BAD_VERSION` status.
 
-The IPC module is linked into `X86CORE.C` after the x86 state and ALU modules. This makes the dispatcher available in the core artifact, but does **not** claim a complete resident firmware or active main loop. The repository still has no NeoGS startup/loader that establishes WIN0-WIN2 placement and repeatedly calls `p126_ngs_ipc_dispatch_once`. That remains a separate integration milestone.
+The IPC module is linked into `X86CORE.C` after the x86 state, execution, ModR/M and ALU modules. The resident startup maps WIN0/page 00 and WIN1/page 03, establishes the stack at 7FFEh, and repeatedly calls `p126_ngs_ipc_dispatch_once`. WIN2 is initialized to page 01 until the X86IO overlay is installed; WIN3 remains the guest-memory aperture.
 
-Verification boundary: CI can verify assembly, symbol placement, and packaging. Only target testing can verify ZXCMD/CBIT timing, DMA writes into page 42h, WIN3 mapping, CRC and timeout behavior.
+After the resident A2h acknowledgement, the ATM host reads `X86IO.C` from TR-DOS and sends its IMAGE transaction through ABI 1.0 DMA. NeoGS validates the frame, installs the image at physical page 04 through WIN3, verifies the complete copy, then maps page 04 into WIN2. BIOS execution is gated until the overlay and SYSBIOS are both ready.
+
+Verification boundary: CI verifies assembly, split-image sizes, and TR-DOS packaging. Only target testing can verify the X86IO DMA transfer, page-04 readback, WIN2 mapping, ZXCMD/CBIT timing, DMA page-42 behavior, and subsequent BIOS I/O calls.
 
 
 ## 12. Resident startup and GS105a bootstrap
@@ -253,12 +255,13 @@ Project126 now has a concrete startup chain:
 2. ATM locates `P126BOOT.C` and `X86CORE.C` in that preloaded directory and reads their sectors with the established TR-DOS C=5/B=1 sector API.
 3. ATM resets NeoGS through GSCTR, probes the stock GS105a ROM with command 20h, and uses ROM commands 14h/13h to load and enter stage-0 at logical 4000h.
 4. Stage-0 switches to writable RAM-over-ROM, establishes temporary WIN2/WIN3 mappings and a temporary stack, receives a bounded 1..4000h resident image over the legacy DBIT bootstrap byte channel, then jumps to address 0000h.
-5. The resident entry maps WIN0 to physical page 00, WIN1 to physical page 03, places the operational stack at 7FFEh, runs the CRC self-test and publishes A2h as the resident-ready acknowledgement.
-6. The resident main loop continuously calls `p126_ngs_ipc_dispatch_once`. E0h arms DMA module 1 at physical 108000h; a complete frame is CRC-checked before the resident emits a valid-frame diagnostic.
+5. The resident entry maps WIN0 to physical page 00, WIN1 to physical page 03, initializes WIN2 to page 01, places the operational stack at 7FFEh, runs the CRC self-test and publishes A2h as the resident-ready acknowledgement.
+6. The resident main loop continuously calls `p126_ngs_ipc_dispatch_once`. After A2h, ATM loads `X86IO.C` and sends its IMAGE transaction; NeoGS installs it at physical page 04, performs byte-for-byte readback, then maps it into WIN2 using MPAG #00 selector 02h.
+7. Subsequent SYSBIOS IMAGE traffic uses the same ABI 1.0 DMA path. BIOS execution starts only when both the X86IO overlay and SYSBIOS image are ready.
 
 DBIT/GSDAT is used only for stock-ROM bootstrap compatibility. After A2h, application payloads use ABI 1.0 DMA; NeoGS does not perform direct physical host I/O. ATM startup file reads occur before ATM video initialization to preserve the established TR-DOS paging constraints.
 
-The resident image must fit within one 16 KiB WIN0 page. The 256 KiB kernel allocation remains reserved for future overlays; this startup revision does not claim that the entire allocation is populated. P126BOOT.C is limited to one 256-byte TR-DOS sector.
+The resident `X86CORE.C` must fit within one 16 KiB WIN0 page; the current build is 15,750 bytes. `X86IO.C` is a separate 796-byte fixed-origin overlay loaded into physical page 04 and mapped in WIN2. The remaining kernel pages 05h–0Fh are still reserved for future dynamic overlays and are not yet managed by a general allocator. P126BOOT.C is limited to one 256-byte TR-DOS sector.
 
 Hardware verification remains outstanding: stock-ROM reset/probe timing, #14/#13 transfer, DBIT turnaround, RAM-over-ROM paging, stack page 03, A2 ready acknowledgement and the first E0/DMA/FF frame exchange must be exercised on target hardware.
 
