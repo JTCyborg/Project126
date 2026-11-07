@@ -149,9 +149,9 @@ p126_ngs_ipc_crc_work: dw 0
 ; Receive one ATM -> NeoGS ABI 1.0 frame through ZX DMA.
 ; Entry: resident dispatcher consumed E0h from ZXCMD; CBIT remains asserted.
 ; Resident code, stack and interrupt handlers must stay in WIN0-WIN2.
-; OUT: carry clear/A=0, HL=#5000 and BC=derived frame size; otherwise
-; carry set/A=status. Diagnostic DMA destination is physical 00D000h on
-; page 03h, matching Project125. Production page-42 staging is not yet tested.
+; OUT: carry clear/A=0, HL=#C000 and BC=derived frame size; otherwise
+; carry set/A=status. Production DMA destination is physical 108000h on
+; page 42h, mapped into WIN3 through port #23.
 ; -------------------------------------------------------------------------
 P126_NGS_DMA_MOD      EQU #1B
 P126_NGS_DMA_HAD      EQU #1C
@@ -310,16 +310,15 @@ p126_ngs_ipc_rx_size: dw 0
 ; -------------------------------------------------------------------------
 ; Resident command-dispatch entry, one bounded unit of work.
 ; OUT: carry clear/Z=1/A=0 when no command is pending;
-;      carry clear/Z=0 with HL=#5000, BC=size on a valid E0h frame;
+;      carry clear/Z=0 with HL=#C000, BC=size on a valid E0h frame;
 ;      carry set/A=status for a rejected command or receive failure.
 ; The caller owns the resident main loop and must keep its stack/code outside
 ; WIN1. E0h is consumed from ZXCMD while CBIT stays asserted until DMA is armed.
 ; -------------------------------------------------------------------------
 P126_NGS_ZXCMD       EQU #01
 
-; Reverse DMA diagnostic response for ABI command E1h (NGS_FRAME).
-; Use the Project125 reference source address: physical 00E000h at
-; WIN1 logical 6000h. This is diagnostic only.
+; Reverse DMA production-page test response for ABI command E1h (NGS_FRAME).
+; Source is physical 108000h / page 42h, mapped at WIN3 logical C000h.
 p126_ngs_ipc_dma_send_test_frame::
         ; Build the deterministic reverse frame directly in production page
         ; 42h through WIN3, then DMA-read it from physical address 108000h.
