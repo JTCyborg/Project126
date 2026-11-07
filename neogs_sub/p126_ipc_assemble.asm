@@ -5,7 +5,6 @@
 
         ORG 0
 
-        INCLUDE "shared/p126_neogs_memory_map.inc"
 
 p126_ngs_ipc_module_start:
         INCLUDE "neogs_sub/p126_ipc.asm"
