@@ -71,6 +71,16 @@ p126_x86io_file_end:
         SAVETRD "disk_A.trd", "X86IO.C", #C000, p126_x86io_file_end-p126_x86io_file_start
 
 ; -------------------------------------------------------------------------
+; Second fixed-origin overlay. The host installs it at physical page 05h.
+        PAGE 7
+        ORG #C000
+p126_x86alu_file_start:
+        INCBIN "build/X86ALU.C"
+p126_x86alu_file_end:
+        ASSERT p126_x86alu_file_end > p126_x86alu_file_start
+        ASSERT p126_x86alu_file_end-p126_x86alu_file_start <= #1000
+        SAVETRD "disk_A.trd", "X86ALU.C", #C000, p126_x86alu_file_end-p126_x86alu_file_start
+
 ; Three 8 KiB BIOS images, packaged under TR-DOS-compatible 8.3 names.
 ; The long Compaq source filename is represented on disk as COMPAQ.C.
 ; -------------------------------------------------------------------------
