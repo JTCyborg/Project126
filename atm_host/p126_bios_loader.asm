@@ -69,9 +69,8 @@ p126_bios_load_selected::
         ld      (#5D06),a
         ld      hl,p126_bios_log_open_call
         call    p126_catalog_log
-        ; Capture the exact TR-DOS boundary state before entering the ROM.
-        ; This is a read-only diagnostic port of Project125's proven trace.
-        call    p126_bios_trace_search_state
+        ; Keep the Project125 ROM-call boundary exact: no helper, logger,
+        ; RTC access, or diagnostic I/O between setting C and CALL #3D13.
         ld      c,10
         call    #3D13
         ld      hl,p126_bios_log_open_return
