@@ -731,3 +731,16 @@ This is diagnostic instrumentation; the next ATM log must report the letter afte
 - Re-inspection of Project125's proven command_load_x86 sequence found that it maps the destination page into a Z80 CPU window before selecting/arming DMA; it then keeps that mapping stable through the transfer. Project126 previously mapped page 42 only after DMA stopped.
 - Diagnostic alignment change: Project126 now maps page 42 into WIN3 before programming/arming DMA and leaves WIN3 unchanged until after the header dump/validation. Resident code, data and stack remain in WIN0-WIN2. DMA physical address 108000h, module 1, host aperture 0000h..3FFFh, and ABI/handshake are unchanged.
 - Next target log should include [NGS] DMA PAGE 42 PRE-MAPPED, followed by DMA ADDR READBACK=108012, WIN3 RW TEST=PASS, and the 16-byte header. If it remains zero, the next investigation is the actual host aperture write path and NeoGS DMA data capture—not the WIN3 bank selector.
+
+
+## DMA reverse-direction diagnostic (2026-11-07)
+
+The next hardware diagnostic is an ABI 1.0 E1h (NGS_FRAME) response transfer, following the existing E0h host->NeoGS smoke transaction. NeoGS builds a valid 274-byte response frame in physical page 42h / address 108000h: 18-byte header, 256-byte deterministic payload 00h..FFh, and CRC-16/CCITT-FALSE. ATM performs one discarded dummy memory read from 0000h, then reads exactly 274 bytes from the DMA aperture, sends FFh, validates CRC and compares all 256 payload bytes.
+
+This follows the Project125 reverse-DMA hardware rule: the first host read is invalid and must be discarded; unlike ATM->NeoGS writes, reverse reads require ROM visible at 0000h..3FFFh. No dummy write is added to the forward path. The E0h transaction, ABI 1.0, DMA module 1 and physical page-42 address 108000h remain unchanged.
+
+Expected independent debug markers:
+- ATM: [ATM IPC] DMA RX TEST BEGIN, DMA RX COPY DONE, DMA RX FRAME CRC VALID, DMA RX PATTERN PASS.
+- NeoGS: [NGS] DMA RX TEST REQUESTED, DMA RX TEST ARMED, DMA RX TEST HOST END.
+
+The test is diagnostic only. BUILD PASS and hardware PASS are tracked separately. If reverse DMA does not return the deterministic pattern, compare the ATM received frame/CRC with the NeoGS source buffer before changing paging or the transport.

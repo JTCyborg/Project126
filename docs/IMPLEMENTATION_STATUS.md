@@ -447,3 +447,12 @@ Verification boundary: source correction is committed. CI assembly/package resul
 - Project125 reference neogs_sub/main.asm maps the destination page into its CPU window before arming ZX DMA and keeps that mapping active through the transaction. Project126 had selected page 42 only after DMA stop.
 - Updated neogs_sub/p126_ipc.asm to map page 42 into WIN3 before DMA register setup and leave it selected through receive-buffer inspection. Resident code/stack remain in WIN0-WIN2. No DMA address, module, host aperture, frame ABI or handshake change.
 - CI BUILD PASS for this source update and the next target run are tracked separately. The expected first new marker is [NGS] DMA PAGE 42 PRE-MAPPED; the decisive payload check remains the header dump.
+
+
+## 2026-11-07 — reverse DMA diagnostic added
+
+- Added the ABI 1.0 E1h (NGS_FRAME) reverse-direction smoke exchange. NeoGS generates a 274-byte response in page 42h at physical 108000h: an 18-byte response header plus a deterministic 256-byte 00h..FFh payload and a computed CRC-16/CCITT-FALSE.
+- ATM waits for E1h readiness, discards the first DMA aperture read as required specifically for NeoGS->ATM, reads the complete frame, sends FFh, validates the frame CRC, and compares every payload byte.
+- The test is invoked after the existing E0h host->NeoGS smoke transaction. It does not replace or alter E0h, DMA target address, module selection, or ABI 1.0.
+- Hardware prerequisite: ATM ROM must remain mapped at 0000h..3FFFh during reverse DMA reads. The NeoGS hardware documentation distinguishes this from host->NeoGS writes, which work with RAM mapped.
+- Verification boundary: source and packaging build must pass CI; target hardware must separately report [ATM IPC] DMA RX PATTERN PASS. No reverse-DMA hardware PASS is claimed by this source change.

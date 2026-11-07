@@ -477,6 +477,86 @@ p126_ipc_dma_stage:  db 0
 
 p126_ipc_dma_error: db 0
 
+; Reverse DMA diagnostic: NeoGS sends a CRC-protected 256-byte test frame.
+; The first memory read from the DMA aperture is discarded per hardware docs.
+; Requires ROM visible at ATM 0000h..3FFFh while the reverse transfer is active.
+P126_IPC_DMA_RX_TEST_SIZE EQU P126_IPC_HEADER_SIZE+256
+p126_ipc_dma_receive_test::
+        ld      a,1
+        ld      (p126_ipc_dma_rx_stage),a
+        ld      hl,p126_ipc_log_dma_rx_begin
+        call    p126_ipc_debug_string
+        ld      a,P126_CMD_NGS_FRAME
+        call    p126_ipc_send_command
+        jr      nc,.rx_ready
+        ld      a,1
+        jr      .rx_failed
+.rx_ready:
+        ld      hl,0
+        ld      a,(hl)                  ; required discarded first read
+        ld      hl,0
+        ld      de,p126_ipc_dma_rx_buffer
+        ld      bc,P126_IPC_DMA_RX_TEST_SIZE
+        ldir
+        ld      hl,p126_ipc_log_dma_rx_copy_done
+        call    p126_ipc_debug_string
+        ld      a,P126_CMD_DMA_END
+        call    p126_ipc_send_command
+        jr      nc,.rx_end_ack
+        ld      a,2
+        jr      .rx_failed
+.rx_end_ack:
+        ld      a,2
+        ld      (p126_ipc_dma_rx_stage),a
+        ld      hl,p126_ipc_dma_rx_buffer
+        ld      bc,P126_IPC_DMA_RX_TEST_SIZE
+        call    p126_ipc_validate_frame
+        jr      nc,.rx_crc_ok
+        ld      (p126_ipc_dma_rx_error),a
+        ld      hl,p126_ipc_log_dma_rx_crc_bad
+        call    p126_ipc_debug_string
+        ld      a,(p126_ipc_dma_rx_error)
+        call    p126_ipc_debug_hex_byte
+        call    p126_ipc_debug_crlf
+        scf
+        ret
+.rx_crc_ok:
+        ld      hl,p126_ipc_log_dma_rx_crc_ok
+        call    p126_ipc_debug_string
+        ld      hl,p126_ipc_dma_rx_buffer+P126_IPC_HEADER_SIZE
+        xor     a
+        ld      b,0
+.rx_pattern:
+        cp      (hl)
+        jr      nz,.rx_pattern_bad
+        inc     hl
+        inc     a
+        djnz    .rx_pattern
+        ld      hl,p126_ipc_log_dma_rx_pattern_ok
+        call    p126_ipc_debug_string
+        xor     a
+        ld      (p126_ipc_dma_rx_stage),a
+        ld      (p126_ipc_dma_rx_error),a
+        ret
+.rx_pattern_bad:
+        ld      a,3
+        ld      (p126_ipc_dma_rx_error),a
+        ld      hl,p126_ipc_log_dma_rx_pattern_bad
+        call    p126_ipc_debug_string
+        scf
+        ret
+.rx_failed:
+        ld      (p126_ipc_dma_rx_error),a
+        ld      hl,p126_ipc_log_dma_rx_transport_bad
+        call    p126_ipc_debug_string
+        ld      a,(p126_ipc_dma_rx_error)
+        call    p126_ipc_debug_hex_byte
+        call    p126_ipc_debug_crlf
+        scf
+        ret
+p126_ipc_dma_rx_stage: db 0
+p126_ipc_dma_rx_error: db 0
+
 ; Print A as two hexadecimal digits on ATM's independent #EF stream.
 ; Preserves AF and BC.
 p126_ipc_debug_hex_byte:
@@ -506,6 +586,19 @@ p126_ipc_debug_hex_nibble:
         ld      bc,#00EF
         out     (c),a
         pop     bc
+        ret
+
+; Emit CR/LF on ATM's independent #EF debug channel.
+p126_ipc_debug_crlf:
+        push    af
+        push    bc
+        ld      bc,#00EF
+        ld      a,13
+        out     (c),a
+        ld      a,10
+        out     (c),a
+        pop     bc
+        pop     af
         ret
 
 ; ATM-local trace output, on ATM's own physical #EF stream.
@@ -539,3 +632,11 @@ p126_ipc_log_dma_tx_copy_done:    db "[ATM IPC] DMA COPY DONE",13,10,0
 p126_ipc_log_dma_tx_ff:           db "[ATM IPC] SEND FF",13,10,0
 p126_ipc_log_dma_tx_ff_timeout:   db "[ATM IPC] FF ACK TIMEOUT",13,10,0
 p126_ipc_log_dma_tx_done:         db "[ATM IPC] DMA TX COMPLETE",13,10,0
+p126_ipc_log_dma_rx_begin:        db "[ATM IPC] DMA RX TEST BEGIN",13,10,0
+p126_ipc_log_dma_rx_copy_done:    db "[ATM IPC] DMA RX COPY DONE",13,10,0
+p126_ipc_log_dma_rx_crc_ok:       db "[ATM IPC] DMA RX FRAME CRC VALID",13,10,0
+p126_ipc_log_dma_rx_crc_bad:      db "[ATM IPC] DMA RX FRAME CRC FAILED STATUS=",0
+p126_ipc_log_dma_rx_pattern_ok:   db "[ATM IPC] DMA RX PATTERN PASS",13,10,0
+p126_ipc_log_dma_rx_pattern_bad:  db "[ATM IPC] DMA RX PATTERN FAIL",13,10,0
+p126_ipc_log_dma_rx_transport_bad: db "[ATM IPC] DMA RX TRANSPORT FAILED STAGE=",0
+p126_ipc_dma_rx_buffer:           defs P126_IPC_DMA_RX_TEST_SIZE,0

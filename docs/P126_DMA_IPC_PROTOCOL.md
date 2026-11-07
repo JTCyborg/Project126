@@ -299,3 +299,12 @@ The latest hardware log reports DMA address readback 108012 after an 18-byte wri
 Project125's established command_load_x86 sequence maps its destination page into the CPU window before arming ZX DMA and keeps that mapping stable throughout the transfer. Project126 is aligned with that ordering for page 42: WIN3 is selected before DMA register setup and is not switched after DMA stop. Resident code/data/stack remain outside WIN3. The DMA address, module, aperture, ABI and CBIT/FF handshake are unchanged.
 
 This is a diagnostic ordering alignment, not a claim that CPU window mapping controls the DMA physical destination. If the next header dump remains zero, investigation must continue at the host aperture write/data-capture path.
+
+
+## Reverse DMA diagnostic using ABI command E1h (2026-11-07)
+
+The E1h control-plane command is exercised as the ABI 1.0 NGS_FRAME direction. NeoGS constructs a complete 274-byte response frame in physical page 42h at 108000h: the fixed 18-byte ABI header followed by 256 deterministic payload bytes (00h..FFh), with CRC-16/CCITT-FALSE over header bytes 00h..0Fh and the payload. It then arms ZX DMA module 1 for the reverse direction.
+
+ATM waits for CBIT clear (DMA ready), performs and discards the first memory read from the 0000h DMA aperture as required by the NeoGS hardware documentation, then reads exactly 274 bytes. It sends FFh through GSCOM to terminate the transfer. NeoGS stops DMA and acknowledges by clearing CBIT. ATM validates the complete frame CRC and independently checks the 256-byte payload sequence.
+
+This diagnostic does not change ABI 1.0, DMA module, physical staging address (108000h), or the ATM->NeoGS E0h transaction. It requires the normal ROM mapping to remain visible in ATM address range 0000h..3FFFh during the reverse read; if RAM is mapped there, NeoGS cannot drive the DMA read cycles. A successful build is not a hardware PASS: both independent debug streams must show the E1h exchange and ATM must report DMA RX PATTERN PASS.
