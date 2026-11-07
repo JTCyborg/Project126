@@ -6,7 +6,7 @@
 
 ## 1. Purpose
 
-The resident `X86CORE.C` has a hard 16 KiB loader limit. The first overlay split now produces a 15,750-byte resident image and a separate 796-byte `X86IO.C` module at logical origin `8000h`. The NeoGS physical map reserves pages `00h–0Fh` (256 KiB) for the kernel/runtime.
+The resident `X86CORE.C` has a hard 16 KiB loader limit. The first overlay split now produces a 15,756-byte resident image and a separate 796-byte `X86IO.C` module at logical origin `8000h`. The NeoGS physical map reserves pages `00h–0Fh` (256 KiB) for the kernel/runtime.
 
 The manager must use that existing allocation without changing the physical map, enlarging the `X86CORE.C` limit, taking ownership of WIN3, or moving the operational stack.
 
@@ -109,7 +109,7 @@ The first candidate module is the existing XT PPI/keyboard I/O implementation in
 
 The first pinned-overlay source/build/load slice is implemented:
 - `x86_io.asm` is assembled at `8000h` and exported as `X86IO.C` (796 bytes in the current build);
-- `X86CORE.C` is separately exported at 0000h (15,750 bytes in the current build);
+- `X86CORE.C` is separately exported at 0000h (15,756 bytes in the current build);
 - resident CPU call sites resolve directly to the overlay symbols in the same assembler pass;
 - ATM loads `X86IO.C` from TR-DOS after A2h and sends the IMAGE transaction over ABI 1.0 DMA;
 - NeoGS installs page 04h, verifies the complete image by readback, then maps it into WIN2;
@@ -132,7 +132,7 @@ The manager is not complete until all of the following are true:
 - [ ] General call/return trampoline preserves arbitrary WIN2 mappings and WIN1 stack.
 - [ ] Nested and repeated dynamic overlay calls restore mappings correctly.
 - [ ] Invalid/unloaded dynamic module calls fail closed.
-- [x] CI build/package passes (run 42396251021, commit a20da948; X86CORE 15750 bytes, X86IO 796 bytes).
+- [x] CI build/package passes (run 42396251021, commit a20da948; X86CORE 15756 bytes, X86IO 796 bytes).
 - [ ] Physical ATM/NeoGS log confirms X86IO module load, page-04 readback and WIN2 mapping.
 
 No PIC/PIT/DMA/VGA/RTC/IDE implementation is to be added to the resident image before these gates are met. No CPU functional suite, full BIOS POST, or guest operating-system test is implied by overlay infrastructure validation.
