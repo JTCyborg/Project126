@@ -2,11 +2,11 @@
 
 **Revision:** 0.1  
 **Date:** 2026-11-07  
-**Status:** two pinned fixed-origin overlays (X86IO and X86ALU), resident WIN2 gate and first-fit physical-page allocator are implemented and CI-built; generic module manifest/loader and physical target validation remain pending
+**Status:** three pinned fixed-origin overlays (X86IO, X86ALU and X86DEV), resident WIN2 gate and first-fit physical-page allocator are implemented and CI-built; generic module manifest/loader and physical target validation remain pending
 
 ## 1. Purpose
 
-The resident `X86CORE.C` has a hard 16 KiB loader limit. The current overlay-gate build produces a 16,041-byte resident image (343 bytes free), an 814-byte `X86IO.C` module and a 1,220-byte `X86ALU.C` module at logical origin `8000h`. The NeoGS physical map reserves pages `00h–0Fh` (256 KiB) for the kernel/runtime.
+The resident `X86CORE.C` has a hard 16 KiB loader limit. The current overlay-gate build produces a 16,041-byte resident image (343 bytes free), an `X86IO.C` module, a 1,220-byte `X86ALU.C` module and a separate `X86DEV.C` device module at logical origin `8000h`. The NeoGS physical map reserves pages `00h–0Fh` (256 KiB) for the kernel/runtime.
 
 The manager must use that existing allocation without changing the physical map, enlarging the `X86CORE.C` limit, taking ownership of WIN3, or moving the operational stack.
 
@@ -20,11 +20,11 @@ This document records the source-backed design direction and the remaining valid
 - Resident startup maps WIN0 to physical page `00h`, WIN1 to page `03h`, WIN2 initially to page `01h`, and initializes WIN3 to page `02h`. The operational stack is `7FFEh` in WIN1/page 03. After X86IO IMAGE_FINISH, WIN2 is mapped to physical page `04h`.
 - WIN3 (`C000h–FFFFh`) is exclusively owned by the guest physical-memory backend. Its mapping is volatile and is never used as an overlay execution window.
 - Kernel pages `00h–0Fh` are allocated. Page 03 contains the operational stack and narrow diagnostic buffers. Page 00 contains the resident image; page 03 contains the operational stack and fixed data; page 04 holds X86IO and page 05 holds X86ALU. The initial WIN2/WIN3 mappings are page 01/page 02.
-- A source scan of the CPU/IPC translation units found no fixed data operands in logical `8000h–BFFFh`; the range is now used as the fixed-origin overlay execution/data aperture. X86IO occupies the fixed-origin page04 overlay (814 bytes) on page04; X86ALU occupies the fixed-origin page05 overlay (1,206 bytes) on page05.
+- A source scan of the CPU/IPC translation units found no fixed data operands in logical `8000h–BFFFh`; the range is now used as the fixed-origin overlay execution/data aperture. X86IO occupies the fixed-origin page04 overlay; X86ALU occupies the fixed-origin page05 overlay; X86DEV occupies the fixed-origin page06 overlay. Their exact byte sizes are emitted by CI.
 
 ## 3. Candidate execution aperture
 
-Use WIN2 (`8000h–BFFFh`, 16 KiB) as the fixed-origin overlay execution/data aperture. The current implementation switches between the two pinned overlays through the resident gate; pages 06h–0Fh are not yet dynamically allocated.
+Use WIN2 (`8000h–BFFFh`, 16 KiB) as the fixed-origin overlay execution/data aperture. The current implementation switches between the two pinned overlays through the resident gate; pages 07h–0Fh are dynamically allocated; page06 is now pinned to X86DEV.
 
 Rationale:
 
@@ -34,7 +34,7 @@ Rationale:
 4. An overlay can execute at a fixed logical origin (`8000h`) while its physical backing page is selected from the kernel pool.
 5. X86IO occupies 814 bytes at the fixed origin on page04; X86ALU occupies 1,220 bytes at the fixed origin on page05. Both public CPU-facing APIs use resident wrappers. The resident call gate saves the current WIN2 selector on the WIN1 stack, maps the requested page, enters through IX, and restores the previous selector at a resident RET trampoline. The gate is source-built but has not yet passed a physical nested-switch test.
 
-Candidate physical overlay pool: pages `04h–0Fh` (12 pages, 192 KiB). Pages 04h and 05h are pinned to X86IO and X86ALU; pages 06h–0Fh are managed by a first-fit allocator. Pages 00–03 are excluded. The allocator tracks ten dynamic pages, reports exhaustion, rejects out-of-pool/double releases, and refuses to release the currently mapped or actively executing page. This is a page allocator primitive, not yet a module registry or loader.
+Physical overlay pool: pages `04h–0Fh` (12 pages, 192 KiB). Pages 04h, 05h and 06h are pinned to X86IO, X86ALU and X86DEV; pages 07h–0Fh (9 pages) are managed by a first-fit allocator. Pages 00–03 are excluded. The allocator tracks ten dynamic pages, reports exhaustion, rejects out-of-pool/double releases, and refuses to release the currently mapped or actively executing page. This is a page allocator primitive, not yet a module registry or loader.
 
 ### Mapping register gate
 
@@ -76,7 +76,7 @@ The intended path is:
 6. X86IO IMAGE_FINISH runs page mapping and nested gate self-tests before setting IO_OVERLAY_READY. X86ALU IMAGE_FINISH probes its page05 entry through the gate and verifies WIN2 returns to page04 before setting X86ALU_READY.
 7. BIOS execution remains gated until X86IO, X86ALU and the selected SYSBIOS image are ready. Failed transfers do not publish the ready flag.
 
-The IMAGE service now supports three explicit fixed profiles: SYSBIOS kind `00h` to page10 (8192 bytes), X86IO kind `01h` to page04 (1..4096 bytes), and X86ALU kind `02h` to page05 (1..4096 bytes). Both use the same page-42 staging and WIN3 copy/readback path. This is not yet a generic image loader or arbitrary-page module installer.
+The IMAGE service now supports four explicit fixed profiles: SYSBIOS kind `00h` to page10 (8192 bytes), X86IO kind `01h` to page04 (1..4096 bytes), X86ALU kind `02h` to page05 (1..4096 bytes), and X86DEV kind `03h` to page06 (1..4096 bytes). Both use the same page-42 staging and WIN3 copy/readback path. This is not yet a generic image loader or arbitrary-page module installer.
 
 Modules larger than one frame must be streamed as multiple fragments. A 16 KiB module cannot fit in one ABI 1.0 frame after the IPC header and fragment extension, so the loader must not assume a single-fragment 16 KiB transfer.
 
@@ -105,13 +105,13 @@ Rules:
 
 ## 7. First vertical slice
 
-The first candidate module is the existing XT PPI/keyboard I/O implementation in `neogs_sub/x86_io.asm`. It is a small, bounded source unit and provides a real consumer of the module ABI.
+The XT PPI/keyboard implementation remains in `neogs_sub/x86_io.asm`; the 8237 DMA and 8253 PIT register models are now a separate `neogs_sub/x86_devices.asm` overlay. It is a small, bounded source unit and provides a real consumer of the module ABI.
 
 The two pinned-overlay source/build/load slices and low-level resident call gate are implemented:
 - `x86_io.asm` is assembled at `8000h` and exported as `X86IO.C` (814 bytes in the current build);
 - `X86CORE.C` is separately exported at 0000h (16,041 bytes in the current build);
 - resident public X86IO and X86ALU entry points route through the WIN2 gate; implementation symbols remain fixed at the overlay origin;
-- ATM loads `X86IO.C` and `X86ALU.C` from TR-DOS after A2h using the shared fixed-profile loader and ABI 1.0 DMA;
+- ATM loads `X86IO.C`, `X86ALU.C` and `X86DEV.C` from TR-DOS after A2h using the shared fixed-profile loader and ABI 1.0 DMA;
 - NeoGS installs page04, verifies the complete image by readback, explicitly enforces GSCFG0 NOROM=1/RAMRO=0/EXPAG=1, then runs a deterministic WIN2/WIN3 alias test across pages04/05 at offset 3FFFh using distinct nonzero markers. The test separates WIN3 write/read, WIN2 read-through, WIN2 local write/read, and WIN2→WIN3 write-through before restoring both saved bytes. It then runs a temporary page05→page04 X86IO-wrapper→page05 gate test and restores page05 scratch bytes before the X86ALU image is loaded;
 - BIOS execution waits for IO_OVERLAY_READY, X86ALU_READY and BIOS_IMAGE_READY;
 - `00E0h` diagnostic latch and current PPI/keyboard semantics are retained.
