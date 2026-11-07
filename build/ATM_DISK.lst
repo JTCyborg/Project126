@@ -65,362 +65,365 @@
   42+ 601F 01 F7 EF             ld      bc, #EFF7
   43+ 6022 ED 79                out     (c), a
   44+ 6024
-  45+ 6024 21 78 62             ld      hl, p126_log_trdos_begin
-  46+ 6027 CD 71 61             call    p126_host_debug_string
-  47+ 602A CD 08 70             call    p126_catalog_read_disk
-  48+ 602D 3E 01                ld      a, 1
-  49+ 602F 32 85 73             ld      (p126_catalog_preloaded), a
-  50+ 6032 21 9C 62             ld      hl, p126_log_trdos_done
-  51+ 6035 CD 71 61             call    p126_host_debug_string
-  52+ 6038
-  53+ 6038                      ; Only after the TR-DOS directory read is complete may ATM video
-  54+ 6038                      ; paging and shadow-port decoding be enabled.
-  55+ 6038 21 11 62             ld      hl, p126_log_ngs_begin
-  56+ 603B CD 71 61             call    p126_host_debug_string
-  57+ 603E CD C4 73             call    p126_neogs_startup
-  58+ 6041 38 0D                jr      c,p126_host_ngs_start_failed
-  59+ 6043 3E 01                ld      a,1
-  60+ 6045 32 10 62             ld      (p126_host_ngs_ready),a
-  61+ 6048 21 35 62             ld      hl,p126_log_ngs_ready
-  62+ 604B CD 71 61             call    p126_host_debug_string
-  63+ 604E 18 71                jr      p126_host_ngs_start_done
-  64+ 6050              p126_host_ngs_start_failed:
-  65+ 6050 21 53 62             ld      hl,p126_log_ngs_failed
-  66+ 6053 CD 71 61             call    p126_host_debug_string
-  67+ 6056 CD 85 61             call    p126_host_log_prefix
-  68+ 6059 01 EF 00             ld      bc,#00EF
-  69+ 605C 3E 5B                ld      a,'['
-  70+ 605E ED 79                out     (c),a
-  71+ 6060 3E 42                ld      a,'B'
-  72+ 6062 ED 79                out     (c),a
-  73+ 6064 3E 4F                ld      a,'O'
-  74+ 6066 ED 79                out     (c),a
-  75+ 6068 3E 4F                ld      a,'O'
-  76+ 606A ED 79                out     (c),a
-  77+ 606C 3E 54                ld      a,'T'
-  78+ 606E ED 79                out     (c),a
-  79+ 6070 3E 5D                ld      a,']'
-  80+ 6072 ED 79                out     (c),a
-  81+ 6074 3E 20                ld      a,' '
-  82+ 6076 ED 79                out     (c),a
-  83+ 6078 3E 4E                ld      a,'N'
-  84+ 607A ED 79                out     (c),a
-  85+ 607C 3E 47                ld      a,'G'
-  86+ 607E ED 79                out     (c),a
-  87+ 6080 3E 53                ld      a,'S'
-  88+ 6082 ED 79                out     (c),a
-  89+ 6084 3E 20                ld      a,' '
-  90+ 6086 ED 79                out     (c),a
-  91+ 6088 3E 46                ld      a,'F'
-  92+ 608A ED 79                out     (c),a
-  93+ 608C 3E 41                ld      a,'A'
-  94+ 608E ED 79                out     (c),a
-  95+ 6090 3E 49                ld      a,'I'
-  96+ 6092 ED 79                out     (c),a
-  97+ 6094 3E 4C                ld      a,'L'
-  98+ 6096 ED 79                out     (c),a
-  99+ 6098 3E 20                ld      a,' '
- 100+ 609A ED 79                out     (c),a
- 101+ 609C 3E 53                ld      a,'S'
- 102+ 609E ED 79                out     (c),a
- 103+ 60A0 3E 54                ld      a,'T'
- 104+ 60A2 ED 79                out     (c),a
- 105+ 60A4 3E 41                ld      a,'A'
- 106+ 60A6 ED 79                out     (c),a
- 107+ 60A8 3E 47                ld      a,'G'
- 108+ 60AA ED 79                out     (c),a
- 109+ 60AC 3E 45                ld      a,'E'
- 110+ 60AE ED 79                out     (c),a
- 111+ 60B0 3E 3D                ld      a,'='
- 112+ 60B2 ED 79                out     (c),a
- 113+ 60B4 3A 43 7A             ld      a,(p126_neogs_startup_stage)
- 114+ 60B7 ED 79                out     (c),a
- 115+ 60B9 3E 0D                ld      a,13
- 116+ 60BB ED 79                out     (c),a
- 117+ 60BD 3E 0A                ld      a,10
- 118+ 60BF ED 79                out     (c),a
- 119+ 60C1              p126_host_ngs_start_done:
- 120+ 60C1 21 C1 62             ld      hl, p126_log_video_begin
- 121+ 60C4 CD 71 61             call    p126_host_debug_string
- 122+ 60C7 CD 02 A0             call    p126_atm_video_init
- 123+ 60CA 21 DF 62             ld      hl, p126_log_video_done
- 124+ 60CD CD 71 61             call    p126_host_debug_string
- 125+ 60D0
- 126+ 60D0                      ; Probe the Project125 DS12887 RTC backend only after shadow-port
- 127+ 60D0                      ; decoding is active.
+  45+ 6024                      ; Start NeoGS and transfer its resident/overlay images first.
+  46+ 6024                      ; TR-DOS file operations may alter shared disk/ROM workspace, so
+  47+ 6024                      ; the catalogue buffer is populated only after all image transfers.
+  48+ 6024 21 11 62             ld      hl, p126_log_ngs_begin
+  49+ 6027 CD 71 61             call    p126_host_debug_string
+  50+ 602A CD C4 73             call    p126_neogs_startup
+  51+ 602D 38 0D                jr      c,p126_host_ngs_start_failed
+  52+ 602F 3E 01                ld      a,1
+  53+ 6031 32 10 62             ld      (p126_host_ngs_ready),a
+  54+ 6034 21 35 62             ld      hl,p126_log_ngs_ready
+  55+ 6037 CD 71 61             call    p126_host_debug_string
+  56+ 603A 18 71                jr      p126_host_ngs_start_done
+  57+ 603C              p126_host_ngs_start_failed:
+  58+ 603C 21 53 62             ld      hl,p126_log_ngs_failed
+  59+ 603F CD 71 61             call    p126_host_debug_string
+  60+ 6042 CD 85 61             call    p126_host_log_prefix
+  61+ 6045 01 EF 00             ld      bc,#00EF
+  62+ 6048 3E 5B                ld      a,'['
+  63+ 604A ED 79                out     (c),a
+  64+ 604C 3E 42                ld      a,'B'
+  65+ 604E ED 79                out     (c),a
+  66+ 6050 3E 4F                ld      a,'O'
+  67+ 6052 ED 79                out     (c),a
+  68+ 6054 3E 4F                ld      a,'O'
+  69+ 6056 ED 79                out     (c),a
+  70+ 6058 3E 54                ld      a,'T'
+  71+ 605A ED 79                out     (c),a
+  72+ 605C 3E 5D                ld      a,']'
+  73+ 605E ED 79                out     (c),a
+  74+ 6060 3E 20                ld      a,' '
+  75+ 6062 ED 79                out     (c),a
+  76+ 6064 3E 4E                ld      a,'N'
+  77+ 6066 ED 79                out     (c),a
+  78+ 6068 3E 47                ld      a,'G'
+  79+ 606A ED 79                out     (c),a
+  80+ 606C 3E 53                ld      a,'S'
+  81+ 606E ED 79                out     (c),a
+  82+ 6070 3E 20                ld      a,' '
+  83+ 6072 ED 79                out     (c),a
+  84+ 6074 3E 46                ld      a,'F'
+  85+ 6076 ED 79                out     (c),a
+  86+ 6078 3E 41                ld      a,'A'
+  87+ 607A ED 79                out     (c),a
+  88+ 607C 3E 49                ld      a,'I'
+  89+ 607E ED 79                out     (c),a
+  90+ 6080 3E 4C                ld      a,'L'
+  91+ 6082 ED 79                out     (c),a
+  92+ 6084 3E 20                ld      a,' '
+  93+ 6086 ED 79                out     (c),a
+  94+ 6088 3E 53                ld      a,'S'
+  95+ 608A ED 79                out     (c),a
+  96+ 608C 3E 54                ld      a,'T'
+  97+ 608E ED 79                out     (c),a
+  98+ 6090 3E 41                ld      a,'A'
+  99+ 6092 ED 79                out     (c),a
+ 100+ 6094 3E 47                ld      a,'G'
+ 101+ 6096 ED 79                out     (c),a
+ 102+ 6098 3E 45                ld      a,'E'
+ 103+ 609A ED 79                out     (c),a
+ 104+ 609C 3E 3D                ld      a,'='
+ 105+ 609E ED 79                out     (c),a
+ 106+ 60A0 3A 43 7A             ld      a,(p126_neogs_startup_stage)
+ 107+ 60A3 ED 79                out     (c),a
+ 108+ 60A5 3E 0D                ld      a,13
+ 109+ 60A7 ED 79                out     (c),a
+ 110+ 60A9 3E 0A                ld      a,10
+ 111+ 60AB ED 79                out     (c),a
+ 112+ 60AD              p126_host_ngs_start_done:
+ 113+ 60AD                      ; Read the complete directory LAST, after all TR-DOS file operations
+ 114+ 60AD                      ; used by the NeoGS loader. Keep this before ATM video/paging setup.
+ 115+ 60AD 21 78 62             ld      hl, p126_log_trdos_begin
+ 116+ 60B0 CD 71 61             call    p126_host_debug_string
+ 117+ 60B3 CD 08 70             call    p126_catalog_read_disk
+ 118+ 60B6 3E 01                ld      a, 1
+ 119+ 60B8 32 85 73             ld      (p126_catalog_preloaded), a
+ 120+ 60BB 21 9C 62             ld      hl, p126_log_trdos_done
+ 121+ 60BE CD 71 61             call    p126_host_debug_string
+ 122+ 60C1
+ 123+ 60C1 21 C1 62             ld      hl, p126_log_video_begin
+ 124+ 60C4 CD 71 61             call    p126_host_debug_string
+ 125+ 60C7 CD 02 A0             call    p126_atm_video_init
+ 126+ 60CA 21 DF 62             ld      hl, p126_log_video_done
+ 127+ 60CD CD 71 61             call    p126_host_debug_string
  128+ 60D0
- 129+ 60D0 CD 83 63             call    DS12887_PROBE
- 130+ 60D3 21 FC 62             ld      hl, p126_log_rtc_done
- 131+ 60D6 CD 71 61             call    p126_host_debug_string
- 132+ 60D9
- 133+ 60D9 21 6A 63             ld      hl, p126_host_version_text
- 134+ 60DC CD 71 61             call    p126_host_debug_string
- 135+ 60DF CD 85 61             call    p126_host_log_prefix
- 136+ 60E2 CD 47 68             call    p126_ipc_emit_version
- 137+ 60E5
- 138+ 60E5 21 16 63             ld      hl, p126_log_console_begin
- 139+ 60E8 CD 71 61             call    p126_host_debug_string
- 140+ 60EB CD 82 A0             call    BIOS_DebugConsole_Init
- 141+ 60EE CD 92 A0             call    BIOS_DebugConsole_Clear
- 142+ 60F1 CD 18 A1             call    BIOS_DebugConsole_DrawInterface
- 143+ 60F4 21 17 61             ld      hl, p126_host_ui_log
- 144+ 60F7 CD 0E 61             call    p126_host_console_string
- 145+ 60FA 21 32 63             ld      hl, p126_log_console_done
- 146+ 60FD CD 71 61             call    p126_host_debug_string
- 147+ 6100 CD 42 6E             call    p126_catalog_initialize
- 148+ 6103 21 4D 63             ld      hl, p126_log_catalog_return
- 149+ 6106 CD 71 61             call    p126_host_debug_string
- 150+ 6109
- 151+ 6109                      ; The 16 KiB DMA smoke-test buffers overlap the TR-DOS directory
- 152+ 6109                      ; buffer at #C800. Keep destructive DMA diagnostics out of the normal
- 153+ 6109                      ; catalogue session; run them only in the dedicated DMA test build.
- 154+ 6109
- 155+ 6109              p126_host_idle:
- 156+ 6109 CD AE 6E             call    p126_catalog_poll_keyboard
- 157+ 610C 18 FB                jr      p126_host_idle
- 158+ 610E
- 159+ 610E              ; IN: HL=zero-terminated string. Writes to the lower on-screen log.
- 160+ 610E              p126_host_console_string:
- 161+ 610E 7E                   ld      a, (hl)
- 162+ 610F B7                   or      a
- 163+ 6110 C8                   ret     z
- 164+ 6111 CD 91 A1             call    BIOS_DebugConsole_PrintChar
- 165+ 6114 23                   inc     hl
- 166+ 6115 18 F7                jr      p126_host_console_string
- 167+ 6117
- 168+ 6117              p126_host_ui_log:
- 169+ 6117 41 54 4D 20          db "ATM HOST SHELL INITIALIZED", 13, 10
- 169+ 611B 48 4F 53 54
- 169+ 611F 20 53 48 45
- 169+ 6123 4C 4C 20 49
- 169+ 6127 4E 49 54 49
- 169+ 612B 41 4C 49 5A
- 169+ 612F 45 44 0D 0A
- 170+ 6133 4E 65 6F 47          db "NeoGS BOOTSTRAP LOADER ENABLED",13,10
- 170+ 6137 53 20 42 4F
- 170+ 613B 4F 54 53 54
- 170+ 613F 52 41 50 20
- 170+ 6143 4C 4F 41 44
- 170+ 6147 45 52 20 45
- 170+ 614B 4E 41 42 4C
- 170+ 614F 45 44 0D 0A
- 171+ 6153 38 30 38 36          db "8086 execution: NOT STARTED",13,10,0
- 171+ 6157 20 65 78 65
- 171+ 615B 63 75 74 69
- 171+ 615F 6F 6E 3A 20
- 171+ 6163 4E 4F 54 20
- 171+ 6167 53 54 41 52
- 171+ 616B 54 45 44 0D
- 171+ 616F 0A 00
- 172+ 6171
- 173+ 6171              ; ATM debug output is independent of NeoGS debug output.
- 174+ 6171              p126_host_debug_string:
- 175+ 6171 CD 85 61             call    p126_host_log_prefix
- 176+ 6174 F5                   push    af
- 177+ 6175 C5                   push    bc
- 178+ 6176 01 EF 00             ld      bc, #00EF
- 179+ 6179              .p126_host_debug_loop:
- 180+ 6179 7E                   ld      a, (hl)
- 181+ 617A 23                   inc     hl
- 182+ 617B B7                   or      a
- 183+ 617C 28 04                jr      z, .p126_host_debug_done
- 184+ 617E ED 79                out     (c), a
- 185+ 6180 18 F7                jr      .p126_host_debug_loop
- 186+ 6182              .p126_host_debug_done:
- 187+ 6182 C1                   pop     bc
- 188+ 6183 F1                   pop     af
- 189+ 6184 C9                   ret
- 190+ 6185
- 191+ 6185
- 192+ 6185              ; Prefix every ATM-originated #EF message with the host RTC timestamp.
- 193+ 6185              ; NeoGS output must bypass this routine and use the independent [NGS] path.
- 194+ 6185              p126_host_log_prefix:
- 195+ 6185 F5                   push    af
- 196+ 6186 C5                   push    bc
- 197+ 6187 E5                   push    hl
- 198+ 6188 01 EF 00             ld      bc, #00EF
- 199+ 618B 3E 5B                ld      a, '['
- 200+ 618D ED 79                out     (c), a
- 201+ 618F 3A 9B 65             ld      a, (ds12887_available)
- 202+ 6192 B7                   or      a
- 203+ 6193 28 2B                jr      z, .p126_time_unknown
- 204+ 6195 CD D9 63             call    READ_CURRENT_TIME
- 205+ 6198 3A 95 65             ld      a, (txt_hour)
- 206+ 619B ED 79                out     (c), a
- 207+ 619D 3A 96 65             ld      a, (txt_hour+1)
- 208+ 61A0 ED 79                out     (c), a
- 209+ 61A2 3E 3A                ld      a, ':'
- 210+ 61A4 ED 79                out     (c), a
- 211+ 61A6 3A 97 65             ld      a, (txt_min)
- 212+ 61A9 ED 79                out     (c), a
- 213+ 61AB 3A 98 65             ld      a, (txt_min+1)
- 214+ 61AE ED 79                out     (c), a
- 215+ 61B0 3E 3A                ld      a, ':'
- 216+ 61B2 ED 79                out     (c), a
- 217+ 61B4 3A 99 65             ld      a, (txt_sec)
- 218+ 61B7 ED 79                out     (c), a
- 219+ 61B9 3A 9A 65             ld      a, (txt_sec+1)
- 220+ 61BC ED 79                out     (c), a
- 221+ 61BE 18 12                jr     .p126_time_close
- 222+ 61C0              .p126_time_unknown:
- 223+ 61C0 3E 3F                ld      a, '?'
- 224+ 61C2 ED 79                out     (c), a
- 225+ 61C4 ED 79                out     (c), a
- 226+ 61C6 ED 79                out     (c), a
- 227+ 61C8 ED 79                out     (c), a
- 228+ 61CA ED 79                out     (c), a
- 229+ 61CC ED 79                out     (c), a
- 230+ 61CE ED 79                out     (c), a
- 231+ 61D0 ED 79                out     (c), a
- 232+ 61D2              .p126_time_close:
- 233+ 61D2 3E 5D                ld      a, ']'
- 234+ 61D4 ED 79                out     (c), a
- 235+ 61D6                      ; ATM tag is emitted as individual bytes below.
- 236+ 61D6 3E 5B                ld      a, '['
- 237+ 61D8 ED 79                out     (c), a
- 238+ 61DA 3E 41                ld      a, 'A'
- 239+ 61DC ED 79                out     (c), a
- 240+ 61DE 3E 54                ld      a, 'T'
- 241+ 61E0 ED 79                out     (c), a
- 242+ 61E2 3E 4D                ld      a, 'M'
- 243+ 61E4 ED 79                out     (c), a
- 244+ 61E6 3E 5D                ld      a, ']'
- 245+ 61E8 ED 79                out     (c), a
- 246+ 61EA 3E 20                ld      a, ' '
- 247+ 61EC ED 79                out     (c), a
- 248+ 61EE E1                   pop     hl
- 249+ 61EF C1                   pop     bc
- 250+ 61F0 F1                   pop     af
- 251+ 61F1 C9                   ret
- 252+ 61F2
- 253+ 61F2              ; Print A as two hexadecimal digits to ATM's independent #EF stream.
- 254+ 61F2              p126_host_debug_hex_byte:
- 255+ 61F2 F5                   push    af
- 256+ 61F3 0F                   rrca
- 257+ 61F4 0F                   rrca
- 258+ 61F5 0F                   rrca
- 259+ 61F6 0F                   rrca
- 260+ 61F7 CD FE 61             call    p126_host_debug_hex_nibble
- 261+ 61FA F1                   pop     af
- 262+ 61FB C3 FE 61             jp      p126_host_debug_hex_nibble
- 263+ 61FE
- 264+ 61FE              p126_host_debug_hex_nibble:
- 265+ 61FE E6 0F                and     #0F
- 266+ 6200 C6 30                add     a,'0'
- 267+ 6202 FE 3A                cp      '9'+1
- 268+ 6204 38 02                jr      c,.p126_host_hex_emit
- 269+ 6206 C6 07                add     a,7
- 270+ 6208              .p126_host_hex_emit:
- 271+ 6208 C5                   push    bc
- 272+ 6209 01 EF 00             ld      bc,#00EF
- 273+ 620C ED 79                out     (c),a
- 274+ 620E C1                   pop     bc
- 275+ 620F C9                   ret
- 276+ 6210
- 277+ 6210 00           p126_host_ngs_ready: db 0
- 278+ 6211
- 279+ 6211 5B 42 4F 4F  p126_log_ngs_begin: db "[BOOT] NEOGS RESIDENT START BEGIN",13,10,0
- 279+ 6215 54 5D 20 4E
- 279+ 6219 45 4F 47 53
- 279+ 621D 20 52 45 53
- 279+ 6221 49 44 45 4E
- 279+ 6225 54 20 53 54
- 279+ 6229 41 52 54 20
- 279+ 622D 42 45 47 49
- 279+ 6231 4E 0D 0A 00
- 280+ 6235 5B 42 4F 4F  p126_log_ngs_ready: db "[BOOT] NEOGS RESIDENT READY",13,10,0
- 280+ 6239 54 5D 20 4E
- 280+ 623D 45 4F 47 53
- 280+ 6241 20 52 45 53
- 280+ 6245 49 44 45 4E
- 280+ 6249 54 20 52 45
- 280+ 624D 41 44 59 0D
- 280+ 6251 0A 00
- 281+ 6253 5B 42 4F 4F  p126_log_ngs_failed: db "[BOOT] NEOGS RESIDENT START FAILED",13,10,0
- 281+ 6257 54 5D 20 4E
- 281+ 625B 45 4F 47 53
- 281+ 625F 20 52 45 53
- 281+ 6263 49 44 45 4E
- 281+ 6267 54 20 53 54
- 281+ 626B 41 52 54 20
- 281+ 626F 46 41 49 4C
- 281+ 6273 45 44 0D 0A
- 281+ 6277 00
- 282+ 6278 5B 42 4F 4F  p126_log_trdos_begin:   db "[BOOT] TRDOS DIRECTORY READ BEGIN",13,10,0
- 282+ 627C 54 5D 20 54
- 282+ 6280 52 44 4F 53
- 282+ 6284 20 44 49 52
- 282+ 6288 45 43 54 4F
- 282+ 628C 52 59 20 52
- 282+ 6290 45 41 44 20
- 282+ 6294 42 45 47 49
- 282+ 6298 4E 0D 0A 00
- 283+ 629C 5B 42 4F 4F  p126_log_trdos_done:    db "[BOOT] TRDOS DIRECTORY READ RETURN",13,10,0
- 283+ 62A0 54 5D 20 54
- 283+ 62A4 52 44 4F 53
- 283+ 62A8 20 44 49 52
- 283+ 62AC 45 43 54 4F
- 283+ 62B0 52 59 20 52
- 283+ 62B4 45 41 44 20
- 283+ 62B8 52 45 54 55
- 283+ 62BC 52 4E 0D 0A
- 283+ 62C0 00
- 284+ 62C1 5B 42 4F 4F  p126_log_video_begin:   db "[BOOT] ATM VIDEO INIT BEGIN",13,10,0
- 284+ 62C5 54 5D 20 41
- 284+ 62C9 54 4D 20 56
- 284+ 62CD 49 44 45 4F
- 284+ 62D1 20 49 4E 49
- 284+ 62D5 54 20 42 45
- 284+ 62D9 47 49 4E 0D
- 284+ 62DD 0A 00
- 285+ 62DF 5B 42 4F 4F  p126_log_video_done:    db "[BOOT] ATM VIDEO INIT DONE",13,10,0
- 285+ 62E3 54 5D 20 41
- 285+ 62E7 54 4D 20 56
- 285+ 62EB 49 44 45 4F
- 285+ 62EF 20 49 4E 49
- 285+ 62F3 54 20 44 4F
- 285+ 62F7 4E 45 0D 0A
- 285+ 62FB 00
- 286+ 62FC 5B 42 4F 4F  p126_log_rtc_done:      db "[BOOT] RTC PROBE RETURN",13,10,0
- 286+ 6300 54 5D 20 52
- 286+ 6304 54 43 20 50
- 286+ 6308 52 4F 42 45
- 286+ 630C 20 52 45 54
- 286+ 6310 55 52 4E 0D
- 286+ 6314 0A 00
- 287+ 6316 5B 42 4F 4F  p126_log_console_begin: db "[BOOT] CONSOLE INIT BEGIN",13,10,0
- 287+ 631A 54 5D 20 43
- 287+ 631E 4F 4E 53 4F
- 287+ 6322 4C 45 20 49
- 287+ 6326 4E 49 54 20
- 287+ 632A 42 45 47 49
- 287+ 632E 4E 0D 0A 00
- 288+ 6332 5B 42 4F 4F  p126_log_console_done:  db "[BOOT] CONSOLE INIT DONE",13,10,0
- 288+ 6336 54 5D 20 43
- 288+ 633A 4F 4E 53 4F
- 288+ 633E 4C 45 20 49
- 288+ 6342 4E 49 54 20
- 288+ 6346 44 4F 4E 45
- 288+ 634A 0D 0A 00
- 289+ 634D 5B 42 4F 4F  p126_log_catalog_return: db "[BOOT] CATALOG INIT RETURN",13,10,0
- 289+ 6351 54 5D 20 43
- 289+ 6355 41 54 41 4C
- 289+ 6359 4F 47 20 49
- 289+ 635D 4E 49 54 20
- 289+ 6361 52 45 54 55
- 289+ 6365 52 4E 0D 0A
- 289+ 6369 00
- 290+ 636A
- 291+ 636A              p126_host_version_text:
- 292+ 636A 5B 50 31 32          db "[P126 ATM HOST v0.1.0]", 13, 10, 0
- 292+ 636E 36 20 41 54
- 292+ 6372 4D 20 48 4F
- 292+ 6376 53 54 20 76
- 292+ 637A 30 2E 31 2E
- 292+ 637E 30 5D 0D 0A
- 292+ 6382 00
- 293+ 6383
- 294+ 6383                      INCLUDE "atm_host/ds12887_rtc.asm"
+ 129+ 60D0                      ; Probe the Project125 DS12887 RTC backend only after shadow-port
+ 130+ 60D0                      ; decoding is active.
+ 131+ 60D0
+ 132+ 60D0 CD 83 63             call    DS12887_PROBE
+ 133+ 60D3 21 FC 62             ld      hl, p126_log_rtc_done
+ 134+ 60D6 CD 71 61             call    p126_host_debug_string
+ 135+ 60D9
+ 136+ 60D9 21 6A 63             ld      hl, p126_host_version_text
+ 137+ 60DC CD 71 61             call    p126_host_debug_string
+ 138+ 60DF CD 85 61             call    p126_host_log_prefix
+ 139+ 60E2 CD 47 68             call    p126_ipc_emit_version
+ 140+ 60E5
+ 141+ 60E5 21 16 63             ld      hl, p126_log_console_begin
+ 142+ 60E8 CD 71 61             call    p126_host_debug_string
+ 143+ 60EB CD 82 A0             call    BIOS_DebugConsole_Init
+ 144+ 60EE CD 92 A0             call    BIOS_DebugConsole_Clear
+ 145+ 60F1 CD 18 A1             call    BIOS_DebugConsole_DrawInterface
+ 146+ 60F4 21 17 61             ld      hl, p126_host_ui_log
+ 147+ 60F7 CD 0E 61             call    p126_host_console_string
+ 148+ 60FA 21 32 63             ld      hl, p126_log_console_done
+ 149+ 60FD CD 71 61             call    p126_host_debug_string
+ 150+ 6100 CD 42 6E             call    p126_catalog_initialize
+ 151+ 6103 21 4D 63             ld      hl, p126_log_catalog_return
+ 152+ 6106 CD 71 61             call    p126_host_debug_string
+ 153+ 6109
+ 154+ 6109                      ; The 16 KiB DMA smoke-test buffers overlap the TR-DOS directory
+ 155+ 6109                      ; buffer at #C800. Keep destructive DMA diagnostics out of the normal
+ 156+ 6109                      ; catalogue session; run them only in the dedicated DMA test build.
+ 157+ 6109
+ 158+ 6109              p126_host_idle:
+ 159+ 6109 CD AE 6E             call    p126_catalog_poll_keyboard
+ 160+ 610C 18 FB                jr      p126_host_idle
+ 161+ 610E
+ 162+ 610E              ; IN: HL=zero-terminated string. Writes to the lower on-screen log.
+ 163+ 610E              p126_host_console_string:
+ 164+ 610E 7E                   ld      a, (hl)
+ 165+ 610F B7                   or      a
+ 166+ 6110 C8                   ret     z
+ 167+ 6111 CD 91 A1             call    BIOS_DebugConsole_PrintChar
+ 168+ 6114 23                   inc     hl
+ 169+ 6115 18 F7                jr      p126_host_console_string
+ 170+ 6117
+ 171+ 6117              p126_host_ui_log:
+ 172+ 6117 41 54 4D 20          db "ATM HOST SHELL INITIALIZED", 13, 10
+ 172+ 611B 48 4F 53 54
+ 172+ 611F 20 53 48 45
+ 172+ 6123 4C 4C 20 49
+ 172+ 6127 4E 49 54 49
+ 172+ 612B 41 4C 49 5A
+ 172+ 612F 45 44 0D 0A
+ 173+ 6133 4E 65 6F 47          db "NeoGS BOOTSTRAP LOADER ENABLED",13,10
+ 173+ 6137 53 20 42 4F
+ 173+ 613B 4F 54 53 54
+ 173+ 613F 52 41 50 20
+ 173+ 6143 4C 4F 41 44
+ 173+ 6147 45 52 20 45
+ 173+ 614B 4E 41 42 4C
+ 173+ 614F 45 44 0D 0A
+ 174+ 6153 38 30 38 36          db "8086 execution: NOT STARTED",13,10,0
+ 174+ 6157 20 65 78 65
+ 174+ 615B 63 75 74 69
+ 174+ 615F 6F 6E 3A 20
+ 174+ 6163 4E 4F 54 20
+ 174+ 6167 53 54 41 52
+ 174+ 616B 54 45 44 0D
+ 174+ 616F 0A 00
+ 175+ 6171
+ 176+ 6171              ; ATM debug output is independent of NeoGS debug output.
+ 177+ 6171              p126_host_debug_string:
+ 178+ 6171 CD 85 61             call    p126_host_log_prefix
+ 179+ 6174 F5                   push    af
+ 180+ 6175 C5                   push    bc
+ 181+ 6176 01 EF 00             ld      bc, #00EF
+ 182+ 6179              .p126_host_debug_loop:
+ 183+ 6179 7E                   ld      a, (hl)
+ 184+ 617A 23                   inc     hl
+ 185+ 617B B7                   or      a
+ 186+ 617C 28 04                jr      z, .p126_host_debug_done
+ 187+ 617E ED 79                out     (c), a
+ 188+ 6180 18 F7                jr      .p126_host_debug_loop
+ 189+ 6182              .p126_host_debug_done:
+ 190+ 6182 C1                   pop     bc
+ 191+ 6183 F1                   pop     af
+ 192+ 6184 C9                   ret
+ 193+ 6185
+ 194+ 6185
+ 195+ 6185              ; Prefix every ATM-originated #EF message with the host RTC timestamp.
+ 196+ 6185              ; NeoGS output must bypass this routine and use the independent [NGS] path.
+ 197+ 6185              p126_host_log_prefix:
+ 198+ 6185 F5                   push    af
+ 199+ 6186 C5                   push    bc
+ 200+ 6187 E5                   push    hl
+ 201+ 6188 01 EF 00             ld      bc, #00EF
+ 202+ 618B 3E 5B                ld      a, '['
+ 203+ 618D ED 79                out     (c), a
+ 204+ 618F 3A 9B 65             ld      a, (ds12887_available)
+ 205+ 6192 B7                   or      a
+ 206+ 6193 28 2B                jr      z, .p126_time_unknown
+ 207+ 6195 CD D9 63             call    READ_CURRENT_TIME
+ 208+ 6198 3A 95 65             ld      a, (txt_hour)
+ 209+ 619B ED 79                out     (c), a
+ 210+ 619D 3A 96 65             ld      a, (txt_hour+1)
+ 211+ 61A0 ED 79                out     (c), a
+ 212+ 61A2 3E 3A                ld      a, ':'
+ 213+ 61A4 ED 79                out     (c), a
+ 214+ 61A6 3A 97 65             ld      a, (txt_min)
+ 215+ 61A9 ED 79                out     (c), a
+ 216+ 61AB 3A 98 65             ld      a, (txt_min+1)
+ 217+ 61AE ED 79                out     (c), a
+ 218+ 61B0 3E 3A                ld      a, ':'
+ 219+ 61B2 ED 79                out     (c), a
+ 220+ 61B4 3A 99 65             ld      a, (txt_sec)
+ 221+ 61B7 ED 79                out     (c), a
+ 222+ 61B9 3A 9A 65             ld      a, (txt_sec+1)
+ 223+ 61BC ED 79                out     (c), a
+ 224+ 61BE 18 12                jr     .p126_time_close
+ 225+ 61C0              .p126_time_unknown:
+ 226+ 61C0 3E 3F                ld      a, '?'
+ 227+ 61C2 ED 79                out     (c), a
+ 228+ 61C4 ED 79                out     (c), a
+ 229+ 61C6 ED 79                out     (c), a
+ 230+ 61C8 ED 79                out     (c), a
+ 231+ 61CA ED 79                out     (c), a
+ 232+ 61CC ED 79                out     (c), a
+ 233+ 61CE ED 79                out     (c), a
+ 234+ 61D0 ED 79                out     (c), a
+ 235+ 61D2              .p126_time_close:
+ 236+ 61D2 3E 5D                ld      a, ']'
+ 237+ 61D4 ED 79                out     (c), a
+ 238+ 61D6                      ; ATM tag is emitted as individual bytes below.
+ 239+ 61D6 3E 5B                ld      a, '['
+ 240+ 61D8 ED 79                out     (c), a
+ 241+ 61DA 3E 41                ld      a, 'A'
+ 242+ 61DC ED 79                out     (c), a
+ 243+ 61DE 3E 54                ld      a, 'T'
+ 244+ 61E0 ED 79                out     (c), a
+ 245+ 61E2 3E 4D                ld      a, 'M'
+ 246+ 61E4 ED 79                out     (c), a
+ 247+ 61E6 3E 5D                ld      a, ']'
+ 248+ 61E8 ED 79                out     (c), a
+ 249+ 61EA 3E 20                ld      a, ' '
+ 250+ 61EC ED 79                out     (c), a
+ 251+ 61EE E1                   pop     hl
+ 252+ 61EF C1                   pop     bc
+ 253+ 61F0 F1                   pop     af
+ 254+ 61F1 C9                   ret
+ 255+ 61F2
+ 256+ 61F2              ; Print A as two hexadecimal digits to ATM's independent #EF stream.
+ 257+ 61F2              p126_host_debug_hex_byte:
+ 258+ 61F2 F5                   push    af
+ 259+ 61F3 0F                   rrca
+ 260+ 61F4 0F                   rrca
+ 261+ 61F5 0F                   rrca
+ 262+ 61F6 0F                   rrca
+ 263+ 61F7 CD FE 61             call    p126_host_debug_hex_nibble
+ 264+ 61FA F1                   pop     af
+ 265+ 61FB C3 FE 61             jp      p126_host_debug_hex_nibble
+ 266+ 61FE
+ 267+ 61FE              p126_host_debug_hex_nibble:
+ 268+ 61FE E6 0F                and     #0F
+ 269+ 6200 C6 30                add     a,'0'
+ 270+ 6202 FE 3A                cp      '9'+1
+ 271+ 6204 38 02                jr      c,.p126_host_hex_emit
+ 272+ 6206 C6 07                add     a,7
+ 273+ 6208              .p126_host_hex_emit:
+ 274+ 6208 C5                   push    bc
+ 275+ 6209 01 EF 00             ld      bc,#00EF
+ 276+ 620C ED 79                out     (c),a
+ 277+ 620E C1                   pop     bc
+ 278+ 620F C9                   ret
+ 279+ 6210
+ 280+ 6210 00           p126_host_ngs_ready: db 0
+ 281+ 6211
+ 282+ 6211 5B 42 4F 4F  p126_log_ngs_begin: db "[BOOT] NEOGS RESIDENT START BEGIN",13,10,0
+ 282+ 6215 54 5D 20 4E
+ 282+ 6219 45 4F 47 53
+ 282+ 621D 20 52 45 53
+ 282+ 6221 49 44 45 4E
+ 282+ 6225 54 20 53 54
+ 282+ 6229 41 52 54 20
+ 282+ 622D 42 45 47 49
+ 282+ 6231 4E 0D 0A 00
+ 283+ 6235 5B 42 4F 4F  p126_log_ngs_ready: db "[BOOT] NEOGS RESIDENT READY",13,10,0
+ 283+ 6239 54 5D 20 4E
+ 283+ 623D 45 4F 47 53
+ 283+ 6241 20 52 45 53
+ 283+ 6245 49 44 45 4E
+ 283+ 6249 54 20 52 45
+ 283+ 624D 41 44 59 0D
+ 283+ 6251 0A 00
+ 284+ 6253 5B 42 4F 4F  p126_log_ngs_failed: db "[BOOT] NEOGS RESIDENT START FAILED",13,10,0
+ 284+ 6257 54 5D 20 4E
+ 284+ 625B 45 4F 47 53
+ 284+ 625F 20 52 45 53
+ 284+ 6263 49 44 45 4E
+ 284+ 6267 54 20 53 54
+ 284+ 626B 41 52 54 20
+ 284+ 626F 46 41 49 4C
+ 284+ 6273 45 44 0D 0A
+ 284+ 6277 00
+ 285+ 6278 5B 42 4F 4F  p126_log_trdos_begin:   db "[BOOT] TRDOS DIRECTORY READ BEGIN",13,10,0
+ 285+ 627C 54 5D 20 54
+ 285+ 6280 52 44 4F 53
+ 285+ 6284 20 44 49 52
+ 285+ 6288 45 43 54 4F
+ 285+ 628C 52 59 20 52
+ 285+ 6290 45 41 44 20
+ 285+ 6294 42 45 47 49
+ 285+ 6298 4E 0D 0A 00
+ 286+ 629C 5B 42 4F 4F  p126_log_trdos_done:    db "[BOOT] TRDOS DIRECTORY READ RETURN",13,10,0
+ 286+ 62A0 54 5D 20 54
+ 286+ 62A4 52 44 4F 53
+ 286+ 62A8 20 44 49 52
+ 286+ 62AC 45 43 54 4F
+ 286+ 62B0 52 59 20 52
+ 286+ 62B4 45 41 44 20
+ 286+ 62B8 52 45 54 55
+ 286+ 62BC 52 4E 0D 0A
+ 286+ 62C0 00
+ 287+ 62C1 5B 42 4F 4F  p126_log_video_begin:   db "[BOOT] ATM VIDEO INIT BEGIN",13,10,0
+ 287+ 62C5 54 5D 20 41
+ 287+ 62C9 54 4D 20 56
+ 287+ 62CD 49 44 45 4F
+ 287+ 62D1 20 49 4E 49
+ 287+ 62D5 54 20 42 45
+ 287+ 62D9 47 49 4E 0D
+ 287+ 62DD 0A 00
+ 288+ 62DF 5B 42 4F 4F  p126_log_video_done:    db "[BOOT] ATM VIDEO INIT DONE",13,10,0
+ 288+ 62E3 54 5D 20 41
+ 288+ 62E7 54 4D 20 56
+ 288+ 62EB 49 44 45 4F
+ 288+ 62EF 20 49 4E 49
+ 288+ 62F3 54 20 44 4F
+ 288+ 62F7 4E 45 0D 0A
+ 288+ 62FB 00
+ 289+ 62FC 5B 42 4F 4F  p126_log_rtc_done:      db "[BOOT] RTC PROBE RETURN",13,10,0
+ 289+ 6300 54 5D 20 52
+ 289+ 6304 54 43 20 50
+ 289+ 6308 52 4F 42 45
+ 289+ 630C 20 52 45 54
+ 289+ 6310 55 52 4E 0D
+ 289+ 6314 0A 00
+ 290+ 6316 5B 42 4F 4F  p126_log_console_begin: db "[BOOT] CONSOLE INIT BEGIN",13,10,0
+ 290+ 631A 54 5D 20 43
+ 290+ 631E 4F 4E 53 4F
+ 290+ 6322 4C 45 20 49
+ 290+ 6326 4E 49 54 20
+ 290+ 632A 42 45 47 49
+ 290+ 632E 4E 0D 0A 00
+ 291+ 6332 5B 42 4F 4F  p126_log_console_done:  db "[BOOT] CONSOLE INIT DONE",13,10,0
+ 291+ 6336 54 5D 20 43
+ 291+ 633A 4F 4E 53 4F
+ 291+ 633E 4C 45 20 49
+ 291+ 6342 4E 49 54 20
+ 291+ 6346 44 4F 4E 45
+ 291+ 634A 0D 0A 00
+ 292+ 634D 5B 42 4F 4F  p126_log_catalog_return: db "[BOOT] CATALOG INIT RETURN",13,10,0
+ 292+ 6351 54 5D 20 43
+ 292+ 6355 41 54 41 4C
+ 292+ 6359 4F 47 20 49
+ 292+ 635D 4E 49 54 20
+ 292+ 6361 52 45 54 55
+ 292+ 6365 52 4E 0D 0A
+ 292+ 6369 00
+ 293+ 636A
+ 294+ 636A              p126_host_version_text:
+ 295+ 636A 5B 50 31 32          db "[P126 ATM HOST v0.1.0]", 13, 10, 0
+ 295+ 636E 36 20 41 54
+ 295+ 6372 4D 20 48 4F
+ 295+ 6376 53 54 20 76
+ 295+ 637A 30 2E 31 2E
+ 295+ 637E 30 5D 0D 0A
+ 295+ 6382 00
+ 296+ 6383
+ 297+ 6383                      INCLUDE "atm_host/ds12887_rtc.asm"
 # file opened: ds12887_rtc.asm
    1++6383              ; =========================================================================
    2++6383              ; PROJECT125 — Dallas DS12887 RTC driver for ATM Turbo 2+
@@ -864,7 +867,7 @@
  438++65A5 00           ds12887_hour_binary: defb 0
  439++65A6
 # file closed: ds12887_rtc.asm
- 295+ 65A6                      INCLUDE "atm_host/neogs_ipc.asm"
+ 298+ 65A6                      INCLUDE "atm_host/neogs_ipc.asm"
 # file opened: neogs_ipc.asm
    1++65A6              ; =========================================================================
    2++65A6              ; PROJECT126 — ATM Turbo 2+ / NeoGS host-side IPC driver
@@ -2157,7 +2160,7 @@
  907++6E42              p126_ipc_dma_rx_buffer EQU P126_IPC_DMA_RX_BUFFER
  908++6E42
 # file closed: neogs_ipc.asm
- 296+ 6E42                      INCLUDE "atm_host/p126_disk_catalog.asm"
+ 299+ 6E42                      INCLUDE "atm_host/p126_disk_catalog.asm"
 # file opened: p126_disk_catalog.asm
    1++6E42              ; =========================================================================
    2++6E42              ; PROJECT126 — ATM-side TR-DOS directory browser
@@ -2923,7 +2926,7 @@
  640++73C0 52 4F 52 00
  641++73C4
 # file closed: p126_disk_catalog.asm
- 297+ 73C4                      INCLUDE "atm_host/p126_neogs_loader.asm"
+ 300+ 73C4                      INCLUDE "atm_host/p126_neogs_loader.asm"
 # file opened: p126_neogs_loader.asm
    1++73C4              ; =========================================================================
    2++73C4              ; PROJECT126 — ATM host NeoGS bootstrap/firmware loader
@@ -3986,7 +3989,7 @@
 1000++7AC0                      ASSERT  p126_neogs_dma_test_frame + P126_IPC_MAX_FRAME_SIZE = #10000
 1001++7AC0
 # file closed: p126_neogs_loader.asm
- 298+ 7AC0                      INCLUDE "atm_host/p126_bios_loader.asm"
+ 301+ 7AC0                      INCLUDE "atm_host/p126_bios_loader.asm"
 # file opened: p126_bios_loader.asm
    1++7AC0              ; =========================================================================
    2++7AC0              ; PROJECT126 — selected SYSBIOS loader
@@ -4865,12 +4868,12 @@
  665++8267 41 0D 0A 00
  666++826B
 # file closed: p126_bios_loader.asm
- 299+ 826B
- 300+ 826B              ; Project125-derived ATM-native text console, relocated to window 2.
- 301+ 826B              ; Its renderer maps video pages only for each write and restores host pages.
- 302+ 826B                      PAGE 0
- 303+ 826B                      ORG #A000
- 304+ A000                      INCLUDE "atm_host/p126_screen_console.asm"
+ 302+ 826B
+ 303+ 826B              ; Project125-derived ATM-native text console, relocated to window 2.
+ 304+ 826B              ; Its renderer maps video pages only for each write and restores host pages.
+ 305+ 826B                      PAGE 0
+ 306+ 826B                      ORG #A000
+ 307+ A000                      INCLUDE "atm_host/p126_screen_console.asm"
 # file opened: p126_screen_console.asm
    1++A000              ; =========================================================================
    2++A000              ; PROJECT126 — ATM TURBO 2+ native 80x25 text console
@@ -5605,12 +5608,12 @@
  680++A491 00           bios_dbg_print_col:   db 0
  681++A492
 # file closed: p126_screen_console.asm
- 305+ A492
- 306+ A492              p126_host_program_end:
- 307+ A492                      ASSERT p126_host_program_start = P126_HOST_LOAD_ADDRESS
- 308+ A492                      ASSERT p126_host_entry = P126_HOST_ENTRY_POINT
- 309+ A492                      ASSERT p126_host_program_end <= #A800
- 310+ A492
+ 308+ A492
+ 309+ A492              p126_host_program_end:
+ 310+ A492                      ASSERT p126_host_program_start = P126_HOST_LOAD_ADDRESS
+ 311+ A492                      ASSERT p126_host_entry = P126_HOST_ENTRY_POINT
+ 312+ A492                      ASSERT p126_host_program_end <= #A800
+ 313+ A492
 # file closed: project126_main.asm
   22  A492
   23  A492                      ASSERT p126_host_program_start = P126_HOST_LOAD_ADDRESS
@@ -6205,8 +6208,8 @@ Value    Label
 0x61D2   p126_host_log_prefix.p126_time_close
 0x61C0   p126_host_log_prefix.p126_time_unknown
 0x6210   p126_host_ngs_ready
-0x60C1   p126_host_ngs_start_done
-0x6050   p126_host_ngs_start_failed
+0x60AD   p126_host_ngs_start_done
+0x603C   p126_host_ngs_start_failed
 0x007F   P126_HOST_PAGE0
 0x007A   P126_HOST_PAGE5
 0xA492   p126_host_program_end
