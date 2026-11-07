@@ -464,9 +464,9 @@ x86_exec_logic_family:
         ld      (x86_exec_alu_lhs8),a
         call    x86_modrm_read_rm8
         ld      c,a
-        ld      a,(x86_exec_alu_lhs8)
         ld      a,(x86_exec_alu_operation)
         ld      b,a
+        ld      a,(x86_exec_alu_lhs8)
         call    x86_alu_logic8
         ld      c,a
         ld      a,(x86_modrm_reg)
