@@ -601,7 +601,9 @@ x86_exec_group4_byte:
         ld      a,(x86_exec_group45_value8)
         ld      c,1
         call    x86_alu_sub8
+        ld      (x86_exec_group45_value8),a
         call    x86_exec_group45_restore_cf
+        ld      a,(x86_exec_group45_value8)
         jp      x86_modrm_write_rm8
 .group4_inc:
         call    x86_modrm_read_rm8
@@ -610,7 +612,9 @@ x86_exec_group4_byte:
         ld      a,(x86_exec_group45_value8)
         ld      c,1
         call    x86_alu_add8
+        ld      (x86_exec_group45_value8),a
         call    x86_exec_group45_restore_cf
+        ld      a,(x86_exec_group45_value8)
         jp      x86_modrm_write_rm8
 .group4_invalid:
         scf
