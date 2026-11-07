@@ -322,7 +322,13 @@ x86_io_ppi_read8:
         ld      a,#0D
 .ppi_pc_speaker:
         ; PCem's bit 5 is ppispeakon, driven by PIT channel-2 OUT,
-        ; not by PB0/PB1. The current static PIT profile has OUT low.
+        ; not by PB0/PB1. Reflect the emulated OUT2 state.
+        ld      b,a
+        ld      a,(x86_dev_pit_out2)
+        or      a
+        ld      a,b
+        jr      z,.ppi_pc_return
+        or      #20
 .ppi_pc_return:
         or      a
         ret
