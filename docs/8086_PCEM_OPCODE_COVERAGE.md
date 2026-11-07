@@ -8,8 +8,8 @@ Later 80186/286/386 instructions are not part of the target CPU.
 
 - Denominator: 256 possible opcode-byte values in the documented original 8086 opcode map, including the 8087 ESC opcode range and undocumented 8086-compatible values where PCem has an execution path.
 - Numerator: opcode-byte values with a concrete execution path in the Project126 dispatcher.
-- Current numerator: 209.
-- **Opcode-byte dispatch coverage: 209 / 256 = 81.64%.**
+- Current numerator: 216.
+- **Opcode-byte dispatch coverage: 216 / 256 = 84.38%.**
 - This is a source-coverage metric, not a claim of full semantic correctness. ModR/M forms, memory addressing, prefixes, flags, interrupt behavior and corner cases are tracked separately and must also be complete before the CPU is called 100%.
 - An instruction family is not considered complete merely because one opcode in the family is present.
 
@@ -39,6 +39,8 @@ Later 80186/286/386 instructions are not part of the target CPU.
 | 80–83 | Group 1 immediate ALU: ADD/OR/ADC/SBB/AND/SUB/XOR/CMP | `neogs_sub/x86_exec.asm` + `x86_alu.asm` + `x86_modrm.asm` |
 | 84–85 | TEST r/m8/16,r8/16 | `neogs_sub/x86_exec.asm` + `x86_alu.asm` + `x86_modrm.asm` |
 | 06–07, 0E, 16–17, 1E–1F | PUSH/POP ES, CS, SS, DS (valid 8086 forms) | `neogs_sub/x86_exec.asm` |
+| 26, 2E, 36, 3E | ES/CS/SS/DS segment override prefixes | `neogs_sub/x86_exec.asm` + `x86_modrm.asm` |
+| F0, F2, F3 | LOCK, REPNE, REP/REPE prefix parser | `neogs_sub/x86_exec.asm` |
 | 00–05 | ADD r/m,r and AL/AX, immediate | `neogs_sub/x86_exec.asm` + `x86_alu.asm` + `x86_modrm.asm` |
 | 28–2D | SUB r/m,r and AL/AX, immediate | `neogs_sub/x86_exec.asm` + `x86_alu.asm` + `x86_modrm.asm` |
 | 38–3D | CMP r/m,r and AL/AX, immediate | `neogs_sub/x86_exec.asm` + `x86_alu.asm` + `x86_modrm.asm` |
@@ -82,6 +84,8 @@ The 16 register INC/DEC opcodes were added in commits `75a3e69da4549ffe2f2346b86
 
 ## Decoder foundation
 
+The instruction entry now consumes segment override (`26h`, `2Eh`, `36h`, `3Eh`), LOCK (`F0h`) and REPNE/REP (`F2h`/`F3h`) prefixes before dispatch. Segment overrides are applied to ModR/M effective addresses and direct-offset/XLAT data accesses. REP state is recorded for string execution; LOCK state is recorded, with no external bus-lock side effect in the single-guest-CPU model. REP string execution is still pending.
+
 `neogs_sub/x86_modrm.asm` is linked into the resident image. It fetches ModR/M and displacement bytes through the Project126 CS:IP fetch path, decodes the 8086 BX/BP/SI/DI effective-address forms, applies signed disp8 or disp16, and selects DS versus SS for BP-based addressing. It now also provides byte/word register and r/m operand accessors, including AH/CH/DH/BH mapping and guest-memory access through the Project126 mapper. MOV 88h–8Bh, MOV segment-register 8Ch/8Eh, XCHG 86h–87h, POP 8Fh, LEA 8Dh, LES/LDS C4h/C5h and MOV-immediate C6h/C7h use these helpers. These are initial supported forms, not completion of all ModR/M-dependent families or segment overrides. XCHG memory/register forms preserve FLAGS; POP r/m16 resolves the destination EA before applying the stack increment. MOV SS arms `x86_irq_inhibit`; the interrupt-boundary dispatcher that consumes this one-instruction inhibit is still pending. LES/LDS require memory operands and load the offset word followed by the segment word.
 
 ## Not yet implemented
@@ -89,13 +93,13 @@ The 16 register INC/DEC opcodes were added in commits `75a3e69da4549ffe2f2346b86
 All other original 8086 opcode families remain open, including:
 - remaining arithmetic/logical operations and full 8086 flag behavior;
 - shifts/rotates, multiply/divide (Group 3 /4–/7);
-- remaining ModR/M operand forms, full segment override handling and 8086 effective-address corner cases;
+- remaining ModR/M operand forms and string-specific segment/REP handling;
 - remaining XCHG and MOV variants, segment override and interrupt-shadow edge cases;
 - remaining stack operations and interrupt-shadow handling at instruction boundaries;
 - software interrupts, INTO, IRET and interrupt frame semantics;
 - string instructions and REP/REPE/REPNE;
 - IN/OUT as virtual guest ports, with no physical NeoGS device I/O;
-- segment/LOCK/REP prefixes and ESC/8087 handling;
+- REP string execution, ESC/8087 handling and remaining LOCK semantics;
 - invalid-opcode behavior and all documented 8086 corner cases.
 
 ## Architectural constraints
