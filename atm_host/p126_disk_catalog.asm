@@ -39,6 +39,8 @@ p126_catalog_initialize::
         call    p126_catalog_count_files
         ld      hl, p126_log_count_done
         call    p126_catalog_log
+        ld      a, (p126_catalog_total)
+        call    p126_host_debug_hex_byte
         ld      a, 1
         ld      (p126_catalog_enabled), a
         ld      hl, p126_log_draw_begin
@@ -332,10 +334,10 @@ p126_catalog_read_disk:
         cp      8
         jr      nc, .catalog_sectors_complete
 
-        ; TR-DOS sectors are numbered 1..16, never 0..15.
-        ; Directory sectors occupy 1..8 on logical track 0.
+        ; #3D13 sector-read convention uses zero-based E. The ROM
+        ; driver advances to physical sector E+1 internally. Therefore
+        ; the eight directory sectors are requested as E=0..7.
         ld      a, (p126_catalog_sector_index)
-        inc     a
         ld      e, a
         ld      d, 0
         ld      hl, (p126_catalog_buffer_ptr)
