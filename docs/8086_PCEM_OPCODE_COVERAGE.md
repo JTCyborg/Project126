@@ -8,8 +8,8 @@ Later 80186/286/386 instructions are not part of the target CPU.
 
 - Denominator: 256 possible opcode-byte values in the documented original 8086 opcode map, including the 8087 ESC opcode range and undocumented 8086-compatible values where PCem has an execution path.
 - Numerator: opcode-byte values with a concrete execution path in the Project126 dispatcher.
-- Current numerator: 136.
-- **Opcode-byte dispatch coverage: 136 / 256 = 53.13%.**
+- Current numerator: 140.
+- **Opcode-byte dispatch coverage: 140 / 256 = 54.69%.**
 - This is a source-coverage metric, not a claim of full semantic correctness. ModR/M forms, memory addressing, prefixes, flags, interrupt behavior and corner cases are tracked separately and must also be complete before the CPU is called 100%.
 - An instruction family is not considered complete merely because one opcode in the family is present.
 
@@ -24,6 +24,7 @@ Later 80186/286/386 instructions are not part of the target CPU.
 | 50–57 | PUSH r16 | `neogs_sub/x86_exec.asm` |
 | 58–5F | POP r16 | `neogs_sub/x86_exec.asm` |
 | 88–8B | MOV r/m8/16 and r8/16 register-memory forms | `neogs_sub/x86_exec.asm` + `x86_modrm.asm` |
+| 8C, 8E | MOV segment register to/from r/m16 | `neogs_sub/x86_exec.asm` + `x86_modrm.asm` |
 | 8D | LEA r16,m | `neogs_sub/x86_exec.asm` + `x86_modrm.asm` |
 | A0–A3 | MOV AL/AX to/from direct DS offset (moffs16) | `neogs_sub/x86_exec.asm` |
 | A8–A9 | TEST AL/AX, immediate | `neogs_sub/x86_exec.asm` |
@@ -36,6 +37,7 @@ Later 80186/286/386 instructions are not part of the target CPU.
 | 9A | CALL FAR ptr16:16 | `neogs_sub/x86_exec.asm` |
 | 9B | WAIT (PCem 8086 no-op path) | `neogs_sub/x86_exec.asm` |
 | C1–C3 | RET near aliases / RET imm16 | `neogs_sub/x86_exec.asm` |
+| C4–C5 | LES, LDS far-pointer loads | `neogs_sub/x86_exec.asm` + `x86_modrm.asm` |
 | C6–C7 | MOV r/m8/16, immediate (ModR/M /0) | `neogs_sub/x86_exec.asm` + `x86_modrm.asm` |
 | C8–CB | RETF aliases / RETF imm16 | `neogs_sub/x86_exec.asm` |
 | 9C–9F | PUSHF, POPF, SAHF, LAHF | `neogs_sub/x86_exec.asm` |
@@ -61,7 +63,7 @@ The 16 register INC/DEC opcodes were added in commits `75a3e69da4549ffe2f2346b86
 
 ## Decoder foundation
 
-`neogs_sub/x86_modrm.asm` is linked into the resident image. It fetches ModR/M and displacement bytes through the Project126 CS:IP fetch path, decodes the 8086 BX/BP/SI/DI effective-address forms, applies signed disp8 or disp16, and selects DS versus SS for BP-based addressing. It now also provides byte/word register and r/m operand accessors, including AH/CH/DH/BH mapping and guest-memory access through the Project126 mapper. MOV 88h–8Bh, XCHG 86h–87h, POP 8Fh, LEA 8Dh and MOV-immediate C6h/C7h use these helpers. These are initial supported forms, not completion of all ModR/M-dependent families or segment overrides. XCHG memory/register forms preserve FLAGS; POP r/m16 resolves the destination EA before applying the stack increment.
+`neogs_sub/x86_modrm.asm` is linked into the resident image. It fetches ModR/M and displacement bytes through the Project126 CS:IP fetch path, decodes the 8086 BX/BP/SI/DI effective-address forms, applies signed disp8 or disp16, and selects DS versus SS for BP-based addressing. It now also provides byte/word register and r/m operand accessors, including AH/CH/DH/BH mapping and guest-memory access through the Project126 mapper. MOV 88h–8Bh, MOV segment-register 8Ch/8Eh, XCHG 86h–87h, POP 8Fh, LEA 8Dh, LES/LDS C4h/C5h and MOV-immediate C6h/C7h use these helpers. These are initial supported forms, not completion of all ModR/M-dependent families or segment overrides. XCHG memory/register forms preserve FLAGS; POP r/m16 resolves the destination EA before applying the stack increment. MOV SS arms `x86_irq_inhibit`; the interrupt-boundary dispatcher that consumes this one-instruction inhibit is still pending. LES/LDS require memory operands and load the offset word followed by the segment word.
 
 ## Not yet implemented
 
@@ -69,7 +71,7 @@ All other original 8086 opcode families remain open, including:
 - remaining arithmetic/logical operations and full 8086 flag behavior;
 - register and memory INC/DEC, shifts/rotates, multiply/divide;
 - remaining ModR/M operand forms, full segment override handling and 8086 effective-address corner cases;
-- segment-register MOV, LES/LDS, remaining XCHG and MOV variants;
+- remaining XCHG and MOV variants, segment override and interrupt-shadow edge cases;
 - remaining stack operations and remaining near/far CALL/RET/JMP variants;
 - software interrupts, INTO, IRET and interrupt frame semantics;
 - string instructions and REP/REPE/REPNE;
