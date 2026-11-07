@@ -1357,3 +1357,13 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 - Existing CAPS SHIFT+7 / CAPS SHIFT+6 single-entry navigation remains unchanged.
 - Source commit: `26a22b25aeb7f1eda6fabf41387c72c3528c79da`.
 - Build and physical ATM keyboard validation are pending. The current `spectrum_out.txt` still contains only generic key-detected messages, so it cannot prove that page navigation was received or that the displayed rows changed.
+
+
+## 2026-11-07 — TR-DOS catalogue sector numbering correction
+
+- Physical ATM log showed the directory read routine returning OK, but the on-screen catalogue contained only one file and cursor input did not visibly change the selection.
+- Reviewed the TR-DOS #3D13 sector-read convention against the repository's TR-DOS driver reference: sector IDs are one-based. The catalogue loop had passed sector IDs 0..7 for the eight directory sectors.
+- Corrected the read loop to pass sectors 1..8 on logical track 0 while retaining the 8 × 256-byte read into #C800..#CFFF.
+- This is the likely root cause of the incomplete directory and therefore of navigation appearing inert when the valid-entry count was only one. Keyboard navigation itself still requires confirmation on physical ATM after this build.
+- Previous source commit `26a22b25aeb7f1eda6fabf41387c72c3528c79da` built successfully in GitHub Actions run [42409380829](https://github.com/JTCyborg/Project126/actions/runs/42409380829). The sector-number correction is source commit `64f3cd593b1cebb338d08b1775e4919b9acab300`; its build and hardware validation are pending.
+- Separate known issue retained: `X86 DMA REGISTER SELFTEST FAIL`; PIT and board-latch self-tests pass. This guest DMA-controller register-model issue is independent of the TR-DOS catalogue reader.
