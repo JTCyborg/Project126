@@ -573,7 +573,15 @@ x86_dev_pit_gate2_write:
         ld      a,b
         ld      (x86_dev_pit_gate2),a
         or      a
-        ret     z                       ; falling edge only gates the counter
+        jr      nz,.pit_gate_rising
+        ; In modes 2/3 a low GATE forces OUT high and stops counting.
+        ld      a,(x86_dev_pit_mode+2)
+        cp      2
+        jr      z,.pit_gate_out_high
+        cp      3
+        jr      z,.pit_gate_out_high
+        ret
+.pit_gate_rising:
         ld      a,(x86_dev_pit_loaded2)
         or      a
         ret     z                       ; PCem disabled[]: latch gate only
@@ -793,6 +801,28 @@ x86_dev_pit_selftest_impl:
         ld      a,#12
         call    x86_dev_pit_write8
         jp      c,.pit_selftest_fail
+        ld      a,(x86_dev_pit_out2)
+        cp      1
+        jp      nz,.pit_selftest_fail
+        ; A divisor of two verifies the 4:1 guest/PIT clock ratio and
+        ; successive mode-3 OUT2 half-period transitions.
+        ld      hl,#0042
+        ld      (x86_dev_port),hl
+        ld      a,2
+        call    x86_dev_pit_write8
+        jp      c,.pit_selftest_fail
+        xor     a
+        call    x86_dev_pit_write8
+        jp      c,.pit_selftest_fail
+        ld      a,1
+        call    x86_dev_pit_gate2_write
+        ld      b,4
+        call    x86_dev_pit_advance_cycles
+        ld      a,(x86_dev_pit_out2)
+        or      a
+        jp      nz,.pit_selftest_fail
+        ld      b,4
+        call    x86_dev_pit_advance_cycles
         ld      a,(x86_dev_pit_out2)
         cp      1
         jp      nz,.pit_selftest_fail
