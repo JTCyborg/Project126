@@ -196,6 +196,7 @@ x86_io_module_end:
 
 ; Emit independent TR-DOS files. The raw audit image still contains both
 ; address regions; only X86CORE.C is loaded by stage-0.
+        SAVEBIN "build/x86_cpu_state.bin",0,p126_ngs_ipc_module_end
         SAVEBIN "build/X86CORE.C",0,p126_ngs_ipc_module_end
         SAVEBIN "build/X86IO.C",x86_io_module_start,x86_io_module_end-x86_io_module_start
 
