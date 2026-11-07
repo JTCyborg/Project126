@@ -883,3 +883,13 @@ User-provided physical ATM/NeoGS target log at 09:52:27 confirms the corrected P
 - Source audit confirmed the ATM host TR-DOS file is saved only from `P126_HOST_LOAD_ADDRESS` through `p126_host_program_end` (asserted at or below `A800h`). The test's static `db` header placed after `ORG C000h` was therefore outside the packaged host file and was never loaded into the runtime staging RAM.
 - Corrected `p126_neogs_dma_smoke_test` to write all 18 ABI header bytes explicitly into the C000h runtime staging buffer before filling the payload and calculating CRC. The staging buffer is now an address constant, not an assumed preloaded binary block.
 - This fixes the proven header-initialization defect only. ATM page mapping, full 16 KiB DMA transfer and reverse DMA remain subject to subsequent hardware verification; no DMA PASS is inferred from this correction.
+
+
+## 2026-11-07 — ATM TX preflight aligned with Project125
+
+- Source comparison identified an unnecessary divergence from the proven Project125 host transport: Project126 recalculated CRC-16 over the complete outgoing frame inside `p126_ipc_dma_send_frame`, before issuing E0/READY. This put a full 16 KiB CRC pass in the DMA startup path and duplicated work already done by the frame builder.
+- Changed the ATM transmit preflight to validate only the envelope: 18..4000h total size, magic, ABI version, REQUEST type, reserved flag bits, and declared payload length versus actual frame size. It does not read/recalculate the payload CRC.
+- The authoritative full CRC-16/CCITT-FALSE check remains on NeoGS after forward DMA reception. Reverse DMA reception on ATM also retains its full CRC validation.
+- The DMA handshake and hardware contract are unchanged: E0, wait READY/CBIT clear, DI, LDIR to 0000h, FF, wait completion. No DMA registers, page mapping, dummy-read behavior, or ABI fields changed.
+- Commit: `3d4f9fd` plus exact-16-KiB boundary correction `2aa29a6`.
+- Status: source change committed; build/CI and hardware retest required. No 16 KiB hardware PASS is claimed.
