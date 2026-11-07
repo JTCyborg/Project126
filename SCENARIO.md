@@ -1281,3 +1281,13 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 - Code commits: `54f0aebf36484e9300ec5b801b94199b9f304b2e` (register model), `3a7b3e88e443a5182da0a52783734ffab2b2f32b` (self-test branch-range correction), `aea658f1221b27f8f24642a361adba38f44f3594` (long dispatcher branch correction), and `d9164183cf7cc79b7e84694ac242149a9e92fd2b` (coverage comments).
 - **BUILD PASS:** GitHub Actions run [42405478965](https://github.com/JTCyborg/Project126/actions/runs/42405478965), code commit `aea658f1221b27f8f24642a361adba38f44f3594`. All assembly/package units completed with 0 errors and 0 warnings. X86CORE.C=16,202/16,384 bytes; X86IO.C=2,691/4,096 bytes; X86ALU.C=1,220/4,096 bytes.
 - This verifies assembly/package only. DMA self-test output and any transfer behavior have not been observed on target hardware.
+
+
+## 2026-11-07 — 8253 PIT register programming/readback
+
+- Added guest port decode for 0040h–0043h. The three channels have 16-bit reload and count-latch storage, LSB-only/MSB-only/LSB+MSB access modes, per-channel read/write byte sequencing, count-latch commands, mode storage with 6/7 aliases to 2/3, and BCD flag storage.
+- Reset-time PIT regression verifies channel 0 LSB/MSB programming to 1234h, byte-wise readback, count-latch snapshot/readback, and channel 1 LSB-only programming/readback. It emits `[NGS] X86 PIT REGISTER SELFTEST PASS` or `FAIL` and restores the PIT register file.
+- Deliberate limitation: counters do not decrement, no PIT clock/timebase or output pin is generated, speaker behavior is not modeled, and IRQ0 is not raised. This is not a functioning timer yet.
+- Code commits: `0b5effd61bd0a8080325152f316ac6d9366f9481` (PIT model), `a84ef5a12490722b837556546ee05f29ba7e24b8` (remove redundant control-word calculations), `f4afc71679793ef1c5c50970208752db398dbe03` (relative-branch range fix), `d1246b980c1d715907d9f28e403a910a22f33c91` (coverage comment).
+- **BUILD PASS:** GitHub Actions run [42405784457](https://github.com/JTCyborg/Project126/actions/runs/42405784457), code commit `f4afc71679793ef1c5c50970208752db398dbe03`. All assembly/package units completed with 0 errors and 0 warnings. X86CORE.C=16,202/16,384 bytes; X86IO.C=3,540/4,096 bytes; X86ALU.C=1,220/4,096 bytes.
+- X86IO now has only 556 bytes of free space. Further devices (VGA, RTC, FDC/IDE, full timer and DMA transfer engine) should not be crammed into this overlay; next architecture step is splitting device models into separate overlay modules using the existing overlay allocator/gate. No timer or BIOS POST pass is claimed.
