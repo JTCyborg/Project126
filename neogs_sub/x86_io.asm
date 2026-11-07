@@ -830,9 +830,9 @@ x86_io_write16_impl:
         ld      (x86_io_port),hl
         ret
 
-; One-shot BIOS watchdog diagnostic: dump the 16 bytes surrounding the
-; current DS:SI table cursor. This reads guest memory through the normal
-; physical mapper and never changes guest registers or the memory map contract.
+; One-shot BIOS watchdog diagnostic: dump 20 bytes beginning at DS:SI-1,
+; including the byte consumed by the last LODSB and the following table data.
+; This reads guest memory through the normal mapper without changing guest state.
 x86_io_dump_bios_table_impl:
         push    af
         push    bc
@@ -848,10 +848,10 @@ x86_io_dump_bios_table_impl:
         call    x86_io_log_hex16
         ld      hl,x86_io_bios_table_data_text
         call    x86_io_log_string
-        ; BIOS1 has two consecutive port-init tables. Dump the fixed
-        ; E0A8..E0BB window so the second FF terminator can be verified even
-        ; when the guest SI has already run away under the watchdog.
-        ld      hl,#E0A8
+        ; Start at SI-1 so the dump includes the last byte consumed by LODSB.
+        ; This is deliberately the live DS:SI source, not a guessed ROM offset.
+        ld      hl,(x86_reg_si)
+        dec     hl
         ld      (x86_io_diag_offset),hl
         ld      a,20
         ld      (x86_io_diag_remaining),a
@@ -949,7 +949,7 @@ x86_io_log_port_text: db " P=",0
 x86_io_log_value_text: db " V=",0
 x86_io_log_at_text:  db " @",0
 x86_io_bios_table_prefix: db "[BIOS TABLE] CURSOR=",0
-x86_io_bios_table_data_text: db " DATA@E0A8=",0
+x86_io_bios_table_data_text: db " DATA@DS:SI-1=",0
 x86_io_pic_selftest_pass: db "[NGS] X86 PIC REGISTER SELFTEST PASS",13,10,0
 x86_io_pic_selftest_fail: db "[NGS] X86 PIC REGISTER SELFTEST FAIL",13,10,0
 
