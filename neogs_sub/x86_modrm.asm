@@ -203,7 +203,8 @@ x86_modrm_read_reg8:
         ret
 
 x86_modrm_write_reg8:
-        ld      (x86_modrm_operand_value),c
+        ld      a,c
+        ld      (x86_modrm_operand_value),a
         and     7
         ld      (x86_modrm_operand_index),a
         and     3
@@ -283,7 +284,8 @@ x86_modrm_write_rm8:
         or      a
         jr      z,.write_rm8_memory
         ld      a,(x86_ea_reg)
-        ld      c,(x86_modrm_operand_value)
+        ld      a,(x86_modrm_operand_value)
+        ld      c,a
         jp      x86_modrm_write_reg8
 .write_rm8_memory:
         call    x86_modrm_make_ea_address
