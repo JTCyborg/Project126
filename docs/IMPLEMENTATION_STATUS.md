@@ -890,3 +890,16 @@ All device models execute as software on NeoGS. NeoGS must not issue guest IN/OU
 - The physical memory map reserves kernel pages 00h–0Fh (256 KiB), while the current bootstrap/loader contract still constrains X86CORE.C to one 16 KiB page until an overlay manager exists.
 - Added an explicit scenario dependency: implement a resident overlay/module manager and multi-page module loading before adding PIC/PIT/DMA/VGA/RTC/IDE code. Preserve the fixed resident entry, WIN1/page-03 stack and WIN3 guest-memory aperture; do not silently raise the 16 KiB assertion.
 - This is a capacity/design blocker, not a device runtime failure. The next implementation task is the overlay loader/dispatcher contract; no extra controller is being squeezed into the remaining five bytes.
+
+## 2026-11-07 — Overlay Manager source audit and design baseline
+
+- Audited the current single-image boot path: stage-0 receives one bounded image through DBIT, copies it to logical 0000h and jumps to 0000h; the current bound is 4000h bytes.
+- Confirmed the resident translation unit links CPU state, execution, ModR/M, ALU, I/O and IPC into one flat ORG-0 image. The latest successful X86CORE.C is 16,379/16,384 bytes.
+- Confirmed startup window mapping: WIN0→page 00h, WIN1→page 03h, WIN2→page 01h, WIN3→page 02h; operational stack at 7FFEh. WIN3 remains exclusively owned by the guest-memory backend.
+- A first source scan of the CPU/IPC translation units found no direct memory operands in logical 8000h–BFFFh. WIN2 is therefore the candidate 16-KiB overlay aperture, but full runtime non-use and the arbitrary-page selector encoding are not yet proven.
+- Candidate physical overlay pool: pages 04h–0Fh. Pages 00h–03h are excluded from allocation.
+- Defined the fixed-origin linking direction, proposed module manifest requirements, ABI 1.0 DMA/IPC load path, page-42 staging, WIN3 destination copy/readback, and resident call/return gate with bounded nested mapping restoration.
+- Important implementation constraint: current BIOS IMAGE service is hard-coded to SYSBIOS page 10h and an 8-KiB single-fragment image. It is a reference for frame validation/copy/readback, not a reusable generic overlay loader yet.
+- The exact WIN2 selector register/encoding remains an implementation gate. The existing startup write OUT (#00),#80 proves only the current page-01 mapping; no page arithmetic is assumed.
+- Design specification: docs/P126_OVERLAY_MANAGER_DESIGN.md.
+- **STATUS:** design/source audit complete; runtime overlay manager, ATM module streaming, module service, call gate, CI and physical tests are NOT implemented. No device model was moved out of the resident image and no BIOS/CPU test status is changed.
