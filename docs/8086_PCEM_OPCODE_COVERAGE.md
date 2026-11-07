@@ -99,7 +99,7 @@ Group 2 shift/rotate opcodes D0h–D3h were added in commits `c3908954816b2cecea
 
 String opcodes A4h–A7h and AAh–AFh are implemented with SI/DI updates controlled by DF, ES-fixed destinations, and DS/segment-override sources. REP/REPE/REPNE loops decrement CX and apply ZF termination for CMPS/SCAS. The interpreter yields after each repeated iteration, restores IP to the first prefix byte when repetition continues, and checks the normal IRQ/NMI boundary before the next iteration. REPE/REPNE initialize ZF as PCem does, including the CX=0 case.
 
-The 8Eh MOV Sreg,r/m16 handler accepts the CS selector (/1), matching PCem's original 8086 path; this encoding differs from later x86 profiles. Reserved /4-/7 selectors are ignored as in PCem. The 8Ch handler likewise ignores /4-/7. SS loads arm the one-instruction IRQ-inhibit latch.
+The 8Eh MOV Sreg,r/m16 handler accepts the CS selector (/1), matching PCem's original 8086 path; this encoding differs from later x86 profiles. Reserved /4-/7 selectors are ignored as in PCem. The 8Ch handler likewise ignores /4-/7. PCem's 8Eh path arms its one-instruction maskable-IRQ inhibit latch for every selector, including ignored /4-/7; the 8Ch store form does not.
 
 The instruction entry now consumes segment override (`26h`, `2Eh`, `36h`, `3Eh`), LOCK/LOCK alias (`F0h`/`F1h`) and REPNE/REP (`F2h`/`F3h`) prefixes before dispatch. Segment overrides are applied to ModR/M effective addresses and direct-offset/XLAT data accesses. REP state is recorded for string execution; LOCK state is recorded, with no external bus-lock side effect in the single-guest-CPU model. REP string execution is still pending.
 
