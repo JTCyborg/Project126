@@ -1029,1014 +1029,1015 @@
  589+ 0426 B7                   or      a
  590+ 0427 ED 52                sbc     hl,de
  591+ 0429 C0                   ret     nz
- 592+ 042A                      ; The second table terminator is at F000:E0BA. LODSB advances SI
- 593+ 042A                      ; to E0BB before CMP; stop after CMP, JZ, XOR DH,03 and JNZ.
- 594+ 042A 2A B9 0B             ld      hl,(x86_reg_si)
- 595+ 042D 11 BB E0             ld      de,#E0BB
- 596+ 0430 B7                   or      a
- 597+ 0431 ED 52                sbc     hl,de
- 598+ 0433 C0                   ret     nz
- 599+ 0434 21 04 00             ld      hl,4
- 600+ 0437 22 D3 06             ld      (x86_bios_trace_remaining),hl
- 601+ 043A C9                   ret
- 602+ 043B
- 603+ 043B              ; Capture a compact stop event for the DMA diagnostics response.
- 604+ 043B              ; A=1 slice budget, 2 guest HLT, 3 opcode/memory fault, 4 reset-vector fault.
- 605+ 043B              x86_bios_trace_capture_event:
- 606+ 043B 32 4B 04             ld      (x86_bios_trace_event_status),a
- 607+ 043E 2A BF 0B             ld      hl,(x86_reg_cs)
- 608+ 0441 22 4C 04             ld      (x86_bios_trace_event_cs),hl
- 609+ 0444 2A C5 0B             ld      hl,(x86_reg_ip)
- 610+ 0447 22 4E 04             ld      (x86_bios_trace_event_ip),hl
- 611+ 044A C9                   ret
- 612+ 044B
- 613+ 044B 00           x86_bios_trace_event_status: db 0
- 614+ 044C 00 00        x86_bios_trace_event_cs:     dw 0
- 615+ 044E 00 00        x86_bios_trace_event_ip:     dw 0
- 616+ 0450
- 617+ 0450              ; Emit the post-instruction CS:IP on the independent NeoGS #EF channel.
- 618+ 0450              x86_bios_trace_log_cs_ip:
- 619+ 0450 F5                   push    af
- 620+ 0451 E5                   push    hl
- 621+ 0452 21 03 07             ld      hl,x86_bios_trace_cs_ip_prefix
- 622+ 0455 CD C0 00             call    p126_ngs_resident_log
- 623+ 0458 2A BF 0B             ld      hl,(x86_reg_cs)
- 624+ 045B CD 76 04             call    x86_bios_trace_emit_hex16
- 625+ 045E 3E 3A                ld      a,':'
- 626+ 0460 CD 3B 05             call    x86_bios_trace_emit_char
- 627+ 0463 2A C5 0B             ld      hl,(x86_reg_ip)
- 628+ 0466 CD 76 04             call    x86_bios_trace_emit_hex16
- 629+ 0469 3E 0D                ld      a,13
- 630+ 046B CD 3B 05             call    x86_bios_trace_emit_char
- 631+ 046E 3E 0A                ld      a,10
- 632+ 0470 CD 3B 05             call    x86_bios_trace_emit_char
- 633+ 0473 E1                   pop     hl
- 634+ 0474 F1                   pop     af
- 635+ 0475 C9                   ret
- 636+ 0476
- 637+ 0476              ; IN HL=word. Emits four uppercase hexadecimal digits.
- 638+ 0476              x86_bios_trace_emit_hex16:
- 639+ 0476 7C                   ld      a,h
- 640+ 0477 CD 7E 04             call    x86_bios_trace_emit_hex8
- 641+ 047A 7D                   ld      a,l
- 642+ 047B C3 7E 04             jp      x86_bios_trace_emit_hex8
- 643+ 047E
- 644+ 047E              ; IN A=byte. Preserves AF.
- 645+ 047E              x86_bios_trace_emit_hex8:
- 646+ 047E F5                   push    af
- 647+ 047F 0F                   rrca
- 648+ 0480 0F                   rrca
- 649+ 0481 0F                   rrca
- 650+ 0482 0F                   rrca
- 651+ 0483 CD 43 05             call    x86_bios_trace_emit_nibble
- 652+ 0486 F1                   pop     af
- 653+ 0487 E6 0F                and     #0F
- 654+ 0489 C3 43 05             jp      x86_bios_trace_emit_nibble
- 655+ 048C
- 656+ 048C              ; Dump the complete architectural state at a terminal BIOS stop.
- 657+ 048C              ; This distinguishes a guest wait loop from bad register/segment state.
- 658+ 048C              x86_bios_trace_log_registers:
- 659+ 048C F5                   push    af
- 660+ 048D C5                   push    bc
- 661+ 048E D5                   push    de
- 662+ 048F E5                   push    hl
- 663+ 0490 21 90 07             ld      hl,x86_bios_trace_regs_ax
- 664+ 0493 CD C0 00             call    p126_ngs_resident_log
- 665+ 0496 2A AD 0B             ld      hl,(x86_reg_ax)
- 666+ 0499 CD 76 04             call    x86_bios_trace_emit_hex16
- 667+ 049C 21 9E 07             ld      hl,x86_bios_trace_regs_bx
- 668+ 049F CD C0 00             call    p126_ngs_resident_log
- 669+ 04A2 2A B3 0B             ld      hl,(x86_reg_bx)
- 670+ 04A5 CD 76 04             call    x86_bios_trace_emit_hex16
- 671+ 04A8 21 A3 07             ld      hl,x86_bios_trace_regs_cx
- 672+ 04AB CD C0 00             call    p126_ngs_resident_log
- 673+ 04AE 2A AF 0B             ld      hl,(x86_reg_cx)
- 674+ 04B1 CD 76 04             call    x86_bios_trace_emit_hex16
- 675+ 04B4 21 A8 07             ld      hl,x86_bios_trace_regs_dx
- 676+ 04B7 CD C0 00             call    p126_ngs_resident_log
- 677+ 04BA 2A B1 0B             ld      hl,(x86_reg_dx)
- 678+ 04BD CD 76 04             call    x86_bios_trace_emit_hex16
- 679+ 04C0 21 AD 07             ld      hl,x86_bios_trace_regs_si
- 680+ 04C3 CD C0 00             call    p126_ngs_resident_log
- 681+ 04C6 2A B9 0B             ld      hl,(x86_reg_si)
- 682+ 04C9 CD 76 04             call    x86_bios_trace_emit_hex16
- 683+ 04CC 21 B2 07             ld      hl,x86_bios_trace_regs_di
- 684+ 04CF CD C0 00             call    p126_ngs_resident_log
- 685+ 04D2 2A BB 0B             ld      hl,(x86_reg_di)
- 686+ 04D5 CD 76 04             call    x86_bios_trace_emit_hex16
- 687+ 04D8 21 B7 07             ld      hl,x86_bios_trace_regs_bp
- 688+ 04DB CD C0 00             call    p126_ngs_resident_log
- 689+ 04DE 2A B7 0B             ld      hl,(x86_reg_bp)
- 690+ 04E1 CD 76 04             call    x86_bios_trace_emit_hex16
- 691+ 04E4 21 BC 07             ld      hl,x86_bios_trace_regs_sp
- 692+ 04E7 CD C0 00             call    p126_ngs_resident_log
- 693+ 04EA 2A B5 0B             ld      hl,(x86_reg_sp)
- 694+ 04ED CD 76 04             call    x86_bios_trace_emit_hex16
- 695+ 04F0 21 C1 07             ld      hl,x86_bios_trace_regs_ds
- 696+ 04F3 CD C0 00             call    p126_ngs_resident_log
- 697+ 04F6 2A C3 0B             ld      hl,(x86_reg_ds)
- 698+ 04F9 CD 76 04             call    x86_bios_trace_emit_hex16
- 699+ 04FC 21 C6 07             ld      hl,x86_bios_trace_regs_es
- 700+ 04FF CD C0 00             call    p126_ngs_resident_log
- 701+ 0502 2A BD 0B             ld      hl,(x86_reg_es)
- 702+ 0505 CD 76 04             call    x86_bios_trace_emit_hex16
- 703+ 0508 21 CB 07             ld      hl,x86_bios_trace_regs_ss
- 704+ 050B CD C0 00             call    p126_ngs_resident_log
- 705+ 050E 2A C1 0B             ld      hl,(x86_reg_ss)
- 706+ 0511 CD 76 04             call    x86_bios_trace_emit_hex16
- 707+ 0514 21 D0 07             ld      hl,x86_bios_trace_regs_flags
- 708+ 0517 CD C0 00             call    p126_ngs_resident_log
- 709+ 051A 2A C7 0B             ld      hl,(x86_reg_flags)
- 710+ 051D CD 76 04             call    x86_bios_trace_emit_hex16
- 711+ 0520 21 D8 07             ld      hl,x86_bios_trace_regs_opcode
- 712+ 0523 CD C0 00             call    p126_ngs_resident_log
- 713+ 0526 3A A1 2D             ld      a,(x86_exec_opcode)
- 714+ 0529 CD 7E 04             call    x86_bios_trace_emit_hex8
- 715+ 052C 3E 0D                ld      a,13
- 716+ 052E CD 3B 05             call    x86_bios_trace_emit_char
- 717+ 0531 3E 0A                ld      a,10
- 718+ 0533 CD 3B 05             call    x86_bios_trace_emit_char
- 719+ 0536 E1                   pop     hl
- 720+ 0537 D1                   pop     de
- 721+ 0538 C1                   pop     bc
- 722+ 0539 F1                   pop     af
- 723+ 053A C9                   ret
- 724+ 053B
- 725+ 053B              ; Use the same full 00EF diagnostic port as the resident logger.
- 726+ 053B              ; Preserve BC because callers may be maintaining loop counters.
- 727+ 053B              x86_bios_trace_emit_char:
- 728+ 053B C5                   push    bc
- 729+ 053C 01 EF 00             ld      bc,#00EF
- 730+ 053F ED 79                out     (c),a
- 731+ 0541 C1                   pop     bc
- 732+ 0542 C9                   ret
- 733+ 0543
- 734+ 0543              x86_bios_trace_emit_nibble:
- 735+ 0543 E6 0F                and     #0F
- 736+ 0545 C6 30                add     a,'0'
- 737+ 0547 FE 3A                cp      '9'+1
- 738+ 0549 38 02                jr      c,.hex_digit
- 739+ 054B C6 07                add     a,7
- 740+ 054D              .hex_digit:
- 741+ 054D CD 3B 05             call    x86_bios_trace_emit_char
- 742+ 0550 C9                   ret
- 743+ 0551
- 744+ 0551 00           x86_bios_trace_probe_byte0: db 0
- 745+ 0552 00           x86_bios_trace_probe_byte1: db 0
- 746+ 0553 00           x86_bios_trace_probe_error0: db 0
- 747+ 0554 00           x86_bios_trace_probe_error1: db 0
- 748+ 0555 5B 58 38 36  x86_bios_trace_probe_prefix: db "[X86 FETCH] B0=",0
- 748+ 0559 20 46 45 54
- 748+ 055D 43 48 5D 20
- 748+ 0561 42 30 3D 00
- 749+ 0565 20 42 31 3D  x86_bios_trace_probe_second: db " B1=",0
- 749+ 0569 00
- 750+ 056A 00           x86_bios_trace_first_count: db 0
- 751+ 056B 00           x86_bios_trace_first_number: db 0
- 752+ 056C 00 00 00     x86_bios_trace_first_phys: db 0,0,0
- 753+ 056F 00           x86_bios_trace_first_region: db 0
- 754+ 0570 5B 58 38 36  x86_bios_trace_first_prefix: db "[X86 STEP ",0
- 754+ 0574 20 53 54 45
- 754+ 0578 50 20 00
- 755+ 057B 5D 20 43 53  x86_bios_trace_first_csip: db "] CS:IP=",0
- 755+ 057F 3A 49 50 3D
- 755+ 0583 00
- 756+ 0584 20 50 3D 00  x86_bios_trace_first_phys_text: db " P=",0
- 757+ 0588 20 52 3D 00  x86_bios_trace_first_region_text: db " R=",0
- 758+ 058C 20 4F 50 3D  x86_bios_trace_first_opcode_text: db " OP=",0
- 758+ 0590 00
- 759+ 0591 20 41 58 3D  x86_bios_trace_first_ax: db " AX=",0
- 759+ 0595 00
- 760+ 0596 20 42 58 3D  x86_bios_trace_first_bx: db " BX=",0
- 760+ 059A 00
- 761+ 059B 20 43 58 3D  x86_bios_trace_first_cx: db " CX=",0
- 761+ 059F 00
- 762+ 05A0 20 44 58 3D  x86_bios_trace_first_dx: db " DX=",0
- 762+ 05A4 00
- 763+ 05A5 20 53 49 3D  x86_bios_trace_first_si: db " SI=",0
- 763+ 05A9 00
- 764+ 05AA 20 44 49 3D  x86_bios_trace_first_di: db " DI=",0
- 764+ 05AE 00
- 765+ 05AF 20 42 50 3D  x86_bios_trace_first_bp: db " BP=",0
- 765+ 05B3 00
- 766+ 05B4 20 53 50 3D  x86_bios_trace_first_sp: db " SP=",0
- 766+ 05B8 00
- 767+ 05B9 20 44 53 3D  x86_bios_trace_first_ds: db " DS=",0
- 767+ 05BD 00
- 768+ 05BE 20 45 53 3D  x86_bios_trace_first_es: db " ES=",0
- 768+ 05C2 00
- 769+ 05C3 20 53 53 3D  x86_bios_trace_first_ss: db " SS=",0
- 769+ 05C7 00
- 770+ 05C8 20 46 4C 41  x86_bios_trace_first_flags: db " FLAGS=",0
- 770+ 05CC 47 53 3D 00
- 771+ 05D0
- 772+ 05D0 00           x86_bios_trace_history_index: db 0
- 773+ 05D1 00           x86_bios_trace_dump_index: db 0
- 774+ 05D2 00 00        x86_bios_trace_record_ptr: dw 0
- 775+ 05D4 00 00        x86_bios_trace_dump_cs: dw 0
- 776+ 05D6 00 00        x86_bios_trace_dump_ip: dw 0
- 777+ 05D8 00 00        x86_bios_trace_dump_si: dw 0
- 778+ 05DA 00           x86_bios_trace_dump_al: db 0
- 779+ 05DB 00           x86_bios_trace_dump_flags: db 0
- 780+ 05DC 00           x86_bios_trace_dump_opcode: db 0
- 781+ 05DD 5B 49 4F 20  x86_bios_trace_io_prefix: db "[IO COUNT] IN=",0
- 781+ 05E1 43 4F 55 4E
- 781+ 05E5 54 5D 20 49
- 781+ 05E9 4E 3D 00
- 782+ 05EC 20 4F 55 54  x86_bios_trace_io_out_text: db " OUT=",0
- 782+ 05F0 3D 00
- 783+ 05F2 5B 58 38 36  x86_bios_trace_history_title: db "[X86 HIST] LAST 16 INSTRUCTIONS (OLDEST FIRST)",13,10,0
- 783+ 05F6 20 48 49 53
- 783+ 05FA 54 5D 20 4C
- 783+ 05FE 41 53 54 20
- 783+ 0602 31 36 20 49
- 783+ 0606 4E 53 54 52
- 783+ 060A 55 43 54 49
- 783+ 060E 4F 4E 53 20
- 783+ 0612 28 4F 4C 44
- 783+ 0616 45 53 54 20
- 783+ 061A 46 49 52 53
- 783+ 061E 54 29 0D 0A
- 783+ 0622 00
- 784+ 0623 5B 58 38 36  x86_bios_trace_history_prefix: db "[X86 HIST] ",0
- 784+ 0627 20 48 49 53
- 784+ 062B 54 5D 20 00
- 785+ 062F 20 53 49 3D  x86_bios_trace_history_si_text: db " SI=",0
- 785+ 0633 00
- 786+ 0634 20 41 4C 3D  x86_bios_trace_history_al_text: db " AL=",0
- 786+ 0638 00
- 787+ 0639 20 46 4C 3D  x86_bios_trace_history_flags_text: db " FL=",0
- 787+ 063D 00
- 788+ 063E 20 4F 50 3D  x86_bios_trace_history_opcode_text: db " OP=",0
- 788+ 0642 00
- 789+ 0643 00 00 00...  x86_bios_trace_history: BLOCK 16*9,0
- 790+ 06D3
- 791+ 06D3 00 00        x86_bios_trace_remaining: dw 0
- 792+ 06D5 00 00        x86_bios_trace_executed:  dw 0
- 793+ 06D7 5B 4E 47 53  x86_bios_trace_start_log: db "[NGS] X86 BIOS CONTINUOUS EXECUTION START",13,10,0
- 793+ 06DB 5D 20 58 38
- 793+ 06DF 36 20 42 49
- 793+ 06E3 4F 53 20 43
- 793+ 06E7 4F 4E 54 49
- 793+ 06EB 4E 55 4F 55
- 793+ 06EF 53 20 45 58
- 793+ 06F3 45 43 55 54
- 793+ 06F7 49 4F 4E 20
- 793+ 06FB 53 54 41 52
- 793+ 06FF 54 0D 0A 00
- 794+ 0703 5B 58 38 36  x86_bios_trace_cs_ip_prefix: db "[X86] CS:IP=",0
- 794+ 0707 5D 20 43 53
- 794+ 070B 3A 49 50 3D
- 794+ 070F 00
- 795+ 0710 5B 4E 47 53  x86_bios_trace_fault_log: db "[NGS] X86 BIOS TRACE STOP: OPCODE OR MEMORY FAULT",13,10,0
- 795+ 0714 5D 20 58 38
- 795+ 0718 36 20 42 49
- 795+ 071C 4F 53 20 54
- 795+ 0720 52 41 43 45
- 795+ 0724 20 53 54 4F
- 795+ 0728 50 3A 20 4F
- 795+ 072C 50 43 4F 44
- 795+ 0730 45 20 4F 52
- 795+ 0734 20 4D 45 4D
- 795+ 0738 4F 52 59 20
- 795+ 073C 46 41 55 4C
- 795+ 0740 54 0D 0A 00
- 796+ 0744 5B 4E 47 53  x86_bios_trace_halted_log: db "[NGS] X86 BIOS EXECUTION HALTED BY GUEST",13,10,0
- 796+ 0748 5D 20 58 38
- 796+ 074C 36 20 42 49
- 796+ 0750 4F 53 20 45
- 796+ 0754 58 45 43 55
- 796+ 0758 54 49 4F 4E
- 796+ 075C 20 48 41 4C
- 796+ 0760 54 45 44 20
- 796+ 0764 42 59 20 47
- 796+ 0768 55 45 53 54
- 796+ 076C 0D 0A 00
- 797+ 076F 5B 4E 47 53  x86_bios_trace_watchdog_log: db "[NGS] X86 BIOS DIAGNOSTIC STOP",13,10,0
- 797+ 0773 5D 20 58 38
- 797+ 0777 36 20 42 49
- 797+ 077B 4F 53 20 44
- 797+ 077F 49 41 47 4E
- 797+ 0783 4F 53 54 49
- 797+ 0787 43 20 53 54
- 797+ 078B 4F 50 0D 0A
- 797+ 078F 00
- 798+ 0790 5B 58 38 36  x86_bios_trace_regs_ax:    db "[X86 REG] AX=",0
- 798+ 0794 20 52 45 47
- 798+ 0798 5D 20 41 58
- 798+ 079C 3D 00
- 799+ 079E 20 42 58 3D  x86_bios_trace_regs_bx:    db " BX=",0
- 799+ 07A2 00
- 800+ 07A3 20 43 58 3D  x86_bios_trace_regs_cx:    db " CX=",0
- 800+ 07A7 00
- 801+ 07A8 20 44 58 3D  x86_bios_trace_regs_dx:    db " DX=",0
- 801+ 07AC 00
- 802+ 07AD 20 53 49 3D  x86_bios_trace_regs_si:    db " SI=",0
- 802+ 07B1 00
- 803+ 07B2 20 44 49 3D  x86_bios_trace_regs_di:    db " DI=",0
- 803+ 07B6 00
- 804+ 07B7 20 42 50 3D  x86_bios_trace_regs_bp:    db " BP=",0
- 804+ 07BB 00
- 805+ 07BC 20 53 50 3D  x86_bios_trace_regs_sp:    db " SP=",0
- 805+ 07C0 00
- 806+ 07C1 20 44 53 3D  x86_bios_trace_regs_ds:    db " DS=",0
- 806+ 07C5 00
- 807+ 07C6 20 45 53 3D  x86_bios_trace_regs_es:    db " ES=",0
- 807+ 07CA 00
- 808+ 07CB 20 53 53 3D  x86_bios_trace_regs_ss:    db " SS=",0
- 808+ 07CF 00
- 809+ 07D0 20 46 4C 41  x86_bios_trace_regs_flags: db " FLAGS=",0
- 809+ 07D4 47 53 3D 00
- 810+ 07D8 20 4F 50 3D  x86_bios_trace_regs_opcode: db " OP=",0
- 810+ 07DC 00
- 811+ 07DD
- 812+ 07DD              ; physical = ((segment << 4) + offset) & 0FFFFFh
- 813+ 07DD              x86_cpu_calc_phys:
- 814+ 07DD C5                   push    bc
- 815+ 07DE                      ; low byte of segment<<4
- 816+ 07DE 7D                   ld      a,l
- 817+ 07DF E6 0F                and     #0F
- 818+ 07E1 87                   add     a,a
- 819+ 07E2 87                   add     a,a
- 820+ 07E3 87                   add     a,a
- 821+ 07E4 87                   add     a,a
- 822+ 07E5 32 CF 0B             ld      (x86_phys_addr),a
- 823+ 07E8                      ; middle byte = (segment.high<<4) | (segment.low>>4)
- 824+ 07E8 7D                   ld      a,l
- 825+ 07E9 0F                   rrca
- 826+ 07EA 0F                   rrca
- 827+ 07EB 0F                   rrca
- 828+ 07EC 0F                   rrca
- 829+ 07ED E6 0F                and     #0F
- 830+ 07EF 47                   ld      b,a
- 831+ 07F0 7C                   ld      a,h
- 832+ 07F1 E6 0F                and     #0F
- 833+ 07F3 87                   add     a,a
- 834+ 07F4 87                   add     a,a
- 835+ 07F5 87                   add     a,a
- 836+ 07F6 87                   add     a,a
- 837+ 07F7 B0                   or      b
- 838+ 07F8 32 D0 0B             ld      (x86_phys_addr+1),a
- 839+ 07FB                      ; high nibble
- 840+ 07FB 7C                   ld      a,h
- 841+ 07FC 0F                   rrca
- 842+ 07FD 0F                   rrca
- 843+ 07FE 0F                   rrca
- 844+ 07FF 0F                   rrca
- 845+ 0800 E6 0F                and     #0F
- 846+ 0802 32 D1 0B             ld      (x86_phys_addr+2),a
- 847+ 0805                      ; add 16-bit offset
- 848+ 0805 3A CF 0B             ld      a,(x86_phys_addr)
- 849+ 0808 83                   add     a,e
- 850+ 0809 32 CF 0B             ld      (x86_phys_addr),a
- 851+ 080C 3A D0 0B             ld      a,(x86_phys_addr+1)
- 852+ 080F 8A                   adc     a,d
- 853+ 0810 32 D0 0B             ld      (x86_phys_addr+1),a
- 854+ 0813 3A D1 0B             ld      a,(x86_phys_addr+2)
- 855+ 0816 CE 00                adc     a,0
- 856+ 0818 E6 0F                and     #0F
- 857+ 081A 32 D1 0B             ld      (x86_phys_addr+2),a
- 858+ 081D C1                   pop     bc
- 859+ 081E 3A D1 0B             ld      a,(x86_phys_addr+2)
- 860+ 0821 B7                   or      a                       ; return carry clear
- 861+ 0822 C9                   ret
- 862+ 0823
+ 592+ 042A                      ; Stop after the first table's CMP/JZ/XOR DH,03/JNZ sequence.
+ 593+ 042A                      ; This captures DH immediately after the first XOR, before the
+ 594+ 042A                      ; second table can change DL or issue any further OUT instructions.
+ 595+ 042A 2A B9 0B             ld      hl,(x86_reg_si)
+ 596+ 042D 11 B0 E0             ld      de,#E0B0
+ 597+ 0430 B7                   or      a
+ 598+ 0431 ED 52                sbc     hl,de
+ 599+ 0433 C0                   ret     nz
+ 600+ 0434 21 04 00             ld      hl,4
+ 601+ 0437 22 D3 06             ld      (x86_bios_trace_remaining),hl
+ 602+ 043A C9                   ret
+ 603+ 043B
+ 604+ 043B              ; Capture a compact stop event for the DMA diagnostics response.
+ 605+ 043B              ; A=1 slice budget, 2 guest HLT, 3 opcode/memory fault, 4 reset-vector fault.
+ 606+ 043B              x86_bios_trace_capture_event:
+ 607+ 043B 32 4B 04             ld      (x86_bios_trace_event_status),a
+ 608+ 043E 2A BF 0B             ld      hl,(x86_reg_cs)
+ 609+ 0441 22 4C 04             ld      (x86_bios_trace_event_cs),hl
+ 610+ 0444 2A C5 0B             ld      hl,(x86_reg_ip)
+ 611+ 0447 22 4E 04             ld      (x86_bios_trace_event_ip),hl
+ 612+ 044A C9                   ret
+ 613+ 044B
+ 614+ 044B 00           x86_bios_trace_event_status: db 0
+ 615+ 044C 00 00        x86_bios_trace_event_cs:     dw 0
+ 616+ 044E 00 00        x86_bios_trace_event_ip:     dw 0
+ 617+ 0450
+ 618+ 0450              ; Emit the post-instruction CS:IP on the independent NeoGS #EF channel.
+ 619+ 0450              x86_bios_trace_log_cs_ip:
+ 620+ 0450 F5                   push    af
+ 621+ 0451 E5                   push    hl
+ 622+ 0452 21 03 07             ld      hl,x86_bios_trace_cs_ip_prefix
+ 623+ 0455 CD C0 00             call    p126_ngs_resident_log
+ 624+ 0458 2A BF 0B             ld      hl,(x86_reg_cs)
+ 625+ 045B CD 76 04             call    x86_bios_trace_emit_hex16
+ 626+ 045E 3E 3A                ld      a,':'
+ 627+ 0460 CD 3B 05             call    x86_bios_trace_emit_char
+ 628+ 0463 2A C5 0B             ld      hl,(x86_reg_ip)
+ 629+ 0466 CD 76 04             call    x86_bios_trace_emit_hex16
+ 630+ 0469 3E 0D                ld      a,13
+ 631+ 046B CD 3B 05             call    x86_bios_trace_emit_char
+ 632+ 046E 3E 0A                ld      a,10
+ 633+ 0470 CD 3B 05             call    x86_bios_trace_emit_char
+ 634+ 0473 E1                   pop     hl
+ 635+ 0474 F1                   pop     af
+ 636+ 0475 C9                   ret
+ 637+ 0476
+ 638+ 0476              ; IN HL=word. Emits four uppercase hexadecimal digits.
+ 639+ 0476              x86_bios_trace_emit_hex16:
+ 640+ 0476 7C                   ld      a,h
+ 641+ 0477 CD 7E 04             call    x86_bios_trace_emit_hex8
+ 642+ 047A 7D                   ld      a,l
+ 643+ 047B C3 7E 04             jp      x86_bios_trace_emit_hex8
+ 644+ 047E
+ 645+ 047E              ; IN A=byte. Preserves AF.
+ 646+ 047E              x86_bios_trace_emit_hex8:
+ 647+ 047E F5                   push    af
+ 648+ 047F 0F                   rrca
+ 649+ 0480 0F                   rrca
+ 650+ 0481 0F                   rrca
+ 651+ 0482 0F                   rrca
+ 652+ 0483 CD 43 05             call    x86_bios_trace_emit_nibble
+ 653+ 0486 F1                   pop     af
+ 654+ 0487 E6 0F                and     #0F
+ 655+ 0489 C3 43 05             jp      x86_bios_trace_emit_nibble
+ 656+ 048C
+ 657+ 048C              ; Dump the complete architectural state at a terminal BIOS stop.
+ 658+ 048C              ; This distinguishes a guest wait loop from bad register/segment state.
+ 659+ 048C              x86_bios_trace_log_registers:
+ 660+ 048C F5                   push    af
+ 661+ 048D C5                   push    bc
+ 662+ 048E D5                   push    de
+ 663+ 048F E5                   push    hl
+ 664+ 0490 21 90 07             ld      hl,x86_bios_trace_regs_ax
+ 665+ 0493 CD C0 00             call    p126_ngs_resident_log
+ 666+ 0496 2A AD 0B             ld      hl,(x86_reg_ax)
+ 667+ 0499 CD 76 04             call    x86_bios_trace_emit_hex16
+ 668+ 049C 21 9E 07             ld      hl,x86_bios_trace_regs_bx
+ 669+ 049F CD C0 00             call    p126_ngs_resident_log
+ 670+ 04A2 2A B3 0B             ld      hl,(x86_reg_bx)
+ 671+ 04A5 CD 76 04             call    x86_bios_trace_emit_hex16
+ 672+ 04A8 21 A3 07             ld      hl,x86_bios_trace_regs_cx
+ 673+ 04AB CD C0 00             call    p126_ngs_resident_log
+ 674+ 04AE 2A AF 0B             ld      hl,(x86_reg_cx)
+ 675+ 04B1 CD 76 04             call    x86_bios_trace_emit_hex16
+ 676+ 04B4 21 A8 07             ld      hl,x86_bios_trace_regs_dx
+ 677+ 04B7 CD C0 00             call    p126_ngs_resident_log
+ 678+ 04BA 2A B1 0B             ld      hl,(x86_reg_dx)
+ 679+ 04BD CD 76 04             call    x86_bios_trace_emit_hex16
+ 680+ 04C0 21 AD 07             ld      hl,x86_bios_trace_regs_si
+ 681+ 04C3 CD C0 00             call    p126_ngs_resident_log
+ 682+ 04C6 2A B9 0B             ld      hl,(x86_reg_si)
+ 683+ 04C9 CD 76 04             call    x86_bios_trace_emit_hex16
+ 684+ 04CC 21 B2 07             ld      hl,x86_bios_trace_regs_di
+ 685+ 04CF CD C0 00             call    p126_ngs_resident_log
+ 686+ 04D2 2A BB 0B             ld      hl,(x86_reg_di)
+ 687+ 04D5 CD 76 04             call    x86_bios_trace_emit_hex16
+ 688+ 04D8 21 B7 07             ld      hl,x86_bios_trace_regs_bp
+ 689+ 04DB CD C0 00             call    p126_ngs_resident_log
+ 690+ 04DE 2A B7 0B             ld      hl,(x86_reg_bp)
+ 691+ 04E1 CD 76 04             call    x86_bios_trace_emit_hex16
+ 692+ 04E4 21 BC 07             ld      hl,x86_bios_trace_regs_sp
+ 693+ 04E7 CD C0 00             call    p126_ngs_resident_log
+ 694+ 04EA 2A B5 0B             ld      hl,(x86_reg_sp)
+ 695+ 04ED CD 76 04             call    x86_bios_trace_emit_hex16
+ 696+ 04F0 21 C1 07             ld      hl,x86_bios_trace_regs_ds
+ 697+ 04F3 CD C0 00             call    p126_ngs_resident_log
+ 698+ 04F6 2A C3 0B             ld      hl,(x86_reg_ds)
+ 699+ 04F9 CD 76 04             call    x86_bios_trace_emit_hex16
+ 700+ 04FC 21 C6 07             ld      hl,x86_bios_trace_regs_es
+ 701+ 04FF CD C0 00             call    p126_ngs_resident_log
+ 702+ 0502 2A BD 0B             ld      hl,(x86_reg_es)
+ 703+ 0505 CD 76 04             call    x86_bios_trace_emit_hex16
+ 704+ 0508 21 CB 07             ld      hl,x86_bios_trace_regs_ss
+ 705+ 050B CD C0 00             call    p126_ngs_resident_log
+ 706+ 050E 2A C1 0B             ld      hl,(x86_reg_ss)
+ 707+ 0511 CD 76 04             call    x86_bios_trace_emit_hex16
+ 708+ 0514 21 D0 07             ld      hl,x86_bios_trace_regs_flags
+ 709+ 0517 CD C0 00             call    p126_ngs_resident_log
+ 710+ 051A 2A C7 0B             ld      hl,(x86_reg_flags)
+ 711+ 051D CD 76 04             call    x86_bios_trace_emit_hex16
+ 712+ 0520 21 D8 07             ld      hl,x86_bios_trace_regs_opcode
+ 713+ 0523 CD C0 00             call    p126_ngs_resident_log
+ 714+ 0526 3A A1 2D             ld      a,(x86_exec_opcode)
+ 715+ 0529 CD 7E 04             call    x86_bios_trace_emit_hex8
+ 716+ 052C 3E 0D                ld      a,13
+ 717+ 052E CD 3B 05             call    x86_bios_trace_emit_char
+ 718+ 0531 3E 0A                ld      a,10
+ 719+ 0533 CD 3B 05             call    x86_bios_trace_emit_char
+ 720+ 0536 E1                   pop     hl
+ 721+ 0537 D1                   pop     de
+ 722+ 0538 C1                   pop     bc
+ 723+ 0539 F1                   pop     af
+ 724+ 053A C9                   ret
+ 725+ 053B
+ 726+ 053B              ; Use the same full 00EF diagnostic port as the resident logger.
+ 727+ 053B              ; Preserve BC because callers may be maintaining loop counters.
+ 728+ 053B              x86_bios_trace_emit_char:
+ 729+ 053B C5                   push    bc
+ 730+ 053C 01 EF 00             ld      bc,#00EF
+ 731+ 053F ED 79                out     (c),a
+ 732+ 0541 C1                   pop     bc
+ 733+ 0542 C9                   ret
+ 734+ 0543
+ 735+ 0543              x86_bios_trace_emit_nibble:
+ 736+ 0543 E6 0F                and     #0F
+ 737+ 0545 C6 30                add     a,'0'
+ 738+ 0547 FE 3A                cp      '9'+1
+ 739+ 0549 38 02                jr      c,.hex_digit
+ 740+ 054B C6 07                add     a,7
+ 741+ 054D              .hex_digit:
+ 742+ 054D CD 3B 05             call    x86_bios_trace_emit_char
+ 743+ 0550 C9                   ret
+ 744+ 0551
+ 745+ 0551 00           x86_bios_trace_probe_byte0: db 0
+ 746+ 0552 00           x86_bios_trace_probe_byte1: db 0
+ 747+ 0553 00           x86_bios_trace_probe_error0: db 0
+ 748+ 0554 00           x86_bios_trace_probe_error1: db 0
+ 749+ 0555 5B 58 38 36  x86_bios_trace_probe_prefix: db "[X86 FETCH] B0=",0
+ 749+ 0559 20 46 45 54
+ 749+ 055D 43 48 5D 20
+ 749+ 0561 42 30 3D 00
+ 750+ 0565 20 42 31 3D  x86_bios_trace_probe_second: db " B1=",0
+ 750+ 0569 00
+ 751+ 056A 00           x86_bios_trace_first_count: db 0
+ 752+ 056B 00           x86_bios_trace_first_number: db 0
+ 753+ 056C 00 00 00     x86_bios_trace_first_phys: db 0,0,0
+ 754+ 056F 00           x86_bios_trace_first_region: db 0
+ 755+ 0570 5B 58 38 36  x86_bios_trace_first_prefix: db "[X86 STEP ",0
+ 755+ 0574 20 53 54 45
+ 755+ 0578 50 20 00
+ 756+ 057B 5D 20 43 53  x86_bios_trace_first_csip: db "] CS:IP=",0
+ 756+ 057F 3A 49 50 3D
+ 756+ 0583 00
+ 757+ 0584 20 50 3D 00  x86_bios_trace_first_phys_text: db " P=",0
+ 758+ 0588 20 52 3D 00  x86_bios_trace_first_region_text: db " R=",0
+ 759+ 058C 20 4F 50 3D  x86_bios_trace_first_opcode_text: db " OP=",0
+ 759+ 0590 00
+ 760+ 0591 20 41 58 3D  x86_bios_trace_first_ax: db " AX=",0
+ 760+ 0595 00
+ 761+ 0596 20 42 58 3D  x86_bios_trace_first_bx: db " BX=",0
+ 761+ 059A 00
+ 762+ 059B 20 43 58 3D  x86_bios_trace_first_cx: db " CX=",0
+ 762+ 059F 00
+ 763+ 05A0 20 44 58 3D  x86_bios_trace_first_dx: db " DX=",0
+ 763+ 05A4 00
+ 764+ 05A5 20 53 49 3D  x86_bios_trace_first_si: db " SI=",0
+ 764+ 05A9 00
+ 765+ 05AA 20 44 49 3D  x86_bios_trace_first_di: db " DI=",0
+ 765+ 05AE 00
+ 766+ 05AF 20 42 50 3D  x86_bios_trace_first_bp: db " BP=",0
+ 766+ 05B3 00
+ 767+ 05B4 20 53 50 3D  x86_bios_trace_first_sp: db " SP=",0
+ 767+ 05B8 00
+ 768+ 05B9 20 44 53 3D  x86_bios_trace_first_ds: db " DS=",0
+ 768+ 05BD 00
+ 769+ 05BE 20 45 53 3D  x86_bios_trace_first_es: db " ES=",0
+ 769+ 05C2 00
+ 770+ 05C3 20 53 53 3D  x86_bios_trace_first_ss: db " SS=",0
+ 770+ 05C7 00
+ 771+ 05C8 20 46 4C 41  x86_bios_trace_first_flags: db " FLAGS=",0
+ 771+ 05CC 47 53 3D 00
+ 772+ 05D0
+ 773+ 05D0 00           x86_bios_trace_history_index: db 0
+ 774+ 05D1 00           x86_bios_trace_dump_index: db 0
+ 775+ 05D2 00 00        x86_bios_trace_record_ptr: dw 0
+ 776+ 05D4 00 00        x86_bios_trace_dump_cs: dw 0
+ 777+ 05D6 00 00        x86_bios_trace_dump_ip: dw 0
+ 778+ 05D8 00 00        x86_bios_trace_dump_si: dw 0
+ 779+ 05DA 00           x86_bios_trace_dump_al: db 0
+ 780+ 05DB 00           x86_bios_trace_dump_flags: db 0
+ 781+ 05DC 00           x86_bios_trace_dump_opcode: db 0
+ 782+ 05DD 5B 49 4F 20  x86_bios_trace_io_prefix: db "[IO COUNT] IN=",0
+ 782+ 05E1 43 4F 55 4E
+ 782+ 05E5 54 5D 20 49
+ 782+ 05E9 4E 3D 00
+ 783+ 05EC 20 4F 55 54  x86_bios_trace_io_out_text: db " OUT=",0
+ 783+ 05F0 3D 00
+ 784+ 05F2 5B 58 38 36  x86_bios_trace_history_title: db "[X86 HIST] LAST 16 INSTRUCTIONS (OLDEST FIRST)",13,10,0
+ 784+ 05F6 20 48 49 53
+ 784+ 05FA 54 5D 20 4C
+ 784+ 05FE 41 53 54 20
+ 784+ 0602 31 36 20 49
+ 784+ 0606 4E 53 54 52
+ 784+ 060A 55 43 54 49
+ 784+ 060E 4F 4E 53 20
+ 784+ 0612 28 4F 4C 44
+ 784+ 0616 45 53 54 20
+ 784+ 061A 46 49 52 53
+ 784+ 061E 54 29 0D 0A
+ 784+ 0622 00
+ 785+ 0623 5B 58 38 36  x86_bios_trace_history_prefix: db "[X86 HIST] ",0
+ 785+ 0627 20 48 49 53
+ 785+ 062B 54 5D 20 00
+ 786+ 062F 20 53 49 3D  x86_bios_trace_history_si_text: db " SI=",0
+ 786+ 0633 00
+ 787+ 0634 20 41 4C 3D  x86_bios_trace_history_al_text: db " AL=",0
+ 787+ 0638 00
+ 788+ 0639 20 46 4C 3D  x86_bios_trace_history_flags_text: db " FL=",0
+ 788+ 063D 00
+ 789+ 063E 20 4F 50 3D  x86_bios_trace_history_opcode_text: db " OP=",0
+ 789+ 0642 00
+ 790+ 0643 00 00 00...  x86_bios_trace_history: BLOCK 16*9,0
+ 791+ 06D3
+ 792+ 06D3 00 00        x86_bios_trace_remaining: dw 0
+ 793+ 06D5 00 00        x86_bios_trace_executed:  dw 0
+ 794+ 06D7 5B 4E 47 53  x86_bios_trace_start_log: db "[NGS] X86 BIOS CONTINUOUS EXECUTION START",13,10,0
+ 794+ 06DB 5D 20 58 38
+ 794+ 06DF 36 20 42 49
+ 794+ 06E3 4F 53 20 43
+ 794+ 06E7 4F 4E 54 49
+ 794+ 06EB 4E 55 4F 55
+ 794+ 06EF 53 20 45 58
+ 794+ 06F3 45 43 55 54
+ 794+ 06F7 49 4F 4E 20
+ 794+ 06FB 53 54 41 52
+ 794+ 06FF 54 0D 0A 00
+ 795+ 0703 5B 58 38 36  x86_bios_trace_cs_ip_prefix: db "[X86] CS:IP=",0
+ 795+ 0707 5D 20 43 53
+ 795+ 070B 3A 49 50 3D
+ 795+ 070F 00
+ 796+ 0710 5B 4E 47 53  x86_bios_trace_fault_log: db "[NGS] X86 BIOS TRACE STOP: OPCODE OR MEMORY FAULT",13,10,0
+ 796+ 0714 5D 20 58 38
+ 796+ 0718 36 20 42 49
+ 796+ 071C 4F 53 20 54
+ 796+ 0720 52 41 43 45
+ 796+ 0724 20 53 54 4F
+ 796+ 0728 50 3A 20 4F
+ 796+ 072C 50 43 4F 44
+ 796+ 0730 45 20 4F 52
+ 796+ 0734 20 4D 45 4D
+ 796+ 0738 4F 52 59 20
+ 796+ 073C 46 41 55 4C
+ 796+ 0740 54 0D 0A 00
+ 797+ 0744 5B 4E 47 53  x86_bios_trace_halted_log: db "[NGS] X86 BIOS EXECUTION HALTED BY GUEST",13,10,0
+ 797+ 0748 5D 20 58 38
+ 797+ 074C 36 20 42 49
+ 797+ 0750 4F 53 20 45
+ 797+ 0754 58 45 43 55
+ 797+ 0758 54 49 4F 4E
+ 797+ 075C 20 48 41 4C
+ 797+ 0760 54 45 44 20
+ 797+ 0764 42 59 20 47
+ 797+ 0768 55 45 53 54
+ 797+ 076C 0D 0A 00
+ 798+ 076F 5B 4E 47 53  x86_bios_trace_watchdog_log: db "[NGS] X86 BIOS DIAGNOSTIC STOP",13,10,0
+ 798+ 0773 5D 20 58 38
+ 798+ 0777 36 20 42 49
+ 798+ 077B 4F 53 20 44
+ 798+ 077F 49 41 47 4E
+ 798+ 0783 4F 53 54 49
+ 798+ 0787 43 20 53 54
+ 798+ 078B 4F 50 0D 0A
+ 798+ 078F 00
+ 799+ 0790 5B 58 38 36  x86_bios_trace_regs_ax:    db "[X86 REG] AX=",0
+ 799+ 0794 20 52 45 47
+ 799+ 0798 5D 20 41 58
+ 799+ 079C 3D 00
+ 800+ 079E 20 42 58 3D  x86_bios_trace_regs_bx:    db " BX=",0
+ 800+ 07A2 00
+ 801+ 07A3 20 43 58 3D  x86_bios_trace_regs_cx:    db " CX=",0
+ 801+ 07A7 00
+ 802+ 07A8 20 44 58 3D  x86_bios_trace_regs_dx:    db " DX=",0
+ 802+ 07AC 00
+ 803+ 07AD 20 53 49 3D  x86_bios_trace_regs_si:    db " SI=",0
+ 803+ 07B1 00
+ 804+ 07B2 20 44 49 3D  x86_bios_trace_regs_di:    db " DI=",0
+ 804+ 07B6 00
+ 805+ 07B7 20 42 50 3D  x86_bios_trace_regs_bp:    db " BP=",0
+ 805+ 07BB 00
+ 806+ 07BC 20 53 50 3D  x86_bios_trace_regs_sp:    db " SP=",0
+ 806+ 07C0 00
+ 807+ 07C1 20 44 53 3D  x86_bios_trace_regs_ds:    db " DS=",0
+ 807+ 07C5 00
+ 808+ 07C6 20 45 53 3D  x86_bios_trace_regs_es:    db " ES=",0
+ 808+ 07CA 00
+ 809+ 07CB 20 53 53 3D  x86_bios_trace_regs_ss:    db " SS=",0
+ 809+ 07CF 00
+ 810+ 07D0 20 46 4C 41  x86_bios_trace_regs_flags: db " FLAGS=",0
+ 810+ 07D4 47 53 3D 00
+ 811+ 07D8 20 4F 50 3D  x86_bios_trace_regs_opcode: db " OP=",0
+ 811+ 07DC 00
+ 812+ 07DD
+ 813+ 07DD              ; physical = ((segment << 4) + offset) & 0FFFFFh
+ 814+ 07DD              x86_cpu_calc_phys:
+ 815+ 07DD C5                   push    bc
+ 816+ 07DE                      ; low byte of segment<<4
+ 817+ 07DE 7D                   ld      a,l
+ 818+ 07DF E6 0F                and     #0F
+ 819+ 07E1 87                   add     a,a
+ 820+ 07E2 87                   add     a,a
+ 821+ 07E3 87                   add     a,a
+ 822+ 07E4 87                   add     a,a
+ 823+ 07E5 32 CF 0B             ld      (x86_phys_addr),a
+ 824+ 07E8                      ; middle byte = (segment.high<<4) | (segment.low>>4)
+ 825+ 07E8 7D                   ld      a,l
+ 826+ 07E9 0F                   rrca
+ 827+ 07EA 0F                   rrca
+ 828+ 07EB 0F                   rrca
+ 829+ 07EC 0F                   rrca
+ 830+ 07ED E6 0F                and     #0F
+ 831+ 07EF 47                   ld      b,a
+ 832+ 07F0 7C                   ld      a,h
+ 833+ 07F1 E6 0F                and     #0F
+ 834+ 07F3 87                   add     a,a
+ 835+ 07F4 87                   add     a,a
+ 836+ 07F5 87                   add     a,a
+ 837+ 07F6 87                   add     a,a
+ 838+ 07F7 B0                   or      b
+ 839+ 07F8 32 D0 0B             ld      (x86_phys_addr+1),a
+ 840+ 07FB                      ; high nibble
+ 841+ 07FB 7C                   ld      a,h
+ 842+ 07FC 0F                   rrca
+ 843+ 07FD 0F                   rrca
+ 844+ 07FE 0F                   rrca
+ 845+ 07FF 0F                   rrca
+ 846+ 0800 E6 0F                and     #0F
+ 847+ 0802 32 D1 0B             ld      (x86_phys_addr+2),a
+ 848+ 0805                      ; add 16-bit offset
+ 849+ 0805 3A CF 0B             ld      a,(x86_phys_addr)
+ 850+ 0808 83                   add     a,e
+ 851+ 0809 32 CF 0B             ld      (x86_phys_addr),a
+ 852+ 080C 3A D0 0B             ld      a,(x86_phys_addr+1)
+ 853+ 080F 8A                   adc     a,d
+ 854+ 0810 32 D0 0B             ld      (x86_phys_addr+1),a
+ 855+ 0813 3A D1 0B             ld      a,(x86_phys_addr+2)
+ 856+ 0816 CE 00                adc     a,0
+ 857+ 0818 E6 0F                and     #0F
+ 858+ 081A 32 D1 0B             ld      (x86_phys_addr+2),a
+ 859+ 081D C1                   pop     bc
+ 860+ 081E 3A D1 0B             ld      a,(x86_phys_addr+2)
+ 861+ 0821 B7                   or      a                       ; return carry clear
+ 862+ 0822 C9                   ret
  863+ 0823
- 864+ 0823              ; Classify the 20-bit physical address already stored in x86_phys_addr.
- 865+ 0823              ; IN:  x86_phys_addr = low byte, middle byte, high nibble.
- 866+ 0823              ; OUT: A = P126_X86_MEM_* region ID.
- 867+ 0823              ; The 8086 address helper masks to 20 bits, so all inputs are in range.
- 868+ 0823              x86_mem_classify:
- 869+ 0823 3A D1 0B             ld      a,(x86_phys_addr+2)
- 870+ 0826 FE 0A                cp      #0A
- 871+ 0828 38 24                jr      c,.ram_low
- 872+ 082A FE 0C                cp      #0C
- 873+ 082C 38 23                jr      c,.vga_aperture
- 874+ 082E FE 0D                cp      #0D
- 875+ 0830 28 09                jr      z,.segment_c
- 876+ 0832 FE 0F                cp      #0F
- 877+ 0834 38 21                jr      c,.ram_high
- 878+ 0836 28 0C                jr      z,.segment_f
- 879+ 0838                      ; Defensive fallback; unreachable for a valid 20-bit address.
- 880+ 0838 3E 00                ld      a,P126_X86_MEM_RAM_LOW
- 881+ 083A C9                   ret
- 882+ 083B              .segment_c:
- 883+ 083B 3A D0 0B             ld      a,(x86_phys_addr+1)
- 884+ 083E FE 80                cp      #80
- 885+ 0840 38 12                jr      c,.vga_bios
- 886+ 0842 18 13                jr      .ram_high
- 887+ 0844              .segment_f:
- 888+ 0844 3A D0 0B             ld      a,(x86_phys_addr+1)
- 889+ 0847 FE E0                cp      #E0
- 890+ 0849 38 0C                jr      c,.ram_high
- 891+ 084B 3E 04                ld      a,P126_X86_MEM_SYSBIOS
- 892+ 084D C9                   ret
- 893+ 084E              .ram_low:
- 894+ 084E 3E 00                ld      a,P126_X86_MEM_RAM_LOW
- 895+ 0850 C9                   ret
- 896+ 0851              .vga_aperture:
- 897+ 0851 3E 01                ld      a,P126_X86_MEM_VGA_APERTURE
- 898+ 0853 C9                   ret
- 899+ 0854              .vga_bios:
- 900+ 0854 3E 02                ld      a,P126_X86_MEM_VGABIOS
- 901+ 0856 C9                   ret
- 902+ 0857              .ram_high:
- 903+ 0857 3E 03                ld      a,P126_X86_MEM_RAM_HIGH
- 904+ 0859 C9                   ret
- 905+ 085A
+ 864+ 0823
+ 865+ 0823              ; Classify the 20-bit physical address already stored in x86_phys_addr.
+ 866+ 0823              ; IN:  x86_phys_addr = low byte, middle byte, high nibble.
+ 867+ 0823              ; OUT: A = P126_X86_MEM_* region ID.
+ 868+ 0823              ; The 8086 address helper masks to 20 bits, so all inputs are in range.
+ 869+ 0823              x86_mem_classify:
+ 870+ 0823 3A D1 0B             ld      a,(x86_phys_addr+2)
+ 871+ 0826 FE 0A                cp      #0A
+ 872+ 0828 38 24                jr      c,.ram_low
+ 873+ 082A FE 0C                cp      #0C
+ 874+ 082C 38 23                jr      c,.vga_aperture
+ 875+ 082E FE 0D                cp      #0D
+ 876+ 0830 28 09                jr      z,.segment_c
+ 877+ 0832 FE 0F                cp      #0F
+ 878+ 0834 38 21                jr      c,.ram_high
+ 879+ 0836 28 0C                jr      z,.segment_f
+ 880+ 0838                      ; Defensive fallback; unreachable for a valid 20-bit address.
+ 881+ 0838 3E 00                ld      a,P126_X86_MEM_RAM_LOW
+ 882+ 083A C9                   ret
+ 883+ 083B              .segment_c:
+ 884+ 083B 3A D0 0B             ld      a,(x86_phys_addr+1)
+ 885+ 083E FE 80                cp      #80
+ 886+ 0840 38 12                jr      c,.vga_bios
+ 887+ 0842 18 13                jr      .ram_high
+ 888+ 0844              .segment_f:
+ 889+ 0844 3A D0 0B             ld      a,(x86_phys_addr+1)
+ 890+ 0847 FE E0                cp      #E0
+ 891+ 0849 38 0C                jr      c,.ram_high
+ 892+ 084B 3E 04                ld      a,P126_X86_MEM_SYSBIOS
+ 893+ 084D C9                   ret
+ 894+ 084E              .ram_low:
+ 895+ 084E 3E 00                ld      a,P126_X86_MEM_RAM_LOW
+ 896+ 0850 C9                   ret
+ 897+ 0851              .vga_aperture:
+ 898+ 0851 3E 01                ld      a,P126_X86_MEM_VGA_APERTURE
+ 899+ 0853 C9                   ret
+ 900+ 0854              .vga_bios:
+ 901+ 0854 3E 02                ld      a,P126_X86_MEM_VGABIOS
+ 902+ 0856 C9                   ret
+ 903+ 0857              .ram_high:
+ 904+ 0857 3E 03                ld      a,P126_X86_MEM_RAM_HIGH
+ 905+ 0859 C9                   ret
  906+ 085A
- 907+ 085A              ; -------------------------------------------------------------------------
- 908+ 085A              ; Guest RAM backing access
- 909+ 085A              ;
- 910+ 085A              ; Guest RAM allocation starts at NeoGS physical page 44h.
- 911+ 085A              ; Guest byte address maps linearly to physical offset 110000h + guest address.
- 912+ 085A              ; WIN3 is a permanently reserved bank aperture; its current page is volatile.
- 913+ 085A              ; These routines do not restore WIN3's previous page because the page port is
- 914+ 085A              ; write-only and WIN3 is owned exclusively by this memory backend.
- 915+ 085A              ;
- 916+ 085A              ; Entry address: x86_phys_addr = low, middle, high-nibble.
- 917+ 085A              ; Read returns byte in A, carry clear. Non-RAM overlay regions return carry.
- 918+ 085A              ; Write takes byte in A, carry clear on success; non-RAM returns carry.
- 919+ 085A              ; -------------------------------------------------------------------------
- 920+ 085A
- 921+ 085A              x86_guest_ram_read8:
- 922+ 085A CD 23 08             call    x86_mem_classify
- 923+ 085D FE 00                cp      P126_X86_MEM_RAM_LOW
- 924+ 085F 28 04                jr      z,.read_map
- 925+ 0861 FE 03                cp      P126_X86_MEM_RAM_HIGH
- 926+ 0863 20 06                jr      nz,.read_reject
- 927+ 0865              .read_map:
- 928+ 0865 CD 86 08             call    x86_guest_ram_select_page
- 929+ 0868 7E                   ld      a,(hl)
- 930+ 0869 B7                   or      a
- 931+ 086A C9                   ret
- 932+ 086B              .read_reject:
- 933+ 086B 37                   scf
- 934+ 086C C9                   ret
- 935+ 086D
- 936+ 086D              x86_guest_ram_write8:
- 937+ 086D 32 D2 0B             ld      (x86_mem_data),a
- 938+ 0870 CD 23 08             call    x86_mem_classify
- 939+ 0873 FE 00                cp      P126_X86_MEM_RAM_LOW
- 940+ 0875 28 04                jr      z,.write_map
- 941+ 0877 FE 03                cp      P126_X86_MEM_RAM_HIGH
- 942+ 0879 20 09                jr      nz,.write_reject
- 943+ 087B              .write_map:
- 944+ 087B CD 86 08             call    x86_guest_ram_select_page
- 945+ 087E 3A D2 0B             ld      a,(x86_mem_data)
- 946+ 0881 77                   ld      (hl),a
- 947+ 0882 B7                   or      a
- 948+ 0883 C9                   ret
- 949+ 0884              .write_reject:
- 950+ 0884 37                   scf
- 951+ 0885 C9                   ret
- 952+ 0886
- 953+ 0886              ; Select WIN3 physical page and return HL=C000h|(guest_address&3FFFh).
- 954+ 0886              ; Physical page = 44h + guest_address[19:14].
- 955+ 0886              ; Clobbers AF, BC, HL; does not touch DE or guest CPU registers.
- 956+ 0886              x86_guest_ram_select_page:
- 957+ 0886 3A D1 0B             ld      a,(x86_phys_addr+2)
- 958+ 0889 87                   add     a,a
- 959+ 088A 87                   add     a,a
- 960+ 088B C6 44                add     a,P126_NGS_GUEST_RAM_PAGE_BASE
- 961+ 088D 47                   ld      b,a
- 962+ 088E 3A D0 0B             ld      a,(x86_phys_addr+1)
- 963+ 0891                      ; Extract physical address bits 15:14 as the 16 KiB page index.
- 964+ 0891                      ; Six logical shifts are required; two RRCA rotations selected
- 965+ 0891                      ; unrelated bits and sent BIOS/RAM reads to the wrong WIN3 bank.
- 966+ 0891 CB 3F                srl     a
- 967+ 0893 CB 3F                srl     a
- 968+ 0895 CB 3F                srl     a
- 969+ 0897 CB 3F                srl     a
- 970+ 0899 CB 3F                srl     a
- 971+ 089B CB 3F                srl     a
- 972+ 089D E6 03                and     #03
- 973+ 089F 80                   add     a,b
- 974+ 08A0 0F                   rrca                            ; MPAGEX selector = physical page rotated right
- 975+ 08A1 D3 10                out     (P126_NGS_BANK_WINDOW_PORT),a
- 976+ 08A3
- 977+ 08A3 3A D0 0B             ld      a,(x86_phys_addr+1)
- 978+ 08A6 E6 3F                and     #3F
- 979+ 08A8 F6 C0                or      #C0
- 980+ 08AA 67                   ld      h,a
- 981+ 08AB 3A CF 0B             ld      a,(x86_phys_addr)
- 982+ 08AE 6F                   ld      l,a
- 983+ 08AF C9                   ret
- 984+ 08B0
- 985+ 08B0              ; -------------------------------------------------------------------------
- 986+ 08B0              ; Unified guest memory interface
- 987+ 08B0              ;
- 988+ 08B0              ; Guest physical address is classified before selecting its physical backing:
- 989+ 08B0              ;   00000-9FFFF / C8000-FDFFF : guest RAM, pages 44h-83h
- 990+ 08B0              ;   A0000-BFFFF               : linear VGA aperture backing, pages 30h-37h
- 991+ 08B0              ;   C0000-C7FFF               : VGA BIOS slot, pages 20h-21h
- 992+ 08B0              ;   FE000-FFFFF               : system BIOS slot, page 10h (8 KiB image)
- 993+ 08B0              ;
- 994+ 08B0              ; The VGA aperture backend is deliberately a byte-linear staging layer over
- 995+ 08B0              ; the first 128 KiB of the 256 KiB VRAM allocation. It is NOT yet IBM VGA
- 996+ 08B0              ; plane/latch/read-mode/write-mode emulation. VGA register semantics are a
- 997+ 08B0              ; separate implementation stage.
- 998+ 08B0              ;
- 999+ 08B0              ; All backing is reached through WIN3. A is the page bias for the address
-1000+ 08B0              ; formula: page = (guest_high_nibble*4)+(guest_middle>>6)+bias.
-1001+ 08B0              ; -------------------------------------------------------------------------
-1002+ 08B0
-1003+ 08B0              x86_guest_mem_read8:
-1004+ 08B0 CD 23 08             call    x86_mem_classify
-1005+ 08B3 FE 00                cp      P126_X86_MEM_RAM_LOW
-1006+ 08B5 28 18                jr      z,.ram
-1007+ 08B7 FE 03                cp      P126_X86_MEM_RAM_HIGH
-1008+ 08B9 28 14                jr      z,.ram
-1009+ 08BB FE 01                cp      P126_X86_MEM_VGA_APERTURE
-1010+ 08BD 28 13                jr      z,.vram
-1011+ 08BF FE 02                cp      P126_X86_MEM_VGABIOS
-1012+ 08C1 28 17                jr      z,.vgabios
-1013+ 08C3 FE 04                cp      P126_X86_MEM_SYSBIOS
-1014+ 08C5 28 1B                jr      z,.sysbios
-1015+ 08C7                      ; A region outside the configured guest map is a real memory fault.
-1016+ 08C7                      ; Emit one compact address/mapping snapshot, then preserve CF=1.
-1017+ 08C7 32 DA 09             ld      (x86_mem_fault_region),a
-1018+ 08CA CD EE 08             call    x86_guest_mem_fault_diag
-1019+ 08CD 37                   scf
-1020+ 08CE C9                   ret
-1021+ 08CF              .ram:
-1022+ 08CF C3 5A 08             jp      x86_guest_ram_read8
-1023+ 08D2              .vram:
-1024+ 08D2 3E 08                ld      a,P126_NGS_GUEST_VRAM_PAGE_BIAS
-1025+ 08D4 CD 04 0A             call    x86_guest_mem_select_page
-1026+ 08D7 7E                   ld      a,(hl)
-1027+ 08D8 B7                   or      a
-1028+ 08D9 C9                   ret
-1029+ 08DA              .vgabios:
-1030+ 08DA 3E F0                ld      a,P126_NGS_GUEST_VGABIOS_PAGE_BIAS
-1031+ 08DC CD 04 0A             call    x86_guest_mem_select_page
-1032+ 08DF 7E                   ld      a,(hl)
-1033+ 08E0 B7                   or      a
-1034+ 08E1 C9                   ret
-1035+ 08E2              .sysbios:
-1036+ 08E2 3E D1                ld      a,P126_NGS_GUEST_SYSBIOS_PAGE_BIAS
-1037+ 08E4 CD 04 0A             call    x86_guest_mem_select_page
-1038+ 08E7                      ; FE000h is half-way through a 16 KiB guest page. Rebase the
-1039+ 08E7                      ; guest-visible 8 KiB BIOS window to offset 0000h in slot page 10h.
-1040+ 08E7 7C                   ld      a,h
-1041+ 08E8 D6 20                sub     #20
-1042+ 08EA 67                   ld      h,a
-1043+ 08EB 7E                   ld      a,(hl)
-1044+ 08EC B7                   or      a
-1045+ 08ED C9                   ret
-1046+ 08EE
-1047+ 08EE              ; -------------------------------------------------------------------------
-1048+ 08EE              ; One-shot diagnostic for rejected guest-memory reads.
-1049+ 08EE              ; Logs physical address, classifier result, computed NeoGS page/MPAGEX value,
-1050+ 08EE              ; WIN3 aperture address and the architectural DS:SI source registers.
-1051+ 08EE              ; This is intentionally fault-only; normal memory accesses remain silent.
-1052+ 08EE              ; -------------------------------------------------------------------------
-1053+ 08EE              x86_guest_mem_fault_diag:
-1054+ 08EE F5                   push    af
-1055+ 08EF C5                   push    bc
-1056+ 08F0 D5                   push    de
-1057+ 08F1 E5                   push    hl
-1058+ 08F2 3A D9 09             ld      a,(x86_mem_fault_diag_once)
-1059+ 08F5 B7                   or      a
-1060+ 08F6 C2 9C 09             jp      nz,.diag_done
-1061+ 08F9 3C                   inc     a
-1062+ 08FA 32 D9 09             ld      (x86_mem_fault_diag_once),a
-1063+ 08FD 3A D1 0B             ld      a,(x86_phys_addr+2)
-1064+ 0900 32 DB 09             ld      (x86_mem_fault_page),a
-1065+ 0903 87                   add     a,a
-1066+ 0904 87                   add     a,a
-1067+ 0905 C6 44                add     a,P126_NGS_GUEST_RAM_PAGE_BASE
-1068+ 0907 47                   ld      b,a
-1069+ 0908 3A D0 0B             ld      a,(x86_phys_addr+1)
-1070+ 090B CB 3F                srl     a
-1071+ 090D CB 3F                srl     a
-1072+ 090F CB 3F                srl     a
-1073+ 0911 CB 3F                srl     a
-1074+ 0913 CB 3F                srl     a
-1075+ 0915 CB 3F                srl     a
-1076+ 0917 E6 03                and     #03
-1077+ 0919 80                   add     a,b
-1078+ 091A 32 DB 09             ld      (x86_mem_fault_page),a
-1079+ 091D 0F                   rrca
-1080+ 091E 32 DC 09             ld      (x86_mem_fault_selector),a
-1081+ 0921 3A D0 0B             ld      a,(x86_phys_addr+1)
-1082+ 0924 E6 3F                and     #3F
-1083+ 0926 F6 C0                or      #C0
-1084+ 0928 32 DD 09             ld      (x86_mem_fault_h),a
-1085+ 092B 3A CF 0B             ld      a,(x86_phys_addr)
-1086+ 092E 32 DE 09             ld      (x86_mem_fault_l),a
-1087+ 0931
-1088+ 0931 21 A1 09             ld      hl,x86_mem_fault_prefix
-1089+ 0934 CD C0 00             call    p126_ngs_resident_log
-1090+ 0937 3A D1 0B             ld      a,(x86_phys_addr+2)
-1091+ 093A CD 7E 04             call    x86_bios_trace_emit_hex8
-1092+ 093D 3A D0 0B             ld      a,(x86_phys_addr+1)
-1093+ 0940 CD 7E 04             call    x86_bios_trace_emit_hex8
-1094+ 0943 3A CF 0B             ld      a,(x86_phys_addr)
-1095+ 0946 CD 7E 04             call    x86_bios_trace_emit_hex8
-1096+ 0949 21 B4 09             ld      hl,x86_mem_fault_region_text
-1097+ 094C CD C0 00             call    p126_ngs_resident_log
-1098+ 094F 3A DA 09             ld      a,(x86_mem_fault_region)
-1099+ 0952 CD 7E 04             call    x86_bios_trace_emit_hex8
-1100+ 0955 21 B8 09             ld      hl,x86_mem_fault_page_text
-1101+ 0958 CD C0 00             call    p126_ngs_resident_log
-1102+ 095B 3A DB 09             ld      a,(x86_mem_fault_page)
-1103+ 095E CD 7E 04             call    x86_bios_trace_emit_hex8
-1104+ 0961 21 BF 09             ld      hl,x86_mem_fault_selector_text
-1105+ 0964 CD C0 00             call    p126_ngs_resident_log
-1106+ 0967 3A DC 09             ld      a,(x86_mem_fault_selector)
-1107+ 096A CD 7E 04             call    x86_bios_trace_emit_hex8
-1108+ 096D 21 C4 09             ld      hl,x86_mem_fault_hl_text
-1109+ 0970 CD C0 00             call    p126_ngs_resident_log
-1110+ 0973 3A DD 09             ld      a,(x86_mem_fault_h)
-1111+ 0976 CD 7E 04             call    x86_bios_trace_emit_hex8
-1112+ 0979 3A DE 09             ld      a,(x86_mem_fault_l)
-1113+ 097C CD 7E 04             call    x86_bios_trace_emit_hex8
-1114+ 097F 21 C9 09             ld      hl,x86_mem_fault_dssi_text
-1115+ 0982 CD C0 00             call    p126_ngs_resident_log
-1116+ 0985 2A C3 0B             ld      hl,(x86_reg_ds)
-1117+ 0988 CD 76 04             call    x86_bios_trace_emit_hex16
-1118+ 098B 3E 3A                ld      a,':'
-1119+ 098D CD 3B 05             call    x86_bios_trace_emit_char
-1120+ 0990 2A B9 0B             ld      hl,(x86_reg_si)
-1121+ 0993 CD 76 04             call    x86_bios_trace_emit_hex16
-1122+ 0996 21 D1 09             ld      hl,x86_mem_fault_cf_text
-1123+ 0999 CD C0 00             call    p126_ngs_resident_log
-1124+ 099C              .diag_done:
-1125+ 099C E1                   pop     hl
-1126+ 099D D1                   pop     de
-1127+ 099E C1                   pop     bc
-1128+ 099F F1                   pop     af
-1129+ 09A0 C9                   ret
-1130+ 09A1
-1131+ 09A1 5B 58 38 36  x86_mem_fault_prefix:       db "[X86 MEM FAULT] P=",0
-1131+ 09A5 20 4D 45 4D
-1131+ 09A9 20 46 41 55
-1131+ 09AD 4C 54 5D 20
-1131+ 09B1 50 3D 00
-1132+ 09B4 20 52 3D 00  x86_mem_fault_region_text:  db " R=",0
-1133+ 09B8 20 50 41 47  x86_mem_fault_page_text:    db " PAGE=",0
-1133+ 09BC 45 3D 00
-1134+ 09BF 20 4D 50 3D  x86_mem_fault_selector_text: db " MP=",0
-1134+ 09C3 00
-1135+ 09C4 20 48 4C 3D  x86_mem_fault_hl_text:      db " HL=",0
-1135+ 09C8 00
-1136+ 09C9 20 44 53 3A  x86_mem_fault_dssi_text:   db " DS:SI=",0
-1136+ 09CD 53 49 3D 00
-1137+ 09D1 20 43 46 3D  x86_mem_fault_cf_text:      db " CF=1",13,10,0
-1137+ 09D5 31 0D 0A 00
-1138+ 09D9 00           x86_mem_fault_diag_once:    db 0
-1139+ 09DA 00           x86_mem_fault_region:       db 0
-1140+ 09DB 00           x86_mem_fault_page:         db 0
-1141+ 09DC 00           x86_mem_fault_selector:     db 0
-1142+ 09DD 00           x86_mem_fault_h:            db 0
-1143+ 09DE 00           x86_mem_fault_l:            db 0
-1144+ 09DF
-1145+ 09DF              x86_guest_mem_write8:
-1146+ 09DF 32 D2 0B             ld      (x86_mem_data),a
-1147+ 09E2 CD 23 08             call    x86_mem_classify
-1148+ 09E5 FE 00                cp      P126_X86_MEM_RAM_LOW
-1149+ 09E7 28 0A                jr      z,.ram
-1150+ 09E9 FE 03                cp      P126_X86_MEM_RAM_HIGH
-1151+ 09EB 28 06                jr      z,.ram
-1152+ 09ED FE 01                cp      P126_X86_MEM_VGA_APERTURE
-1153+ 09EF 28 08                jr      z,.vram
-1154+ 09F1                      ; Both BIOS regions are read-only. Unknown regions fail closed.
-1155+ 09F1 37                   scf
-1156+ 09F2 C9                   ret
-1157+ 09F3              .ram:
-1158+ 09F3 3A D2 0B             ld      a,(x86_mem_data)
-1159+ 09F6 C3 6D 08             jp      x86_guest_ram_write8
-1160+ 09F9              .vram:
-1161+ 09F9 3E 08                ld      a,P126_NGS_GUEST_VRAM_PAGE_BIAS
-1162+ 09FB CD 04 0A             call    x86_guest_mem_select_page
-1163+ 09FE 3A D2 0B             ld      a,(x86_mem_data)
-1164+ 0A01 77                   ld      (hl),a
-1165+ 0A02 B7                   or      a
-1166+ 0A03 C9                   ret
-1167+ 0A04
-1168+ 0A04              ; Generic WIN3 selector. IN A=page bias; OUT HL=C000h|(guest_address&3FFFh).
-1169+ 0A04              ; Clobbers AF, BC, HL. The caller's page bias is consumed here.
-1170+ 0A04              x86_guest_mem_select_page:
-1171+ 0A04 47                   ld      b,a
-1172+ 0A05 3A D1 0B             ld      a,(x86_phys_addr+2)
-1173+ 0A08 87                   add     a,a
-1174+ 0A09 87                   add     a,a
-1175+ 0A0A 80                   add     a,b
-1176+ 0A0B 47                   ld      b,a
-1177+ 0A0C 3A D0 0B             ld      a,(x86_phys_addr+1)
-1178+ 0A0F                      ; Extract physical address bits 15:14 as the 16 KiB page index.
-1179+ 0A0F                      ; Six logical shifts are required; two RRCA rotations selected
-1180+ 0A0F                      ; unrelated bits and sent BIOS/RAM reads to the wrong WIN3 bank.
-1181+ 0A0F CB 3F                srl     a
-1182+ 0A11 CB 3F                srl     a
-1183+ 0A13 CB 3F                srl     a
-1184+ 0A15 CB 3F                srl     a
-1185+ 0A17 CB 3F                srl     a
-1186+ 0A19 CB 3F                srl     a
-1187+ 0A1B E6 03                and     #03
-1188+ 0A1D 80                   add     a,b
-1189+ 0A1E 0F                   rrca                            ; MPAGEX selector = physical page rotated right
-1190+ 0A1F D3 10                out     (P126_NGS_BANK_WINDOW_PORT),a
-1191+ 0A21 3A D0 0B             ld      a,(x86_phys_addr+1)
-1192+ 0A24 E6 3F                and     #3F
-1193+ 0A26 F6 C0                or      #C0
-1194+ 0A28 67                   ld      h,a
-1195+ 0A29 3A CF 0B             ld      a,(x86_phys_addr)
-1196+ 0A2C 6F                   ld      l,a
-1197+ 0A2D C9                   ret
-1198+ 0A2E
-1199+ 0A2E              ; Emit a runtime identity, not merely an assembler-time banner.
-1200+ 0A2E              x86_cpu_emit_version:
-1201+ 0A2E F5                   push    af
-1202+ 0A2F E5                   push    hl
-1203+ 0A30 21 40 0A             ld      hl,x86_cpu_version_text
-1204+ 0A33              .loop:
-1205+ 0A33 7E                   ld      a,(hl)
-1206+ 0A34 B7                   or      a
-1207+ 0A35 28 06                jr      z,.done
-1208+ 0A37 CD 3B 05             call    x86_bios_trace_emit_char
-1209+ 0A3A 23                   inc     hl
-1210+ 0A3B 18 F6                jr      .loop
-1211+ 0A3D              .done:
-1212+ 0A3D E1                   pop     hl
-1213+ 0A3E F1                   pop     af
-1214+ 0A3F C9                   ret
-1215+ 0A40
-1216+ 0A40              x86_cpu_version_text:
-1217+ 0A40 5B 50 31 32          defb    "[P126 X86_CPU_STATE v0.3.0]",13,10,0
-1217+ 0A44 36 20 58 38
-1217+ 0A48 36 5F 43 50
-1217+ 0A4C 55 5F 53 54
-1217+ 0A50 41 54 45 20
-1217+ 0A54 76 30 2E 33
-1217+ 0A58 2E 30 5D 0D
-1217+ 0A5C 0A 00
-1218+ 0A5E
-1219+ 0A5E              ; Executable target-side test vectors. Does not require BIOS, VGA or a
-1220+ 0A5E              ; selected memory-region map. It must be run before marking BUILD/HARDWARE PASS.
-1221+ 0A5E              x86_cpu_state_selftest:
-1222+ 0A5E F5                   push    af
-1223+ 0A5F C5                   push    bc
-1224+ 0A60 D5                   push    de
-1225+ 0A61 E5                   push    hl
-1226+ 0A62 CD D7 01             call    x86_cpu_reset
-1227+ 0A65
-1228+ 0A65 2A BF 0B             ld      hl,(x86_reg_cs)
-1229+ 0A68 11 FF FF             ld      de,#FFFF
-1230+ 0A6B B7                   or      a
-1231+ 0A6C ED 52                sbc     hl,de
-1232+ 0A6E C2 94 0B             jp      nz,.fail
-1233+ 0A71 2A C5 0B             ld      hl,(x86_reg_ip)
-1234+ 0A74 11 00 00             ld      de,0
-1235+ 0A77 B7                   or      a
-1236+ 0A78 ED 52                sbc     hl,de
-1237+ 0A7A C2 94 0B             jp      nz,.fail
-1238+ 0A7D 2A C7 0B             ld      hl,(x86_reg_flags)
-1239+ 0A80 11 02 00             ld      de,X86_FLAGS_RESET
-1240+ 0A83 B7                   or      a
-1241+ 0A84 ED 52                sbc     hl,de
-1242+ 0A86 C2 94 0B             jp      nz,.fail
-1243+ 0A89
-1244+ 0A89                      ; 0000:0000 = 00000h
-1245+ 0A89 21 00 00             ld      hl,0
-1246+ 0A8C 11 00 00             ld      de,0
-1247+ 0A8F CD DD 07             call    x86_cpu_calc_phys
-1248+ 0A92 21 7E 0C             ld      hl,x86_expected_zero
-1249+ 0A95 CD 9A 0B             call    x86_cpu_check_phys
-1250+ 0A98 C2 94 0B             jp      nz,.fail
-1251+ 0A9B
-1252+ 0A9B                      ; FFFF:000F = FFFFFh
-1253+ 0A9B 21 FF FF             ld      hl,#FFFF
-1254+ 0A9E 11 0F 00             ld      de,#000F
-1255+ 0AA1 CD DD 07             call    x86_cpu_calc_phys
-1256+ 0AA4 21 81 0C             ld      hl,x86_expected_fffff
-1257+ 0AA7 CD 9A 0B             call    x86_cpu_check_phys
-1258+ 0AAA C2 94 0B             jp      nz,.fail
-1259+ 0AAD
-1260+ 0AAD                      ; FFFF:0010 wraps to 00000h on the 20-bit bus.
-1261+ 0AAD 21 FF FF             ld      hl,#FFFF
-1262+ 0AB0 11 10 00             ld      de,#0010
-1263+ 0AB3 CD DD 07             call    x86_cpu_calc_phys
-1264+ 0AB6 21 7E 0C             ld      hl,x86_expected_zero
-1265+ 0AB9 CD 9A 0B             call    x86_cpu_check_phys
-1266+ 0ABC C2 94 0B             jp      nz,.fail
-1267+ 0ABF
-1268+ 0ABF                      ; 1234:5678 = 179B8h
-1269+ 0ABF 21 34 12             ld      hl,#1234
-1270+ 0AC2 11 78 56             ld      de,#5678
-1271+ 0AC5 CD DD 07             call    x86_cpu_calc_phys
-1272+ 0AC8 21 84 0C             ld      hl,x86_expected_179b8
-1273+ 0ACB CD 9A 0B             call    x86_cpu_check_phys
-1274+ 0ACE C2 94 0B             jp      nz,.fail
-1275+ 0AD1
-1276+ 0AD1                      ; F000:FFF0 = FFFF0h, the reset-vector physical address.
-1277+ 0AD1 21 00 F0             ld      hl,#F000
-1278+ 0AD4 11 F0 FF             ld      de,#FFF0
-1279+ 0AD7 CD DD 07             call    x86_cpu_calc_phys
-1280+ 0ADA 21 87 0C             ld      hl,x86_expected_ffff0
-1281+ 0ADD CD 9A 0B             call    x86_cpu_check_phys
-1282+ 0AE0 C2 94 0B             jp      nz,.fail
-1283+ 0AE3
-1284+ 0AE3                      ; Guest memory decode boundary tests.
-1285+ 0AE3 21 8A 0C             ld      hl,x86_test_9ffff
-1286+ 0AE6 11 CF 0B             ld      de,x86_phys_addr
-1287+ 0AE9 01 03 00             ld      bc,3
-1288+ 0AEC ED B0                ldir
-1289+ 0AEE CD 23 08             call    x86_mem_classify
-1290+ 0AF1 FE 00                cp      P126_X86_MEM_RAM_LOW
-1291+ 0AF3 C2 94 0B             jp      nz,.fail
-1292+ 0AF6
-1293+ 0AF6 21 8D 0C             ld      hl,x86_test_a0000
-1294+ 0AF9 11 CF 0B             ld      de,x86_phys_addr
-1295+ 0AFC 01 03 00             ld      bc,3
-1296+ 0AFF ED B0                ldir
-1297+ 0B01 CD 23 08             call    x86_mem_classify
-1298+ 0B04 FE 01                cp      P126_X86_MEM_VGA_APERTURE
-1299+ 0B06 C2 94 0B             jp      nz,.fail
-1300+ 0B09
-1301+ 0B09 21 90 0C             ld      hl,x86_test_bffff
-1302+ 0B0C 11 CF 0B             ld      de,x86_phys_addr
-1303+ 0B0F 01 03 00             ld      bc,3
-1304+ 0B12 ED B0                ldir
-1305+ 0B14 CD 23 08             call    x86_mem_classify
-1306+ 0B17 FE 01                cp      P126_X86_MEM_VGA_APERTURE
-1307+ 0B19 C2 94 0B             jp      nz,.fail
-1308+ 0B1C
-1309+ 0B1C 21 93 0C             ld      hl,x86_test_c0000
-1310+ 0B1F 11 CF 0B             ld      de,x86_phys_addr
-1311+ 0B22 01 03 00             ld      bc,3
-1312+ 0B25 ED B0                ldir
-1313+ 0B27 CD 23 08             call    x86_mem_classify
-1314+ 0B2A FE 02                cp      P126_X86_MEM_VGABIOS
-1315+ 0B2C C2 94 0B             jp      nz,.fail
-1316+ 0B2F
-1317+ 0B2F 21 96 0C             ld      hl,x86_test_c7fff
-1318+ 0B32 11 CF 0B             ld      de,x86_phys_addr
-1319+ 0B35 01 03 00             ld      bc,3
-1320+ 0B38 ED B0                ldir
-1321+ 0B3A CD 23 08             call    x86_mem_classify
-1322+ 0B3D FE 02                cp      P126_X86_MEM_VGABIOS
-1323+ 0B3F C2 94 0B             jp      nz,.fail
-1324+ 0B42
-1325+ 0B42 21 99 0C             ld      hl,x86_test_c8000
-1326+ 0B45 11 CF 0B             ld      de,x86_phys_addr
-1327+ 0B48 01 03 00             ld      bc,3
-1328+ 0B4B ED B0                ldir
-1329+ 0B4D CD 23 08             call    x86_mem_classify
-1330+ 0B50 FE 03                cp      P126_X86_MEM_RAM_HIGH
-1331+ 0B52 C2 94 0B             jp      nz,.fail
-1332+ 0B55
-1333+ 0B55 21 9C 0C             ld      hl,x86_test_fdfff
-1334+ 0B58 11 CF 0B             ld      de,x86_phys_addr
-1335+ 0B5B 01 03 00             ld      bc,3
-1336+ 0B5E ED B0                ldir
-1337+ 0B60 CD 23 08             call    x86_mem_classify
-1338+ 0B63 FE 03                cp      P126_X86_MEM_RAM_HIGH
-1339+ 0B65 C2 94 0B             jp      nz,.fail
-1340+ 0B68
-1341+ 0B68 21 9F 0C             ld      hl,x86_test_fe000
-1342+ 0B6B 11 CF 0B             ld      de,x86_phys_addr
-1343+ 0B6E 01 03 00             ld      bc,3
-1344+ 0B71 ED B0                ldir
-1345+ 0B73 CD 23 08             call    x86_mem_classify
-1346+ 0B76 FE 04                cp      P126_X86_MEM_SYSBIOS
-1347+ 0B78 C2 94 0B             jp      nz,.fail
-1348+ 0B7B
-1349+ 0B7B 21 A2 0C             ld      hl,x86_test_fffff
-1350+ 0B7E 11 CF 0B             ld      de,x86_phys_addr
-1351+ 0B81 01 03 00             ld      bc,3
-1352+ 0B84 ED B0                ldir
-1353+ 0B86 CD 23 08             call    x86_mem_classify
-1354+ 0B89 FE 04                cp      P126_X86_MEM_SYSBIOS
-1355+ 0B8B C2 94 0B             jp      nz,.fail
-1356+ 0B8E
-1357+ 0B8E E1                   pop     hl
-1358+ 0B8F D1                   pop     de
-1359+ 0B90 C1                   pop     bc
-1360+ 0B91 F1                   pop     af
-1361+ 0B92 B7                   or      a
-1362+ 0B93 C9                   ret
-1363+ 0B94              .fail:
-1364+ 0B94 E1                   pop     hl
-1365+ 0B95 D1                   pop     de
-1366+ 0B96 C1                   pop     bc
-1367+ 0B97 F1                   pop     af
-1368+ 0B98 37                   scf
-1369+ 0B99 C9                   ret
-1370+ 0B9A
-1371+ 0B9A              ; IN HL=expected address bytes. Z set iff all three bytes match.
-1372+ 0B9A              x86_cpu_check_phys:
-1373+ 0B9A C5                   push    bc
-1374+ 0B9B D5                   push    de
-1375+ 0B9C EB                   ex      de,hl
-1376+ 0B9D 21 CF 0B             ld      hl,x86_phys_addr
-1377+ 0BA0 06 03                ld      b,3
-1378+ 0BA2              .check:
-1379+ 0BA2 1A                   ld      a,(de)
-1380+ 0BA3 BE                   cp      (hl)
-1381+ 0BA4 20 04                jr      nz,.done
-1382+ 0BA6 13                   inc     de
-1383+ 0BA7 23                   inc     hl
-1384+ 0BA8 10 F8                djnz    .check
-1385+ 0BAA              .done:
-1386+ 0BAA D1                   pop     de
-1387+ 0BAB C1                   pop     bc
-1388+ 0BAC C9                   ret
-1389+ 0BAD
-1390+ 0BAD              ; Stable register names for subsequent instruction-decoder modules.
-1391+ 0BAD 00 00        x86_reg_ax:    dw 0
-1392+ 0BAF 00 00        x86_reg_cx:    dw 0
-1393+ 0BB1 00 00        x86_reg_dx:    dw 0
-1394+ 0BB3 00 00        x86_reg_bx:    dw 0
-1395+ 0BB5 00 00        x86_reg_sp:    dw 0
-1396+ 0BB7 00 00        x86_reg_bp:    dw 0
-1397+ 0BB9 00 00        x86_reg_si:    dw 0
-1398+ 0BBB 00 00        x86_reg_di:    dw 0
-1399+ 0BBD 00 00        x86_reg_es:    dw 0
-1400+ 0BBF 00 00        x86_reg_cs:    dw 0
-1401+ 0BC1 00 00        x86_reg_ss:    dw 0
-1402+ 0BC3 00 00        x86_reg_ds:    dw 0
-1403+ 0BC5 00 00        x86_reg_ip:    dw 0
-1404+ 0BC7 02 00        x86_reg_flags: dw X86_FLAGS_RESET
-1405+ 0BC9 00           x86_halted:      db 0
-1406+ 0BCA 00           x86_pending_irq: db 0
-1407+ 0BCB 00           x86_pending_nmi: db 0
-1408+ 0BCC 00           x86_irq_inhibit: db 0
-1409+ 0BCD              ; Set from TF at instruction start; consumed at the following boundary.
-1410+ 0BCD 00           x86_tf_pending: db 0
-1411+ 0BCE 08           x86_irq_vector: db 8
-1412+ 0BCF 00 00 00     x86_phys_addr: db 0,0,0
-1413+ 0BD2 00           x86_mem_data:  db 0
-1414+ 0BD3
-1415+ 0BD3 00           x86_bios_probe_remaining: db 0
-1416+ 0BD4 00 00 00 00  x86_bios_reset_vector_bytes: db 0,0,0,0,0
-1416+ 0BD8 00
-1417+ 0BD9 EA 5B E0 00  x86_bios_reset_vector_expected: db #EA,#5B,#E0,#00,#F0
-1417+ 0BDD F0
-1418+ 0BDE              x86_bios_reset_vector_pass_log:
-1419+ 0BDE 5B 4E 47 53          db "[NGS] X86 BIOS RESET VECTOR FETCH PASS",13,10,0
-1419+ 0BE2 5D 20 58 38
-1419+ 0BE6 36 20 42 49
-1419+ 0BEA 4F 53 20 52
-1419+ 0BEE 45 53 45 54
-1419+ 0BF2 20 56 45 43
-1419+ 0BF6 54 4F 52 20
-1419+ 0BFA 46 45 54 43
-1419+ 0BFE 48 20 50 41
-1419+ 0C02 53 53 0D 0A
-1419+ 0C06 00
-1420+ 0C07              x86_bios_reset_target_log:
-1421+ 0C07 5B 4E 47 53          db "[NGS] X86 FAR JMP DECODED F000:E05B",13,10,0
-1421+ 0C0B 5D 20 58 38
-1421+ 0C0F 36 20 46 41
-1421+ 0C13 52 20 4A 4D
-1421+ 0C17 50 20 44 45
-1421+ 0C1B 43 4F 44 45
-1421+ 0C1F 44 20 46 30
-1421+ 0C23 30 30 3A 45
-1421+ 0C27 30 35 42 0D
-1421+ 0C2B 0A 00
-1422+ 0C2D              x86_bios_reset_read_fail_log:
-1423+ 0C2D 5B 4E 47 53          db "[NGS] X86 BIOS RESET VECTOR READ FAILED",13,10,0
-1423+ 0C31 5D 20 58 38
-1423+ 0C35 36 20 42 49
-1423+ 0C39 4F 53 20 52
-1423+ 0C3D 45 53 45 54
-1423+ 0C41 20 56 45 43
-1423+ 0C45 54 4F 52 20
-1423+ 0C49 52 45 41 44
-1423+ 0C4D 20 46 41 49
-1423+ 0C51 4C 45 44 0D
-1423+ 0C55 0A 00
-1424+ 0C57              x86_bios_reset_vector_bad_log:
-1425+ 0C57 5B 4E 47 53          db "[NGS] X86 BIOS RESET VECTOR MISMATCH",13,10,0
-1425+ 0C5B 5D 20 58 38
-1425+ 0C5F 36 20 42 49
-1425+ 0C63 4F 53 20 52
-1425+ 0C67 45 53 45 54
-1425+ 0C6B 20 56 45 43
-1425+ 0C6F 54 4F 52 20
-1425+ 0C73 4D 49 53 4D
-1425+ 0C77 41 54 43 48
-1425+ 0C7B 0D 0A 00
-1426+ 0C7E
-1427+ 0C7E 00 00 00     x86_expected_zero:  db 0,0,0
-1428+ 0C81 FF FF 0F     x86_expected_fffff: db #FF,#FF,#0F
-1429+ 0C84 B8 79 01     x86_expected_179b8: db #B8,#79,#01
-1430+ 0C87 F0 FF 0F     x86_expected_ffff0: db #F0,#FF,#0F
-1431+ 0C8A
-1432+ 0C8A              ; Physical address boundary vectors: low, middle, high-nibble bytes.
-1433+ 0C8A FF FF 09     x86_test_9ffff:  db #FF,#FF,#09
-1434+ 0C8D 00 00 0A     x86_test_a0000:  db #00,#00,#0A
-1435+ 0C90 FF FF 0B     x86_test_bffff:  db #FF,#FF,#0B
-1436+ 0C93 00 00 0C     x86_test_c0000:  db #00,#00,#0C
-1437+ 0C96 FF 7F 0C     x86_test_c7fff:  db #FF,#7F,#0C
-1438+ 0C99 00 80 0C     x86_test_c8000:  db #00,#80,#0C
-1439+ 0C9C FF DF 0F     x86_test_fdfff:  db #FF,#DF,#0F
-1440+ 0C9F 00 E0 0F     x86_test_fe000:  db #00,#E0,#0F
-1441+ 0CA2 FF FF 0F     x86_test_fffff:  db #FF,#FF,#0F
-1442+ 0CA5
+ 907+ 085A
+ 908+ 085A              ; -------------------------------------------------------------------------
+ 909+ 085A              ; Guest RAM backing access
+ 910+ 085A              ;
+ 911+ 085A              ; Guest RAM allocation starts at NeoGS physical page 44h.
+ 912+ 085A              ; Guest byte address maps linearly to physical offset 110000h + guest address.
+ 913+ 085A              ; WIN3 is a permanently reserved bank aperture; its current page is volatile.
+ 914+ 085A              ; These routines do not restore WIN3's previous page because the page port is
+ 915+ 085A              ; write-only and WIN3 is owned exclusively by this memory backend.
+ 916+ 085A              ;
+ 917+ 085A              ; Entry address: x86_phys_addr = low, middle, high-nibble.
+ 918+ 085A              ; Read returns byte in A, carry clear. Non-RAM overlay regions return carry.
+ 919+ 085A              ; Write takes byte in A, carry clear on success; non-RAM returns carry.
+ 920+ 085A              ; -------------------------------------------------------------------------
+ 921+ 085A
+ 922+ 085A              x86_guest_ram_read8:
+ 923+ 085A CD 23 08             call    x86_mem_classify
+ 924+ 085D FE 00                cp      P126_X86_MEM_RAM_LOW
+ 925+ 085F 28 04                jr      z,.read_map
+ 926+ 0861 FE 03                cp      P126_X86_MEM_RAM_HIGH
+ 927+ 0863 20 06                jr      nz,.read_reject
+ 928+ 0865              .read_map:
+ 929+ 0865 CD 86 08             call    x86_guest_ram_select_page
+ 930+ 0868 7E                   ld      a,(hl)
+ 931+ 0869 B7                   or      a
+ 932+ 086A C9                   ret
+ 933+ 086B              .read_reject:
+ 934+ 086B 37                   scf
+ 935+ 086C C9                   ret
+ 936+ 086D
+ 937+ 086D              x86_guest_ram_write8:
+ 938+ 086D 32 D2 0B             ld      (x86_mem_data),a
+ 939+ 0870 CD 23 08             call    x86_mem_classify
+ 940+ 0873 FE 00                cp      P126_X86_MEM_RAM_LOW
+ 941+ 0875 28 04                jr      z,.write_map
+ 942+ 0877 FE 03                cp      P126_X86_MEM_RAM_HIGH
+ 943+ 0879 20 09                jr      nz,.write_reject
+ 944+ 087B              .write_map:
+ 945+ 087B CD 86 08             call    x86_guest_ram_select_page
+ 946+ 087E 3A D2 0B             ld      a,(x86_mem_data)
+ 947+ 0881 77                   ld      (hl),a
+ 948+ 0882 B7                   or      a
+ 949+ 0883 C9                   ret
+ 950+ 0884              .write_reject:
+ 951+ 0884 37                   scf
+ 952+ 0885 C9                   ret
+ 953+ 0886
+ 954+ 0886              ; Select WIN3 physical page and return HL=C000h|(guest_address&3FFFh).
+ 955+ 0886              ; Physical page = 44h + guest_address[19:14].
+ 956+ 0886              ; Clobbers AF, BC, HL; does not touch DE or guest CPU registers.
+ 957+ 0886              x86_guest_ram_select_page:
+ 958+ 0886 3A D1 0B             ld      a,(x86_phys_addr+2)
+ 959+ 0889 87                   add     a,a
+ 960+ 088A 87                   add     a,a
+ 961+ 088B C6 44                add     a,P126_NGS_GUEST_RAM_PAGE_BASE
+ 962+ 088D 47                   ld      b,a
+ 963+ 088E 3A D0 0B             ld      a,(x86_phys_addr+1)
+ 964+ 0891                      ; Extract physical address bits 15:14 as the 16 KiB page index.
+ 965+ 0891                      ; Six logical shifts are required; two RRCA rotations selected
+ 966+ 0891                      ; unrelated bits and sent BIOS/RAM reads to the wrong WIN3 bank.
+ 967+ 0891 CB 3F                srl     a
+ 968+ 0893 CB 3F                srl     a
+ 969+ 0895 CB 3F                srl     a
+ 970+ 0897 CB 3F                srl     a
+ 971+ 0899 CB 3F                srl     a
+ 972+ 089B CB 3F                srl     a
+ 973+ 089D E6 03                and     #03
+ 974+ 089F 80                   add     a,b
+ 975+ 08A0 0F                   rrca                            ; MPAGEX selector = physical page rotated right
+ 976+ 08A1 D3 10                out     (P126_NGS_BANK_WINDOW_PORT),a
+ 977+ 08A3
+ 978+ 08A3 3A D0 0B             ld      a,(x86_phys_addr+1)
+ 979+ 08A6 E6 3F                and     #3F
+ 980+ 08A8 F6 C0                or      #C0
+ 981+ 08AA 67                   ld      h,a
+ 982+ 08AB 3A CF 0B             ld      a,(x86_phys_addr)
+ 983+ 08AE 6F                   ld      l,a
+ 984+ 08AF C9                   ret
+ 985+ 08B0
+ 986+ 08B0              ; -------------------------------------------------------------------------
+ 987+ 08B0              ; Unified guest memory interface
+ 988+ 08B0              ;
+ 989+ 08B0              ; Guest physical address is classified before selecting its physical backing:
+ 990+ 08B0              ;   00000-9FFFF / C8000-FDFFF : guest RAM, pages 44h-83h
+ 991+ 08B0              ;   A0000-BFFFF               : linear VGA aperture backing, pages 30h-37h
+ 992+ 08B0              ;   C0000-C7FFF               : VGA BIOS slot, pages 20h-21h
+ 993+ 08B0              ;   FE000-FFFFF               : system BIOS slot, page 10h (8 KiB image)
+ 994+ 08B0              ;
+ 995+ 08B0              ; The VGA aperture backend is deliberately a byte-linear staging layer over
+ 996+ 08B0              ; the first 128 KiB of the 256 KiB VRAM allocation. It is NOT yet IBM VGA
+ 997+ 08B0              ; plane/latch/read-mode/write-mode emulation. VGA register semantics are a
+ 998+ 08B0              ; separate implementation stage.
+ 999+ 08B0              ;
+1000+ 08B0              ; All backing is reached through WIN3. A is the page bias for the address
+1001+ 08B0              ; formula: page = (guest_high_nibble*4)+(guest_middle>>6)+bias.
+1002+ 08B0              ; -------------------------------------------------------------------------
+1003+ 08B0
+1004+ 08B0              x86_guest_mem_read8:
+1005+ 08B0 CD 23 08             call    x86_mem_classify
+1006+ 08B3 FE 00                cp      P126_X86_MEM_RAM_LOW
+1007+ 08B5 28 18                jr      z,.ram
+1008+ 08B7 FE 03                cp      P126_X86_MEM_RAM_HIGH
+1009+ 08B9 28 14                jr      z,.ram
+1010+ 08BB FE 01                cp      P126_X86_MEM_VGA_APERTURE
+1011+ 08BD 28 13                jr      z,.vram
+1012+ 08BF FE 02                cp      P126_X86_MEM_VGABIOS
+1013+ 08C1 28 17                jr      z,.vgabios
+1014+ 08C3 FE 04                cp      P126_X86_MEM_SYSBIOS
+1015+ 08C5 28 1B                jr      z,.sysbios
+1016+ 08C7                      ; A region outside the configured guest map is a real memory fault.
+1017+ 08C7                      ; Emit one compact address/mapping snapshot, then preserve CF=1.
+1018+ 08C7 32 DA 09             ld      (x86_mem_fault_region),a
+1019+ 08CA CD EE 08             call    x86_guest_mem_fault_diag
+1020+ 08CD 37                   scf
+1021+ 08CE C9                   ret
+1022+ 08CF              .ram:
+1023+ 08CF C3 5A 08             jp      x86_guest_ram_read8
+1024+ 08D2              .vram:
+1025+ 08D2 3E 08                ld      a,P126_NGS_GUEST_VRAM_PAGE_BIAS
+1026+ 08D4 CD 04 0A             call    x86_guest_mem_select_page
+1027+ 08D7 7E                   ld      a,(hl)
+1028+ 08D8 B7                   or      a
+1029+ 08D9 C9                   ret
+1030+ 08DA              .vgabios:
+1031+ 08DA 3E F0                ld      a,P126_NGS_GUEST_VGABIOS_PAGE_BIAS
+1032+ 08DC CD 04 0A             call    x86_guest_mem_select_page
+1033+ 08DF 7E                   ld      a,(hl)
+1034+ 08E0 B7                   or      a
+1035+ 08E1 C9                   ret
+1036+ 08E2              .sysbios:
+1037+ 08E2 3E D1                ld      a,P126_NGS_GUEST_SYSBIOS_PAGE_BIAS
+1038+ 08E4 CD 04 0A             call    x86_guest_mem_select_page
+1039+ 08E7                      ; FE000h is half-way through a 16 KiB guest page. Rebase the
+1040+ 08E7                      ; guest-visible 8 KiB BIOS window to offset 0000h in slot page 10h.
+1041+ 08E7 7C                   ld      a,h
+1042+ 08E8 D6 20                sub     #20
+1043+ 08EA 67                   ld      h,a
+1044+ 08EB 7E                   ld      a,(hl)
+1045+ 08EC B7                   or      a
+1046+ 08ED C9                   ret
+1047+ 08EE
+1048+ 08EE              ; -------------------------------------------------------------------------
+1049+ 08EE              ; One-shot diagnostic for rejected guest-memory reads.
+1050+ 08EE              ; Logs physical address, classifier result, computed NeoGS page/MPAGEX value,
+1051+ 08EE              ; WIN3 aperture address and the architectural DS:SI source registers.
+1052+ 08EE              ; This is intentionally fault-only; normal memory accesses remain silent.
+1053+ 08EE              ; -------------------------------------------------------------------------
+1054+ 08EE              x86_guest_mem_fault_diag:
+1055+ 08EE F5                   push    af
+1056+ 08EF C5                   push    bc
+1057+ 08F0 D5                   push    de
+1058+ 08F1 E5                   push    hl
+1059+ 08F2 3A D9 09             ld      a,(x86_mem_fault_diag_once)
+1060+ 08F5 B7                   or      a
+1061+ 08F6 C2 9C 09             jp      nz,.diag_done
+1062+ 08F9 3C                   inc     a
+1063+ 08FA 32 D9 09             ld      (x86_mem_fault_diag_once),a
+1064+ 08FD 3A D1 0B             ld      a,(x86_phys_addr+2)
+1065+ 0900 32 DB 09             ld      (x86_mem_fault_page),a
+1066+ 0903 87                   add     a,a
+1067+ 0904 87                   add     a,a
+1068+ 0905 C6 44                add     a,P126_NGS_GUEST_RAM_PAGE_BASE
+1069+ 0907 47                   ld      b,a
+1070+ 0908 3A D0 0B             ld      a,(x86_phys_addr+1)
+1071+ 090B CB 3F                srl     a
+1072+ 090D CB 3F                srl     a
+1073+ 090F CB 3F                srl     a
+1074+ 0911 CB 3F                srl     a
+1075+ 0913 CB 3F                srl     a
+1076+ 0915 CB 3F                srl     a
+1077+ 0917 E6 03                and     #03
+1078+ 0919 80                   add     a,b
+1079+ 091A 32 DB 09             ld      (x86_mem_fault_page),a
+1080+ 091D 0F                   rrca
+1081+ 091E 32 DC 09             ld      (x86_mem_fault_selector),a
+1082+ 0921 3A D0 0B             ld      a,(x86_phys_addr+1)
+1083+ 0924 E6 3F                and     #3F
+1084+ 0926 F6 C0                or      #C0
+1085+ 0928 32 DD 09             ld      (x86_mem_fault_h),a
+1086+ 092B 3A CF 0B             ld      a,(x86_phys_addr)
+1087+ 092E 32 DE 09             ld      (x86_mem_fault_l),a
+1088+ 0931
+1089+ 0931 21 A1 09             ld      hl,x86_mem_fault_prefix
+1090+ 0934 CD C0 00             call    p126_ngs_resident_log
+1091+ 0937 3A D1 0B             ld      a,(x86_phys_addr+2)
+1092+ 093A CD 7E 04             call    x86_bios_trace_emit_hex8
+1093+ 093D 3A D0 0B             ld      a,(x86_phys_addr+1)
+1094+ 0940 CD 7E 04             call    x86_bios_trace_emit_hex8
+1095+ 0943 3A CF 0B             ld      a,(x86_phys_addr)
+1096+ 0946 CD 7E 04             call    x86_bios_trace_emit_hex8
+1097+ 0949 21 B4 09             ld      hl,x86_mem_fault_region_text
+1098+ 094C CD C0 00             call    p126_ngs_resident_log
+1099+ 094F 3A DA 09             ld      a,(x86_mem_fault_region)
+1100+ 0952 CD 7E 04             call    x86_bios_trace_emit_hex8
+1101+ 0955 21 B8 09             ld      hl,x86_mem_fault_page_text
+1102+ 0958 CD C0 00             call    p126_ngs_resident_log
+1103+ 095B 3A DB 09             ld      a,(x86_mem_fault_page)
+1104+ 095E CD 7E 04             call    x86_bios_trace_emit_hex8
+1105+ 0961 21 BF 09             ld      hl,x86_mem_fault_selector_text
+1106+ 0964 CD C0 00             call    p126_ngs_resident_log
+1107+ 0967 3A DC 09             ld      a,(x86_mem_fault_selector)
+1108+ 096A CD 7E 04             call    x86_bios_trace_emit_hex8
+1109+ 096D 21 C4 09             ld      hl,x86_mem_fault_hl_text
+1110+ 0970 CD C0 00             call    p126_ngs_resident_log
+1111+ 0973 3A DD 09             ld      a,(x86_mem_fault_h)
+1112+ 0976 CD 7E 04             call    x86_bios_trace_emit_hex8
+1113+ 0979 3A DE 09             ld      a,(x86_mem_fault_l)
+1114+ 097C CD 7E 04             call    x86_bios_trace_emit_hex8
+1115+ 097F 21 C9 09             ld      hl,x86_mem_fault_dssi_text
+1116+ 0982 CD C0 00             call    p126_ngs_resident_log
+1117+ 0985 2A C3 0B             ld      hl,(x86_reg_ds)
+1118+ 0988 CD 76 04             call    x86_bios_trace_emit_hex16
+1119+ 098B 3E 3A                ld      a,':'
+1120+ 098D CD 3B 05             call    x86_bios_trace_emit_char
+1121+ 0990 2A B9 0B             ld      hl,(x86_reg_si)
+1122+ 0993 CD 76 04             call    x86_bios_trace_emit_hex16
+1123+ 0996 21 D1 09             ld      hl,x86_mem_fault_cf_text
+1124+ 0999 CD C0 00             call    p126_ngs_resident_log
+1125+ 099C              .diag_done:
+1126+ 099C E1                   pop     hl
+1127+ 099D D1                   pop     de
+1128+ 099E C1                   pop     bc
+1129+ 099F F1                   pop     af
+1130+ 09A0 C9                   ret
+1131+ 09A1
+1132+ 09A1 5B 58 38 36  x86_mem_fault_prefix:       db "[X86 MEM FAULT] P=",0
+1132+ 09A5 20 4D 45 4D
+1132+ 09A9 20 46 41 55
+1132+ 09AD 4C 54 5D 20
+1132+ 09B1 50 3D 00
+1133+ 09B4 20 52 3D 00  x86_mem_fault_region_text:  db " R=",0
+1134+ 09B8 20 50 41 47  x86_mem_fault_page_text:    db " PAGE=",0
+1134+ 09BC 45 3D 00
+1135+ 09BF 20 4D 50 3D  x86_mem_fault_selector_text: db " MP=",0
+1135+ 09C3 00
+1136+ 09C4 20 48 4C 3D  x86_mem_fault_hl_text:      db " HL=",0
+1136+ 09C8 00
+1137+ 09C9 20 44 53 3A  x86_mem_fault_dssi_text:   db " DS:SI=",0
+1137+ 09CD 53 49 3D 00
+1138+ 09D1 20 43 46 3D  x86_mem_fault_cf_text:      db " CF=1",13,10,0
+1138+ 09D5 31 0D 0A 00
+1139+ 09D9 00           x86_mem_fault_diag_once:    db 0
+1140+ 09DA 00           x86_mem_fault_region:       db 0
+1141+ 09DB 00           x86_mem_fault_page:         db 0
+1142+ 09DC 00           x86_mem_fault_selector:     db 0
+1143+ 09DD 00           x86_mem_fault_h:            db 0
+1144+ 09DE 00           x86_mem_fault_l:            db 0
+1145+ 09DF
+1146+ 09DF              x86_guest_mem_write8:
+1147+ 09DF 32 D2 0B             ld      (x86_mem_data),a
+1148+ 09E2 CD 23 08             call    x86_mem_classify
+1149+ 09E5 FE 00                cp      P126_X86_MEM_RAM_LOW
+1150+ 09E7 28 0A                jr      z,.ram
+1151+ 09E9 FE 03                cp      P126_X86_MEM_RAM_HIGH
+1152+ 09EB 28 06                jr      z,.ram
+1153+ 09ED FE 01                cp      P126_X86_MEM_VGA_APERTURE
+1154+ 09EF 28 08                jr      z,.vram
+1155+ 09F1                      ; Both BIOS regions are read-only. Unknown regions fail closed.
+1156+ 09F1 37                   scf
+1157+ 09F2 C9                   ret
+1158+ 09F3              .ram:
+1159+ 09F3 3A D2 0B             ld      a,(x86_mem_data)
+1160+ 09F6 C3 6D 08             jp      x86_guest_ram_write8
+1161+ 09F9              .vram:
+1162+ 09F9 3E 08                ld      a,P126_NGS_GUEST_VRAM_PAGE_BIAS
+1163+ 09FB CD 04 0A             call    x86_guest_mem_select_page
+1164+ 09FE 3A D2 0B             ld      a,(x86_mem_data)
+1165+ 0A01 77                   ld      (hl),a
+1166+ 0A02 B7                   or      a
+1167+ 0A03 C9                   ret
+1168+ 0A04
+1169+ 0A04              ; Generic WIN3 selector. IN A=page bias; OUT HL=C000h|(guest_address&3FFFh).
+1170+ 0A04              ; Clobbers AF, BC, HL. The caller's page bias is consumed here.
+1171+ 0A04              x86_guest_mem_select_page:
+1172+ 0A04 47                   ld      b,a
+1173+ 0A05 3A D1 0B             ld      a,(x86_phys_addr+2)
+1174+ 0A08 87                   add     a,a
+1175+ 0A09 87                   add     a,a
+1176+ 0A0A 80                   add     a,b
+1177+ 0A0B 47                   ld      b,a
+1178+ 0A0C 3A D0 0B             ld      a,(x86_phys_addr+1)
+1179+ 0A0F                      ; Extract physical address bits 15:14 as the 16 KiB page index.
+1180+ 0A0F                      ; Six logical shifts are required; two RRCA rotations selected
+1181+ 0A0F                      ; unrelated bits and sent BIOS/RAM reads to the wrong WIN3 bank.
+1182+ 0A0F CB 3F                srl     a
+1183+ 0A11 CB 3F                srl     a
+1184+ 0A13 CB 3F                srl     a
+1185+ 0A15 CB 3F                srl     a
+1186+ 0A17 CB 3F                srl     a
+1187+ 0A19 CB 3F                srl     a
+1188+ 0A1B E6 03                and     #03
+1189+ 0A1D 80                   add     a,b
+1190+ 0A1E 0F                   rrca                            ; MPAGEX selector = physical page rotated right
+1191+ 0A1F D3 10                out     (P126_NGS_BANK_WINDOW_PORT),a
+1192+ 0A21 3A D0 0B             ld      a,(x86_phys_addr+1)
+1193+ 0A24 E6 3F                and     #3F
+1194+ 0A26 F6 C0                or      #C0
+1195+ 0A28 67                   ld      h,a
+1196+ 0A29 3A CF 0B             ld      a,(x86_phys_addr)
+1197+ 0A2C 6F                   ld      l,a
+1198+ 0A2D C9                   ret
+1199+ 0A2E
+1200+ 0A2E              ; Emit a runtime identity, not merely an assembler-time banner.
+1201+ 0A2E              x86_cpu_emit_version:
+1202+ 0A2E F5                   push    af
+1203+ 0A2F E5                   push    hl
+1204+ 0A30 21 40 0A             ld      hl,x86_cpu_version_text
+1205+ 0A33              .loop:
+1206+ 0A33 7E                   ld      a,(hl)
+1207+ 0A34 B7                   or      a
+1208+ 0A35 28 06                jr      z,.done
+1209+ 0A37 CD 3B 05             call    x86_bios_trace_emit_char
+1210+ 0A3A 23                   inc     hl
+1211+ 0A3B 18 F6                jr      .loop
+1212+ 0A3D              .done:
+1213+ 0A3D E1                   pop     hl
+1214+ 0A3E F1                   pop     af
+1215+ 0A3F C9                   ret
+1216+ 0A40
+1217+ 0A40              x86_cpu_version_text:
+1218+ 0A40 5B 50 31 32          defb    "[P126 X86_CPU_STATE v0.3.0]",13,10,0
+1218+ 0A44 36 20 58 38
+1218+ 0A48 36 5F 43 50
+1218+ 0A4C 55 5F 53 54
+1218+ 0A50 41 54 45 20
+1218+ 0A54 76 30 2E 33
+1218+ 0A58 2E 30 5D 0D
+1218+ 0A5C 0A 00
+1219+ 0A5E
+1220+ 0A5E              ; Executable target-side test vectors. Does not require BIOS, VGA or a
+1221+ 0A5E              ; selected memory-region map. It must be run before marking BUILD/HARDWARE PASS.
+1222+ 0A5E              x86_cpu_state_selftest:
+1223+ 0A5E F5                   push    af
+1224+ 0A5F C5                   push    bc
+1225+ 0A60 D5                   push    de
+1226+ 0A61 E5                   push    hl
+1227+ 0A62 CD D7 01             call    x86_cpu_reset
+1228+ 0A65
+1229+ 0A65 2A BF 0B             ld      hl,(x86_reg_cs)
+1230+ 0A68 11 FF FF             ld      de,#FFFF
+1231+ 0A6B B7                   or      a
+1232+ 0A6C ED 52                sbc     hl,de
+1233+ 0A6E C2 94 0B             jp      nz,.fail
+1234+ 0A71 2A C5 0B             ld      hl,(x86_reg_ip)
+1235+ 0A74 11 00 00             ld      de,0
+1236+ 0A77 B7                   or      a
+1237+ 0A78 ED 52                sbc     hl,de
+1238+ 0A7A C2 94 0B             jp      nz,.fail
+1239+ 0A7D 2A C7 0B             ld      hl,(x86_reg_flags)
+1240+ 0A80 11 02 00             ld      de,X86_FLAGS_RESET
+1241+ 0A83 B7                   or      a
+1242+ 0A84 ED 52                sbc     hl,de
+1243+ 0A86 C2 94 0B             jp      nz,.fail
+1244+ 0A89
+1245+ 0A89                      ; 0000:0000 = 00000h
+1246+ 0A89 21 00 00             ld      hl,0
+1247+ 0A8C 11 00 00             ld      de,0
+1248+ 0A8F CD DD 07             call    x86_cpu_calc_phys
+1249+ 0A92 21 7E 0C             ld      hl,x86_expected_zero
+1250+ 0A95 CD 9A 0B             call    x86_cpu_check_phys
+1251+ 0A98 C2 94 0B             jp      nz,.fail
+1252+ 0A9B
+1253+ 0A9B                      ; FFFF:000F = FFFFFh
+1254+ 0A9B 21 FF FF             ld      hl,#FFFF
+1255+ 0A9E 11 0F 00             ld      de,#000F
+1256+ 0AA1 CD DD 07             call    x86_cpu_calc_phys
+1257+ 0AA4 21 81 0C             ld      hl,x86_expected_fffff
+1258+ 0AA7 CD 9A 0B             call    x86_cpu_check_phys
+1259+ 0AAA C2 94 0B             jp      nz,.fail
+1260+ 0AAD
+1261+ 0AAD                      ; FFFF:0010 wraps to 00000h on the 20-bit bus.
+1262+ 0AAD 21 FF FF             ld      hl,#FFFF
+1263+ 0AB0 11 10 00             ld      de,#0010
+1264+ 0AB3 CD DD 07             call    x86_cpu_calc_phys
+1265+ 0AB6 21 7E 0C             ld      hl,x86_expected_zero
+1266+ 0AB9 CD 9A 0B             call    x86_cpu_check_phys
+1267+ 0ABC C2 94 0B             jp      nz,.fail
+1268+ 0ABF
+1269+ 0ABF                      ; 1234:5678 = 179B8h
+1270+ 0ABF 21 34 12             ld      hl,#1234
+1271+ 0AC2 11 78 56             ld      de,#5678
+1272+ 0AC5 CD DD 07             call    x86_cpu_calc_phys
+1273+ 0AC8 21 84 0C             ld      hl,x86_expected_179b8
+1274+ 0ACB CD 9A 0B             call    x86_cpu_check_phys
+1275+ 0ACE C2 94 0B             jp      nz,.fail
+1276+ 0AD1
+1277+ 0AD1                      ; F000:FFF0 = FFFF0h, the reset-vector physical address.
+1278+ 0AD1 21 00 F0             ld      hl,#F000
+1279+ 0AD4 11 F0 FF             ld      de,#FFF0
+1280+ 0AD7 CD DD 07             call    x86_cpu_calc_phys
+1281+ 0ADA 21 87 0C             ld      hl,x86_expected_ffff0
+1282+ 0ADD CD 9A 0B             call    x86_cpu_check_phys
+1283+ 0AE0 C2 94 0B             jp      nz,.fail
+1284+ 0AE3
+1285+ 0AE3                      ; Guest memory decode boundary tests.
+1286+ 0AE3 21 8A 0C             ld      hl,x86_test_9ffff
+1287+ 0AE6 11 CF 0B             ld      de,x86_phys_addr
+1288+ 0AE9 01 03 00             ld      bc,3
+1289+ 0AEC ED B0                ldir
+1290+ 0AEE CD 23 08             call    x86_mem_classify
+1291+ 0AF1 FE 00                cp      P126_X86_MEM_RAM_LOW
+1292+ 0AF3 C2 94 0B             jp      nz,.fail
+1293+ 0AF6
+1294+ 0AF6 21 8D 0C             ld      hl,x86_test_a0000
+1295+ 0AF9 11 CF 0B             ld      de,x86_phys_addr
+1296+ 0AFC 01 03 00             ld      bc,3
+1297+ 0AFF ED B0                ldir
+1298+ 0B01 CD 23 08             call    x86_mem_classify
+1299+ 0B04 FE 01                cp      P126_X86_MEM_VGA_APERTURE
+1300+ 0B06 C2 94 0B             jp      nz,.fail
+1301+ 0B09
+1302+ 0B09 21 90 0C             ld      hl,x86_test_bffff
+1303+ 0B0C 11 CF 0B             ld      de,x86_phys_addr
+1304+ 0B0F 01 03 00             ld      bc,3
+1305+ 0B12 ED B0                ldir
+1306+ 0B14 CD 23 08             call    x86_mem_classify
+1307+ 0B17 FE 01                cp      P126_X86_MEM_VGA_APERTURE
+1308+ 0B19 C2 94 0B             jp      nz,.fail
+1309+ 0B1C
+1310+ 0B1C 21 93 0C             ld      hl,x86_test_c0000
+1311+ 0B1F 11 CF 0B             ld      de,x86_phys_addr
+1312+ 0B22 01 03 00             ld      bc,3
+1313+ 0B25 ED B0                ldir
+1314+ 0B27 CD 23 08             call    x86_mem_classify
+1315+ 0B2A FE 02                cp      P126_X86_MEM_VGABIOS
+1316+ 0B2C C2 94 0B             jp      nz,.fail
+1317+ 0B2F
+1318+ 0B2F 21 96 0C             ld      hl,x86_test_c7fff
+1319+ 0B32 11 CF 0B             ld      de,x86_phys_addr
+1320+ 0B35 01 03 00             ld      bc,3
+1321+ 0B38 ED B0                ldir
+1322+ 0B3A CD 23 08             call    x86_mem_classify
+1323+ 0B3D FE 02                cp      P126_X86_MEM_VGABIOS
+1324+ 0B3F C2 94 0B             jp      nz,.fail
+1325+ 0B42
+1326+ 0B42 21 99 0C             ld      hl,x86_test_c8000
+1327+ 0B45 11 CF 0B             ld      de,x86_phys_addr
+1328+ 0B48 01 03 00             ld      bc,3
+1329+ 0B4B ED B0                ldir
+1330+ 0B4D CD 23 08             call    x86_mem_classify
+1331+ 0B50 FE 03                cp      P126_X86_MEM_RAM_HIGH
+1332+ 0B52 C2 94 0B             jp      nz,.fail
+1333+ 0B55
+1334+ 0B55 21 9C 0C             ld      hl,x86_test_fdfff
+1335+ 0B58 11 CF 0B             ld      de,x86_phys_addr
+1336+ 0B5B 01 03 00             ld      bc,3
+1337+ 0B5E ED B0                ldir
+1338+ 0B60 CD 23 08             call    x86_mem_classify
+1339+ 0B63 FE 03                cp      P126_X86_MEM_RAM_HIGH
+1340+ 0B65 C2 94 0B             jp      nz,.fail
+1341+ 0B68
+1342+ 0B68 21 9F 0C             ld      hl,x86_test_fe000
+1343+ 0B6B 11 CF 0B             ld      de,x86_phys_addr
+1344+ 0B6E 01 03 00             ld      bc,3
+1345+ 0B71 ED B0                ldir
+1346+ 0B73 CD 23 08             call    x86_mem_classify
+1347+ 0B76 FE 04                cp      P126_X86_MEM_SYSBIOS
+1348+ 0B78 C2 94 0B             jp      nz,.fail
+1349+ 0B7B
+1350+ 0B7B 21 A2 0C             ld      hl,x86_test_fffff
+1351+ 0B7E 11 CF 0B             ld      de,x86_phys_addr
+1352+ 0B81 01 03 00             ld      bc,3
+1353+ 0B84 ED B0                ldir
+1354+ 0B86 CD 23 08             call    x86_mem_classify
+1355+ 0B89 FE 04                cp      P126_X86_MEM_SYSBIOS
+1356+ 0B8B C2 94 0B             jp      nz,.fail
+1357+ 0B8E
+1358+ 0B8E E1                   pop     hl
+1359+ 0B8F D1                   pop     de
+1360+ 0B90 C1                   pop     bc
+1361+ 0B91 F1                   pop     af
+1362+ 0B92 B7                   or      a
+1363+ 0B93 C9                   ret
+1364+ 0B94              .fail:
+1365+ 0B94 E1                   pop     hl
+1366+ 0B95 D1                   pop     de
+1367+ 0B96 C1                   pop     bc
+1368+ 0B97 F1                   pop     af
+1369+ 0B98 37                   scf
+1370+ 0B99 C9                   ret
+1371+ 0B9A
+1372+ 0B9A              ; IN HL=expected address bytes. Z set iff all three bytes match.
+1373+ 0B9A              x86_cpu_check_phys:
+1374+ 0B9A C5                   push    bc
+1375+ 0B9B D5                   push    de
+1376+ 0B9C EB                   ex      de,hl
+1377+ 0B9D 21 CF 0B             ld      hl,x86_phys_addr
+1378+ 0BA0 06 03                ld      b,3
+1379+ 0BA2              .check:
+1380+ 0BA2 1A                   ld      a,(de)
+1381+ 0BA3 BE                   cp      (hl)
+1382+ 0BA4 20 04                jr      nz,.done
+1383+ 0BA6 13                   inc     de
+1384+ 0BA7 23                   inc     hl
+1385+ 0BA8 10 F8                djnz    .check
+1386+ 0BAA              .done:
+1387+ 0BAA D1                   pop     de
+1388+ 0BAB C1                   pop     bc
+1389+ 0BAC C9                   ret
+1390+ 0BAD
+1391+ 0BAD              ; Stable register names for subsequent instruction-decoder modules.
+1392+ 0BAD 00 00        x86_reg_ax:    dw 0
+1393+ 0BAF 00 00        x86_reg_cx:    dw 0
+1394+ 0BB1 00 00        x86_reg_dx:    dw 0
+1395+ 0BB3 00 00        x86_reg_bx:    dw 0
+1396+ 0BB5 00 00        x86_reg_sp:    dw 0
+1397+ 0BB7 00 00        x86_reg_bp:    dw 0
+1398+ 0BB9 00 00        x86_reg_si:    dw 0
+1399+ 0BBB 00 00        x86_reg_di:    dw 0
+1400+ 0BBD 00 00        x86_reg_es:    dw 0
+1401+ 0BBF 00 00        x86_reg_cs:    dw 0
+1402+ 0BC1 00 00        x86_reg_ss:    dw 0
+1403+ 0BC3 00 00        x86_reg_ds:    dw 0
+1404+ 0BC5 00 00        x86_reg_ip:    dw 0
+1405+ 0BC7 02 00        x86_reg_flags: dw X86_FLAGS_RESET
+1406+ 0BC9 00           x86_halted:      db 0
+1407+ 0BCA 00           x86_pending_irq: db 0
+1408+ 0BCB 00           x86_pending_nmi: db 0
+1409+ 0BCC 00           x86_irq_inhibit: db 0
+1410+ 0BCD              ; Set from TF at instruction start; consumed at the following boundary.
+1411+ 0BCD 00           x86_tf_pending: db 0
+1412+ 0BCE 08           x86_irq_vector: db 8
+1413+ 0BCF 00 00 00     x86_phys_addr: db 0,0,0
+1414+ 0BD2 00           x86_mem_data:  db 0
+1415+ 0BD3
+1416+ 0BD3 00           x86_bios_probe_remaining: db 0
+1417+ 0BD4 00 00 00 00  x86_bios_reset_vector_bytes: db 0,0,0,0,0
+1417+ 0BD8 00
+1418+ 0BD9 EA 5B E0 00  x86_bios_reset_vector_expected: db #EA,#5B,#E0,#00,#F0
+1418+ 0BDD F0
+1419+ 0BDE              x86_bios_reset_vector_pass_log:
+1420+ 0BDE 5B 4E 47 53          db "[NGS] X86 BIOS RESET VECTOR FETCH PASS",13,10,0
+1420+ 0BE2 5D 20 58 38
+1420+ 0BE6 36 20 42 49
+1420+ 0BEA 4F 53 20 52
+1420+ 0BEE 45 53 45 54
+1420+ 0BF2 20 56 45 43
+1420+ 0BF6 54 4F 52 20
+1420+ 0BFA 46 45 54 43
+1420+ 0BFE 48 20 50 41
+1420+ 0C02 53 53 0D 0A
+1420+ 0C06 00
+1421+ 0C07              x86_bios_reset_target_log:
+1422+ 0C07 5B 4E 47 53          db "[NGS] X86 FAR JMP DECODED F000:E05B",13,10,0
+1422+ 0C0B 5D 20 58 38
+1422+ 0C0F 36 20 46 41
+1422+ 0C13 52 20 4A 4D
+1422+ 0C17 50 20 44 45
+1422+ 0C1B 43 4F 44 45
+1422+ 0C1F 44 20 46 30
+1422+ 0C23 30 30 3A 45
+1422+ 0C27 30 35 42 0D
+1422+ 0C2B 0A 00
+1423+ 0C2D              x86_bios_reset_read_fail_log:
+1424+ 0C2D 5B 4E 47 53          db "[NGS] X86 BIOS RESET VECTOR READ FAILED",13,10,0
+1424+ 0C31 5D 20 58 38
+1424+ 0C35 36 20 42 49
+1424+ 0C39 4F 53 20 52
+1424+ 0C3D 45 53 45 54
+1424+ 0C41 20 56 45 43
+1424+ 0C45 54 4F 52 20
+1424+ 0C49 52 45 41 44
+1424+ 0C4D 20 46 41 49
+1424+ 0C51 4C 45 44 0D
+1424+ 0C55 0A 00
+1425+ 0C57              x86_bios_reset_vector_bad_log:
+1426+ 0C57 5B 4E 47 53          db "[NGS] X86 BIOS RESET VECTOR MISMATCH",13,10,0
+1426+ 0C5B 5D 20 58 38
+1426+ 0C5F 36 20 42 49
+1426+ 0C63 4F 53 20 52
+1426+ 0C67 45 53 45 54
+1426+ 0C6B 20 56 45 43
+1426+ 0C6F 54 4F 52 20
+1426+ 0C73 4D 49 53 4D
+1426+ 0C77 41 54 43 48
+1426+ 0C7B 0D 0A 00
+1427+ 0C7E
+1428+ 0C7E 00 00 00     x86_expected_zero:  db 0,0,0
+1429+ 0C81 FF FF 0F     x86_expected_fffff: db #FF,#FF,#0F
+1430+ 0C84 B8 79 01     x86_expected_179b8: db #B8,#79,#01
+1431+ 0C87 F0 FF 0F     x86_expected_ffff0: db #F0,#FF,#0F
+1432+ 0C8A
+1433+ 0C8A              ; Physical address boundary vectors: low, middle, high-nibble bytes.
+1434+ 0C8A FF FF 09     x86_test_9ffff:  db #FF,#FF,#09
+1435+ 0C8D 00 00 0A     x86_test_a0000:  db #00,#00,#0A
+1436+ 0C90 FF FF 0B     x86_test_bffff:  db #FF,#FF,#0B
+1437+ 0C93 00 00 0C     x86_test_c0000:  db #00,#00,#0C
+1438+ 0C96 FF 7F 0C     x86_test_c7fff:  db #FF,#7F,#0C
+1439+ 0C99 00 80 0C     x86_test_c8000:  db #00,#80,#0C
+1440+ 0C9C FF DF 0F     x86_test_fdfff:  db #FF,#DF,#0F
+1441+ 0C9F 00 E0 0F     x86_test_fe000:  db #00,#E0,#0F
+1442+ 0CA2 FF FF 0F     x86_test_fffff:  db #FF,#FF,#0F
+1443+ 0CA5
 # file closed: x86_cpu_state.asm
  200  0CA5              x86_cpu_state_module_end:
  201  0CA5
