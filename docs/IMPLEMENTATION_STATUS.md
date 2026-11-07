@@ -139,7 +139,8 @@ A committed source file is not automatically a successful runtime or hardware te
 | BIOS choice on ENTER | SOURCE IMPLEMENTED; BUILD PASS | ENTER confirms the selected descriptor; the one-shot catalogue is disabled and the ATM text UI is cleared after successful transfer. Hardware test pending. |
 | BIOS file transfer ATM → NeoGS | SOURCE IMPLEMENTED; BUILD PASS | Project125 TR-DOS file-open/sector-read sequence; ABI IMAGE BEGIN/one FRAGMENT/FINISH; page-42 DMA staging. Hardware test pending. |
 | NeoGS BIOS receive and placement | SOURCE IMPLEMENTED; BUILD PASS | Validated image fragment is copied to physical SYSBIOS page 10h; IMAGE_FINISH sets BIOS-ready state. Hardware page-10 readback pending. 8086 execution entry is separate and not implemented. |
-| Full x86 BIOS boot | PLANNED | 8086 execution/reset-vector loop, VGA model/BIOS integration and guest boot are not implemented or demonstrated. |
+| Initial x86 BIOS bring-up | SOURCE IMPLEMENTED; BUILD VALIDATION PENDING | After verified SYSBIOS installation, execute the reset vector and up to 16 further BIOS instructions; stop on HLT, unsupported opcode or memory fault. Target runtime log pending. |
+| Full x86 BIOS boot | NOT IMPLEMENTED | Complete BIOS initialization, VGA model/BIOS integration, device services and guest boot remain future work. |
 
 
 
@@ -766,13 +767,10 @@ Source commit: `aac9d7e60c391510150016d3b29906a7b2f90e3d`.
 - NOT YET VERIFIED: execution from the 8086 reset vector FFFF0h, BIOS initialization, virtual VGA initialization, framebuffer presentation and guest boot. Installation must not be described as successful x86 BIOS execution.
 
 
-## 2026-11-07 — BIOS reset-vector fetch/decode gate added
+## 2026-11-07 — Initial BIOS execution gate (superseded)
 
-- The resident NeoGS main loop consumes p126_ngs_bios_image_ready once after a validated IMAGE_FINISH event. It deliberately does NOT invoke the reset-vector probe: automatic guest execution is gated until the full PCem 8086 semantic port is complete.
-- A dormant diagnostic routine x86_bios_reset_vector_probe remains in source for later use. It must not be called before the full CPU port is complete.
-- BIOS image installation is currently acknowledged only with the log "[NGS] BIOS IMAGE READY; X86 EXECUTION GATED". No reset-vector fetch, instruction execution, or BIOS POST is performed.
-- This is an explicit execution safety gate, not a reset-vector test. BIOS execution and guest program execution remain disabled.
-- The gate itself is compile/package verified; no CPU or BIOS functional tests are run.
+- The previous resident loop consumed p126_ngs_bios_image_ready but did not invoke x86_bios_reset_vector_probe. That gate prevented all guest instruction execution while the complete PCem semantic port remained unfinished.
+- The gate was superseded by the bounded bring-up path below. This does not authorize a full BIOS POST, general CPU functional suite, or guest-program execution.
 
 
 ## Intel 8086 execution core — opcode coverage ledger
@@ -781,7 +779,7 @@ Source commit: `aac9d7e60c391510150016d3b29906a7b2f90e3d`.
 - Current implementation: neogs_sub/x86_exec.asm contains execution paths for the complete 256-byte primary opcode dispatch map, with ModR/M, ALU, stack, interrupt, string and virtual-I/O handlers. This is dispatch coverage, not proof that all 8086 forms and edge cases are semantically complete.
 - **Current primary opcode-byte dispatch coverage: 256 / 256 = 100.00%.** Semantic completeness remains below 100% and is not yet assigned a percentage; PCem form-by-form review and integration gaps remain.
 - The 16 MOV-immediate encodings were added in commit `28575e385d5d2a66c5ca448e72f7b4e2f01d2391`.
-- CPU functional tests and BIOS execution remain blocked until the complete 8086 implementation is ported. Assembly-only build checks are permitted solely for syntax, linkage and image-size validation.
+- The full CPU functional suite, full BIOS POST and guest-program execution remain blocked until the complete 8086 implementation is ported and reviewed. The explicitly requested initial BIOS bring-up is a bounded exception: reset-vector execution plus at most 16 subsequent instructions, stopping on HLT, unsupported opcode or memory fault. Assembly/package CI validates syntax, linkage and image size; target execution still requires a hardware log.
 
 - Added original 8086 register INC/DEC encodings `40–4F`; result flags are calculated by the 16-bit ALU path and CF is restored unchanged. Compile-only CI is pending; no CPU or BIOS functional tests were run.
 
@@ -801,10 +799,26 @@ Source commit: `aac9d7e60c391510150016d3b29906a7b2f90e3d`.
 - No CPU functional tests, BIOS POST, or guest programs have been run. Only assembler/linker/package checks are permitted until the complete Intel 8086 core has been ported and reviewed.
 
 
+
+
+## 2026-11-07 — Bounded 8086 BIOS startup execution enabled
+
+- After the resident loop consumes the BIOS-ready event (which is set only after IMAGE_FINISH and the page-10 byte-for-byte readback pass), it calls x86_bios_startup_trace.
+- The routine resets the 8086 to FFFF:0000, executes the reset-vector far jump through x86_cpu_step, verifies CS:IP = F000:E05B, then executes at most 16 more guest instructions.
+- Each successful instruction emits the post-instruction CS:IP on NeoGS #EF. HLT ends the slice normally. An unsupported opcode or guest-memory fault stops the slice and logs the stop location.
+- **BUILD PASS:** GitHub Actions run [42378305671](https://github.com/JTCyborg/Project126/actions/runs/42378305671), source commit `306bd08edbd95e4aeb102657a3b005d8a02651b5`; NeoGS, ATM and TR-DOS images assembled and packaged successfully.
+- This is an intentionally bounded BIOS bring-up, not full POST or a claim of complete 8086 semantics. No unbounded guest loop, VGA POST, or guest OS boot is enabled. Target runtime confirmation is pending.
+
+## 2026-11-07 — SYSBIOS page-10 installation integrity
+
+- The NeoGS IMAGE fragment handler now performs a second pass after copying the 8192-byte SYSBIOS fragment from DMA page 42h into physical page 10h. It compares every destination byte against the preserved source fragment before setting `p126_ngs_image_received`.
+- A mismatch rejects the fragment and does not permit IMAGE FINISH to mark the BIOS ready. The production WIN3 mapping is restored to page 42h on both success and mismatch paths.
+- This closes the source-level gap between DMA-frame CRC validation and destination-copy integrity. Assembly/package CI passed in GitHub Actions run [42377468291](https://github.com/JTCyborg/Project126/actions/runs/42377468291) for source commit `51ba871dfdbbcb52fd1b3461eec7e08bd1ee3fe8`. Physical target readback remains pending; no CPU execution or BIOS POST is enabled by this change.
+
 ## 2026-11-07 — 8086 pre-test readiness checkpoint
 
 - PCem comparison corrected STI behavior: STI sets IF but does not arm the `noint` interrupt-inhibit latch; only MOV Sreg (8Eh) and POP SS arm it in the reviewed paths.
 - IRET now restores the FLAGS image exactly as PCem's 8086 path does: the stacked word masked with 0FFFh, without synthesizing reserved bit 1.
 - The coverage ledger was reconciled with the implemented REP iteration scheduler and the CPU-side interrupt-inhibit consumer; earlier statements that these pieces were wholly pending were stale.
 - **Readiness: NOT READY for CPU functional tests.** Remaining blockers include the host/IPC IRQ/NMI producer and vector source, interrupt servicing between REP iterations, form-by-form PCem semantic review, and TF/NMI/IRQ/HLT plus address-wrap/fault corner-case verification.
-- Only assembly/package validation is permitted at this stage. No CPU functional tests, BIOS POST, reset-vector execution or guest programs have been run or enabled.
+- At the time of this checkpoint, only assembly/package validation was permitted and reset-vector execution was disabled. This checkpoint is superseded by the bounded BIOS bring-up section below; the full CPU functional suite and full BIOS POST remain blocked.

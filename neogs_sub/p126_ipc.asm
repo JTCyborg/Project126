@@ -666,9 +666,39 @@ p126_ngs_image_fragment:
         or      c
         jr      nz,.image_copy_loop
 
+        ; Verify every installed byte against the still-preserved DMA frame.
+        ; The receive-frame CRC proves the staging data; this second pass proves
+        ; that the physical SYSBIOS page-10 copy is byte-for-byte identical.
+        ld      hl,#C01C
+        ld      de,#C000
+        ld      bc,P126_IMAGE_SYSBIOS_SIZE
+        ld      (p126_ngs_image_verify_count),bc
+.image_verify_loop:
+        ld      a,#21                  ; page 42h RRCA selector
+        out     (P126_NGS_MPAGEX_PORT),a
+        ld      a,(hl)
+        ld      (p126_ngs_image_verify_byte),a
+        ld      a,#08                  ; page 10h RRCA selector
+        out     (P126_NGS_MPAGEX_PORT),a
+        ld      a,(de)
+        ld      b,a
+        ld      a,(p126_ngs_image_verify_byte)
+        cp      b
+        jr      nz,.image_verify_bad
+        inc     hl
+        inc     de
+        ld      bc,(p126_ngs_image_verify_count)
+        dec     bc
+        ld      (p126_ngs_image_verify_count),bc
+        ld      a,b
+        or      c
+        jr      nz,.image_verify_loop
+
         ; Restore the production DMA page mapping for subsequent IPC frames.
         ld      a,#21
         out     (P126_NGS_MPAGEX_PORT),a
+        ld      hl,p126_ngs_image_verify_ok_log
+        call    p126_ngs_ipc_log
         ld      a,1
         ld      (p126_ngs_image_received),a
         xor     a
@@ -676,6 +706,10 @@ p126_ngs_image_fragment:
         ld      a,1
         or      a
         ret
+.image_verify_bad:
+        ld      a,#21                  ; leave WIN3 on the production DMA page
+        out     (P126_NGS_MPAGEX_PORT),a
+        jp      .image_fragment_bad
 .image_fragment_bad:
         ld      hl,p126_ngs_image_fragment_rejected_log
         call    p126_ngs_ipc_log
@@ -727,10 +761,13 @@ p126_ngs_image_active:       db 0
 p126_ngs_image_received:     db 0
 p126_ngs_bios_image_ready:   db 0
 p126_ngs_image_id:           dw 0
+p126_ngs_image_verify_count: dw 0
+p126_ngs_image_verify_byte:  db 0
 p126_ngs_image_begin_log:    db "[NGS] SYSBIOS IMAGE BEGIN",13,10,0
 p126_ngs_image_fragment_log: db "[NGS] SYSBIOS IMAGE FRAGMENT",13,10,0
 p126_ngs_image_finish_log:   db "[NGS] SYSBIOS IMAGE FINISH",13,10,0
 p126_ngs_image_installed_log: db "[NGS] SYSBIOS IMAGE INSTALLED AT PAGE 10",13,10,0
+p126_ngs_image_verify_ok_log: db "[NGS] SYSBIOS PAGE 10 READBACK MATCH",13,10,0
 p126_ngs_image_begin_rejected_log: db "[NGS] SYSBIOS IMAGE BEGIN REJECTED",13,10,0
 p126_ngs_image_fragment_rejected_log: db "[NGS] SYSBIOS IMAGE FRAGMENT REJECTED",13,10,0
 p126_ngs_image_finish_rejected_log: db "[NGS] SYSBIOS IMAGE FINISH REJECTED",13,10,0

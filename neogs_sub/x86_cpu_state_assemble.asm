@@ -79,11 +79,10 @@ p126_ngs_resident_main_loop:
         ; Consume the installation event before probing: one-shot transition.
         xor     a
         ld      (p126_ngs_bios_image_ready),a
-        ; CPU/BIOS execution remains deliberately gated until the complete
-        ; PCem 8086 semantic port has been reviewed. Image installation is
-        ; acknowledged, but no guest instruction is executed here.
-        ld      hl,p126_ngs_bios_exec_gated
-        call    p126_ngs_resident_log
+        ; Begin controlled BIOS bring-up only after IMAGE_FINISH and the
+        ; page-10 readback verification have both succeeded. The trace routine
+        ; executes the reset vector and at most 16 further guest instructions.
+        call    x86_bios_startup_trace
         jr      p126_ngs_resident_main_loop
 
 p126_ngs_resident_frame_error:
@@ -157,7 +156,6 @@ p126_ngs_resident_crc_bad: db "[NGS] ABI CRC16 FAIL",13,10,0
 p126_ngs_resident_ack_bad: db "[NGS] HOST READY ACK TIMEOUT",13,10,0
 p126_ngs_resident_frame_ok: db "[NGS] DMA FRAME VALID",13,10,0
 p126_ngs_resident_frame_bad: db "[NGS] DMA FRAME REJECTED",13,10,0
-p126_ngs_bios_exec_gated: db "[NGS] BIOS IMAGE READY; X86 EXECUTION GATED",13,10,0
 p126_ngs_resident_tx: db 0
 
 x86_cpu_state_module_start:
