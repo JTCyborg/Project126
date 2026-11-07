@@ -99,7 +99,12 @@ x86_bios_reset_vector_probe:
 ; -------------------------------------------------------------------------
 x86_bios_startup_trace:
         call    x86_bios_reset_vector_probe
-        ret     c
+        jr      nc,.reset_vector_ok
+        ld      hl,x86_bios_screen_reset_fail
+        call    x86_bios_trace_screen_send_string
+        call    x86_bios_trace_screen_send_location
+        ret
+.reset_vector_ok:
         ld      hl,x86_bios_trace_start_log
         call    p126_ngs_resident_log
         ld      a,16
@@ -122,17 +127,26 @@ x86_bios_startup_trace:
         jr      nz,.trace_loop
         ld      hl,x86_bios_trace_budget_log
         call    p126_ngs_resident_log
+        ld      hl,x86_bios_screen_budget
+        call    x86_bios_trace_screen_send_string
+        call    x86_bios_trace_screen_send_location
         or      a
         ret
 .trace_fault:
         ld      hl,x86_bios_trace_fault_log
         call    p126_ngs_resident_log
         call    x86_bios_trace_log_cs_ip
+        ld      hl,x86_bios_screen_fault
+        call    x86_bios_trace_screen_send_string
+        call    x86_bios_trace_screen_send_location
         scf
         ret
 .trace_halted:
         ld      hl,x86_bios_trace_halted_log
         call    p126_ngs_resident_log
+        ld      hl,x86_bios_screen_halted
+        call    x86_bios_trace_screen_send_string
+        call    x86_bios_trace_screen_send_location
         or      a
         ret
 
@@ -192,6 +206,93 @@ x86_bios_trace_cs_ip_prefix: db "[X86] CS:IP=",0
 x86_bios_trace_fault_log: db "[NGS] X86 BIOS TRACE STOP: OPCODE OR MEMORY FAULT",13,10,0
 x86_bios_trace_halted_log: db "[NGS] X86 BIOS EXECUTION HALTED BY GUEST",13,10,0
 x86_bios_trace_budget_log: db "[NGS] X86 BIOS TRACE SLICE COMPLETE (16 INSTRUCTIONS)",13,10,0
+
+; -------------------------------------------------------------------------
+; Publish BIOS stop reasons to the ATM on-screen debug console.
+; NeoGS sends one GSDAT byte at a time and waits for the ATM to consume DBIT.
+; The ATM host polls this reverse channel from its idle loop and renders each
+; byte with BIOS_DebugConsole_PrintChar. #EF diagnostics remain independent.
+; -------------------------------------------------------------------------
+x86_bios_trace_screen_send_string:
+        ld      a,(hl)
+        or      a
+        ret     z
+        push    hl
+        call    x86_bios_trace_screen_send_char
+        pop     hl
+        ret     c
+        inc     hl
+        jr      x86_bios_trace_screen_send_string
+
+; IN A=ASCII byte. OUT carry set only if ATM does not consume DBIT in time.
+x86_bios_trace_screen_send_char:
+        ld      (x86_bios_trace_screen_char),a
+        ld      bc,#FFFF
+.wait_host:
+        in      a,(#04)
+        bit     7,a
+        jr      z,.host_ready
+        dec     bc
+        ld      a,b
+        or      c
+        jr      nz,.wait_host
+        scf
+        ret
+.host_ready:
+        ld      a,(x86_bios_trace_screen_char)
+        out     (#03),a
+        or      a
+        ret
+
+; Append the current guest CS:IP to the screen-console stop message.
+x86_bios_trace_screen_send_location:
+        ld      hl,(x86_reg_cs)
+        call    x86_bios_trace_screen_emit_hex16
+        ld      a,':'
+        call    x86_bios_trace_screen_send_char
+        ret     c
+        ld      hl,(x86_reg_ip)
+        call    x86_bios_trace_screen_emit_hex16
+        ret     c
+        ld      a,13
+        call    x86_bios_trace_screen_send_char
+        ret     c
+        ld      a,10
+        jp      x86_bios_trace_screen_send_char
+
+x86_bios_trace_screen_emit_hex16:
+        ld      a,h
+        call    x86_bios_trace_screen_emit_hex8
+        ret     c
+        ld      a,l
+        jp      x86_bios_trace_screen_emit_hex8
+
+x86_bios_trace_screen_emit_hex8:
+        push    af
+        rrca
+        rrca
+        rrca
+        rrca
+        call    x86_bios_trace_screen_emit_nibble
+        pop     af
+        ret     c
+        and     #0F
+        jp      x86_bios_trace_screen_emit_nibble
+
+x86_bios_trace_screen_emit_nibble:
+        and     #0F
+        add     a,'0'
+        cp      '9'+1
+        jr      c,.digit
+        add     a,7
+.digit:
+        jp      x86_bios_trace_screen_send_char
+
+x86_bios_trace_screen_char: db 0
+x86_bios_screen_reset_fail: db "[X86] BIOS RESET VECTOR FAILED AT CS:IP=",0
+x86_bios_screen_budget:    db "[X86] BIOS PAUSED: 16-INSTRUCTION SLICE COMPLETE; CS:IP=",0
+x86_bios_screen_fault:     db "[X86] BIOS STOPPED: OPCODE OR MEMORY FAULT; CS:IP=",0
+x86_bios_screen_halted:    db "[X86] BIOS HALTED BY GUEST; CS:IP=",0
 
 ; physical = ((segment << 4) + offset) & 0FFFFFh
 x86_cpu_calc_phys:
