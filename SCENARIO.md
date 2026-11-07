@@ -1341,3 +1341,6 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 
 
 - Assembly follow-up: the first page-navigation build exposed an out-of-range relative `JR` in the expanded keyboard dispatcher. Replaced the two long page-navigation branches with absolute `JP` instructions in commit `ad59f2a77904002acee33f5a4529a590483402dc`. A new GitHub Actions build was queued for this corrected HEAD; its result is not yet confirmed in this entry.
+
+
+- Second assembly diagnostic: the assembler then identified the one-step DOWN dispatch as another out-of-range relative branch after the new page handlers were inserted. Changed UP/DOWN dispatch to absolute `JP` as well (commit `53e7d5af677a5cce36443c812f221b2c070d9990`). The subsequent workflow run is pending.
