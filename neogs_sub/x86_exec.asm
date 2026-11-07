@@ -267,6 +267,16 @@ x86_cpu_step_fetch_opcode:
         cp      #8C
         jp      c,x86_exec_mov_rm_reg
 .not_mov_rm_reg:
+        cp      #A4
+        jp      c,.not_string_movs_cmps
+        cp      #A8
+        jp      c,x86_exec_string
+.not_string_movs_cmps:
+        cp      #AA
+        jp      c,.not_string_stos_lods_scas
+        cp      #B0
+        jp      c,x86_exec_string
+.not_string_stos_lods_scas:
         cp      #A8
         jp      z,x86_exec_test_al_imm
         cp      #A9
@@ -2057,6 +2067,294 @@ x86_exec_flag_control:
         or      a
         ret
 
+; A4-A7 MOVS/CMPS, AA-AB STOS, AC-AD LODS, AE-AF SCAS.
+; REP/REPE/REPNE state is captured by the prefix parser. Source data uses
+; DS or the segment override; destination string data is always ES.
+x86_exec_string:
+        ld      a,(x86_exec_opcode)
+        ld      (x86_exec_string_opcode),a
+        and     1
+        inc     a
+        ld      (x86_exec_string_width),a
+        ld      a,(x86_exec_prefix_rep)
+        ld      (x86_exec_string_rep),a
+        or      a
+        jr      z,.string_single
+        ld      hl,(x86_reg_cx)
+        ld      a,h
+        or      l
+        ret     z
+        jr      .string_loop
+.string_single:
+        ld      a,1
+        ld      (x86_exec_string_remaining),a
+.string_loop:
+        call    x86_exec_string_iteration
+        ret     c
+        ld      a,(x86_exec_string_rep)
+        or      a
+        ret     z
+        ld      hl,(x86_reg_cx)
+        dec     hl
+        ld      (x86_reg_cx),hl
+        ld      a,h
+        or      l
+        ret     z
+
+        ; F3 REPE continues CMPS/SCAS while ZF=1.
+        ; F2 REPNE continues CMPS/SCAS while ZF=0.
+        ld      a,(x86_exec_string_opcode)
+        cp      #A6
+        jr      z,.string_compare_repeat
+        cp      #A7
+        jr      z,.string_compare_repeat
+        cp      #AE
+        jr      z,.string_compare_repeat
+        cp      #AF
+        jr      nz,.string_loop
+.string_compare_repeat:
+        ld      a,(x86_exec_string_rep)
+        cp      2
+        jr      nz,.string_repne
+        ld      hl,(x86_reg_flags)
+        bit     6,l
+        jr      z,.string_done
+        jr      .string_loop
+.string_repne:
+        ld      hl,(x86_reg_flags)
+        bit     6,l
+        jr      nz,.string_done
+        jr      .string_loop
+.string_done:
+        or      a
+        ret
+
+x86_exec_string_iteration:
+        ld      a,(x86_exec_string_opcode)
+        cp      #A4
+        jp      z,x86_exec_string_movs
+        cp      #A5
+        jp      z,x86_exec_string_movs
+        cp      #A6
+        jp      z,x86_exec_string_cmps
+        cp      #A7
+        jp      z,x86_exec_string_cmps
+        cp      #AA
+        jp      z,x86_exec_string_stos
+        cp      #AB
+        jp      z,x86_exec_string_stos
+        cp      #AC
+        jp      z,x86_exec_string_lods
+        cp      #AD
+        jp      z,x86_exec_string_lods
+        cp      #AE
+        jp      z,x86_exec_string_scas
+        cp      #AF
+        jp      z,x86_exec_string_scas
+        scf
+        ret
+
+x86_exec_string_movs:
+        ld      a,(x86_exec_string_width)
+        cp      1
+        jr      nz,.movs_word
+        call    x86_exec_string_read_source8
+        ret     c
+        ld      (x86_exec_string_value),a
+        ld      a,(x86_exec_string_value)
+        call    x86_exec_string_write_dest8
+        ret     c
+        call    x86_exec_string_adjust_si
+        jp      x86_exec_string_adjust_di
+.movs_word:
+        call    x86_exec_string_read_source16
+        ret     c
+        ld      (x86_exec_string_word),hl
+        ld      hl,(x86_exec_string_word)
+        call    x86_exec_string_write_dest16
+        ret     c
+        call    x86_exec_string_adjust_si
+        jp      x86_exec_string_adjust_di
+
+x86_exec_string_cmps:
+        ld      a,(x86_exec_string_width)
+        cp      1
+        jr      nz,.cmps_word
+        call    x86_exec_string_read_source8
+        ret     c
+        ld      (x86_exec_string_value),a
+        call    x86_exec_string_read_dest8
+        ret     c
+        ld      c,a
+        ld      a,(x86_exec_string_value)
+        call    x86_alu_sub8
+        call    x86_exec_string_adjust_si
+        jp      x86_exec_string_adjust_di
+.cmps_word:
+        call    x86_exec_string_read_source16
+        ret     c
+        ld      (x86_exec_string_word),hl
+        call    x86_exec_string_read_dest16
+        ret     c
+        ex      de,hl
+        ld      hl,(x86_exec_string_word)
+        call    x86_alu_sub16
+        call    x86_exec_string_adjust_si
+        jp      x86_exec_string_adjust_di
+
+x86_exec_string_stos:
+        ld      a,(x86_exec_string_width)
+        cp      1
+        jr      nz,.stos_word
+        ld      a,(x86_reg_ax)
+        call    x86_exec_string_write_dest8
+        ret     c
+        jp      x86_exec_string_adjust_di
+.stos_word:
+        ld      hl,(x86_reg_ax)
+        call    x86_exec_string_write_dest16
+        ret     c
+        jp      x86_exec_string_adjust_di
+
+x86_exec_string_lods:
+        ld      a,(x86_exec_string_width)
+        cp      1
+        jr      nz,.lods_word
+        call    x86_exec_string_read_source8
+        ret     c
+        ld      (x86_reg_ax),a
+        jp      x86_exec_string_adjust_si
+.lods_word:
+        call    x86_exec_string_read_source16
+        ret     c
+        ld      (x86_reg_ax),hl
+        jp      x86_exec_string_adjust_si
+
+x86_exec_string_scas:
+        ld      a,(x86_exec_string_width)
+        cp      1
+        jr      nz,.scas_word
+        call    x86_exec_string_read_dest8
+        ret     c
+        ld      c,a
+        ld      a,(x86_reg_ax)
+        call    x86_alu_sub8
+        jp      x86_exec_string_adjust_di
+.scas_word:
+        call    x86_exec_string_read_dest16
+        ret     c
+        ex      de,hl
+        ld      hl,(x86_reg_ax)
+        call    x86_alu_sub16
+        jp      x86_exec_string_adjust_di
+
+; Source read helpers: DS/segment-override:SI.
+x86_exec_string_read_source8:
+        ld      hl,(x86_reg_si)
+        ld      (x86_exec_moffs_offset),hl
+        call    x86_exec_moffs_make_address
+        jp      x86_guest_mem_read8
+
+x86_exec_string_read_source16:
+        ld      hl,(x86_reg_si)
+        ld      (x86_exec_moffs_offset),hl
+        call    x86_exec_moffs_make_address
+        call    x86_guest_mem_read8
+        ret     c
+        ld      (x86_exec_string_word),a
+        ld      hl,(x86_reg_si)
+        inc     hl
+        ld      (x86_exec_moffs_offset),hl
+        call    x86_exec_moffs_make_address
+        call    x86_guest_mem_read8
+        ret     c
+        ld      (x86_exec_string_word+1),a
+        ld      hl,(x86_exec_string_word)
+        or      a
+        ret
+
+; Destination read/write helpers: ES:DI (segment override never changes ES).
+x86_exec_string_make_dest_address:
+        ld      hl,(x86_reg_es)
+        ld      de,(x86_reg_di)
+        jp      x86_cpu_calc_phys
+
+x86_exec_string_make_dest_next_address:
+        ld      hl,(x86_reg_es)
+        ld      de,(x86_exec_string_temp_offset)
+        jp      x86_cpu_calc_phys
+
+x86_exec_string_read_dest8:
+        call    x86_exec_string_make_dest_address
+        jp      x86_guest_mem_read8
+
+x86_exec_string_write_dest8:
+        ld      (x86_exec_string_value),a
+        call    x86_exec_string_make_dest_address
+        ld      a,(x86_exec_string_value)
+        jp      x86_guest_mem_write8
+
+x86_exec_string_read_dest16:
+        call    x86_exec_string_make_dest_address
+        call    x86_guest_mem_read8
+        ret     c
+        ld      (x86_exec_string_word),a
+        ld      hl,(x86_reg_di)
+        inc     hl
+        ld      (x86_exec_string_temp_offset),hl
+        call    x86_exec_string_make_dest_next_address
+        call    x86_guest_mem_read8
+        ret     c
+        ld      (x86_exec_string_word+1),a
+        ld      hl,(x86_exec_string_word)
+        or      a
+        ret
+
+x86_exec_string_write_dest16:
+        ld      (x86_exec_string_word),hl
+        call    x86_exec_string_make_dest_address
+        ld      a,(x86_exec_string_word)
+        call    x86_guest_mem_write8
+        ret     c
+        ld      hl,(x86_reg_di)
+        inc     hl
+        ld      (x86_exec_string_temp_offset),hl
+        call    x86_exec_string_make_dest_next_address
+        ld      a,(x86_exec_string_word+1)
+        call    x86_guest_mem_write8
+        ret
+
+x86_exec_string_adjust_si:
+        ld      hl,(x86_reg_si)
+        ld      de,(x86_exec_string_width)
+        ld      a,(x86_reg_flags+1)
+        bit     2,a
+        jr      nz,.string_si_decrement
+        add     hl,de
+        ld      (x86_reg_si),hl
+        ret
+.string_si_decrement:
+        or      a
+        sbc     hl,de
+        ld      (x86_reg_si),hl
+        ret
+
+x86_exec_string_adjust_di:
+        ld      hl,(x86_reg_di)
+        ld      de,(x86_exec_string_width)
+        ld      a,(x86_reg_flags+1)
+        bit     2,a
+        jr      nz,.string_di_decrement
+        add     hl,de
+        ld      (x86_reg_di),hl
+        or      a
+        ret
+.string_di_decrement:
+        or      a
+        sbc     hl,de
+        ld      (x86_reg_di),hl
+        ret
+
 ; A8 TEST AL,imm8; A9 TEST AX,imm16.
 ; TEST updates SF/ZF/PF and clears CF/OF/AF; operands are not modified.
 x86_exec_test_al_imm:
@@ -2785,6 +3083,13 @@ x86_exec_alu_is_cmp: db 0
 x86_exec_alu_operation: db 0
 x86_exec_alu_is_sbb: db 0
 x86_exec_segment_pop_opcode: db 0
+x86_exec_string_opcode: db 0
+x86_exec_string_width: db 0
+x86_exec_string_rep: db 0
+x86_exec_string_remaining: db 0
+x86_exec_string_value: db 0
+x86_exec_string_word: dw 0
+x86_exec_string_temp_offset: dw 0
 x86_exec_group3_opcode: db 0
 x86_exec_group3_ext: db 0
 x86_exec_group3_imm8: db 0
