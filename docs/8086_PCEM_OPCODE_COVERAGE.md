@@ -8,8 +8,8 @@ Later 80186/286/386 instructions are not part of the target CPU.
 
 - Denominator: 256 possible opcode-byte values in the documented original 8086 opcode map, including the 8087 ESC opcode range and undocumented 8086-compatible values where PCem has an execution path.
 - Numerator: opcode-byte values with a concrete execution path in the Project126 dispatcher.
-- Current numerator: 158.
-- **Opcode-byte dispatch coverage: 158 / 256 = 61.72%.**
+- Current numerator: 178.
+- **Opcode-byte dispatch coverage: 178 / 256 = 69.53%.**
 - This is a source-coverage metric, not a claim of full semantic correctness. ModR/M forms, memory addressing, prefixes, flags, interrupt behavior and corner cases are tracked separately and must also be complete before the CPU is called 100%.
 - An instruction family is not considered complete merely because one opcode in the family is present.
 
@@ -29,6 +29,10 @@ Later 80186/286/386 instructions are not part of the target CPU.
 | A0–A3 | MOV AL/AX to/from direct DS offset (moffs16) | `neogs_sub/x86_exec.asm` |
 | A8–A9 | TEST AL/AX, immediate | `neogs_sub/x86_exec.asm` |
 | D7 | XLAT | `neogs_sub/x86_exec.asm` |
+| 08–0D | OR r/m,r and AL/AX, immediate | `neogs_sub/x86_exec.asm` + `x86_alu.asm` + `x86_modrm.asm` |
+| 20–25 | AND r/m,r and AL/AX, immediate | `neogs_sub/x86_exec.asm` + `x86_alu.asm` + `x86_modrm.asm` |
+| 30–35 | XOR r/m,r and AL/AX, immediate | `neogs_sub/x86_exec.asm` + `x86_alu.asm` + `x86_modrm.asm` |
+| 84–85 | TEST r/m8/16,r8/16 | `neogs_sub/x86_exec.asm` + `x86_alu.asm` + `x86_modrm.asm` |
 | 00–05 | ADD r/m,r and AL/AX, immediate | `neogs_sub/x86_exec.asm` + `x86_alu.asm` + `x86_modrm.asm` |
 | 28–2D | SUB r/m,r and AL/AX, immediate | `neogs_sub/x86_exec.asm` + `x86_alu.asm` + `x86_modrm.asm` |
 | 38–3D | CMP r/m,r and AL/AX, immediate | `neogs_sub/x86_exec.asm` + `x86_alu.asm` + `x86_modrm.asm` |
@@ -62,7 +66,7 @@ The 16 PUSH/POP register opcodes 50h–5Fh were added in commit `6279ab0c9182574
 The 16 MOV-immediate opcodes were added in commit `28575e385d5d2a66c5ca448e72f7b4e2f01d2391`.
 The 4 direct-offset MOV opcodes A0–A3 were added in commit `f8111740994d26d55cbad90391456daf096345c6`; byte/word transfers use the Project126 guest-memory backend and DS as the default segment (segment overrides are pending).
 The 7 XCHG AX,r16 opcodes were added in commit `1a257238d23d31d897137518f6bfe47c5657ef13`.
-ADD (`00h`–`05h`), SUB (`28h`–`2Dh`) and CMP (`38h`–`3Dh`) register/memory and accumulator-immediate forms were added in commits `8861c3c510e0792d9187f13ef9867b8b9c3ed9f3` and `413d98ac389b7ad25c3911ba8e7643e6ef4ac365`. They use the existing 8/16-bit ALU routines and ModR/M operand helpers; CMP updates flags without writing the destination.
+OR (`08h`–`0Dh`), AND (`20h`–`25h`), XOR (`30h`–`35h`) and TEST (`84h`–`85h`) were added in commits `12c177661869d3d463f141afa32c55287759a7b2`, `8e06a7f2a163ddbf8373e446689250a119a6ba06` and `02819be2c824700714656cf5b02a59f149edde9f`. Logical operations update SF/ZF/PF and clear CF/AF/OF; TEST does not write its destination. ADD (`00h`–`05h`), SUB (`28h`–`2Dh`) and CMP (`38h`–`3Dh`) register/memory and accumulator-immediate forms were added in commits `8861c3c510e0792d9187f13ef9867b8b9c3ed9f3` and `413d98ac389b7ad25c3911ba8e7643e6ef4ac365`. They use the existing 8/16-bit ALU routines and ModR/M operand helpers; CMP updates flags without writing the destination.
 The 16 register INC/DEC opcodes were added in commits `75a3e69da4549ffe2f2346b86cac5d8263a61ca4` and `e4dfd3b34d26c778e4a8029484ad67b76c560e83`. INC/DEC use the existing 16-bit ALU flag engine and explicitly preserve CF.
 
 ## Decoder foundation
