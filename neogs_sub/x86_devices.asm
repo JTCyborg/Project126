@@ -8,7 +8,9 @@ x86_dev_read8_impl:
         ld      (x86_dev_port),hl
         call    x86_dev_dma_read8
         ret     nc
-        jp      x86_dev_pit_read8
+        call    x86_dev_pit_read8
+        ret     nc
+        jp      x86_dev_board_read8
 
 x86_dev_write8_impl:
         ld      (x86_dev_port),hl
@@ -16,16 +18,185 @@ x86_dev_write8_impl:
         call    x86_dev_dma_write8
         ret     nc
         ld      a,(x86_dev_write_value)
-        jp      x86_dev_pit_write8
+        call    x86_dev_pit_write8
+        ret     nc
+        ld      a,(x86_dev_write_value)
+        jp      x86_dev_board_write8
 
 x86_dev_reset_impl:
         call    x86_dev_dma_reset_impl
         call    x86_dev_dma_selftest_impl
         call    x86_dev_pit_reset_impl
         call    x86_dev_pit_selftest_impl
+        call    x86_dev_board_reset_impl
+        call    x86_dev_board_selftest_impl
         ld      a,#5A
         ld      hl,#06D1
         ret
+
+; -------------------------------------------------------------------------
+; XT/clone motherboard control latches used by the generic Turbo XT BIOS.
+; Guest-visible software registers only; no physical NeoGS I/O is involved.
+; 00A0h: NMI gate latch; 0213h: expansion-unit enable latch.
+; 00C0h: legacy data-bus test latch; 03B8h/03D8h: MDA/CGA mode latches.
+; Video rendering, retrace timing and actual NMI delivery remain separate.
+; -------------------------------------------------------------------------
+x86_dev_board_read8:
+        ld      hl,(x86_dev_port)
+        ld      de,#00A0
+        or      a
+        sbc     hl,de
+        jr      z,.board_read_nmi
+        ld      hl,(x86_dev_port)
+        ld      de,#0213
+        or      a
+        sbc     hl,de
+        jr      z,.board_read_expansion
+        ld      hl,(x86_dev_port)
+        ld      de,#00C0
+        or      a
+        sbc     hl,de
+        jr      z,.board_read_bus
+        ld      hl,(x86_dev_port)
+        ld      de,#03B8
+        or      a
+        sbc     hl,de
+        jr      z,.board_read_mda
+        ld      hl,(x86_dev_port)
+        ld      de,#03D8
+        or      a
+        sbc     hl,de
+        jr      z,.board_read_cga
+        scf
+        ret
+.board_read_nmi:
+        ld      a,(x86_dev_board_nmi)
+        or      a
+        ret
+.board_read_expansion:
+        ld      a,(x86_dev_board_expansion)
+        or      a
+        ret
+.board_read_bus:
+        ld      a,(x86_dev_board_bus)
+        or      a
+        ret
+.board_read_mda:
+        ld      a,(x86_dev_board_mda)
+        or      a
+        ret
+.board_read_cga:
+        ld      a,(x86_dev_board_cga)
+        or      a
+        ret
+
+x86_dev_board_write8:
+        ld      (x86_dev_board_write_value),a
+        ld      hl,(x86_dev_port)
+        ld      de,#00A0
+        or      a
+        sbc     hl,de
+        jr      z,.board_write_nmi
+        ld      hl,(x86_dev_port)
+        ld      de,#0213
+        or      a
+        sbc     hl,de
+        jr      z,.board_write_expansion
+        ld      hl,(x86_dev_port)
+        ld      de,#00C0
+        or      a
+        sbc     hl,de
+        jr      z,.board_write_bus
+        ld      hl,(x86_dev_port)
+        ld      de,#03B8
+        or      a
+        sbc     hl,de
+        jr      z,.board_write_mda
+        ld      hl,(x86_dev_port)
+        ld      de,#03D8
+        or      a
+        sbc     hl,de
+        jr      z,.board_write_cga
+        scf
+        ret
+.board_write_nmi:
+        ld      a,(x86_dev_board_write_value)
+        ld      (x86_dev_board_nmi),a
+        or      a
+        ret
+.board_write_expansion:
+        ld      a,(x86_dev_board_write_value)
+        ld      (x86_dev_board_expansion),a
+        or      a
+        ret
+.board_write_bus:
+        ld      a,(x86_dev_board_write_value)
+        ld      (x86_dev_board_bus),a
+        or      a
+        ret
+.board_write_mda:
+        ld      a,(x86_dev_board_write_value)
+        ld      (x86_dev_board_mda),a
+        or      a
+        ret
+.board_write_cga:
+        ld      a,(x86_dev_board_write_value)
+        ld      (x86_dev_board_cga),a
+        or      a
+        ret
+
+x86_dev_board_reset_impl:
+        xor     a
+        ld      (x86_dev_board_nmi),a
+        ld      (x86_dev_board_expansion),a
+        ld      (x86_dev_board_bus),a
+        ld      (x86_dev_board_mda),a
+        ld      (x86_dev_board_cga),a
+        ld      (x86_dev_board_write_value),a
+        ret
+
+x86_dev_board_selftest_impl:
+        ld      hl,#00A0
+        ld      (x86_dev_port),hl
+        ld      a,#80
+        call    x86_dev_board_write8
+        jp      c,.board_selftest_fail
+        call    x86_dev_board_read8
+        cp      #80
+        jp      nz,.board_selftest_fail
+        ld      hl,#0213
+        ld      (x86_dev_port),hl
+        ld      a,1
+        call    x86_dev_board_write8
+        jp      c,.board_selftest_fail
+        call    x86_dev_board_read8
+        cp      1
+        jp      nz,.board_selftest_fail
+        ld      hl,#03B8
+        ld      (x86_dev_port),hl
+        ld      a,#29
+        call    x86_dev_board_write8
+        jp      c,.board_selftest_fail
+        call    x86_dev_board_read8
+        cp      #29
+        jp      nz,.board_selftest_fail
+        ld      hl,#03D8
+        ld      (x86_dev_port),hl
+        ld      a,#0A
+        call    x86_dev_board_write8
+        jp      c,.board_selftest_fail
+        call    x86_dev_board_read8
+        cp      #0A
+        jp      nz,.board_selftest_fail
+        ld      hl,x86_dev_board_selftest_pass
+        jr      .board_selftest_restore
+.board_selftest_fail:
+        ld      hl,x86_dev_board_selftest_fail
+.board_selftest_restore:
+        push    hl
+        call    x86_dev_board_reset_impl
+        pop     hl
+        jp      p126_ngs_ipc_log
 
 ; 8253 PIT programming/readback slice (ports 0040h..0043h).
 ; Counters are static register latches in this phase: no clock decrement,
@@ -841,3 +1012,11 @@ x86_dev_dma_selftest_fail: db "[NGS] X86 DMA REGISTER SELFTEST FAIL",13,10,0
 
 x86_dev_port: dw 0
 x86_dev_write_value: db 0
+x86_dev_board_write_value: db 0
+x86_dev_board_nmi: db 0
+x86_dev_board_expansion: db 0
+x86_dev_board_bus: db 0
+x86_dev_board_mda: db 0
+x86_dev_board_cga: db 0
+x86_dev_board_selftest_pass: db "[NGS] X86 BOARD LATCH SELFTEST PASS",13,10,0
+x86_dev_board_selftest_fail: db "[NGS] X86 BOARD LATCH SELFTEST FAIL",13,10,0
