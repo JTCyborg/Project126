@@ -590,6 +590,8 @@ p126_ngs_image_begin:
         or      a
         ret
 .image_begin_bad:
+        ld      hl,p126_ngs_image_begin_rejected_log
+        call    p126_ngs_ipc_log
         xor     a
         out     (P126_NGS_CLRCBIT),a
         ld      a,P126_STATUS_BAD_FRAME
@@ -675,6 +677,8 @@ p126_ngs_image_fragment:
         or      a
         ret
 .image_fragment_bad:
+        ld      hl,p126_ngs_image_fragment_rejected_log
+        call    p126_ngs_ipc_log
         xor     a
         out     (P126_NGS_CLRCBIT),a
         ld      a,P126_STATUS_BAD_FRAGMENT
@@ -711,6 +715,8 @@ p126_ngs_image_finish:
         or      a
         ret
 .image_finish_bad:
+        ld      hl,p126_ngs_image_finish_rejected_log
+        call    p126_ngs_ipc_log
         xor     a
         out     (P126_NGS_CLRCBIT),a
         ld      a,P126_STATUS_BAD_FRAME
@@ -725,6 +731,9 @@ p126_ngs_image_begin_log:    db "[NGS] SYSBIOS IMAGE BEGIN",13,10,0
 p126_ngs_image_fragment_log: db "[NGS] SYSBIOS IMAGE FRAGMENT",13,10,0
 p126_ngs_image_finish_log:   db "[NGS] SYSBIOS IMAGE FINISH",13,10,0
 p126_ngs_image_installed_log: db "[NGS] SYSBIOS IMAGE INSTALLED AT PAGE 10",13,10,0
+p126_ngs_image_begin_rejected_log: db "[NGS] SYSBIOS IMAGE BEGIN REJECTED",13,10,0
+p126_ngs_image_fragment_rejected_log: db "[NGS] SYSBIOS IMAGE FRAGMENT REJECTED",13,10,0
+p126_ngs_image_finish_rejected_log: db "[NGS] SYSBIOS IMAGE FINISH REJECTED",13,10,0
 
 ; Standard CRC-16/CCITT-FALSE regression vector.
 ; OUT: Carry clear and HL=#29B1 on pass; Carry set on failure.
