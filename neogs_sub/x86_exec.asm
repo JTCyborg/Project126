@@ -162,26 +162,23 @@ x86_exec_mov_rm_reg:
         call    x86_decode_modrm16
         ret     c
         ld      a,(x86_exec_mov_opcode)
-        bit     1,a
+        bit     0,a
         jr      nz,.mov_word
 
-        ; Byte transfer.
-        bit     2,a
+        ; Byte transfer. Bit 1 selects direction.
+        bit     1,a
         jr      nz,.mov_r8_from_rm8
         ld      a,(x86_modrm_reg)
         call    x86_modrm_read_reg8
-        ld      (x86_exec_mov_byte),a
-        ld      a,(x86_exec_mov_byte)
         jp      x86_modrm_write_rm8
 .mov_r8_from_rm8:
         call    x86_modrm_read_rm8
-        ld      (x86_exec_mov_byte),a
         ld      c,a
         ld      a,(x86_modrm_reg)
         jp      x86_modrm_write_reg8
 
 .mov_word:
-        bit     2,a
+        bit     1,a
         jr      nz,.mov_r16_from_rm16
         call    x86_modrm_read_reg16
         jp      x86_modrm_write_rm16
