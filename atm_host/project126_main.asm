@@ -148,49 +148,9 @@ p126_host_ngs_start_done:
         ld      hl, p126_log_catalog_return
         call    p126_host_debug_string
 
-        ; One deterministic ABI 1.0 DMA frame proves the complete ATM->NeoGS
-        ; command/READY/payload/FF/completion path after the resident is ready.
-        ld      a,(p126_host_ngs_ready)
-        or      a
-        jr      z,p126_host_idle
-        ld      hl,p126_log_dma_test_begin
-        call    p126_host_debug_string
-        call    p126_neogs_dma_smoke_test
-        jr      c,p126_host_dma_test_failed
-        ld      hl,p126_log_dma_test_sent
-        call    p126_host_debug_string
-        ; Verify the ABI 1.0 NeoGS -> ATM DMA direction independently.
-        call    p126_ipc_dma_receive_test
-        jr      c,p126_host_dma_rx_test_failed
-        ld      hl,p126_log_dma_rx_test_pass
-        call    p126_host_debug_string
-        jr      p126_host_idle
-p126_host_dma_rx_test_failed:
-        ld      hl,p126_log_dma_rx_test_failed
-        call    p126_host_debug_string
-        jr      p126_host_idle
-p126_host_dma_test_failed:
-        ld      hl,p126_log_dma_test_failed
-        call    p126_host_debug_string
-        ld      hl,p126_log_dma_stage_prefix
-        call    p126_host_debug_string
-        ld      bc,#00EF
-        ld      a,(p126_ipc_dma_stage)
-        add     a,'0'
-        out     (c),a
-        ld      a,13
-        out     (c),a
-        ld      a,10
-        out     (c),a
-        ld      hl,p126_log_dma_error_prefix
-        call    p126_host_debug_string
-        ld      a,(p126_ipc_dma_error)
-        call    p126_host_debug_hex_byte
-        ld      a,13
-        ld      bc,#00EF
-        out     (c),a
-        ld      a,10
-        out     (c),a
+        ; The 16 KiB DMA smoke-test buffers overlap the TR-DOS directory
+        ; buffer at #C800. Keep destructive DMA diagnostics out of the normal
+        ; catalogue session; run them only in the dedicated DMA test build.
 
 p126_host_idle:
         call    p126_catalog_poll_keyboard
@@ -319,13 +279,6 @@ p126_host_ngs_ready: db 0
 p126_log_ngs_begin: db "[BOOT] NEOGS RESIDENT START BEGIN",13,10,0
 p126_log_ngs_ready: db "[BOOT] NEOGS RESIDENT READY",13,10,0
 p126_log_ngs_failed: db "[BOOT] NEOGS RESIDENT START FAILED",13,10,0
-p126_log_dma_test_begin: db "[BOOT] DMA MAX FRAME TEST BEGIN",13,10,0
-p126_log_dma_test_sent: db "[BOOT] DMA MAX TX PASS",13,10,0
-p126_log_dma_test_failed: db "[BOOT] DMA MAX TX FAILED",13,10,0
-p126_log_dma_rx_test_pass: db "[BOOT] DMA MAX RX PASS",13,10,0
-p126_log_dma_rx_test_failed: db "[BOOT] DMA MAX RX FAILED",13,10,0
-p126_log_dma_stage_prefix: db "[BOOT] DMA FAIL STAGE=",0
-p126_log_dma_error_prefix: db "[BOOT] DMA VALIDATOR ERROR=",0
 p126_log_trdos_begin:   db "[BOOT] TRDOS DIRECTORY READ BEGIN",13,10,0
 p126_log_trdos_done:    db "[BOOT] TRDOS DIRECTORY READ RETURN",13,10,0
 p126_log_video_begin:   db "[BOOT] ATM VIDEO INIT BEGIN",13,10,0
