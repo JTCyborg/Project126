@@ -95,7 +95,7 @@ VGA BIOS is a separate image and is not one of these three system BIOS choices. 
 
 - Runtime RAM/ROM/VGA read and write handlers.
 - VGA register/plane/latch implementation and renderer.
-- PIT/VGA/RTC/IDE/FDC device emulation; DMA transfer engine and FDC/IDE request service; PIC IRQ0/timer source and complete PPI/keyboard electrical behavior.
+- VGA/RTC/IDE/FDC device emulation; PIT clock decrement/output/IRQ0; DMA transfer engine and FDC/IDE request service; complete PPI/keyboard electrical behavior.
 - Guest BIOS banking for images larger than 8 KiB.
 - ATM-side physical I/O request service handlers.
 - BIOS POST/boot validation on NeoGS.
@@ -103,6 +103,14 @@ VGA BIOS is a separate image and is not one of these three system BIOS choices. 
 A source-level address map and compile-time assertions are not BUILD/EMULATOR/HARDWARE PASS for those runtime components.
 
 
+
+### PIT 8253 register-model status
+
+A static 8253 programming/readback slice is implemented for ports 0040h–0043h:
+- Three channel reload registers, LSB-only/MSB-only/LSB+MSB access modes, shared per-channel read/write sequencing, and count-latch commands.
+- Control-word channel selection, mode storage (including mode 6/7 aliases to 2/3), and BCD flag storage.
+- Reset-time self-test checks channel 0 reload=1234h, low/high readback and count-latch readback, plus channel 1 LSB-only programming/readback.
+- Still pending: decrementing counters, clock source/divisor timing, output pin states, speaker integration and IRQ0 generation. This is a register-file model, not a functioning timer.
 
 ### DMA 8237 register-model status
 
