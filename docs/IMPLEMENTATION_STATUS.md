@@ -619,3 +619,13 @@ Source commit: `aac9d7e60c391510150016d3b29906a7b2f90e3d`.
 Исправление: максимальные DMA smoke-тесты исключены из обычного интерактивного boot path. Их код и отдельная проверка DMA остаются в проекте; тесты запускаются в отдельном диагностическом сценарии, где буфер каталога не нужен. Опрос клавиатуры и renderer не меняются.
 
 Аппаратный лог пользователя от 2026-11-07 подтверждает обе стороны DMA 16 KiB: `DMA MAX TX PASS`, `CRC CALCULATED=C609 FRAME CRC=C609` и `DMA MAX RX PASS`. Это hardware PASS для тестового запуска; после исключения smoke-тестов из normal boot требуется проверить сохранность каталога при перемещении курсора.
+
+
+## 2026-11-07 — catalogue hardware confirmation and BIOS transfer instrumentation
+
+- Latest target log confirms directory read/count/draw, four recognized cursor presses without catalogue loss, and `[CAT] ENTER CONFIRMED`. This is a hardware PASS for catalogue persistence/navigation and Enter recognition only; it proves the BIOS loader was entered, not that BIOS was read or installed.
+- ATM BIOS loader now logs transaction milestones: load entry, file-open success, exact-size validation, sector-read begin/completion, ATM video restoration, and each IMAGE operation before/after the CBIT completion wait. Failure paths report distinct reasons (selection, file type, not found, descriptor, size, sector read, IPC/DMA).
+- NeoGS IMAGE handlers now emit explicit rejection markers for BEGIN, FRAGMENT and FINISH validation failures. ATM labels the CBIT event as handler completion rather than ACK, because the current ABI transport wait observes CBIT release but does not receive the handler's carry/status result.
+- ATM's final catalogue message now says the IMAGE sequence was sent and directs verification to the NeoGS installation result; it no longer claims successful SYSBIOS installation based only on CBIT completion.
+- **HARDWARE PENDING:** selected BIOS file read, all three IMAGE operations, and installation/readback in physical page 10h. Required positive marker: `[NGS] SYSBIOS IMAGE INSTALLED AT PAGE 10`. Rejection markers distinguish handler validation failures.
+- **BUILD PENDING:** the diagnostic source changes require a fresh CI assembly/package run. No BIOS transfer/install PASS is claimed.
