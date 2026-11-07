@@ -560,6 +560,64 @@ x86_io_write16_impl:
         ld      (x86_io_port),hl
         ret
 
+; One-shot BIOS watchdog diagnostic: dump the 16 bytes surrounding the
+; current DS:SI table cursor. This reads guest memory through the normal
+; physical mapper and never changes guest registers or the memory map contract.
+x86_io_dump_bios_table_impl:
+        push    af
+        push    bc
+        push    de
+        push    hl
+        ld      hl,x86_io_bios_table_prefix
+        call    x86_io_log_string
+        ld      hl,(x86_reg_ds)
+        call    x86_io_log_hex16
+        ld      a,':'
+        call    x86_io_log_char
+        ld      hl,(x86_reg_si)
+        call    x86_io_log_hex16
+        ld      hl,x86_io_bios_table_data_text
+        call    x86_io_log_string
+        ; The watchdog stops immediately after LODSB at E06E. Include the
+        ; byte just consumed by starting at SI-1, then show the next 15 bytes.
+        ld      hl,(x86_reg_si)
+        dec     hl
+        ld      (x86_io_diag_offset),hl
+        ld      a,16
+        ld      (x86_io_diag_remaining),a
+.bios_table_dump_loop:
+        ld      hl,(x86_reg_ds)
+        ld      de,(x86_io_diag_offset)
+        call    x86_cpu_calc_phys
+        call    x86_guest_mem_read8
+        jr      c,.bios_table_dump_fault
+        call    x86_io_log_hex8
+        jr      .bios_table_dump_separator
+.bios_table_dump_fault:
+        ld      a,'?'
+        call    x86_io_log_char
+        ld      a,'?'
+        call    x86_io_log_char
+.bios_table_dump_separator:
+        ld      a,' '
+        call    x86_io_log_char
+        ld      hl,(x86_io_diag_offset)
+        inc     hl
+        ld      (x86_io_diag_offset),hl
+        ld      a,(x86_io_diag_remaining)
+        dec     a
+        ld      (x86_io_diag_remaining),a
+        jr      nz,.bios_table_dump_loop
+        ld      a,13
+        call    x86_io_log_char
+        ld      a,10
+        call    x86_io_log_char
+        pop     hl
+        pop     de
+        pop     bc
+        pop     af
+        ret
+
 ; Diagnostic output only: guest ports remain software-modeled.
 ; Format: [IO] IN8 P=03DA V=FF @F000:E05B
 x86_io_log_access_impl:
@@ -678,8 +736,12 @@ x86_io_log_out:       db "OUT",0
 x86_io_log_port_text: db " P=",0
 x86_io_log_value_text: db " V=",0
 x86_io_log_at_text:  db " @",0
+x86_io_bios_table_prefix: db "[BIOS TABLE] DS:SI=",0
+x86_io_bios_table_data_text: db " DATA=",0
 
 x86_io_port: dw 0
+x86_io_diag_offset: dw 0
+x86_io_diag_remaining: db 0
 x86_io_test_latch: dw 0
 x86_io_log_value: dw 0
 x86_io_log_direction: db 0
