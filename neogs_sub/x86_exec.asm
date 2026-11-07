@@ -2257,6 +2257,14 @@ x86_exec_mov_sreg_rm:
         ld      (x86_exec_sreg_opcode),a
         call    x86_decode_modrm16
         ret     c
+        ; PCem sets its one-instruction no-interrupt latch after every 8E,
+        ; including ignored /4-/7 encodings (not after the 8C store form).
+        ld      a,(x86_exec_sreg_opcode)
+        cp      #8E
+        jr      nz,.mov_sreg_check_index
+        ld      a,1
+        ld      (x86_irq_inhibit),a
+.mov_sreg_check_index:
         ld      a,(x86_modrm_reg)
         cp      4
         jr      nc,.mov_sreg_invalid
@@ -2287,11 +2295,6 @@ x86_exec_mov_sreg_rm:
         ld      (hl),e
         inc     hl
         ld      (hl),d
-        ld      a,(x86_exec_sreg_index)
-        cp      2
-        jr      nz,.mov_sreg_done
-        ld      a,1
-        ld      (x86_irq_inhibit),a
 .mov_sreg_done:
         or      a
         ret
