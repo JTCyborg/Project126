@@ -82,6 +82,9 @@ p126_ngs_resident_main_loop:
         ld      a,(p126_ngs_io_overlay_ready)
         or      a
         jr      z,p126_ngs_resident_main_loop
+        ld      a,(p126_ngs_alu_overlay_ready)
+        or      a
+        jr      z,p126_ngs_resident_main_loop
         ld      a,(p126_ngs_bios_image_ready)
         or      a
         jr      z,p126_ngs_resident_main_loop
