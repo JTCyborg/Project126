@@ -645,6 +645,61 @@ p126_neogs_startup_stage: db '0'
 ; Page 0 is restored by p126_atm_video_init and is otherwise the TR-DOS
 ; staging window. The reverse-DMA test reuses this same buffer after TX.
 p126_neogs_dma_smoke_test::
+        ; The ATM host TR-DOS file is packaged only through A800h. The
+        ; C000h staging buffer is runtime RAM, not part of that file, so
+        ; initialize every header byte explicitly on each test invocation.
+        ld      hl,p126_neogs_dma_test_frame
+        ld      a,'P'
+        ld      (hl),a
+        inc     hl
+        ld      a,'1'
+        ld      (hl),a
+        inc     hl
+        ld      a,'2'
+        ld      (hl),a
+        inc     hl
+        ld      a,'6'
+        ld      (hl),a
+        inc     hl
+        ld      a,P126_IPC_MAJOR
+        ld      (hl),a
+        inc     hl
+        ld      a,P126_IPC_MINOR
+        ld      (hl),a
+        inc     hl
+        ld      a,P126_MSG_REQUEST
+        ld      (hl),a
+        inc     hl
+        ld      a,P126_SERVICE_DIAGNOSTICS
+        ld      (hl),a
+        inc     hl
+        ld      a,P126_OP_DIAGNOSTIC
+        ld      (hl),a
+        inc     hl
+        xor     a
+        ld      (hl),a                 ; flags
+        inc     hl
+        ld      a,#02
+        ld      (hl),a                 ; sequence low
+        inc     hl
+        xor     a
+        ld      (hl),a                 ; sequence high
+        inc     hl
+        ld      a,#EE
+        ld      (hl),a                 ; payload length low
+        inc     hl
+        ld      a,#3F
+        ld      (hl),a                 ; payload length high
+        inc     hl
+        xor     a
+        ld      (hl),a                 ; status low
+        inc     hl
+        ld      (hl),a                 ; status high
+        inc     hl
+        ld      (hl),a                 ; CRC low (filled below)
+        inc     hl
+        ld      (hl),a                 ; CRC high (filled below)
+
         ld      hl,p126_neogs_dma_test_frame+P126_IPC_HEADER_SIZE
         ld      bc,P126_IPC_MAX_PAYLOAD
         ld      e,0
@@ -683,14 +738,5 @@ p126_neogs_dma_smoke_test::
         ld      bc,P126_IPC_MAX_FRAME_SIZE
         jp      p126_ipc_dma_send_frame
 
-        ORG     #C000
-p126_neogs_dma_test_frame:
-        db      'P','1','2','6',P126_IPC_MAJOR,P126_IPC_MINOR
-        db      P126_MSG_REQUEST,P126_SERVICE_DIAGNOSTICS,P126_OP_DIAGNOSTIC,0
-        db      #02,#00              ; sequence = 2
-        db      #EE,#3F              ; payload length = 3FEEh (16366 bytes)
-        db      #00,#00              ; status = OK
-        db      #00,#00              ; CRC, filled at runtime
-        defs    P126_IPC_MAX_PAYLOAD,0
-        ASSERT  p126_neogs_dma_test_frame = #C000
+p126_neogs_dma_test_frame EQU #C000
         ASSERT  p126_neogs_dma_test_frame + P126_IPC_MAX_FRAME_SIZE = #10000
