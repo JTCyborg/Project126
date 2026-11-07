@@ -1040,7 +1040,7 @@ x86_guest_mem_fault_diag:
         push    hl
         ld      a,(x86_mem_fault_diag_once)
         or      a
-        jr      nz,.diag_done
+        jp      nz,.diag_done
         inc     a
         ld      (x86_mem_fault_diag_once),a
         ld      a,(x86_phys_addr+2)
