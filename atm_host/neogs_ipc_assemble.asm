@@ -10,6 +10,12 @@ p126_atm_ipc_module_start:
         INCLUDE "atm_host/neogs_ipc.asm"
 p126_atm_ipc_module_end:
 
+; The standalone IPC audit unit does not link the ATM screen-console module.
+; Resolve its external renderer symbol with an audit-only stub. The production
+; ATM application links the real BIOS_DebugConsole_PrintChar implementation.
+BIOS_DebugConsole_PrintChar:
+        ret
+
     DISPLAY "P126_ATM_IPC_START=", /H, p126_atm_ipc_module_start
     DISPLAY "P126_ATM_IPC_END=", /H, p126_atm_ipc_module_end
     DISPLAY "P126_ATM_IPC_SIZE=", /D, p126_atm_ipc_module_end-p126_atm_ipc_module_start
