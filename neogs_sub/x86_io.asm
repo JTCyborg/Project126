@@ -59,57 +59,57 @@ x86_io_pic_selftest_impl:
         ld      (x86_io_port),hl
         ld      a,#13
         call    x86_io_pic_write8
-        jr      c,.pic_selftest_fail
+        jp      c,.pic_selftest_fail
         ld      hl,#0021
         ld      (x86_io_port),hl
         ld      a,#20
         call    x86_io_pic_write8
-        jr      c,.pic_selftest_fail
+        jp      c,.pic_selftest_fail
         ld      a,#01
         call    x86_io_pic_write8
-        jr      c,.pic_selftest_fail
+        jp      c,.pic_selftest_fail
         ; Verify IMR write/readback.
         ld      a,#A5
         call    x86_io_pic_write8
-        jr      c,.pic_selftest_fail
+        jp      c,.pic_selftest_fail
         call    x86_io_pic_read8
-        jr      c,.pic_selftest_fail
+        jp      c,.pic_selftest_fail
         cp      #A5
-        jr      nz,.pic_selftest_fail
+        jp      nz,.pic_selftest_fail
         ; OCW3 selects ISR (0Bh) and IRR (0Ah) for command-port reads.
         ld      hl,#0020
         ld      (x86_io_port),hl
         ld      a,#0B
         call    x86_io_pic_write8
-        jr      c,.pic_selftest_fail
+        jp      c,.pic_selftest_fail
         call    x86_io_pic_read8
-        jr      c,.pic_selftest_fail
+        jp      c,.pic_selftest_fail
         or      a
-        jr      nz,.pic_selftest_fail
+        jp      nz,.pic_selftest_fail
         ld      a,#0A
         call    x86_io_pic_write8
-        jr      c,.pic_selftest_fail
+        jp      c,.pic_selftest_fail
         call    x86_io_pic_read8
-        jr      c,.pic_selftest_fail
+        jp      c,.pic_selftest_fail
         or      a
-        jr      nz,.pic_selftest_fail
+        jp      nz,.pic_selftest_fail
         ; Exercise specific EOI (IRQ7) and non-specific EOI (IRQ0 priority).
         ld      a,#80
         ld      (x86_io_pic_isr),a
         ld      a,#67
         call    x86_io_pic_write8
-        jr      c,.pic_selftest_fail
+        jp      c,.pic_selftest_fail
         ld      a,(x86_io_pic_isr)
         or      a
-        jr      nz,.pic_selftest_fail
+        jp      nz,.pic_selftest_fail
         ld      a,#81
         ld      (x86_io_pic_isr),a
         ld      a,#20
         call    x86_io_pic_write8
-        jr      c,.pic_selftest_fail
+        jp      c,.pic_selftest_fail
         ld      a,(x86_io_pic_isr)
         cp      #80
-        jr      nz,.pic_selftest_fail
+        jp      nz,.pic_selftest_fail
         ld      hl,x86_io_pic_selftest_pass
         jr      .pic_selftest_restore
 .pic_selftest_fail:
