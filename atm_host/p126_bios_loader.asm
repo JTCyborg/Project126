@@ -406,11 +406,11 @@ p126_bios_log_read_begin:       db "[CAT] BIOS READ BEGIN",13,10,0
 p126_bios_log_read_done:        db "[CAT] BIOS READ COMPLETE",13,10,0
 p126_bios_log_video_restored:   db "[CAT] BIOS ATM VIDEO RESTORED",13,10,0
 p126_bios_log_image_begin_tx:   db "[CAT] IMAGE BEGIN TX",13,10,0
-p126_bios_log_image_begin_ok:   db "[CAT] IMAGE BEGIN ACK",13,10,0
+p126_bios_log_image_begin_ok:   db "[CAT] IMAGE BEGIN HANDLER COMPLETE",13,10,0
 p126_bios_log_image_fragment_tx: db "[CAT] IMAGE FRAGMENT TX",13,10,0
-p126_bios_log_image_fragment_ok: db "[CAT] IMAGE FRAGMENT ACK",13,10,0
+p126_bios_log_image_fragment_ok: db "[CAT] IMAGE FRAGMENT HANDLER COMPLETE",13,10,0
 p126_bios_log_image_finish_tx:  db "[CAT] IMAGE FINISH TX",13,10,0
-p126_bios_log_image_finish_ok:  db "[CAT] IMAGE FINISH ACK",13,10,0
+p126_bios_log_image_finish_ok:  db "[CAT] IMAGE FINISH HANDLER COMPLETE",13,10,0
 p126_bios_log_bad_selection:    db "[CAT] BIOS ERROR: BAD SELECTION",13,10,0
 p126_bios_log_bad_type:         db "[CAT] BIOS ERROR: FILE TYPE",13,10,0
 p126_bios_log_not_found:        db "[CAT] BIOS ERROR: FILE NOT FOUND",13,10,0
