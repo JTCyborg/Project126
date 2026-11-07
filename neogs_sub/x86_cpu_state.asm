@@ -216,6 +216,7 @@ x86_bios_startup_trace:
         call    p126_ngs_resident_log
         call    x86_bios_trace_log_cs_ip
         call    x86_bios_trace_log_registers
+        call    x86_io_dump_bios_table
         call    x86_bios_trace_log_io_counts
         call    x86_bios_trace_log_history
         scf
