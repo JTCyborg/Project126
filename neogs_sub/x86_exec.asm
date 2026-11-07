@@ -45,6 +45,44 @@ x86_cpu_fetch16:
 ; One architectural instruction boundary. The dispatcher intentionally
 ; rejects unknown opcodes rather than silently advancing or corrupting state.
 x86_cpu_step:
+        ; NMI has priority and is not masked by IF or MOV-SS inhibition.
+        ld      a,(x86_pending_nmi)
+        or      a
+        jr      z,.boundary_irq_inhibit
+        xor     a
+        ld      (x86_pending_nmi),a
+        ld      a,2
+        jp      x86_exec_interrupt
+
+.boundary_irq_inhibit:
+        ; MOV SS / POP SS inhibits maskable IRQ delivery for this boundary.
+        ld      a,(x86_irq_inhibit)
+        or      a
+        jr      z,.boundary_irq_pending
+        xor     a
+        ld      (x86_irq_inhibit),a
+        jr      .boundary_halt_check
+
+.boundary_irq_pending:
+        ld      a,(x86_pending_irq)
+        or      a
+        jr      z,.boundary_halt_check
+        ld      hl,(x86_reg_flags)
+        bit     1,h
+        jr      z,.boundary_halt_check
+        xor     a
+        ld      (x86_pending_irq),a
+        ld      a,(x86_irq_vector)
+        jp      x86_exec_interrupt
+
+.boundary_halt_check:
+        ld      a,(x86_halted)
+        or      a
+        jr      z,.boundary_start_instruction
+        xor     a
+        ret
+
+.boundary_start_instruction:
         xor     a
         ld      (x86_exec_prefix_seg),a
         ld      (x86_exec_prefix_rep),a
@@ -1725,6 +1763,8 @@ x86_exec_into:
         jp      x86_exec_interrupt
 
 x86_exec_interrupt:
+        xor     a
+        ld      (x86_halted),a
         ld      (x86_exec_interrupt_vector),a
         ld      hl,(x86_reg_flags)
         ld      a,h
