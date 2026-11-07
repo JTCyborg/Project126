@@ -30,8 +30,12 @@ p126_bios_load_selected::
         ld      a,(p126_catalog_selected)
         call    p126_catalog_find_index
         jp      c,p126_bios_bad_selection
+        ; Preserve the selected directory-entry pointer across logging.
+        ; p126_catalog_log uses HL for its message pointer.
+        push    hl
         ld      hl,p126_bios_log_selection_resolved
         call    p126_catalog_log
+        pop     hl
         push    hl
         ld      de,#5CDD
         ld      bc,8
