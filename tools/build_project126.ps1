@@ -78,10 +78,30 @@ try {
 
         $size = (Get-Item $binary).Length
         if ($size -le 0 -or $size -gt $unit.MaxBytes) {
-            throw "Invalid $($unit.Name) image size: $size bytes (expected 1..$($unit.MaxBytes))"
+            throw "Invalid $($unit.Name) audit image size: $size bytes (expected 1..$($unit.MaxBytes))"
         }
 
-        Write-Host "[BUILD] $($unit.Version) bytes=$size"
+        if ($unit.Name -eq "NeoGS") {
+            $residentImage = Join-Path $build "X86CORE.C"
+            $ioOverlay = Join-Path $build "X86IO.C"
+            foreach ($image in @($residentImage, $ioOverlay)) {
+                if (-not (Test-Path $image)) {
+                    throw "Required split NeoGS image was not produced: $image"
+                }
+            }
+            $residentBytes = (Get-Item $residentImage).Length
+            $overlayBytes = (Get-Item $ioOverlay).Length
+            if ($residentBytes -lt 1 -or $residentBytes -gt 0x4000) {
+                throw "X86CORE.C size $residentBytes is outside the 1..16384-byte WIN0 limit."
+            }
+            if ($overlayBytes -lt 1 -or $overlayBytes -gt 0x1000) {
+                throw "X86IO.C size $overlayBytes is outside the 1..4096-byte page-04 overlay profile."
+            }
+            Write-Host "[BUILD] X86CORE.C resident bytes=$residentBytes / 16384"
+            Write-Host "[BUILD] X86IO.C overlay bytes=$overlayBytes / 4096"
+        }
+
+        Write-Host "[BUILD] $($unit.Version) audit-bytes=$size"
         Write-Host "[BUILD] Listing bytes=$((Get-Item $listing).Length)"
         Write-Host "[BUILD] Symbol map bytes=$((Get-Item $map).Length)"
     }
@@ -152,6 +172,7 @@ try {
         @{ Name = ($BootName.PadRight(8) + "B"); Label = "$BootName.B" },
         @{ Name = ($HostName.PadRight(8) + "C"); Label = "$HostName.C" },
         @{ Name = "X86CORE C"; Label = "X86CORE.C" },
+        @{ Name = "X86IO   C"; Label = "X86IO.C" },
         @{ Name = "P126BOOTC"; Label = "P126BOOT.C" },
         @{ Name = "BIOS1   C"; Label = "BIOS1.C"; ExpectedLength = 8192; ExpectedSectors = 32 },
         @{ Name = "BIOS2   C"; Label = "BIOS2.C"; ExpectedLength = 8192; ExpectedSectors = 32 },
