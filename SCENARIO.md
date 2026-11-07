@@ -1249,3 +1249,12 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 - Code commits: `06b43df06fc382bbe3a028c65e2fcbf291de6c03` (overlay memory dump), `0943df075b5ca3dd587dbcb49862101bf4f2aa96` (resident overlay-gate wrapper), `8b58ae370093ce5afe68b1889d8585b46c9b3be3` (watchdog call site).
 - **BUILD PASS:** GitHub Actions run [42404671411](https://github.com/JTCyborg/Project126/actions/runs/42404671411), commit `8b58ae370093ce5afe68b1889d8585b46c9b3be3`. NeoGS/ATM/IPC/TR-DOS assembly and packaging completed with 0 assembly errors and 0 warnings. X86CORE.C=16,171/16,384 bytes; X86IO.C=1,270/4,096 bytes; X86ALU.C=1,220/4,096 bytes; TR-DOS image=655,360 bytes.
 - The diagnostic output has not yet been observed on target hardware. Until the 16-byte memory snapshot is available, the exact caller and validity of the BIOS1 DS:SI table pointer remain unresolved. No BIOS POST pass is claimed.
+
+
+## 2026-11-07 — 8259A register self-test
+
+- Added a reset-time register-level regression to `x86_io_reset_impl`. It programs ICW1=13h, ICW2=20h and ICW4=01h; verifies IMR=A5h readback; selects ISR/IRR through OCW3 and verifies both empty; tests specific EOI for IRQ7 and non-specific EOI priority clearing for IRQ0.
+- The test restores the deterministic reset state (vector base 08h, IMR=FFh, IRR/ISR=00h) before returning. It emits exactly one `[NGS] X86 PIC REGISTER SELFTEST PASS` or `FAIL` line through the NeoGS debug channel. It does not synthesize an IRQ or claim CPU interrupt delivery.
+- Commits: `28a94aa5b214f598ff0ac017e1cadaf3aff5851e` (self-test) and `1f01c4fa731c9582f3618818e932ae0ffc989439` (long-branch safety).
+- **BUILD PASS:** GitHub Actions run [42404832812](https://github.com/JTCyborg/Project126/actions/runs/42404832812), commit `1f01c4fa731c9582f3618818e932ae0ffc989439`. All five assembly/package units completed with 0 errors and 0 warnings. X86CORE.C=16,171/16,384 bytes; X86IO.C=1,537/4,096 bytes; X86ALU.C=1,220/4,096 bytes; TR-DOS packaging succeeded.
+- The reset-time self-test has been assembled but not observed executing on target hardware. It is not an emulator-level or hardware PASS.
