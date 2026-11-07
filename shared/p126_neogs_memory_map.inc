@@ -27,16 +27,24 @@ P126_NGS_GUEST_RAM_PAGES     EQU #40
 P126_NGS_RESERVED_PAGE       EQU #84
 P126_NGS_RESERVED_PAGES      EQU #7C
 
-; Project126 resident execution contract, revision 0.2:
-; WIN0..WIN2 are reserved for resident code/data/stack.
-; WIN3 (C000-FFFF) is the dedicated banked physical-RAM aperture.
-; x86 memory helpers select WIN3 through MPAGEX port 10h. The physical page
-; number is encoded with RRCA before OUT; port 23h is PG3, not MPAGEX.
-; Callers and interrupt handlers must not place code/stack in WIN3.
-P126_NGS_BANK_WINDOW_INDEX     EQU 3
-P126_NGS_BANK_WINDOW_BASE      EQU #C000
-P126_NGS_BANK_WINDOW_PORT      EQU #10
-P126_NGS_GUEST_RAM_PAGE_BASE   EQU P126_NGS_GUEST_RAM_PAGE
+; Project126 resident execution contract, revision 0.3:
+; WIN0/page 00 is fixed resident code and data.
+; WIN1/page 03 owns the operational stack and fixed runtime data.
+; WIN2 is the 8000-BFFF overlay aperture, selected through MPAG port 00h.
+; MPAG selectors encode ROR8(physical_page), i.e. one RRCA before OUT.
+; The first pinned overlay is X86IO on physical page 04h (selector 02h).
+; WIN3 (C000-FFFF) remains exclusively the banked guest physical-memory
+; aperture selected through MPAGEX port 10h. Resident code and stack must
+; never execute from or be stored in WIN3.
+P126_NGS_OVERLAY_WINDOW_INDEX     EQU 2
+P126_NGS_OVERLAY_WINDOW_BASE      EQU #8000
+P126_NGS_OVERLAY_WINDOW_PORT      EQU #00
+P126_NGS_X86IO_OVERLAY_PAGE       EQU #04
+P126_NGS_X86IO_OVERLAY_SELECTOR   EQU #02
+P126_NGS_BANK_WINDOW_INDEX        EQU 3
+P126_NGS_BANK_WINDOW_BASE         EQU #C000
+P126_NGS_BANK_WINDOW_PORT         EQU #10
+P126_NGS_GUEST_RAM_PAGE_BASE      EQU P126_NGS_GUEST_RAM_PAGE
 
 ; Guest memory backend page-bias constants for the WIN3 selector.
 ; page = (guest_high_nibble*4)+(guest_middle>>6)+bias.
@@ -82,6 +90,11 @@ P126_NGS_RESERVED_LIMIT      EQU (P126_NGS_RESERVED_PAGE+P126_NGS_RESERVED_PAGES
         ASSERT P126_NGS_FRAME_PAGES*P126_NGS_PAGE_SIZE = #8000
         ASSERT P126_NGS_DMA_PAGES*P126_NGS_PAGE_SIZE = #4000
         ASSERT P126_NGS_GUEST_RAM_PAGES*P126_NGS_PAGE_SIZE = #100000
+        ASSERT P126_NGS_OVERLAY_WINDOW_INDEX = 2
+        ASSERT P126_NGS_OVERLAY_WINDOW_BASE = #8000
+        ASSERT P126_NGS_OVERLAY_WINDOW_PORT = #00
+        ASSERT P126_NGS_X86IO_OVERLAY_PAGE = #04
+        ASSERT P126_NGS_X86IO_OVERLAY_SELECTOR = #02
         ASSERT P126_NGS_BANK_WINDOW_INDEX = 3
         ASSERT P126_NGS_BANK_WINDOW_BASE = #C000
         ASSERT P126_NGS_BANK_WINDOW_PORT = #10
