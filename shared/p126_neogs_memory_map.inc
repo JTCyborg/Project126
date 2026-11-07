@@ -32,7 +32,7 @@ P126_NGS_RESERVED_PAGES      EQU #7C
 ; WIN1/page 03 owns the operational stack and fixed runtime data.
 ; WIN2 is the 8000-BFFF overlay aperture, selected through MPAG port 00h.
 ; MPAG selectors encode ROR8(physical_page), i.e. one RRCA before OUT.
-; Pinned overlays: X86IO page04/selector02 and X86ALU page05/selector82.
+; Pinned overlays: X86IO page04/selector02, X86ALU page05/selector82, X86DEV page06/selector03.
 ; WIN3 (C000-FFFF) remains exclusively the banked guest physical-memory
 ; aperture selected through MPAGEX port 10h. Resident code and stack must
 ; never execute from or be stored in WIN3.
