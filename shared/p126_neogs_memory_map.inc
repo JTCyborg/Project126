@@ -32,7 +32,7 @@ P126_NGS_RESERVED_PAGES      EQU #7C
 ; WIN1/page 03 owns the operational stack and fixed runtime data.
 ; WIN2 is the 8000-BFFF overlay aperture, selected through MPAG port 00h.
 ; MPAG selectors encode ROR8(physical_page), i.e. one RRCA before OUT.
-; The first pinned overlay is X86IO on physical page 04h (selector 02h).
+; Pinned overlays: X86IO page04/selector02 and X86ALU page05/selector82.
 ; WIN3 (C000-FFFF) remains exclusively the banked guest physical-memory
 ; aperture selected through MPAGEX port 10h. Resident code and stack must
 ; never execute from or be stored in WIN3.
@@ -41,7 +41,9 @@ P126_NGS_OVERLAY_WINDOW_BASE      EQU #8000
 P126_NGS_OVERLAY_WINDOW_PORT      EQU #00
 P126_NGS_X86IO_OVERLAY_PAGE       EQU #04
 P126_NGS_X86IO_OVERLAY_SELECTOR   EQU #02
-P126_NGS_OVERLAY_TEST_PAGE        EQU #05
+P126_NGS_ALU_OVERLAY_PAGE         EQU #05
+P126_NGS_ALU_OVERLAY_SELECTOR     EQU #82
+P126_NGS_OVERLAY_TEST_PAGE        EQU P126_NGS_ALU_OVERLAY_PAGE
 P126_NGS_BANK_WINDOW_INDEX        EQU 3
 P126_NGS_BANK_WINDOW_BASE         EQU #C000
 P126_NGS_BANK_WINDOW_PORT         EQU #10
@@ -96,6 +98,8 @@ P126_NGS_RESERVED_LIMIT      EQU (P126_NGS_RESERVED_PAGE+P126_NGS_RESERVED_PAGES
         ASSERT P126_NGS_OVERLAY_WINDOW_PORT = #00
         ASSERT P126_NGS_X86IO_OVERLAY_PAGE = #04
         ASSERT P126_NGS_X86IO_OVERLAY_SELECTOR = #02
+        ASSERT P126_NGS_ALU_OVERLAY_PAGE = #05
+        ASSERT P126_NGS_ALU_OVERLAY_SELECTOR = #82
         ASSERT P126_NGS_OVERLAY_TEST_PAGE = #05
         ASSERT P126_NGS_BANK_WINDOW_INDEX = 3
         ASSERT P126_NGS_BANK_WINDOW_BASE = #C000
