@@ -549,12 +549,14 @@ p126_ngs_ipc_dispatch_once::
 
 .p126_ngs_dispatch_ngs_frame:
         ; The host may request the stop record immediately after IMAGE_FINISH.
-        ; Keep the three-image readiness gate as the resident main loop:
-        ; BIOS execution requires SYSBIOS, X86IO and X86ALU overlays.
+        ; BIOS execution requires SYSBIOS plus the X86IO, X86ALU and X86DEV overlays.
         ld      a,(p126_ngs_io_overlay_ready)
         or      a
         jr      z,.ngs_frame_trace_ready
         ld      a,(p126_ngs_alu_overlay_ready)
+        or      a
+        jr      z,.ngs_frame_trace_ready
+        ld      a,(p126_ngs_dev_overlay_ready)
         or      a
         jr      z,.ngs_frame_trace_ready
         ld      a,(p126_ngs_bios_image_ready)
@@ -598,6 +600,8 @@ p126_ngs_image_begin:
         jr      z,.image_begin_x86io
         cp      P126_IMAGE_KIND_X86ALU
         jr      z,.image_begin_x86alu
+        cp      P126_IMAGE_KIND_X86DEV
+        jr      z,.image_begin_x86dev
         jp      .image_begin_bad
 
 .image_begin_sysbios:
@@ -640,6 +644,22 @@ p126_ngs_image_begin:
 .image_x86alu_size_ok:
         ld      a,P126_NGS_ALU_OVERLAY_SELECTOR
         ld      (p126_ngs_image_dest_selector),a
+        jr      .image_begin_common
+
+.image_begin_x86dev:
+        ld      hl,(#C016)
+        ld      a,h
+        or      l
+        jp      z,.image_begin_bad
+        ld      de,P126_IMAGE_X86DEV_MAX_SIZE
+        or      a
+        sbc     hl,de
+        jr      c,.image_x86dev_size_ok
+        jr      z,.image_x86dev_size_ok
+        jr      .image_begin_bad
+.image_x86dev_size_ok:
+        ld      a,P126_NGS_X86DEV_OVERLAY_SELECTOR
+        ld      (p126_ngs_image_dest_selector),a
 
 .image_begin_common:
         ld      hl,(#C012)
@@ -665,8 +685,14 @@ p126_ngs_image_begin:
         ld      (p126_ngs_io_overlay_ready),a
         jr      .image_begin_ack
 .image_begin_not_x86io:
+        cp      P126_IMAGE_KIND_X86ALU
+        jr      nz,.image_begin_not_x86alu
         xor     a
         ld      (p126_ngs_alu_overlay_ready),a
+        jr      .image_begin_ack
+.image_begin_not_x86alu:
+        xor     a
+        ld      (p126_ngs_dev_overlay_ready),a
 .image_begin_ack:
         xor     a
         out     (P126_NGS_CLRCBIT),a
@@ -795,7 +821,12 @@ p126_ngs_image_fragment:
         ld      hl,p126_ngs_io_overlay_verify_ok_log
         jr      .image_verify_log
 .image_alu_verify_log:
+        cp      P126_IMAGE_KIND_X86ALU
+        jr      nz,.image_dev_verify_log
         ld      hl,p126_ngs_alu_overlay_verify_ok_log
+        jr      .image_verify_log
+.image_dev_verify_log:
+        ld      hl,p126_ngs_dev_overlay_verify_ok_log
 .image_verify_log:
         call    p126_ngs_ipc_log
         xor     a
@@ -873,6 +904,8 @@ p126_ngs_image_finish:
         ld      hl,p126_ngs_io_overlay_installed_log
         jr      .image_finish_log
 .image_finish_x86alu:
+        cp      P126_IMAGE_KIND_X86ALU
+        jr      nz,.image_finish_x86dev
         ; Page05 is the fixed-origin ALU overlay. Probe it through the same
         ; resident gate used by every arithmetic entry point.
         ld      a,#3C
@@ -894,6 +927,29 @@ p126_ngs_image_finish:
         jr      .image_finish_log
 .image_finish_alu_probe_bad:
         ld      hl,p126_ngs_alu_overlay_probe_fail_log
+        call    p126_ngs_ipc_log
+        jr      .image_finish_bad
+
+.image_finish_x86dev:
+        ; Page06 must be callable through the resident gate and return to the
+        ; prior page04 selector. Run both register-model self-tests before ready.
+        call    x86_dev_overlay_probe
+        cp      #5A
+        jr      nz,.image_finish_dev_probe_bad
+        ld      de,#06D1
+        or      a
+        sbc     hl,de
+        jr      nz,.image_finish_dev_probe_bad
+        ld      a,(p126_overlay_current_selector)
+        cp      P126_NGS_X86IO_OVERLAY_SELECTOR
+        jr      nz,.image_finish_dev_probe_bad
+        call    x86_dev_reset
+        ld      a,1
+        ld      (p126_ngs_dev_overlay_ready),a
+        ld      hl,p126_ngs_dev_overlay_installed_log
+        jr      .image_finish_log
+.image_finish_dev_probe_bad:
+        ld      hl,p126_ngs_dev_overlay_probe_fail_log
         call    p126_ngs_ipc_log
         jr      .image_finish_bad
 
@@ -1156,6 +1212,7 @@ p126_ngs_image_received:     db 0
 p126_ngs_bios_image_ready:   db 0
 p126_ngs_io_overlay_ready:   db 0
 p126_ngs_alu_overlay_ready:  db 0
+p126_ngs_dev_overlay_ready:  db 0
 p126_ngs_image_id:           dw 0
 p126_ngs_image_size:         dw 0
 p126_ngs_image_kind:         db 0
@@ -1171,6 +1228,9 @@ p126_ngs_io_overlay_installed_log: db "[NGS] X86IO PAGE04 WIN2 OK",13,10,0
 p126_ngs_io_overlay_verify_ok_log: db "[NGS] X86IO PAGE04 READBACK OK",13,10,0
 p126_ngs_alu_overlay_verify_ok_log: db "[NGS] X86ALU PAGE05 READBACK OK",13,10,0
 p126_ngs_alu_overlay_installed_log: db "[NGS] X86ALU PAGE05 GATE OK",13,10,0
+p126_ngs_dev_overlay_verify_ok_log: db "[NGS] X86DEV PAGE06 READBACK OK",13,10,0
+p126_ngs_dev_overlay_installed_log: db "[NGS] X86DEV PAGE06 GATE AND REGISTERS OK",13,10,0
+p126_ngs_dev_overlay_probe_fail_log: db "[NGS] X86DEV PAGE06 GATE FAIL",13,10,0
 p126_ngs_alu_overlay_probe_fail_log: db "[NGS] X86ALU PAGE05 GATE FAIL",13,10,0
 p126_ngs_image_begin_rejected_log: db "[NGS] IMG BEGIN BAD",13,10,0
 p126_ngs_image_fragment_rejected_log: db "[NGS] IMG FRAG BAD",13,10,0
