@@ -166,6 +166,13 @@ P126_NGS_DMA_TARGET_PAGE     EQU #42
 P126_NGS_DMA_TIMEOUT  EQU #FFFF
 
 p126_ngs_ipc_dma_receive_frame::
+        ; Match the proven Project125 DMA setup ordering: map the physical
+        ; destination page into a CPU window before arming ZX DMA. Resident
+        ; code, data and stack remain in WIN0-WIN2; WIN3 is only the aperture.
+        ld      a,P126_NGS_DMA_TARGET_PAGE
+        out     (P126_NGS_WIN3_PORT),a
+        ld      hl,p126_ngs_ipc_log_dma_page_premapped
+        call    p126_ngs_ipc_log
         ld      hl,p126_ngs_ipc_log_dma_cfg_begin
         call    p126_ngs_ipc_log
         ld      a,1
@@ -226,8 +233,8 @@ p126_ngs_ipc_dma_receive_frame::
         call    p126_ngs_ipc_log_hex_byte_inline
         call    p126_ngs_ipc_log_crlf
 
-        ld      a,P126_NGS_DMA_TARGET_PAGE
-        out     (P126_NGS_WIN3_PORT),a
+        ; WIN3 was mapped to page 42 before DMA was armed and remains
+        ; selected. Do not switch the window between DMA completion and readback.
         ld      hl,p126_ngs_ipc_log_dma_page_mapped
         call    p126_ngs_ipc_log
         ld      hl,p126_ngs_ipc_log_dma_end
@@ -408,7 +415,8 @@ p126_ngs_ipc_log_dma_host_end:    db "[NGS] DMA HOST END DETECTED",13,10,0
 p126_ngs_ipc_log_dma_timeout:     db "[NGS] DMA WAIT TIMEOUT",13,10,0
 p126_ngs_ipc_log_bad_length:      db "[NGS] DMA FRAME LENGTH INVALID",13,10,0
 p126_ngs_ipc_log_dma_stopped:     db "[NGS] DMA STOPPED",13,10,0
-p126_ngs_ipc_log_dma_page_mapped: db "[NGS] DMA PAGE 42 MAPPED",13,10,0
+p126_ngs_ipc_log_dma_page_premapped: db "[NGS] DMA PAGE 42 PRE-MAPPED",13,10,0
+p126_ngs_ipc_log_dma_page_mapped: db "[NGS] DMA PAGE 42 STILL MAPPED",13,10,0
 p126_ngs_ipc_log_dma_end:         db "[NGS] DMA END RECEIVED",13,10,0
 p126_ngs_ipc_log_dma_addr:        db "[NGS] DMA ADDR READBACK=",0
 p126_ngs_ipc_log_win3_probe_pass: db "[NGS] WIN3 RW TEST=PASS",13,10,0

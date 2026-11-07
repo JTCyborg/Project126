@@ -438,3 +438,12 @@ Verification boundary: source correction is committed. CI assembly/package resul
 - полный дамп фиксированных 16 байт заголовка из C000h.
 
 Не изменялись адрес 108000h, DMA module 1, направление host→NeoGS, CBIT/FF handshake и ABI. Следующий шаг — сопоставить DMA address readback, результат WIN3 RW test и header dump. BUILD и HARDWARE статусы обновляются отдельно после CI и нового аппаратного лога.
+
+
+## DMA page-42 pre-map alignment (2026-11-07)
+
+- Hardware result: ATM CRC and E0/READY/FF control path pass; NeoGS post-stop address readback is 108012 after target 108000 for an 18-byte frame; WIN3 RAM probe passes; all 16 received header bytes are zero.
+- Interpretation: 18 DMA aperture accesses appear to have advanced the destination address, but payload storage in page 42 is not proven. WIN3 mapping and writeability are independently demonstrated.
+- Project125 reference neogs_sub/main.asm maps the destination page into its CPU window before arming ZX DMA and keeps that mapping active through the transaction. Project126 had selected page 42 only after DMA stop.
+- Updated neogs_sub/p126_ipc.asm to map page 42 into WIN3 before DMA register setup and leave it selected through receive-buffer inspection. Resident code/stack remain in WIN0-WIN2. No DMA address, module, host aperture, frame ABI or handshake change.
+- CI BUILD PASS for this source update and the next target run are tracked separately. The expected first new marker is [NGS] DMA PAGE 42 PRE-MAPPED; the decisive payload check remains the header dump.
