@@ -23,16 +23,18 @@ x86_io_reset:
         ld      (x86_io_count_in),hl
         ld      (x86_io_count_out),hl
         ld      (x86_io_test_latch),hl
-        ld      (x86_io_keyboard_head),hl
         xor     a
+        ld      (x86_io_keyboard_head),a
         ld      (x86_io_keyboard_tail),a
         ld      (x86_io_keyboard_count),a
         ld      (x86_io_keyboard_last),a
         ld      (x86_io_keyboard_overflow),a
         ld      (x86_io_ppi_pa),a
         ld      (x86_io_ppi_pc),a
-        ld      (x86_io_ppi_control),#9B
-        ld      (x86_io_ppi_pb),#40
+        ld      a,#9B
+        ld      (x86_io_ppi_control),a
+        ld      a,#40
+        ld      (x86_io_ppi_pb),a
         ret
 
 ; A=XT keyboard scan-code byte. Carry set means FIFO full (byte rejected).
@@ -349,15 +351,7 @@ x86_io_read16:
         inc     hl
         ld      (x86_io_port),hl
         call    x86_io_read8_device
-        ld      h,a
-        ld      a,(x86_io_word_low)
-        ld      l,a
-        ld      hl,(x86_io_word_value)
-        ; Rebuild HL from the saved low byte and the high byte just read.
-        ld      h,a
-        ld      a,(x86_io_word_high)
-        ; High byte is saved below; this placeholder is overwritten by
-        ; the explicit high-byte path to keep AF/HL handling unambiguous.
+        ld      (x86_io_word_high),a
         ld      hl,(x86_io_saved_port)
         ld      (x86_io_port),hl
         ld      a,(x86_io_word_low)
