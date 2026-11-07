@@ -930,7 +930,7 @@ p126_ngs_overlay_win2_selftest:
         in      a,(#0F)
         and     #0B                    ; NOROM, RAMRO, EXPAG
         cp      #09
-        jr      nz,.overlay_win2_test_config_failed
+        jp      nz,.overlay_win2_test_config_failed
 
         ; Save the original last byte of both pinned pages through WIN3.
         ld      a,P126_NGS_X86IO_OVERLAY_PAGE
