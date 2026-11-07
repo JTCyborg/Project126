@@ -6,7 +6,7 @@
 
 ## 1. Purpose
 
-The resident `X86CORE.C` has a hard 16 KiB loader limit. The current overlay-gate build produces a 15,610-byte resident image (774 bytes free), a 796-byte `X86IO.C` module and a 1,175-byte `X86ALU.C` module at logical origin `8000h`. The NeoGS physical map reserves pages `00h–0Fh` (256 KiB) for the kernel/runtime.
+The resident `X86CORE.C` has a hard 16 KiB loader limit. The current overlay-gate build produces a 15,632-byte resident image (752 bytes free), a 796-byte `X86IO.C` module and a 1,175-byte `X86ALU.C` module at logical origin `8000h`. The NeoGS physical map reserves pages `00h–0Fh` (256 KiB) for the kernel/runtime.
 
 The manager must use that existing allocation without changing the physical map, enlarging the `X86CORE.C` limit, taking ownership of WIN3, or moving the operational stack.
 
@@ -20,7 +20,7 @@ This document records the source-backed design direction and the remaining valid
 - Resident startup maps WIN0 to physical page `00h`, WIN1 to page `03h`, WIN2 initially to page `01h`, and initializes WIN3 to page `02h`. The operational stack is `7FFEh` in WIN1/page 03. After X86IO IMAGE_FINISH, WIN2 is mapped to physical page `04h`.
 - WIN3 (`C000h–FFFFh`) is exclusively owned by the guest physical-memory backend. Its mapping is volatile and is never used as an overlay execution window.
 - Kernel pages `00h–0Fh` are allocated. Page 03 contains the operational stack and narrow diagnostic buffers. Page 00 contains the resident image; page 03 contains the operational stack and fixed data; page 04 holds X86IO and page 05 holds X86ALU. The initial WIN2/WIN3 mappings are page 01/page 02.
-- A source scan of the CPU/IPC translation units found no fixed data operands in logical `8000h–BFFFh`; the range is now used as the fixed-origin overlay execution/data aperture. X86IO occupies `8000h–831Bh` (796 bytes) on page04; X86ALU occupies `8000h–8496h` (1,175 bytes) on page05.
+- A source scan of the CPU/IPC translation units found no fixed data operands in logical `8000h–BFFFh`; the range is now used as the fixed-origin overlay execution/data aperture. X86IO occupies `8000h–831Bh` (796 bytes) on page04; X86ALU occupies `8000h–8496h` (1,187 bytes) on page05.
 
 ## 3. Candidate execution aperture
 
@@ -109,14 +109,14 @@ The first candidate module is the existing XT PPI/keyboard I/O implementation in
 
 The two pinned-overlay source/build/load slices and low-level resident call gate are implemented:
 - `x86_io.asm` is assembled at `8000h` and exported as `X86IO.C` (796 bytes in the current build);
-- `X86CORE.C` is separately exported at 0000h (15,610 bytes in the current build);
+- `X86CORE.C` is separately exported at 0000h (15,632 bytes in the current build);
 - resident public X86IO and X86ALU entry points route through the WIN2 gate; implementation symbols remain fixed at the overlay origin;
 - ATM loads `X86IO.C` and `X86ALU.C` from TR-DOS after A2h using the shared fixed-profile loader and ABI 1.0 DMA;
 - NeoGS installs page 04h, verifies the complete image by readback, runs a reversible WIN2 selector test across pages 04h and 05h at offset 3FFFh, then runs a temporary page05→page04 X86IO-wrapper→page05 gate test and restores the page05 scratch bytes;
 - BIOS execution waits for IO_OVERLAY_READY, X86ALU_READY and BIOS_IMAGE_READY;
 - `00E0h` diagnostic latch and current PPI/keyboard semantics are retained.
 
-Not implemented: dynamic page allocator, general manifest, generic ATM module streaming, unload/refcounting, and runtime validation of repeated/deeper gate calls. The X86ALU probe verifies one page05 gate entry/return after readback, but does not test arithmetic semantics. A boot-time source-level self-test now exercises one page05→page04→page05 call and fails closed before IO_OVERLAY_READY; no physical target log has yet confirmed that self-test, X86IO transfer or return-state preservation.
+Not implemented: dynamic page allocator, general manifest, generic ATM module streaming, unload/refcounting, and runtime validation of repeated/deeper gate calls. The X86ALU probe verifies one page05 gate entry/return after readback, including input A/C/HL and output A/HL preservation; it does not test arithmetic semantics. A boot-time source-level self-test now exercises one page05→page04→page05 call and fails closed before IO_OVERLAY_READY; no physical target log has yet confirmed that self-test, X86IO transfer or return-state preservation.
 
 ## 8. Implementation gates
 
@@ -135,7 +135,7 @@ The manager is not complete until all of the following are true:
 - [x] X86ALU IMAGE_FINISH calls the ALU probe through the gate, checks the #A5 signature and confirms WIN2 is restored to page04 before X86ALU_READY.
 - [ ] Physical target log confirms [NGS] WIN2 MAP/GATE TEST PASS; repeated/deeper nested calls, alternate-register use and stack-limit behavior remain to be tested.
 - [ ] Invalid/unloaded dynamic module calls fail closed.
-- [x] CI build/package passes with the boot-time gate self-test (run 42398846093, commit 94ac5ba2; X86CORE 15610/16384 bytes, X86IO 796/4096 bytes, X86ALU 1175/4096 bytes; NeoGS, ATM, IPC and TR-DOS assembly 0 errors/0 warnings).
+- [x] CI build/package passes with the boot-time gate self-test (run 42399458157, commit 705a0d5e; X86CORE 15610/16384 bytes, X86IO 796/4096 bytes, X86ALU 1175/4096 bytes; NeoGS, ATM, IPC and TR-DOS assembly 0 errors/0 warnings).
 - [ ] Physical ATM/NeoGS log confirms X86IO and X86ALU transfer/readback, `[NGS] WIN2 MAP/GATE TEST PASS`, `[NGS] X86ALU PAGE05 GATE OK`, and final WIN2 mapping.
 
 No PIC/PIT/DMA/VGA/RTC/IDE implementation is to be added to the resident image before these gates are met. No CPU functional suite, full BIOS POST, or guest operating-system test is implied by overlay infrastructure validation.
