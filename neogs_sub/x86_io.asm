@@ -97,6 +97,16 @@ x86_io_keyboard_read_impl:
         ld      a,(x86_io_keyboard_last)
         ret
 
+; Overlay-gate regression entry. This routine runs on page04 and
+; deliberately calls the page05 ALU wrapper while page04 is active.
+; A=08h on success (05h + 03h), with carry clear.
+x86_io_overlay_nested_gate_probe_impl:
+        ld      a,#05
+        ld      c,#03
+        call    x86_alu_add8
+        cp      #08
+        ret
+
 ; Read one byte from the guest I/O bus. A=read value.
 x86_io_read8_impl:
         ld      hl,(x86_io_count_in)
