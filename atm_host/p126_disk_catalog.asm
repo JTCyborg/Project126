@@ -68,8 +68,9 @@ p126_catalog_poll_keyboard::
         or      a
         ret     z
         ld      (p126_catalog_key), a
-        ; Do not emit a timestamped #EF diagnostic for every cursor press:
-        ; RTC formatting/serial output made the interactive list feel laggy.
+        ; Emit one diagnostic per physical key press, not while polling.
+        ld      hl,p126_log_key_seen
+        call    p126_catalog_log
         call    p126_catalog_wait_release
 
         ld      a, (p126_catalog_key)
@@ -179,10 +180,10 @@ p126_catalog_scan_keys:
 
         ; Spectrum cursor combinations use CAPS SHIFT + 5/6/7/8.
         ; Matrix row #EFFE is ordered 0,9,8,7,6 in bits 0..4:
-        ; bit 1 = 7 (UP), bit 0 = 6 (DOWN), bit 2 = 8 (RIGHT).
+        ; bit 3 = 7 (UP), bit 4 = 6 (DOWN), bit 2 = 8 (RIGHT).
         ld      bc,#EFFE
         in      a,(c)
-        bit     1,a
+        bit     3,a
         jr      nz,.catalog_check_down
         ld      a,(p126_catalog_scan_result)
         or      1
@@ -191,7 +192,7 @@ p126_catalog_scan_keys:
 .catalog_check_down:
         ld      bc,#EFFE
         in      a,(c)
-        bit     0,a
+        bit     4,a
         jr      nz,.catalog_check_right
         ld      a,(p126_catalog_scan_result)
         or      2
