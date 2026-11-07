@@ -48,7 +48,89 @@ x86_io_reset_impl:
         ld      (x86_io_pic_imr),a
         ld      a,#08
         ld      (x86_io_pic_vector_base),a
+        call    x86_io_pic_selftest_impl
         ret
+
+; Register-level regression for the 8259A master model. It is run after the
+; deterministic reset state is established and restores that state on exit.
+x86_io_pic_selftest_impl:
+        ; ICW1=13h (single master, ICW4 follows), ICW2=20h, ICW4=01h.
+        ld      hl,#0020
+        ld      (x86_io_port),hl
+        ld      a,#13
+        call    x86_io_pic_write8
+        jr      c,.pic_selftest_fail
+        ld      hl,#0021
+        ld      (x86_io_port),hl
+        ld      a,#20
+        call    x86_io_pic_write8
+        jr      c,.pic_selftest_fail
+        ld      a,#01
+        call    x86_io_pic_write8
+        jr      c,.pic_selftest_fail
+        ; Verify IMR write/readback.
+        ld      a,#A5
+        call    x86_io_pic_write8
+        jr      c,.pic_selftest_fail
+        call    x86_io_pic_read8
+        jr      c,.pic_selftest_fail
+        cp      #A5
+        jr      nz,.pic_selftest_fail
+        ; OCW3 selects ISR (0Bh) and IRR (0Ah) for command-port reads.
+        ld      hl,#0020
+        ld      (x86_io_port),hl
+        ld      a,#0B
+        call    x86_io_pic_write8
+        jr      c,.pic_selftest_fail
+        call    x86_io_pic_read8
+        jr      c,.pic_selftest_fail
+        or      a
+        jr      nz,.pic_selftest_fail
+        ld      a,#0A
+        call    x86_io_pic_write8
+        jr      c,.pic_selftest_fail
+        call    x86_io_pic_read8
+        jr      c,.pic_selftest_fail
+        or      a
+        jr      nz,.pic_selftest_fail
+        ; Exercise specific EOI (IRQ7) and non-specific EOI (IRQ0 priority).
+        ld      a,#80
+        ld      (x86_io_pic_isr),a
+        ld      a,#67
+        call    x86_io_pic_write8
+        jr      c,.pic_selftest_fail
+        ld      a,(x86_io_pic_isr)
+        or      a
+        jr      nz,.pic_selftest_fail
+        ld      a,#81
+        ld      (x86_io_pic_isr),a
+        ld      a,#20
+        call    x86_io_pic_write8
+        jr      c,.pic_selftest_fail
+        ld      a,(x86_io_pic_isr)
+        cp      #80
+        jr      nz,.pic_selftest_fail
+        ld      hl,x86_io_pic_selftest_pass
+        jr      .pic_selftest_restore
+.pic_selftest_fail:
+        ld      hl,x86_io_pic_selftest_fail
+.pic_selftest_restore:
+        push    hl
+        xor     a
+        ld      (x86_io_pic_irr),a
+        ld      (x86_io_pic_isr),a
+        ld      (x86_io_pic_init_state),a
+        ld      (x86_io_pic_need_icw4),a
+        ld      (x86_io_pic_single),a
+        ld      (x86_io_pic_read_isr),a
+        ld      a,#FF
+        ld      (x86_io_pic_imr),a
+        ld      a,#08
+        ld      (x86_io_pic_vector_base),a
+        ld      hl,0
+        ld      (x86_io_port),hl
+        pop     hl
+        jp      x86_io_log_string
 
 ; A=XT keyboard scan-code byte. Carry set means FIFO full (byte rejected).
 ; This is the software input-service API; the caller is the future IPC
@@ -738,6 +820,8 @@ x86_io_log_value_text: db " V=",0
 x86_io_log_at_text:  db " @",0
 x86_io_bios_table_prefix: db "[BIOS TABLE] DS:SI=",0
 x86_io_bios_table_data_text: db " DATA=",0
+x86_io_pic_selftest_pass: db "[NGS] X86 PIC REGISTER SELFTEST PASS",13,10,0
+x86_io_pic_selftest_fail: db "[NGS] X86 PIC REGISTER SELFTEST FAIL",13,10,0
 
 x86_io_port: dw 0
 x86_io_diag_offset: dw 0
