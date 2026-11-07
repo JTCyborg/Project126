@@ -666,3 +666,11 @@ Source commit: `aac9d7e60c391510150016d3b29906a7b2f90e3d`.
 - The filename is emitted from the same eight-byte #5CDD field that the TR-DOS C=0Ah open routine uses, with the validated C extension appended.
 - The logger preserves AF/BC/DE/HL. No catalogue, TR-DOS ABI, disk I/O, DMA, IPC or IMAGE behavior was changed.
 - CI and hardware verification pending.
+
+
+## 2026-11-07 — TR-DOS C=0A boundary trace (hardware pending)
+
+- Selected filename logging is confirmed by the user's hardware trace (BIOS1   .C), but the ROM call at #3D13 still does not return.
+- Added a Project125-style, read-only boundary dump immediately before C=#0A: #5C3B, #5CE5, #5D06, live SP, eight bytes at #3D13, and the exact eight-byte name at #5CDD.
+- The helper preserves AF/BC/DE/HL and does not change paging, TR-DOS state, DMA or IPC. The C=0A call remains unchanged.
+- Awaiting the next hardware log; diagnosis of the ROM mapping is not yet hardware-confirmed.

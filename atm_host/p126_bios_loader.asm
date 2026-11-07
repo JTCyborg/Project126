@@ -69,6 +69,9 @@ p126_bios_load_selected::
         ld      (#5D06),a
         ld      hl,p126_bios_log_open_call
         call    p126_catalog_log
+        ; Capture the exact TR-DOS boundary state before entering the ROM.
+        ; This is a read-only diagnostic port of Project125's proven trace.
+        call    p126_bios_trace_search_state
         ld      c,10
         call    #3D13
         ld      hl,p126_bios_log_open_return
@@ -213,6 +216,88 @@ p126_bios_load_selected::
         or      a
         ret
 
+
+
+; Read-only snapshot immediately before TR-DOS C=#0A.
+; Dumps BANKM, extension, file-name length, live SP, ROM signature at #3D13,
+; and the exact eight-byte name. Preserves all Z80 registers.
+p126_bios_trace_search_state:
+        push    af
+        push    bc
+        push    de
+        push    hl
+        call    p126_host_log_prefix
+        ld      bc,#00EF
+        ld      hl,p126_bios_trace_state_prefix
+.p126_bios_trace_state_text:
+        ld      a,(hl)
+        inc     hl
+        or      a
+        jr      z,.p126_bios_trace_state_values
+        out     (c),a
+        jr      .p126_bios_trace_state_text
+.p126_bios_trace_state_values:
+        ld      a,(#5C3B)
+        call    p126_host_debug_hex_byte
+        ld      a,' '
+        out     (c),a
+        ld      a,(#5CE5)
+        call    p126_host_debug_hex_byte
+        ld      a,' '
+        out     (c),a
+        ld      a,(#5D06)
+        call    p126_host_debug_hex_byte
+        ld      a,' '
+        out     (c),a
+        ld      hl,0
+        add     hl,sp
+        ld      a,h
+        call    p126_host_debug_hex_byte
+        ld      a,l
+        call    p126_host_debug_hex_byte
+        ld      a,' '
+        out     (c),a
+        ld      hl,#3D13
+        ld      b,8
+.p126_bios_trace_rom_loop:
+        ld      a,(hl)
+        call    p126_host_debug_hex_byte
+        inc     hl
+        ld      a,' '
+        out     (c),a
+        djnz    .p126_bios_trace_rom_loop
+        ld      a,13
+        out     (c),a
+        ld      a,10
+        out     (c),a
+
+        call    p126_host_log_prefix
+        ld      bc,#00EF
+        ld      hl,p126_bios_trace_name_prefix
+.p126_bios_trace_name_text:
+        ld      a,(hl)
+        inc     hl
+        or      a
+        jr      z,.p126_bios_trace_name_value
+        out     (c),a
+        jr      .p126_bios_trace_name_text
+.p126_bios_trace_name_value:
+        ld      hl,#5CDD
+        ld      b,8
+.p126_bios_trace_name_loop:
+        ld      a,(hl)
+        inc     hl
+        out     (c),a
+        djnz    .p126_bios_trace_name_loop
+        ld      a,13
+        out     (c),a
+        ld      a,10
+        out     (c),a
+        pop     hl
+        pop     de
+        pop     bc
+        pop     af
+        ret
 
 ; Log the selected TR-DOS 8.3 filename as one timestamped line.
 ; The directory name is already copied to #5CDD and type C was validated.
@@ -465,6 +550,8 @@ p126_bios_sequence:        dw 0
 p126_bios_log_load_begin:       db "[CAT] BIOS LOAD BEGIN",13,10,0
 p126_bios_log_selection_resolved: db "[CAT] BIOS SELECTION RESOLVED",13,10,0
 p126_bios_log_filename_prefix:   db "[CAT] BIOS FILE SELECTED: ",0
+p126_bios_trace_state_prefix:   db "[CAT] TRDOS C=0A STATE BANKM/EXT/LEN/SP/ROM=",0
+p126_bios_trace_name_prefix:    db "[CAT] TRDOS C=0A NAME=",0
 p126_bios_log_file_type_ok:      db "[CAT] BIOS FILE TYPE C OK",13,10,0
 p126_bios_log_trdos_map_begin:   db "[CAT] TRDOS MAP SWITCH BEGIN",13,10,0
 p126_bios_log_trdos_map_done:    db "[CAT] TRDOS MAP SWITCH DONE",13,10,0

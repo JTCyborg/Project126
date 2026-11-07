@@ -1041,3 +1041,15 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 - The eight filename bytes are read from the already prepared TR-DOS system filename field at #5CDD; the validated extension C is appended explicitly. This keeps the diagnostic tied to the exact filename passed to the TR-DOS open routine.
 - Logging preserves AF/BC/DE/HL and does not alter catalogue selection, TR-DOS mapping, ROM calls, sector reads, DMA or IPC.
 - CI build and target hardware verification pending.
+
+
+## 2026-11-07 — TR-DOS C=0A boundary trace
+
+- Hardware log confirms the selected BIOS filename (BIOS1   .C) but execution still stops after TRDOS OPEN C=0A CALL; no return from ROM routine #3D13 has been observed.
+- Ported the read-only diagnostic concept from Project125's neo_diag_search_state to the Project126 BIOS loader. Immediately before CALL #3D13 with C=#0A, the host logs:
+  - #5C3B (BANKM), #5CE5 (file extension), #5D06 (TR-DOS filename length);
+  - live SP;
+  - the first eight bytes visible at #3D13 (ROM signature);
+  - the exact eight-byte search name at #5CDD.
+- Diagnostic output uses port #EF and preserves AF/BC/DE/HL. It does not write paging ports, TR-DOS system variables, DMA registers or IPC state. The C=0A call itself is unchanged.
+- The next hardware trace will distinguish a wrong ROM mapping/entry signature from a call-state or TR-DOS API problem. No hardware PASS is claimed.
