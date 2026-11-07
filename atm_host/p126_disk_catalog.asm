@@ -75,10 +75,59 @@ p126_catalog_poll_keyboard::
         ld      a, (p126_catalog_key)
         bit     4, a
         jr      nz,.catalog_confirm
+        bit     2, a
+        jp      nz,.catalog_page_up
+        bit     3, a
+        jp      nz,.catalog_page_down
         bit     0, a
-        jr      nz, .catalog_move_up
+        jp      nz, .catalog_move_up
         bit     1, a
-        jr      nz, .catalog_move_down
+        jp      nz, .catalog_move_down
+        ret
+
+.catalog_page_up:
+        ; CAPS SHIFT+5 (left): move one complete visible page up.
+        ld      a,(p126_catalog_selected)
+        cp      P126_CATALOG_VISIBLE_ROWS
+        jr      nc,.catalog_page_up_subtract
+        xor     a
+        jr      .catalog_page_up_store
+.catalog_page_up_subtract:
+        sub     P126_CATALOG_VISIBLE_ROWS
+.catalog_page_up_store:
+        ld      (p126_catalog_selected),a
+        ; Keep the selected entry at the top after a page jump.
+        ld      (p126_catalog_scroll),a
+        call    p126_catalog_draw
+        ret
+
+.catalog_page_down:
+        ; CAPS SHIFT+8 (right): move one visible page down, clamped to last file.
+        ld      a,(p126_catalog_total)
+        or      a
+        ret     z
+        dec     a
+        ld      b,a
+        ld      a,(p126_catalog_selected)
+        add     a,P126_CATALOG_VISIBLE_ROWS
+        jr      c,.catalog_page_down_clamp
+        cp      b
+        jr      c,.catalog_page_down_store
+        jr      z,.catalog_page_down_store
+.catalog_page_down_clamp:
+        ld      a,b
+.catalog_page_down_store:
+        ld      (p126_catalog_selected),a
+        ; Place the selected entry on the last visible row where possible.
+        cp      P126_CATALOG_VISIBLE_ROWS-1
+        jr      nc,.catalog_page_down_scroll
+        xor     a
+        jr      .catalog_page_down_scroll_store
+.catalog_page_down_scroll:
+        sub     P126_CATALOG_VISIBLE_ROWS-1
+.catalog_page_down_scroll_store:
+        ld      (p126_catalog_scroll),a
+        call    p126_catalog_draw
         ret
 
 .catalog_confirm:
@@ -198,17 +247,26 @@ p126_catalog_scan_keys:
         ld      (p126_catalog_scan_result), a
 
 .catalog_check_other_arrows:
-        ; Read the remaining cursor combinations to keep the matrix scan
-        ; compatible with the Project125 ATM/Spectrum keyboard convention.
-        ld      bc, #F7FE
-        in      a, (c)
-        bit     4, a
-        jr      nz, .catalog_check_right
-        ld      a, (p126_catalog_scan_result)
+        ; CAPS SHIFT+5 = page up; CAPS SHIFT+8 = page down.
+        ld      bc,#F7FE
+        in      a,(c)
+        bit     4,a
+        jr      nz,.catalog_check_page_up
+        ld      a,(p126_catalog_scan_result)
         or      4
-        ld      (p126_catalog_scan_result), a
+        ld      (p126_catalog_scan_result),a
 
+.catalog_check_page_up:
+        ; Reuse the left/right cursor combinations as page navigation.
 .catalog_check_right:
+        ld      bc,#EFFE
+        in      a,(c)
+        bit     2,a
+        jr      nz,.catalog_keys_done
+        ld      a,(p126_catalog_scan_result)
+        or      8
+        ld      (p126_catalog_scan_result),a
+
         ld      bc, #EFFE
         in      a, (c)
         bit     2, a

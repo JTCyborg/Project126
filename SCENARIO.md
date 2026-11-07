@@ -1323,3 +1323,27 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 - The board-latch self-test now covers 00A0h, 0213h, 00C0h, 03B8h and 03D8h. All test values are cleared by the existing restore path before the overlay reset entry returns its A=5Ah / HL=06D1h signature.
 - Source commit: `240f5e0a887560f7ecd1e2a24b2edf1384a34cbd`; profile documentation commit: `2d63195ef92bbdad6d6bb2c1e3cd09d95867a221`.
 - Build and target-hardware validation are pending. This change adds register self-test coverage only; it does not implement NMI delivery, expansion hardware, CGA/MDA rendering or retrace status.
+
+
+## 2026-11-07 — BIOS catalogue page navigation
+
+- Expanded the existing vertical file catalogue navigation without changing its fixed nine-row viewport or the selected-file index used by the BIOS loader.
+- CAPS SHIFT+3 now moves the selection up by one complete visible page; CAPS SHIFT+4 moves down by one page. Both operations clamp at the first/last valid directory entry and adjust the scroll offset so the selected file remains visible.
+- Existing CAPS SHIFT+7 / CAPS SHIFT+6 single-entry navigation and ENTER confirmation remain unchanged.
+- Updated the status line to advertise page navigation.
+- Files changed: `atm_host/p126_disk_catalog.asm`, `atm_host/p126_screen_console.asm`.
+- Commits: `930c1858885d6f4792c88cd7f20e44d11134b89e`, `b69aa1b12bc8b6638587178a7688efd94a2b2333`.
+- Target ATM keyboard/hardware validation is pending. This is a UI navigation change; it does not change TR-DOS directory parsing, BIOS file validation, or image transfer.
+
+
+- Input mapping refinement: page navigation uses the existing CAPS SHIFT+5 (left) and CAPS SHIFT+8 (right) matrix combinations, not CAPS SHIFT+3/4. This preserves the familiar Spectrum cursor-key convention; the status line now advertises `CAPS+5/8 PAGE`.
+- Follow-up commits: `dd36cd8293591c4783fe7261d018559f322b4e36`, `89c9fd87eab2ffce2f8293e0206846ac7e5c60f6`.
+
+
+- Assembly follow-up: the first page-navigation build exposed an out-of-range relative `JR` in the expanded keyboard dispatcher. Replaced the two long page-navigation branches with absolute `JP` instructions in commit `ad59f2a77904002acee33f5a4529a590483402dc`. A new GitHub Actions build was queued for this corrected HEAD; its result is not yet confirmed in this entry.
+
+
+- Second assembly diagnostic: the assembler then identified the one-step DOWN dispatch as another out-of-range relative branch after the new page handlers were inserted. Changed UP/DOWN dispatch to absolute `JP` as well (commit `53e7d5af677a5cce36443c812f221b2c070d9990`). The subsequent workflow run is pending.
+
+
+- Validation result: GitHub Actions run `42408571066` for source commit `53e7d5af677a5cce36443c812f221b2c070d9990` completed successfully on 2026-11-07. ATM/NeoGS assembly and TR-DOS disk packaging passed after the branch-range fixes. This confirms assembly/package validity, not yet the live ATM keyboard behavior.
