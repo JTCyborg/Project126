@@ -216,10 +216,10 @@ The first fixed-origin overlay is the XT I/O model, with image kind `01h` (`P126
 
 The second overlay is the 8086 arithmetic/flags implementation, image kind 02h (P126_IMAGE_KIND_X86ALU):
 
-- TR-DOS file X86ALU.C; logical origin 8000h; current image size 1,175 bytes.
+- TR-DOS file X86ALU.C; logical origin 8000h; current image size 1,187 bytes.
 - Destination is physical kernel page05, selected through WIN3 with MPAGEX selector82h (ROR8(05h)); maximum size is 4096 bytes.
 - ATM uses the same fixed-profile loader and one-fragment ABI1.0 IMAGE transaction as X86IO.
-- NeoGS performs byte-for-byte readback. IMAGE_FINISH calls x86_alu_overlay_probe through the resident gate, checks A=A5 and confirms WIN2 returns to page04 before publishing X86ALU_READY.
+- NeoGS performs byte-for-byte readback. IMAGE_FINISH calls x86_alu_overlay_probe through the resident gate, checks input A=3C/C=1/HL=1234, output A=A5/HL=5AA5, and confirms WIN2 returns to page04 before publishing X86ALU_READY.
 - The ten ALU entry points used by x86_exec are resident wrappers; internal helpers remain within page05.
 
 These are two separate single-fragment pinned profiles, not a generic manifest/reassembly service. CI passes; ATM/NeoGS transfer and both gate tests still require target verification.
@@ -271,7 +271,7 @@ Project126 now has a concrete startup chain:
 
 DBIT/GSDAT is used only for stock-ROM bootstrap compatibility. After A2h, application payloads use ABI 1.0 DMA; NeoGS does not perform direct physical host I/O. ATM startup file reads occur before ATM video initialization to preserve the established TR-DOS paging constraints.
 
-The resident `X86CORE.C` must fit within one 16 KiB WIN0 page; the current build is 15,610 bytes. `X86IO.C` (796 bytes) is pinned to physical page04 and `X86ALU.C` (1,175 bytes) to page05; both use logical origin 8000h and resident wrappers. Pages06h–0Fh remain reserved for future dynamic overlays and are not yet managed by a general allocator. P126BOOT.C is limited to one 256-byte TR-DOS sector.
+The resident `X86CORE.C` must fit within one 16 KiB WIN0 page; the current build is 15,632 bytes. `X86IO.C` (796 bytes) is pinned to physical page04 and `X86ALU.C` (1,187 bytes) to page05; both use logical origin 8000h and resident wrappers. Pages06h–0Fh remain reserved for future dynamic overlays and are not yet managed by a general allocator. P126BOOT.C is limited to one 256-byte TR-DOS sector.
 
 Hardware verification remains outstanding: stock-ROM reset/probe timing, #14/#13 transfer, DBIT turnaround, RAM-over-ROM paging, stack page 03, A2 ready acknowledgement and the first E0/DMA/FF frame exchange must be exercised on target hardware.
 
