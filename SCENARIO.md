@@ -1471,20 +1471,10 @@ The target reached the second table terminator at `F000:E0BA`, read `FF`, and ex
 The temporary diagnostic is therefore moved back to the first terminator and now stops after its four-instruction sequence (`CMP`, `JZ`, `XOR DH,03`, `JNZ`). Immediately after the first loop branch, the expected state is `DH=03` (with DL still `61h`, so `DX=0361h`). This isolates the first XOR result before the second table executes. No functional CPU or BIOS behavior has been changed.
 
 
-## 2026-11-07 — BIOS group-1 XOR writeback diagnostic
-
-- The latest target capture stops immediately after the first BIOS table-loop XOR DH,03 / JNZ and shows FLAGS=0006 but DX=0061. The ALU flags indicate a nonzero result, while the expected high-byte update is not visible in DX.
-- Added a diagnostic snapshot around the 8086 group-1 immediate path (opcode 80h): instruction IP, ModR/M extension, register-vs-memory destination, decoded r/m register, left operand, immediate, ALU result, DX before writeback and DX after writeback.
-- The trace emits one [X86 G1] record at the existing BIOS diagnostic stop. This isolates whether XOR returns 03h, whether ModR/M resolves register code 6 (DH), and whether the register pair changes during writeback.
-- No BIOS bytes or guest CPU semantics were intentionally changed. The group-1 writeback path now returns through a local call solely to capture the post-write DX value; architectural result and flags are unchanged.
-- Next target expectation for XOR DH,03: EXT=06, REG=01, RM=06, LHS=00, IMM=03, RES=03, with DX0=0061 and DX1=0361. Any deviation identifies the failing stage.
-- Assembly/package validation and physical ATM/NeoGS validation are pending; no BIOS POST pass is claimed.
-
-
 ## 2026-11-07 — Fix 8086 group-1 immediate byte writeback
 
 - Source-level root cause confirmed in x86_exec_group1_immediate: after x86_exec_group1_apply8 returned the ALU result in A, the handler loaded x86_exec_group1_is_cmp into A and tested it. For every non-CMP operation this replaced the result with zero before x86_modrm_write_rm8.
 - This explains the BIOS trace exactly: XOR DH,03 generated the correct nonzero flags, but the destination received 00h, leaving DX unchanged at 0061h.
 - Fixed the writeback sequence by restoring the saved ALU result after the CMP-only test and before the ModR/M write. The same correction applies to all 80h/82h byte-immediate arithmetic and logic operations, not only BIOS XOR.
-- The diagnostic record remains enabled for the next target run and will verify RES=03, DX0=0061, DX1=0361. The first BIOS loop should then continue with DH=03; the second XOR should clear it and allow execution to reach E0C4.
+- The temporary expanded diagnostic snapshot was removed because the resident X86CORE image has only four bytes of headroom under its 16 KiB limit. The existing BIOS stop/register trace is sufficient to verify the corrected DX value without increasing resident size.
 - Build/package and physical ATM/NeoGS validation are pending. This is a CPU semantic fix; no BIOS POST pass is claimed.
