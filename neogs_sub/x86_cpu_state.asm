@@ -334,7 +334,8 @@ x86_bios_trace_log_history:
         inc     a
         and     #0F
         ld      (x86_bios_trace_dump_index),a
-        djnz    .history_loop
+        dec     b
+        jp      nz,.history_loop
         pop     hl
         pop     de
         pop     bc
