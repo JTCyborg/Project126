@@ -11,8 +11,8 @@
 ; restores the previous selector before returning to the original caller.
 ; Each nesting level stores its previous selector on the WIN1 stack.
 ;
-; The request selector and entry are copied before the module is entered, so
-; nested calls may safely reuse both resident scratch bytes/words.
+; The request selector, entry and caller HL are copied/restored before module entry, so
+; nested calls may safely reuse the resident scratch bytes/words.
 ; Host Z80 interrupts remain disabled by the resident execution contract.
 ; =========================================================================
 
