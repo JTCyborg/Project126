@@ -391,6 +391,10 @@ p126_bios_send_frame:
         inc     de
         call    p126_ipc_crc16_update
         djnz    .p126_bios_crc_header
+        ; CRC field at offsets 16..17 is excluded from the checksum.
+        ; Continue with payload at frame+18, matching the NeoGS validator.
+        inc     de
+        inc     de
         ld      bc,(p126_bios_payload_length)
 .p126_bios_crc_payload:
         ld      a,b
