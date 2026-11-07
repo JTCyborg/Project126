@@ -141,11 +141,6 @@ x86_exec_pushf:
         dec     hl
         ld      (x86_reg_sp),hl
         ld      (x86_exec_stack_offset),hl
-        ld      hl,(x86_reg_flags)
-        ld      de,#F000
-        or      a
-        sbc     hl,de
-        add     hl,de
         ; Set the high reserved bits without changing the guest flags.
         ld      hl,(x86_reg_flags)
         ld      a,h
@@ -191,8 +186,6 @@ x86_exec_popf:
 
 ; SAHF copies AH into FLAGS[7:0]; LAHF copies FLAGS[7:0] into AH.
 x86_exec_sahf:
-        ld      a,(x86_reg_ax+1)
-        ld      l,a
         ld      hl,(x86_reg_flags)
         ld      a,(x86_reg_ax+1)
         ld      l,a
