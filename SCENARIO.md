@@ -1338,3 +1338,6 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 
 - Input mapping refinement: page navigation uses the existing CAPS SHIFT+5 (left) and CAPS SHIFT+8 (right) matrix combinations, not CAPS SHIFT+3/4. This preserves the familiar Spectrum cursor-key convention; the status line now advertises `CAPS+5/8 PAGE`.
 - Follow-up commits: `dd36cd8293591c4783fe7261d018559f322b4e36`, `89c9fd87eab2ffce2f8293e0206846ac7e5c60f6`.
+
+
+- Assembly follow-up: the first page-navigation build exposed an out-of-range relative `JR` in the expanded keyboard dispatcher. Replaced the two long page-navigation branches with absolute `JP` instructions in commit `ad59f2a77904002acee33f5a4529a590483402dc`. A new GitHub Actions build was queued for this corrected HEAD; its result is not yet confirmed in this entry.
