@@ -115,6 +115,7 @@ x86_bios_startup_trace:
         ld      hl,0
         ld      (x86_bios_trace_executed),hl
 .trace_loop:
+        call    x86_bios_trace_log_fetch_probe
         call    x86_cpu_step
         jr      c,.trace_fault
         call    x86_bios_trace_capture_instruction
@@ -228,6 +229,55 @@ x86_bios_trace_capture_instruction:
         inc     a
         and     #0F
         ld      (x86_bios_trace_history_index),a
+        pop     hl
+        pop     de
+        pop     bc
+        pop     af
+        ret
+
+; Read the next two bytes through the production guest-memory mapper
+; before the CPU step. This separates bad backing/mapping from decode faults.
+x86_bios_trace_log_fetch_probe:
+        push    af
+        push    bc
+        push    de
+        push    hl
+        ld      a,(x86_bios_trace_first_count)
+        cp      32
+        jp      nc,.probe_done
+
+        ld      hl,(x86_reg_cs)
+        ld      de,(x86_reg_ip)
+        call    x86_cpu_calc_phys
+        call    x86_guest_mem_read8
+        ld      (x86_bios_trace_probe_byte0),a
+        ld      a,0
+        adc     a,0
+        ld      (x86_bios_trace_probe_error0),a
+
+        ld      hl,(x86_reg_cs)
+        ld      de,(x86_reg_ip)
+        inc     de
+        call    x86_cpu_calc_phys
+        call    x86_guest_mem_read8
+        ld      (x86_bios_trace_probe_byte1),a
+        ld      a,0
+        adc     a,0
+        ld      (x86_bios_trace_probe_error1),a
+
+        ld      hl,x86_bios_trace_probe_prefix
+        call    p126_ngs_resident_log
+        ld      a,(x86_bios_trace_probe_byte0)
+        call    x86_bios_trace_emit_hex8
+        ld      hl,x86_bios_trace_probe_second
+        call    p126_ngs_resident_log
+        ld      a,(x86_bios_trace_probe_byte1)
+        call    x86_bios_trace_emit_hex8
+        ld      a,13
+        call    x86_bios_trace_emit_char
+        ld      a,10
+        call    x86_bios_trace_emit_char
+.probe_done:
         pop     hl
         pop     de
         pop     bc
@@ -600,6 +650,12 @@ x86_bios_trace_emit_nibble:
         call    x86_bios_trace_emit_char
         ret
 
+x86_bios_trace_probe_byte0: db 0
+x86_bios_trace_probe_byte1: db 0
+x86_bios_trace_probe_error0: db 0
+x86_bios_trace_probe_error1: db 0
+x86_bios_trace_probe_prefix: db "[X86 FETCH] B0=",0
+x86_bios_trace_probe_second: db " B1=",0
 x86_bios_trace_first_count: db 0
 x86_bios_trace_first_number: db 0
 x86_bios_trace_first_phys: db 0,0,0
