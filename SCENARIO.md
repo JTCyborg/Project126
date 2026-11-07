@@ -1367,3 +1367,13 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 - This is the likely root cause of the incomplete directory and therefore of navigation appearing inert when the valid-entry count was only one. Keyboard navigation itself still requires confirmation on physical ATM after this build.
 - Previous source commit `26a22b25aeb7f1eda6fabf41387c72c3528c79da` built successfully in GitHub Actions run [42409380829](https://github.com/JTCyborg/Project126/actions/runs/42409380829). The sector-number correction is source commit `64f3cd593b1cebb338d08b1775e4919b9acab300`; its build and hardware validation are pending.
 - Separate known issue retained: `X86 DMA REGISTER SELFTEST FAIL`; PIT and board-latch self-tests pass. This guest DMA-controller register-model issue is independent of the TR-DOS catalogue reader.
+
+
+## 2026-11-07 — Correct TR-DOS #3D13 sector index convention
+
+- The first physical test after commit `64f3cd5` still displayed only one catalogue entry; the attached screen shows the first filename followed by blank rows. The accompanying log reports generic key detections but did not include the valid-entry count.
+- Re-examined the repository's low-level TR-DOS driver reference `docs/trdos/trdosdrv.txt`: its caller starts the logical sector index at E=0, and the driver increments E internally before selecting the physical sector. Thus #3D13 sector-read requests must use zero-based E=0..7 for directory sectors 1..8. The prior `INC A` change was incorrect and has been reverted.
+- Added a compact `[CAT] FILE COUNT=NN` hexadecimal diagnostic after directory parsing so the next physical log will show exactly how many entries passed validation.
+- Latest source commits: `73bd244` restores zero-based sector indices; `5323b8d` labels the file-count diagnostic. Hardware validation is pending.
+- The current screen confirms the list renderer is not a scrollbar: the vertical dots are the filename/type separator at fixed column 10. A scrollbar is not implemented yet and should be considered only after directory enumeration and cursor movement work correctly.
+- Known independent issue remains: `X86 DMA REGISTER SELFTEST FAIL`.
