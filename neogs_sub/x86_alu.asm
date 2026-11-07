@@ -698,9 +698,25 @@ x86_alu_overlay_probe_impl:
         jp      nc,.overlay_probe_failed
         cp      #3C
         jr      nz,.overlay_probe_failed
+        ; Exercise a genuine nested WIN2 transition while page05 is active:
+        ; page05 probe -> page04 X86IO helper -> page05 ADD8 -> page04 -> page05.
+        ; The X86IO helper returns 08h only if the inner page05 call completed.
+        push    af
+        push    hl
+        ld      a,#05
+        ld      c,#03
+        call    x86_io_overlay_nested_gate_probe
+        cp      #08
+        jr      nz,.overlay_probe_nested_failed
+        pop     hl
+        pop     af
         ld      hl,#5AA5
         ld      a,#A5
         ret
+.overlay_probe_nested_failed:
+        pop     hl
+        pop     af
+        jr      .overlay_probe_failed
 .overlay_probe_failed:
         xor     a
         ret
