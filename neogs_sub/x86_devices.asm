@@ -337,7 +337,7 @@ x86_dev_pit_write8:
         cp      2
         jr      z,.pit_write_msb
         cp      3
-        jr      nz,.pit_write_done
+        jp      nz,.pit_write_done
         ld      a,(x86_dev_pit_channel)
         ld      e,a
         ld      d,0
