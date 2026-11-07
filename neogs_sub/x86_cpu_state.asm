@@ -251,17 +251,9 @@ x86_bios_trace_capture_instruction:
         push    bc
         push    de
         push    hl
-        ld      hl,(x86_exec_instruction_start_cs)
-        ld      de,(x86_exec_instruction_start_ip)
-        call    x86_cpu_calc_phys
-        ld      a,(x86_phys_addr)
-        ld      (x86_bios_trace_record_phys),a
-        ld      a,(x86_phys_addr+1)
-        ld      (x86_bios_trace_record_phys+1),a
-        ld      a,(x86_phys_addr+2)
-        ld      (x86_bios_trace_record_phys+2),a
-        call    x86_mem_classify
-        ld      (x86_bios_trace_record_region),a
+        ; Capture post-instruction SI, AL and FLAGS in the existing 9-byte
+        ; history slot. This makes LODSB -> CMP -> JZ state visible at watchdog
+        ; without expanding the fixed-size trace ring or resident image.
 
         ld      a,(x86_bios_trace_history_index)
         ld      d,a
@@ -286,16 +278,15 @@ x86_bios_trace_capture_instruction:
         inc     hl
         ld      (hl),d
         inc     hl
-        ld      a,(x86_bios_trace_record_phys)
+        ld      de,(x86_reg_si)
+        ld      (hl),e
+        inc     hl
+        ld      (hl),d
+        inc     hl
+        ld      a,(x86_reg_ax)
         ld      (hl),a
         inc     hl
-        ld      a,(x86_bios_trace_record_phys+1)
-        ld      (hl),a
-        inc     hl
-        ld      a,(x86_bios_trace_record_phys+2)
-        ld      (hl),a
-        inc     hl
-        ld      a,(x86_bios_trace_record_region)
+        ld      a,(x86_reg_flags)
         ld      (hl),a
         inc     hl
         ld      a,(x86_exec_opcode)
@@ -530,16 +521,16 @@ x86_bios_trace_log_history:
         ld      (x86_bios_trace_dump_ip+1),a
         inc     hl
         ld      a,(hl)
-        ld      (x86_bios_trace_dump_phys),a
+        ld      (x86_bios_trace_dump_si),a
         inc     hl
         ld      a,(hl)
-        ld      (x86_bios_trace_dump_phys+1),a
+        ld      (x86_bios_trace_dump_si+1),a
         inc     hl
         ld      a,(hl)
-        ld      (x86_bios_trace_dump_phys+2),a
+        ld      (x86_bios_trace_dump_al),a
         inc     hl
         ld      a,(hl)
-        ld      (x86_bios_trace_dump_region),a
+        ld      (x86_bios_trace_dump_flags),a
         inc     hl
         ld      a,(hl)
         ld      (x86_bios_trace_dump_opcode),a
@@ -552,17 +543,17 @@ x86_bios_trace_log_history:
         call    x86_bios_trace_emit_char
         ld      hl,(x86_bios_trace_dump_ip)
         call    x86_bios_trace_emit_hex16
-        ld      hl,x86_bios_trace_history_phys_text
+        ld      hl,x86_bios_trace_history_si_text
         call    p126_ngs_resident_log
-        ld      a,(x86_bios_trace_dump_phys+2)
-        call    x86_bios_trace_emit_hex8
-        ld      a,(x86_bios_trace_dump_phys+1)
-        call    x86_bios_trace_emit_hex8
-        ld      a,(x86_bios_trace_dump_phys)
-        call    x86_bios_trace_emit_hex8
-        ld      hl,x86_bios_trace_history_region_text
+        ld      hl,(x86_bios_trace_dump_si)
+        call    x86_bios_trace_emit_hex16
+        ld      hl,x86_bios_trace_history_al_text
         call    p126_ngs_resident_log
-        ld      a,(x86_bios_trace_dump_region)
+        ld      a,(x86_bios_trace_dump_al)
+        call    x86_bios_trace_emit_hex8
+        ld      hl,x86_bios_trace_history_flags_text
+        call    p126_ngs_resident_log
+        ld      a,(x86_bios_trace_dump_flags)
         call    x86_bios_trace_emit_hex8
         ld      hl,x86_bios_trace_history_opcode_text
         call    p126_ngs_resident_log
@@ -757,19 +748,19 @@ x86_bios_trace_first_flags: db " FLAGS=",0
 x86_bios_trace_history_index: db 0
 x86_bios_trace_dump_index: db 0
 x86_bios_trace_record_ptr: dw 0
-x86_bios_trace_record_phys: db 0,0,0
-x86_bios_trace_record_region: db 0
 x86_bios_trace_dump_cs: dw 0
 x86_bios_trace_dump_ip: dw 0
-x86_bios_trace_dump_phys: db 0,0,0
-x86_bios_trace_dump_region: db 0
+x86_bios_trace_dump_si: dw 0
+x86_bios_trace_dump_al: db 0
+x86_bios_trace_dump_flags: db 0
 x86_bios_trace_dump_opcode: db 0
 x86_bios_trace_io_prefix: db "[IO COUNT] IN=",0
 x86_bios_trace_io_out_text: db " OUT=",0
 x86_bios_trace_history_title: db "[X86 HIST] LAST 16 INSTRUCTIONS (OLDEST FIRST)",13,10,0
 x86_bios_trace_history_prefix: db "[X86 HIST] ",0
-x86_bios_trace_history_phys_text: db " P=",0
-x86_bios_trace_history_region_text: db " R=",0
+x86_bios_trace_history_si_text: db " SI=",0
+x86_bios_trace_history_al_text: db " AL=",0
+x86_bios_trace_history_flags_text: db " FL=",0
 x86_bios_trace_history_opcode_text: db " OP=",0
 x86_bios_trace_history: BLOCK 16*9,0
 
