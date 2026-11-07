@@ -353,7 +353,13 @@ p126_ipc_dma_send_frame::
         ld      (p126_ipc_dma_source),hl
         ld      (p126_ipc_dma_size),bc
         call    p126_ipc_validate_frame
-        ret     c
+        jr      nc,.p126_dma_frame_valid
+        ld      (p126_ipc_dma_error),a
+        scf
+        ret
+.p126_dma_frame_valid:
+        xor     a
+        ld      (p126_ipc_dma_error),a
 
         ld      a,2
         ld      (p126_ipc_dma_stage),a
@@ -402,3 +408,5 @@ p126_ipc_dma_size:   dw 0
 ; 0=success/not started, 1=local frame validation, 2=DMA size,
 ; 3=E0/READY handshake, 4=payload copy, 5=FF/completion acknowledgement.
 p126_ipc_dma_stage:  db 0
+
+p126_ipc_dma_error: db 0
