@@ -59,6 +59,16 @@ p126_ngs_resident_start:
         ld      sp,#7FFE
         xor     a
         ld      (p126_overlay_call_depth),a
+        ld      hl,p126_overlay_call_pages
+        ld      de,p126_overlay_call_pages+1
+        ld      bc,P126_OVERLAY_MAX_CALL_DEPTH-1
+        ld      (hl),a
+        ldir
+        ld      hl,p126_overlay_alloc_state
+        ld      de,p126_overlay_alloc_state+1
+        ld      bc,9
+        ld      (hl),a
+        ldir
 
         ld      hl,p126_ngs_resident_banner
         call    p126_ngs_resident_log
