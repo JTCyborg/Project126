@@ -6,7 +6,7 @@
 
 ## 1. Purpose
 
-The resident `X86CORE.C` has a hard 16 KiB loader limit. The current overlay-gate build produces a 15,632-byte resident image (752 bytes free), a 796-byte `X86IO.C` module and a 1,175-byte `X86ALU.C` module at logical origin `8000h`. The NeoGS physical map reserves pages `00h–0Fh` (256 KiB) for the kernel/runtime.
+The resident `X86CORE.C` has a hard 16 KiB loader limit. The current overlay-gate build produces a 15,632-byte resident image (752 bytes free), a 796-byte `X86IO.C` module and a 1,187-byte `X86ALU.C` module at logical origin `8000h`. The NeoGS physical map reserves pages `00h–0Fh` (256 KiB) for the kernel/runtime.
 
 The manager must use that existing allocation without changing the physical map, enlarging the `X86CORE.C` limit, taking ownership of WIN3, or moving the operational stack.
 
@@ -135,7 +135,7 @@ The manager is not complete until all of the following are true:
 - [x] X86ALU IMAGE_FINISH calls the ALU probe through the gate, checks the #A5 signature and confirms WIN2 is restored to page04 before X86ALU_READY.
 - [ ] Physical target log confirms [NGS] WIN2 MAP/GATE TEST PASS; repeated/deeper nested calls, alternate-register use and stack-limit behavior remain to be tested.
 - [ ] Invalid/unloaded dynamic module calls fail closed.
-- [x] CI build/package passes with the boot-time gate self-test (run 42399458157, commit 705a0d5e; X86CORE 15610/16384 bytes, X86IO 796/4096 bytes, X86ALU 1175/4096 bytes; NeoGS, ATM, IPC and TR-DOS assembly 0 errors/0 warnings).
+- [x] CI build/package passes with the boot-time gate self-test (run 42399458157, commit 705a0d5e; X86CORE 15632/16384 bytes (752 free), X86IO 796/4096 bytes, X86ALU 1187/4096 bytes; NeoGS, ATM, IPC and TR-DOS assembly 0 errors/0 warnings).
 - [ ] Physical ATM/NeoGS log confirms X86IO and X86ALU transfer/readback, `[NGS] WIN2 MAP/GATE TEST PASS`, `[NGS] X86ALU PAGE05 GATE OK`, and final WIN2 mapping.
 
 No PIC/PIT/DMA/VGA/RTC/IDE implementation is to be added to the resident image before these gates are met. No CPU functional suite, full BIOS POST, or guest operating-system test is implied by overlay infrastructure validation.
