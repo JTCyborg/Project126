@@ -584,6 +584,75 @@ x86_exec_adc_sbb16:
         jp      nz,x86_alu_sbb16
         jp      x86_alu_adc16
 
+; 06/0E/16/1E PUSH ES/CS/SS/DS; 07/17/1F POP ES/SS/DS.
+; POP SS arms the same one-instruction interrupt-inhibit latch as MOV SS.
+x86_exec_push_segment:
+        ld      a,(x86_exec_opcode)
+        cp      #06
+        jr      z,.push_es
+        cp      #0E
+        jr      z,.push_cs
+        cp      #16
+        jr      z,.push_ss
+        ld      hl,(x86_reg_ds)
+        jp      x86_exec_push_word
+.push_es:
+        ld      hl,(x86_reg_es)
+        jp      x86_exec_push_word
+.push_cs:
+        ld      hl,(x86_reg_cs)
+        jp      x86_exec_push_word
+.push_ss:
+        ld      hl,(x86_reg_ss)
+        jp      x86_exec_push_word
+
+x86_exec_pop_segment:
+        ld      a,(x86_exec_opcode)
+        ld      (x86_exec_segment_pop_opcode),a
+        call    x86_exec_pop_word
+        ret     c
+        ld      a,(x86_exec_segment_pop_opcode)
+        cp      #07
+        jr      z,.pop_es
+        cp      #17
+        jr      z,.pop_ss
+        ld      (x86_reg_ds),hl
+        or      a
+        ret
+.pop_es:
+        ld      (x86_reg_es),hl
+        or      a
+        ret
+.pop_ss:
+        ld      (x86_reg_ss),hl
+        ld      a,1
+        ld      (x86_irq_inhibit),a
+        or      a
+        ret
+
+; POP helper: reads SS:SP, advances SP by two, returns word in HL.
+x86_exec_pop_word:
+        ld      hl,(x86_reg_sp)
+        ld      (x86_exec_stack_offset),hl
+        call    x86_exec_stack_make_address
+        call    x86_guest_mem_read8
+        ret     c
+        ld      (x86_exec_stack_value),a
+        ld      hl,(x86_exec_stack_offset)
+        inc     hl
+        ld      (x86_exec_stack_offset),hl
+        call    x86_exec_stack_make_address
+        call    x86_guest_mem_read8
+        ret     c
+        ld      (x86_exec_stack_value+1),a
+        ld      hl,(x86_reg_sp)
+        inc     hl
+        inc     hl
+        ld      (x86_reg_sp),hl
+        ld      hl,(x86_exec_stack_value)
+        or      a
+        ret
+
 ; 27 DAA, 2F DAS, 37 AAA, 3F AAS.
 ; Decimal-adjust behavior follows PCem's original 8086 path.
 x86_exec_daa:
