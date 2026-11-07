@@ -370,17 +370,19 @@ p126_ngs_ipc_log_hex_byte:
         rrca
         rrca
         call    p126_ngs_ipc_log_hex_nibble
+        pop     bc
         pop     af
         push    af
+        and     #0F
         call    p126_ngs_ipc_log_hex_nibble
+        pop     af
+        push    bc
         ld      bc,#00EF
         ld      a,13
         out     (c),a
         ld      a,10
         out     (c),a
-        pop     af
         pop     bc
-        pop     af
         ret
 
 p126_ngs_ipc_log_hex_nibble:
