@@ -37,9 +37,9 @@ This carve-out is deliberately narrow and must be removed or replaced by a valid
 
 ## NeoGS logical window contract
 
-The resident memory backend reserves logical window WIN3 (C000h–FFFFh) as a banked physical-RAM aperture. The WIN3 page is selected through MPAGEX port 10h (the independent C000h–FFFFh selector), not PG3 port 23h. Match the Project125 encoding: rotate the physical page number right once (`RRCA`) before writing it to MPAGEX. For physical page 42h the selector byte is 21h. Guest RAM physical pages 44h–83h are therefore reachable as a sequence of bank selections. While this backend is active, resident code executes in WIN0, the operational stack and fixed data remain in WIN1, and the currently pinned X86IO overlay executes in WIN2. WIN3 is volatile and is not restored after a memory access; it is exclusively owned by the guest-memory backend. Interrupt handlers that can run during a banked access must reside outside WIN3 and must not use WIN3 as their own data window.
+The resident memory backend reserves logical window WIN3 (C000h–FFFFh) as a banked physical-RAM aperture. The WIN3 page is selected through MPAGEX port 10h (the independent C000h–FFFFh selector), not PG3 port 23h. Match the Project125 encoding: rotate the physical page number right once (`RRCA`) before writing it to MPAGEX. For physical page 42h the selector byte is 21h. Guest RAM physical pages 44h–83h are therefore reachable as a sequence of bank selections. While this backend is active, resident code executes in WIN0, the operational stack and fixed data remain in WIN1, and the currently selected fixed-origin overlay (X86IO page04 or X86ALU page05) executes in WIN2. WIN3 is volatile and is not restored after a memory access; it is exclusively owned by the guest-memory backend. Interrupt handlers that can run during a banked access must reside outside WIN3 and must not use WIN3 as their own data window.
 
-This is a logical execution contract, not a claim that the whole resident kernel fits in three windows. WIN2 is a banked overlay aperture and may be changed only by resident code executing from WIN0 with the stack in WIN1, while no code in the old WIN2 mapping is active. The first X86IO overlay is pinned in WIN2 after installation; a general nested overlay call gate remains future work. WIN0 and WIN1 mappings must not be changed while executing resident code or using the resident stack there.
+This is a logical execution contract, not a claim that the whole resident kernel fits in three windows. WIN2 is a banked overlay aperture and may be changed only by resident code executing from WIN0 with the stack in WIN1, while no code in the old WIN2 mapping is active. The resident nested call gate now switches between trusted fixed-origin overlays and restores the caller's WIN2 selector; a dynamic module table/allocator remains future work. WIN0 and WIN1 mappings must not be changed while executing resident code or using the resident stack there.
 
 ## Ownership and rules
 
@@ -99,9 +99,9 @@ The common API is `x86_guest_mem_read8` and `x86_guest_mem_write8`. ROM writes f
 
 ## Resident startup mapping revision 0.3
 
-The first executable resident image is loaded by the Project126 GS105a stage-0 bootstrap into physical page 00 and entered at logical 0000h. The resident entry enables NOROM/EXPAG, maps WIN0 (port 20h) to physical page 00 and WIN1 (port 21h) to physical page 03, and moves the operational stack to logical 7FFEh. Temporary bootstrap execution uses WIN1/page 03 and WIN3/page 02 with its stack at FFFEh; after handoff WIN1/page 03 owns the operational stack and WIN3 remains the volatile guest-memory bank window. WIN2 is initialized to physical page 01 until the X86IO image is installed. The first overlay loader then maps physical page 04h into WIN2 using MPAG port 00h and selector 02h.
+The first executable resident image is loaded by the Project126 GS105a stage-0 bootstrap into physical page 00 and entered at logical 0000h. The resident entry enables NOROM/EXPAG, maps WIN0 (port 20h) to physical page 00 and WIN1 (port 21h) to physical page 03, and moves the operational stack to logical 7FFEh. Temporary bootstrap execution uses WIN1/page 03 and WIN3/page 02 with its stack at FFFEh; after handoff WIN1/page 03 owns the operational stack and WIN3 remains the volatile guest-memory bank window. WIN2 is initialized to physical page 01 until X86IO is installed. X86IO is left selected at page04 after its mapping/gate tests; X86ALU is installed into page05 and entered only through the resident gate.
 
-ATM reads P126BOOT.C and X86CORE.C from TR-DOS before video paging is enabled. P126BOOT.C is a one-sector GS105a #14/#13 bootstrap; X86CORE.C is the resident entry plus IPC and x86 core. After the resident A2h acknowledgement, ATM reads X86IO.C through TR-DOS and sends it as ABI 1.0 IMAGE frames over DMA. DBIT/GSDAT is used only during the stock-ROM bootstrap. After A2h, application frames use ABI 1.0 DMA exclusively.
+ATM reads P126BOOT.C and X86CORE.C from TR-DOS before video paging is enabled. P126BOOT.C is a one-sector GS105a #14/#13 bootstrap; X86CORE.C is the resident entry plus IPC and x86 core. After the resident A2h acknowledgement, ATM reads X86IO.C and X86ALU.C through TR-DOS and sends both as ABI 1.0 IMAGE transactions over DMA. DBIT/GSDAT is used only during the stock-ROM bootstrap. After A2h, application frames use ABI 1.0 DMA exclusively.
 
 
 ## ROM independence and full physical RAM ownership
@@ -156,3 +156,18 @@ The first overlay slice moves `neogs_sub/x86_io.asm` out of the 16 KiB resident 
 - BIOS execution is gated until both `IO_OVERLAY_READY` and `BIOS_IMAGE_READY` are set.
 
 GitHub Actions run [42396958741](https://github.com/JTCyborg/Project126/actions/runs/42396958741), commit `5121b2c03242539927acebb1cd7933d2d27d1e78`, passed assembly and TR-DOS packaging with the split images. It reported `X86CORE.C=15994` and `X86IO.C=796`. This is BUILD PASS only. Physical ATM/NeoGS transfer, page-04 readback and WIN2 mapping remain to be confirmed from a target log.
+
+
+## Fixed-origin X86ALU overlay (2026-11-07)
+
+The 8086 ALU implementation has been moved out of WIN0 into a second fixed-origin overlay on physical page 05h:
+
+- Resident X86CORE.C: 15,610 bytes of the 16,384-byte WIN0 limit (774 bytes free).
+- X86IO.C: 796 bytes, origin 8000h, physical page 04h / selector 02h.
+- X86ALU.C: 1,175 bytes, origin 8000h, physical page 05h / selector 82h.
+- The 10 ALU entry points used by x86_exec are resident wrappers. Each enters the shared WIN2 call gate; the ALU implementation's internal calls remain direct within page05.
+- ATM uses the shared fixed-profile loader to stream X86IO.C and X86ALU.C after A2h. IMAGE kind 02h targets page05; the receiver verifies every byte through WIN3 before IMAGE_FINISH.
+- IMAGE_FINISH probes x86_alu_overlay_probe through the resident gate and confirms that WIN2 returns to page04 before publishing X86ALU_READY.
+- BIOS execution is gated on X86IO_READY, X86ALU_READY and BIOS_IMAGE_READY.
+- BUILD PASS: [GitHub Actions run 42398846093](https://github.com/JTCyborg/Project126/actions/runs/42398846093), commit 94ac5ba2a2cbb338af0e0bb1af8b1efd826a469a. X86CORE 15,610/16,384; X86IO 796/4,096; X86ALU 1,175/4,096. Assembly and TR-DOS packaging: 0 errors, 0 warnings.
+- This validates source/build/package only. The new ATM X86ALU transfer, page05 readback, gate probe, and ALU execution on physical ATM/NeoGS remain unconfirmed.
