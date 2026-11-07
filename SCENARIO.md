@@ -1087,8 +1087,8 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 
 ### Обязательные задачи этапа 4
 
-- [ ] Единый программный I/O dispatch: полный 16-битный номер порта, IN/OUT 8/16 бит; word-доступ 8-битных устройств по соседним портам согласно PCem.
-- [ ] Сохранить 00E0h как тестовый регистр до завершения регрессионных проверок.
+- [x] Базовый программный I/O dispatch: полный 16-битный номер порта, IN/OUT 8/16 бит; word-доступ через соседние byte-порты согласно PCem. Регрессионные тесты bus boundary ещё требуются.
+- [x] Сохранить 00E0h как отдельный 16-битный тестовый регистр до завершения регрессионных проверок.
 - [ ] PPI 8255 / XT system board: 60h–63h, reset state, mode control, bit set/reset, направления портов, системный port B и входы port C.
 - [ ] XT keyboard: FIFO scan-code make/break, reset/BAT response, acknowledge/clear, overflow; ATM→NeoGS события через общий DMA/IPC ABI.
 - [ ] PIC 8259: command/data, ICW/OCW, masks, priority, IRR/ISR, acknowledge/vector, EOI и связь с x86 IRQ delivery.
@@ -1110,3 +1110,14 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 6. RTC/CMOS, затем IDE/FDC по готовности IPC services.
 
 Все устройства являются программными моделями на NeoGS. Любой внешний ввод или доступ к физическому ресурсу проходит только через общий DMA/IPC ABI 1.0. Реализация регистра или прохождение unit-теста не является аппаратным подтверждением.
+
+
+### 2026-11-07 — первый исходный срез PPI и виртуальной клавиатуры
+
+- В neogs_sub/x86_io.asm добавлены программные регистры XT PPI 0060h–0063h: port B system latch, port C input/output nibble composition, mode-set control и bit set/reset для port C.
+- Реализован 16-байтовый FIFO scan-code, API x86_io_keyboard_push (A=scan-code, carry=FIFO full), чтение через port 60h, XT keyboard reset по фронту PB6 и BAT completion byte AAh; PB7 очищает текущий data latch.
+- x86_cpu_reset теперь сбрасывает виртуальную I/O-плату через x86_io_reset. Сохранён 00E0h test latch; IN/OUT word fallback выполняет byte access к port и port+1 как PCem/io.c.
+- Сверка: PCem/ppi.c (PA/PB reset), PCem/keyboard_xt.c (ports 60h–62h, PB6 reset, PB7 acknowledge), PCem/io.c (word fallback).
+- Ограничения этого первого среза: ATM keyboard IPC producer ещё не подключён; IRQ1/PIC не реализован; PPI mode 1/2 не поддержан; чтение/запись port A пока ориентированы на XT keyboard input, а не на универсальный output latch. Port-C board input #0D — временный детерминированный XT/no-FPU default, не утверждённая аппаратная DIP-конфигурация.
+- CI BUILD PASS: commit 68ae8eed9036c7388b11a5f74d746ac8286d7625, workflow run 42394977284. NeoGS assembly: 0 errors / 0 warnings; x86 image end 3FFBh (5 bytes below 4000h resident limit); PPI/I/O module size 796 bytes. TR-DOS package built successfully.
+- Это только BUILD PASS. Регистровый self-test, эмуляторная проверка, аппаратная проверка PPI/клавиатуры и BIOS POST ещё не выполнены.
