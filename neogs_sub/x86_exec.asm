@@ -3792,15 +3792,6 @@ x86_exec_shift_value16: dw 0
 x86_exec_shift_original16: dw 0
 x86_exec_shift_cf: db 0
 x86_exec_shift_of: db 0
-x86_exec_shift_opcode: db 0
-x86_exec_shift_operation: db 0
-x86_exec_shift_count: db 0
-x86_exec_shift_value8: db 0
-x86_exec_shift_original8: db 0
-x86_exec_shift_value16: dw 0
-x86_exec_shift_original16: dw 0
-x86_exec_shift_cf: db 0
-x86_exec_shift_of: db 0
 x86_exec_group3_opcode: db 0
 x86_exec_group3_ext: db 0
 x86_exec_group3_imm8: db 0
