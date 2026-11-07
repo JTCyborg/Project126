@@ -2248,8 +2248,8 @@ x86_exec_mov_rm_reg:
 
 ; 8C MOV r/m16,Sreg; 8E MOV Sreg,r/m16.
 ; 8086 segment-register encoding: ES=0, CS=1, SS=2, DS=3.
-; MOV into CS (/1 with opcode 8E) is invalid. Loading SS arms the
-; one-instruction maskable-interrupt inhibition latch for interrupt logic.
+; PCem's original 8086 path permits MOV CS,r/m16 (/1) as well as ES/SS/DS.
+; Loading SS arms the one-instruction maskable-interrupt inhibition latch.
 x86_exec_mov_sreg_rm:
         ld      a,(x86_exec_opcode)
         ld      (x86_exec_sreg_opcode),a
@@ -2275,9 +2275,7 @@ x86_exec_mov_sreg_rm:
         jp      x86_modrm_write_rm16
 
 .mov_sreg_from_rm:
-        ld      a,(x86_exec_sreg_index)
-        cp      1
-        jr      z,.mov_sreg_invalid
+        ; Original 8086 behavior permits /1 (MOV CS,r/m16).
         call    x86_modrm_read_rm16
         ld      (x86_exec_sreg_value),hl
         ld      a,(x86_exec_sreg_index)
