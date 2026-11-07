@@ -151,7 +151,7 @@ p126_ngs_ipc_crc_work: dw 0
 ; Resident code, stack and interrupt handlers must stay in WIN0-WIN2.
 ; OUT: carry clear/A=0, HL=#C000 and BC=derived frame size; otherwise
 ; carry set/A=status. Production DMA destination is physical 108000h on
-; page 42h, mapped into WIN3 through port #23.
+; page 42h, mapped into WIN3 through MPAGEX (#10) using Project125 selector encoding.
 ; -------------------------------------------------------------------------
 P126_NGS_DMA_MOD      EQU #1B
 P126_NGS_DMA_HAD      EQU #1C
@@ -160,7 +160,7 @@ P126_NGS_DMA_LAD      EQU #1E
 P126_NGS_DMA_CST      EQU #1F
 P126_NGS_ZXSTAT       EQU #04
 P126_NGS_CLRCBIT      EQU #05
-P126_NGS_PG3_PORT     EQU #23
+P126_NGS_MPAGEX_PORT  EQU #10
 ; Production DMA staging allocation: physical page 42h = 108000h.
 ; WIN3 (C000h-FFFFh) is the dedicated bank window; resident code/data/stack
 ; remain outside WIN3. Map the page before arming DMA and keep it mapped
@@ -169,10 +169,13 @@ P126_NGS_DMA_PROD_PAGE EQU #42
 P126_NGS_DMA_TIMEOUT   EQU #FFFF
 
 p126_ngs_ipc_dma_receive_frame::
-        ; Production page-42 validation. WIN3 is the dedicated physical-page
-        ; aperture at C000h; the resident stack and code stay in WIN0-WIN2.
+        ; Production page-42 validation. WIN3 is selected through MPAGEX (#10),
+        ; exactly as in Project125. MPAGEX expects the physical page number
+        ; rotated right once (RRCA); PG3 (#23) is not the WIN3 selector.
+        ; Resident stack/code remain in WIN0-WIN2.
         ld      a,P126_NGS_DMA_PROD_PAGE
-        out     (P126_NGS_PG3_PORT),a
+        rrca
+        out     (P126_NGS_MPAGEX_PORT),a
         ld      hl,p126_ngs_ipc_log_dma_page42_premapped
         call    p126_ngs_ipc_log
         ld      hl,p126_ngs_ipc_log_dma_cfg_begin
@@ -322,8 +325,10 @@ P126_NGS_ZXCMD       EQU #01
 p126_ngs_ipc_dma_send_test_frame::
         ; Build the deterministic reverse frame directly in production page
         ; 42h through WIN3, then DMA-read it from physical address 108000h.
+        ; Match Project125 WIN3 selection: MPAGEX (#10), page encoded by RRCA.
         ld      a,P126_NGS_DMA_PROD_PAGE
-        out     (P126_NGS_PG3_PORT),a
+        rrca
+        out     (P126_NGS_MPAGEX_PORT),a
         ld      hl,p126_ngs_ipc_dma_test_header
         ld      de,#C000
         ld      bc,P126_IPC_HEADER_SIZE
