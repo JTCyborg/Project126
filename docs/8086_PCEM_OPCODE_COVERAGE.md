@@ -8,8 +8,8 @@ Later 80186/286/386 instructions are not part of the target CPU.
 
 - Denominator: 256 possible opcode-byte values in the documented original 8086 opcode map, including the 8087 ESC opcode range and undocumented 8086-compatible values where PCem has an execution path.
 - Numerator: opcode-byte values with a concrete execution path in the Project126 dispatcher.
-- Current numerator: 96.
-- **Opcode-byte dispatch coverage: 96 / 256 = 37.50%.**
+- Current numerator: 102.
+- **Opcode-byte dispatch coverage: 102 / 256 = 39.84%.**
 - This is a source-coverage metric, not a claim of full semantic correctness. ModR/M forms, memory addressing, prefixes, flags, interrupt behavior and corner cases are tracked separately and must also be complete before the CPU is called 100%.
 - An instruction family is not considered complete merely because one opcode in the family is present.
 
@@ -25,7 +25,9 @@ Later 80186/286/386 instructions are not part of the target CPU.
 | 40–47 | INC r16 | `neogs_sub/x86_exec.asm` |
 | 48–4F | DEC r16 | `neogs_sub/x86_exec.asm` |
 | 90 | NOP (XCHG AX,AX encoding) | `neogs_sub/x86_exec.asm` |
-| 91–97 | XCHG AX,r16 | `neogs_sub/x86_exec.asm` | `neogs_sub/x86_exec.asm` |
+| 91–97 | XCHG AX,r16 | `neogs_sub/x86_exec.asm` |
+| 98–99 | CBW, CWD | `neogs_sub/x86_exec.asm` |
+| 9C–9F | PUSHF, POPF, SAHF, LAHF | `neogs_sub/x86_exec.asm` | `neogs_sub/x86_exec.asm` |
 |  B0–B7 | MOV r8,imm8 (AL,CL,DL,BL,AH,CH,DH,BH) | `neogs_sub/x86_exec.asm` |
 |  B8–BF | MOV r16,imm16 (AX,CX,DX,BX,SP,BP,SI,DI) | `neogs_sub/x86_exec.asm` |
 | E9 | JMP rel16 | `neogs_sub/x86_exec.asm` |
@@ -33,6 +35,7 @@ Later 80186/286/386 instructions are not part of the target CPU.
 | EB | JMP rel8 | `neogs_sub/x86_exec.asm` |
 | F4 | HLT | `neogs_sub/x86_exec.asm` |
 
+The 6 opcodes 98h, 99h, 9Ch–9Fh were added in commits `374c661e8bf3adf7390d06032c30a9d8bfc796c2` and `b1665b8a96764f77b9f5b7d6267babebf00c270d`: CBW/CWD, PUSHF/POPF, SAHF/LAHF. Stack flag operations use SS:SP through the Project126 guest-memory interface and follow PCem's 8086 flag masks.
 The 32 conditional branch opcode bytes 60h–7Fh were added in commits `a7379c6fa55f9c87746bb25670be72b7cdf6aa47` and `f9909dcead0de8ca297a79c16e8c888e05343a34`. Conditions use OF, CF, ZF, SF and PF from the guest FLAGS word; all branches consume the signed displacement even when not taken. The 60h–6Fh aliases follow the PCem 8086 execution path and are not treated as 80186 PUSHA/POPA.
 The 16 PUSH/POP register opcodes 50h–5Fh were added in commit `6279ab0c9182574c9782b4bbb1222d777838467d`. Stack accesses use SS:SP via the Project126 guest-memory backend, wrap the 16-bit stack offset, and preserve PCem's original 8086 PUSH SP / POP SP ordering.
 The 16 MOV-immediate opcodes were added in commit `28575e385d5d2a66c5ca448e72f7b4e2f01d2391`.
