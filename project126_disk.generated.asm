@@ -7,6 +7,7 @@
 ;   proj126.C  ATM host program
 ;   P126BOOT.C GS105a stage-0 bootstrap
 ;   X86CORE.C  resident entry, IPC dispatcher and x86 core image
+;   X86IO.C    fixed-origin XT PPI/keyboard overlay for WIN2/page 04h
 ; =========================================================================
 
         DEVICE ZXSPECTRUM128
@@ -50,13 +51,36 @@ p126_bootstrap_file_end:
         PAGE 1
         ORG #C000
 p126_x86_core_file_start:
-        INCBIN "build/x86_cpu_state.bin"
+        INCBIN "build/X86CORE.C"
 p126_x86_core_file_end:
         ASSERT p126_x86_core_file_end > p126_x86_core_file_start
         ASSERT p126_x86_core_file_end-p126_x86_core_file_start <= #4000
         SAVETRD "disk_A.trd", "X86CORE.C", #C000, p126_x86_core_file_end-p126_x86_core_file_start
 
 ; -------------------------------------------------------------------------
+; First fixed-origin overlay. ATM streams this file after the resident A2h
+; acknowledgement; NeoGS installs it at physical page 04h.
+; -------------------------------------------------------------------------
+        PAGE 6
+        ORG #C000
+p126_x86io_file_start:
+        INCBIN "build/X86IO.C"
+p126_x86io_file_end:
+        ASSERT p126_x86io_file_end > p126_x86io_file_start
+        ASSERT p126_x86io_file_end-p126_x86io_file_start <= #1000
+        SAVETRD "disk_A.trd", "X86IO.C", #C000, p126_x86io_file_end-p126_x86io_file_start
+
+; -------------------------------------------------------------------------
+; Second fixed-origin overlay. The host installs it at physical page 05h.
+        PAGE 7
+        ORG #C000
+p126_x86alu_file_start:
+        INCBIN "build/X86ALU.C"
+p126_x86alu_file_end:
+        ASSERT p126_x86alu_file_end > p126_x86alu_file_start
+        ASSERT p126_x86alu_file_end-p126_x86alu_file_start <= #1000
+        SAVETRD "disk_A.trd", "X86ALU.C", #C000, p126_x86alu_file_end-p126_x86alu_file_start
+
 ; Three 8 KiB BIOS images, packaged under TR-DOS-compatible 8.3 names.
 ; The long Compaq source filename is represented on disk as COMPAQ.C.
 ; -------------------------------------------------------------------------
