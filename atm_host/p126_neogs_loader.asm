@@ -178,6 +178,10 @@ p126_neogs_startup::
         ld      a,d
         or      e
         jr      z,.p126_neogs_core_stream_done
+
+        ; Project125 V1 streaming order: refill only after the current
+        ; 256-byte buffer is fully consumed, then send each byte and wait
+        ; for DBIT consumption before advancing to the next byte.
         ld      hl,(p126_neogs_buffer_remaining)
         ld      a,h
         or      l
@@ -185,7 +189,7 @@ p126_neogs_startup::
         push    de
         call    p126_neogs_read_next_sector
         pop     de
-        ret     c
+        jp      c,p126_neogs_transport_error
         ld      hl,#C000
         ld      (p126_neogs_buffer_ptr),hl
         ld      hl,256
@@ -194,24 +198,7 @@ p126_neogs_startup::
         ld      hl,(p126_neogs_buffer_ptr)
         ld      a,(hl)
         call    p126_neogs_send_byte
-        jr      nc,.p126_neogs_core_byte_sent
-        ; The resident can publish A2h immediately after consuming the final
-        ; byte. In that case one byte remains in DE and DBIT is already set.
-        ld      a,d
-        or      a
-        jp      nz,p126_neogs_transport_error
-        ld      a,e
-        cp      1
-        jp      nz,p126_neogs_transport_error
-        in      a,(P126_NGS_GSSTAT)
-        bit     P126_NGS_DBIT,a
-        jp      z,p126_neogs_transport_error
-        call    p126_neogs_receive_byte
-        ret     c
-        cp      P126_NGS_ACK_DONE
-        jp      nz,p126_neogs_transport_error
-        jr      .p126_neogs_startup_done
-.p126_neogs_core_byte_sent:
+        jp      c,p126_neogs_transport_error
         inc     hl
         ld      (p126_neogs_buffer_ptr),hl
         ld      hl,(p126_neogs_buffer_remaining)
@@ -221,6 +208,8 @@ p126_neogs_startup::
         jr      .p126_neogs_core_stream
 
 .p126_neogs_core_stream_done:
+        ; As in Project125, receive the resident-ready ACK only after every
+        ; payload byte has completed its DBIT-consumed handshake.
         call    p126_neogs_receive_byte
         ret     c
         cp      P126_NGS_ACK_DONE
@@ -250,52 +239,69 @@ p126_neogs_store_error:
 ; IN HL=exact 8-character filename. Directory was preloaded at C800h.
 ; OUT: carry clear, first sector at C000h, metadata initialized.
 p126_neogs_open_file:
+        ; Exact Project125 TR-DOS ROM file-open ABI:
+        ; C=#0A searches the 8-character name + extension C at #5CDD,
+        ; then C=#08 returns the full descriptor in #5CE8..#5CEC.
+        ; Do not parse the preloaded catalogue entries ourselves.
         ld      (p126_neogs_name_ptr),hl
-        ld      ix,#C800
-        ld      b,128
-.p126_neogs_find_loop:
-        push    ix
-        push    bc
         ld      hl,(p126_neogs_name_ptr)
+        ld      de,#5CDD
+        ld      bc,8
+        ldir
+        ld      a,'C'
+        ld      (#5CE5),a
+        ld      a,9
+        ld      (#5D06),a
+        ld      c,10
+        call    #3D13
+        ld      a,c
+        cp      #FF
+        jp      z,.p126_neogs_file_not_found
+
+        ; C=#0A returns the directory slot in A; C=#08 fetches its descriptor.
+        push    af
+        xor     a
+        ld      (#5D0F),a
+        ld      (#5D10),a
+        pop     af
         ld      c,8
-.p126_neogs_compare:
-        ld      a,(hl)
-        cp      (ix+0)
-        jr      nz,.p126_neogs_find_miss
-        inc     hl
-        inc     ix
-        dec     c
-        jr      nz,.p126_neogs_compare
-        ld      a,(ix+0)
-        cp      'C'
-        jr      z,.p126_neogs_find_hit
-.p126_neogs_find_miss:
-        pop     bc
-        pop     ix
-        ld      de,16
-        add     ix,de
-        djnz    .p126_neogs_find_loop
-        scf
-        ret
-.p126_neogs_find_hit:
-        pop     bc
-        pop     de
-        ld      a,(ix+3)
-        ld      (p126_neogs_file_length),a
-        ld      a,(ix+4)
-        ld      (p126_neogs_file_length+1),a
-        ld      a,(ix+5)
-        ld      (p126_neogs_file_sectors_left),a
-        ld      a,(ix+6)
-        ld      (p126_neogs_file_sector),a
-        ld      a,(ix+7)
-        ld      (p126_neogs_file_track),a
-        ld      a,(p126_neogs_file_sectors_left)
+        call    #3D13
+        ld      a,(#5D0F)
+        ld      b,a
+        ld      a,(#5D10)
+        or      b
+        jp      nz,.p126_neogs_bad_descriptor
+
+        ; Match Project125: use exact file length and derive sector count
+        ; from it, rather than trusting a potentially stale directory count.
+        ld      hl,(#5CE8)
+        ld      (p126_neogs_file_length),hl
+        ld      a,h
+        or      l
+        jp      z,.p126_neogs_bad_length
+        ld      de,#C010
         or      a
-        jr      nz,.p126_neogs_file_meta_ok
-        scf
-        ret
-.p126_neogs_file_meta_ok:
+        sbc     hl,de
+        jr      c,.p126_neogs_file_length_ok
+        jp      nz,.p126_neogs_bad_length
+.p126_neogs_file_length_ok:
+        ld      hl,(p126_neogs_file_length)
+        ld      de,255
+        add     hl,de
+        ld      a,h
+        or      a
+        jp      z,.p126_neogs_bad_descriptor
+        ld      (p126_neogs_file_sectors_left),a
+
+        ld      a,(#5CEB)
+        cp      16
+        jp      nc,.p126_neogs_bad_descriptor
+        ld      (p126_neogs_file_sector),a
+        ld      a,(#5CEC)
+        ld      (p126_neogs_file_track),a
+
+        ; Acquire only the first sector now; subsequent sectors are read
+        ; on demand after the current 256-byte buffer has been consumed.
         call    p126_neogs_read_next_sector
         ret     c
         ld      hl,#C000
@@ -305,31 +311,29 @@ p126_neogs_open_file:
         xor     a
         ret
 
-; Read one sector at the current TR-DOS cursor. Preserves all Z80 registers.
-p126_neogs_read_next_sector:
-        ld      a,(p126_neogs_file_sectors_left)
-        or      a
-        jr      nz,.p126_neogs_read_sector_ready
+.p126_neogs_file_not_found:
+        ld      a,1
+        jr      .p126_neogs_open_failed
+.p126_neogs_bad_descriptor:
+        ld      a,2
+        jr      .p126_neogs_open_failed
+.p126_neogs_bad_length:
+        ld      a,3
+        jr      .p126_neogs_open_failed
+.p126_neogs_open_failed:
+        ld      (p126_neogs_io_error),a
         scf
         ret
-.p126_neogs_read_sector_ready:
-        push    af
-        push    bc
-        push    de
-        push    hl
-        push    ix
-        push    iy
-        exx
-        push    bc
-        push    de
-        push    hl
-        exx
-        ex      af,af'
-        push    af
-        ex      af,af'
-        ld      (p126_neogs_saved_sp),sp
-        ld      sp,#BFFF
 
+p126_neogs_read_next_sector:
+        ; Direct Project125 sector reader: C=5, B=1, HL=#C000,
+        ; DE=track/sector. Advance cursor only after successful ROM return.
+        ld      a,(p126_neogs_file_sectors_left)
+        or      a
+        jr      nz,.p126_neogs_sector_available
+        scf
+        ret
+.p126_neogs_sector_available:
         ld      a,(p126_neogs_file_track)
         ld      d,a
         ld      a,(p126_neogs_file_sector)
@@ -345,49 +349,30 @@ p126_neogs_read_next_sector:
         ld      b,a
         ld      a,(#5D10)
         or      b
-        ld      (p126_neogs_io_error),a
-        jr      nz,.p126_neogs_read_restore
+        jr      nz,.p126_neogs_sector_io_error
 
         ld      a,(p126_neogs_file_sector)
         inc     a
         cp      16
-        jr      c,.p126_neogs_sector_advanced
+        jr      c,.p126_neogs_sector_same_track
         xor     a
         ld      (p126_neogs_file_sector),a
         ld      a,(p126_neogs_file_track)
         inc     a
         ld      (p126_neogs_file_track),a
-        jr      .p126_neogs_sector_count
-.p126_neogs_sector_advanced:
+        jr      .p126_neogs_sector_cursor_advanced
+.p126_neogs_sector_same_track:
         ld      (p126_neogs_file_sector),a
-.p126_neogs_sector_count:
+.p126_neogs_sector_cursor_advanced:
         ld      a,(p126_neogs_file_sectors_left)
         dec     a
         ld      (p126_neogs_file_sectors_left),a
-
-.p126_neogs_read_restore:
-        ld      sp,(p126_neogs_saved_sp)
-        ex      af,af'
-        pop     af
-        ex      af,af'
-        exx
-        pop     hl
-        pop     de
-        pop     bc
-        exx
-        pop     iy
-        pop     ix
-        pop     hl
-        pop     de
-        pop     bc
-        pop     af
-        ld      a,(p126_neogs_io_error)
         or      a
-        jr      z,.p126_neogs_read_ok
-        scf
         ret
-.p126_neogs_read_ok:
-        or      a
+.p126_neogs_sector_io_error:
+        ld      a,4
+        ld      (p126_neogs_io_error),a
+        scf
         ret
 
 ; ATM-side diagnostic for the three bytes returned by GS105a #20.
