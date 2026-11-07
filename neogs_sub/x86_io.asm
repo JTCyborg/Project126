@@ -43,13 +43,16 @@ x86_io_write8:
 
 ; HL=value. Word write updates the complete 16-bit test latch.
 x86_io_write16:
-        ld      de,(x86_io_port)
-        ld      bc,#00E0
+        ld      (x86_io_value),hl
+        ld      hl,(x86_io_port)
+        ld      de,#00E0
         or      a
-        sbc     hl,bc
+        sbc     hl,de
         ret     nz
+        ld      hl,(x86_io_value)
         ld      (x86_io_test_latch),hl
         ret
 
 x86_io_port: dw 0
+x86_io_value: dw 0
 x86_io_test_latch: dw 0
