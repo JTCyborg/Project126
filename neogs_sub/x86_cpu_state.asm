@@ -49,6 +49,7 @@ x86_cpu_reset:
         ld      (x86_tf_pending),a
         ld      a,8
         ld      (x86_irq_vector),a
+        call    x86_io_reset
         ret
 
 ; -------------------------------------------------------------------------
