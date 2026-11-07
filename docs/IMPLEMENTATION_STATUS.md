@@ -841,3 +841,26 @@ Source commit: `aac9d7e60c391510150016d3b29906a7b2f90e3d`.
 - This enables a longer BIOS initialization run, but does not establish complete 8086 semantic correctness. A watchdog stop may indicate a BIOS loop, and any opcode/memory stop still requires investigation. Full BIOS POST and general CPU functional-suite status must be evaluated separately.
 - Source commits: `aa0713bf7a382620130391a471aef29010f0e1ed` (execution logic), followed by the assembly-unit comment update.
 - **STATUS:** CI assembly/package and physical ATM/NeoGS execution are pending. Do not treat this source change as a hardware PASS.
+
+## BIOS bring-up checkpoint — before guest I/O device implementation
+
+This is the frozen baseline for the transition from CPU/BIOS execution debugging to the guest I/O subsystem.
+
+- Selected physical test image: BIOS1.C, source candidate `bios/27c64d.bin` (8 KiB). The latest ATM log reports that `BIOS1   .C` was selected and read successfully.
+- BIOS reset-vector fetch and far transfer into `F000:E05B` were reported PASS by the target diagnostic.
+- BIOS continuous execution proceeds without the previously observed x86 guest-memory fault.
+- Latest supplied `spectrum_out.txt` ends at the 65,535-instruction watchdog in the BIOS1 initialization loop. The recorded state is `CS:IP=F000:E06F`, `SI=2978h`, `DX=E602h`, `FLAGS=0013h`; I/O counters report IN=0001h and OUT=2468h. This is a watchdog stop, not a BIOS boot/POST pass.
+- The I/O trace contains accesses to several low system-board ports and VGA-related ports, and later reports high DX values. The high DX values must be investigated against the loaded ROM bytes and CPU register semantics; they are not accepted as intended device addresses.
+- Current guest I/O backend: `neogs_sub/x86_io.asm`. Only the deterministic test latch at `00E0h` is implemented. Other reads return FFh/FFFFh and other writes are ignored. Diagnostic output uses the NeoGS host debug channel, but guest port numbers are never issued as physical NeoGS I/O.
+- The normative initial guest port decode is in `docs/P126_ATM_PC_PROFILE.md`, section 4. It reserves the XT-style DMA, PIC, PIT, PPI, DMA-page, RTC, ATA, VGA and optional FDC interfaces. This table is the architectural source of truth; ad-hoc port lists inferred from a partial BIOS trace are not.
+- No PIC/PIT/PPI/DMA/VGA/RTC/ATA/FDC runtime device is yet claimed implemented. No full POST or guest operating-system boot has passed.
+
+### I/O implementation order
+
+1. Stabilize the generic 8086 I/O bus contract: full 16-bit port address, byte/word accesses, deterministic reset state, unmapped open-bus behavior, and side-effect-safe dispatch.
+2. Implement the system-board devices required by the selected XT BIOS profile: PPI/system control and keyboard input path; PIC 8259; PIT 8253; DMA 8237 plus page registers.
+3. Implement VGA register I/O and the corresponding VRAM/aperture behavior, comparing against the pinned PCem VGA model.
+4. Add RTC/CMOS and storage controllers only with their agreed ATM DMA/IPC service contracts.
+5. Validate each device with isolated register-level tests before returning to BIOS bring-up. A BIOS watchdog disappearing is not by itself a POST pass.
+
+All device models execute as software on NeoGS. NeoGS must not issue guest IN/OUT port numbers on its own physical Z80 I/O bus. Any external keyboard, clock or storage service is accessed only through the Project126 DMA/IPC contract.
