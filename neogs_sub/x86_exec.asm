@@ -51,6 +51,16 @@ x86_cpu_step:
 
         cp      #06
         jp      c,x86_exec_add_family
+        cp      #10
+        jp      c,.not_adc_family
+        cp      #16
+        jp      c,x86_exec_adc_sbb_family
+.not_adc_family:
+        cp      #18
+        jp      c,.not_sbb_family
+        cp      #1E
+        jp      c,x86_exec_adc_sbb_family
+.not_sbb_family:
         cp      #08
         jp      c,.not_logic_or
         cp      #0E
@@ -404,6 +414,131 @@ x86_exec_subcmp_family:
         ld      (x86_reg_ax),hl
         or      a
         ret
+
+; 10-15 ADC and 18-1D SBB: ModR/M directions and accumulator immediate.
+; Carry/borrow-in is captured from guest FLAGS before calling the ALU helper.
+x86_exec_adc_sbb_family:
+        ld      a,(x86_exec_opcode)
+        ld      (x86_exec_alu_opcode),a
+        cp      #18
+        jr      c,.adc_select
+        ld      a,1
+        jr      .adc_sbb_selected
+.adc_select:
+        xor     a
+.adc_sbb_selected:
+        ld      (x86_exec_alu_is_sbb),a
+        ld      a,(x86_exec_alu_opcode)
+        bit     2,a
+        jp      nz,.adc_sbb_accumulator
+
+        call    x86_decode_modrm16
+        ret     c
+        ld      a,(x86_exec_alu_opcode)
+        bit     0,a
+        jp      nz,.adc_sbb_word
+        bit     1,a
+        jr      nz,.adc_sbb_r8_from_rm8
+
+        ; ADC/SBB r/m8,r8
+        call    x86_modrm_read_rm8
+        ld      (x86_exec_alu_lhs8),a
+        ld      a,(x86_modrm_reg)
+        call    x86_modrm_read_reg8
+        ld      c,a
+        ld      hl,(x86_reg_flags)
+        ld      a,l
+        and     1
+        ld      b,a
+        ld      a,(x86_exec_alu_lhs8)
+        call    x86_exec_adc_sbb8
+        jp      x86_modrm_write_rm8
+
+.adc_sbb_r8_from_rm8:
+        ; ADC/SBB r8,r/m8
+        ld      a,(x86_modrm_reg)
+        call    x86_modrm_read_reg8
+        ld      (x86_exec_alu_lhs8),a
+        call    x86_modrm_read_rm8
+        ld      c,a
+        ld      hl,(x86_reg_flags)
+        ld      a,l
+        and     1
+        ld      b,a
+        ld      a,(x86_exec_alu_lhs8)
+        call    x86_exec_adc_sbb8
+        ld      c,a
+        ld      a,(x86_modrm_reg)
+        jp      x86_modrm_write_reg8
+
+.adc_sbb_word:
+        bit     1,a
+        jr      nz,.adc_sbb_r16_from_rm16
+
+        ; ADC/SBB r/m16,r16
+        call    x86_modrm_read_rm16
+        ld      (x86_exec_alu_lhs16),hl
+        call    x86_modrm_read_reg16
+        ex      de,hl
+        ld      hl,(x86_exec_alu_lhs16)
+        ld      a,(x86_reg_flags)
+        and     1
+        ld      b,a
+        call    x86_exec_adc_sbb16
+        jp      x86_modrm_write_rm16
+
+.adc_sbb_r16_from_rm16:
+        ; ADC/SBB r16,r/m16
+        call    x86_modrm_read_reg16
+        ld      (x86_exec_alu_lhs16),hl
+        call    x86_modrm_read_rm16
+        ex      de,hl
+        ld      hl,(x86_exec_alu_lhs16)
+        ld      a,(x86_reg_flags)
+        and     1
+        ld      b,a
+        call    x86_exec_adc_sbb16
+        jp      x86_modrm_write_reg16
+
+.adc_sbb_accumulator:
+        bit     0,a
+        jr      nz,.adc_sbb_ax_immediate
+        call    x86_cpu_fetch8
+        ret     c
+        ld      c,a
+        ld      a,(x86_reg_flags)
+        and     1
+        ld      b,a
+        ld      a,(x86_reg_ax)
+        call    x86_exec_adc_sbb8
+        ld      (x86_reg_ax),a
+        or      a
+        ret
+.adc_sbb_ax_immediate:
+        call    x86_cpu_fetch16
+        ret     c
+        ex      de,hl
+        ld      hl,(x86_reg_ax)
+        ld      a,(x86_reg_flags)
+        and     1
+        ld      b,a
+        call    x86_exec_adc_sbb16
+        ld      (x86_reg_ax),hl
+        or      a
+        ret
+
+; Dispatch wrappers preserve the common A/C or HL/DE operand contracts.
+x86_exec_adc_sbb8:
+        ld      a,(x86_exec_alu_is_sbb)
+        or      a
+        jp      nz,x86_alu_sbb8
+        jp      x86_alu_adc8
+
+x86_exec_adc_sbb16:
+        ld      a,(x86_exec_alu_is_sbb)
+        or      a
+        jp      nz,x86_alu_sbb16
+        jp      x86_alu_adc16
 
 ; OR 08-0D, AND 20-25, XOR 30-35, TEST 84-85.
 ; Each operation uses the shared logical ALU helpers, which clear CF/AF/OF
@@ -1821,6 +1956,7 @@ x86_exec_alu_result8: db 0
 x86_exec_alu_result16: dw 0
 x86_exec_alu_is_cmp: db 0
 x86_exec_alu_operation: db 0
+x86_exec_alu_is_sbb: db 0
 x86_exec_mov_byte: db 0
 x86_exec_sreg_opcode: db 0
 x86_exec_sreg_index: db 0
