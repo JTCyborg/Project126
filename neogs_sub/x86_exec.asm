@@ -83,6 +83,10 @@ x86_cpu_step:
         ret
 
 .boundary_start_instruction:
+        ; Keep the address of the first prefix byte so REP can yield after
+        ; each iteration and re-enter at the complete instruction boundary.
+        ld      hl,(x86_reg_ip)
+        ld      (x86_exec_instruction_start_ip),hl
         xor     a
         ld      (x86_exec_prefix_seg),a
         ld      (x86_exec_prefix_rep),a
@@ -3484,20 +3488,41 @@ x86_exec_string:
         ld      (x86_exec_string_rep),a
         or      a
         jr      z,.string_single
+
+        ; PCem sets the initial ZF state for REPE/REPNE even when CX=0.
+        ; The first comparison then replaces it with the actual compare result.
+        ld      a,(x86_exec_string_opcode)
+        cp      #A6
+        jr      z,.string_compare_initial
+        cp      #A7
+        jr      z,.string_compare_initial
+        cp      #AE
+        jr      z,.string_compare_initial
+        cp      #AF
+        jr      nz,.string_check_count
+.string_compare_initial:
+        ld      a,(x86_exec_string_rep)
+        cp      2
+        jr      nz,.string_initial_repne
+        ld      hl,(x86_reg_flags)
+        set     6,l
+        ld      (x86_reg_flags),hl
+        jr      .string_check_count
+.string_initial_repne:
+        ld      hl,(x86_reg_flags)
+        res     6,l
+        ld      (x86_reg_flags),hl
+
+.string_check_count:
         ld      hl,(x86_reg_cx)
         ld      a,h
         or      l
         ret     z
-        jr      .string_loop
-.string_single:
-        ld      a,1
-        ld      (x86_exec_string_remaining),a
-.string_loop:
+
+        ; Execute one iteration per interpreter boundary. This gives the
+        ; normal IRQ/NMI boundary logic a chance to interrupt a REP string.
         call    x86_exec_string_iteration
         ret     c
-        ld      a,(x86_exec_string_rep)
-        or      a
-        ret     z
         ld      hl,(x86_reg_cx)
         dec     hl
         ld      (x86_reg_cx),hl
@@ -3505,8 +3530,7 @@ x86_exec_string:
         or      l
         ret     z
 
-        ; F3 REPE continues CMPS/SCAS while ZF=1.
-        ; F2 REPNE continues CMPS/SCAS while ZF=0.
+        ; CMPS/SCAS continue only while the selected ZF condition holds.
         ld      a,(x86_exec_string_opcode)
         cp      #A6
         jr      z,.string_compare_repeat
@@ -3515,22 +3539,30 @@ x86_exec_string:
         cp      #AE
         jr      z,.string_compare_repeat
         cp      #AF
-        jr      nz,.string_loop
+        jr      nz,.string_repeat_again
 .string_compare_repeat:
         ld      a,(x86_exec_string_rep)
         cp      2
         jr      nz,.string_repne
         ld      hl,(x86_reg_flags)
         bit     6,l
-        jr      z,.string_done
-        jr      .string_loop
+        ret     z
+        jr      .string_repeat_again
 .string_repne:
         ld      hl,(x86_reg_flags)
         bit     6,l
-        jr      nz,.string_done
-        jr      .string_loop
-.string_done:
+        ret     nz
+
+.string_repeat_again:
+        ; Re-enter from the first prefix byte. The next x86_cpu_step checks
+        ; pending interrupts before decoding the next string iteration.
+        ld      hl,(x86_exec_instruction_start_ip)
+        ld      (x86_reg_ip),hl
         or      a
+        ret
+
+.string_single:
+        call    x86_exec_string_iteration
         ret
 
 x86_exec_string_iteration:
@@ -4502,6 +4534,7 @@ x86_exec_hlt:
         or      a
         ret
 
+x86_exec_instruction_start_ip: dw 0
 x86_exec_prefix_seg: db 0
 x86_exec_prefix_rep: db 0
 x86_exec_prefix_lock: db 0
