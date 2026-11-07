@@ -101,10 +101,15 @@ x86_io_keyboard_read_impl:
 ; deliberately calls the page05 ALU wrapper while page04 is active.
 ; A=08h on success (05h + 03h), with carry clear.
 x86_io_overlay_nested_gate_probe_impl:
+        ; The regression must not leak its arithmetic FLAGS into the guest.
+        ld      hl,(x86_reg_flags)
+        push    hl
         ld      a,#05
         ld      c,#03
         call    x86_alu_add8
         cp      #08
+        pop     hl
+        ld      (x86_reg_flags),hl
         ret
 
 ; Read one byte from the guest I/O bus. A=read value.
