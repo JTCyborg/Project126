@@ -57,6 +57,13 @@ x86_cpu_step:
         jp      z,x86_exec_jmp_short_rel8
         cp      #90
         jp      z,x86_exec_nop
+        ; 91-97: XCHG AX,r16 (90 is the NOP encoding).
+        ld      a,(x86_exec_opcode)
+        cp      #91
+        jp      c,.not_xchg_ax_reg
+        cp      #98
+        jp      c,x86_exec_xchg_ax_reg
+.not_xchg_ax_reg:
         cp      #F4
         jp      z,x86_exec_hlt
         ; 40-4F: INC/DEC r16. Carry flag is preserved by both operations.
@@ -75,6 +82,37 @@ x86_cpu_step:
         jp      x86_exec_mov_imm_reg
 .not_mov_imm_reg:
         scf
+        ret
+
+; 91-97: exchange AX with the selected 16-bit general register.
+; XCHG does not modify FLAGS. Opcode 90 is dispatched separately as NOP.
+x86_exec_xchg_ax_reg:
+        ld      a,(x86_exec_opcode)
+        sub     #90
+        add     a,a
+        ld      e,a
+        ld      d,0
+        ld      hl,x86_exec_reg16_table
+        add     hl,de
+        ld      e,(hl)
+        inc     hl
+        ld      d,(hl)
+        ld      (x86_exec_reg_ptr),de
+
+        ld      hl,(x86_reg_ax)
+        ld      (x86_exec_result_word),hl
+        ld      hl,(x86_exec_reg_ptr)
+        ld      c,(hl)
+        inc     hl
+        ld      b,(hl)
+        ld      (x86_reg_ax),bc
+
+        ld      hl,(x86_exec_reg_ptr)
+        ld      de,(x86_exec_result_word)
+        ld      (hl),e
+        inc     hl
+        ld      (hl),d
+        or      a
         ret
 
 ; 40-47 INC r16, 48-4F DEC r16. Uses the common 16-bit ALU flag
