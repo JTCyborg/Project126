@@ -902,3 +902,13 @@ User-provided physical ATM/NeoGS target log at 09:52:27 confirms the corrected P
 - Replaced Project126's final-byte/A2 race special case with the Project125 V1 ordering: each data byte completes the DBIT-consumed handshake; only after all declared bytes have been sent does the host wait for the final A2 resident-ready acknowledgement. Buffer refill remains demand-driven at 256-byte boundaries.
 - File names remain Project126-specific: P126BOOT and X86CORE. The catalogue UI/preload, GS105a #14 bootstrap transfer, #13 stage-0 entry, A1/A3 exchange, ABI, DMA implementation and resident firmware are unchanged.
 - This is a source port of the Project125 TR-DOS/DBIT loader sequence, not a hardware result. CI build is required; physical startup is still pending a fresh target log showing the resident A2 acknowledgement and startup stage 0.
+
+
+## 2026-11-07 — DMA completion watchdog aligned with Project125
+
+- Hardware log after the 16 KiB test showed the resident announcing DMA READY, then reporting DMA WAIT TIMEOUT before the ATM finished its LDIR and sent FF. ATM subsequently treated the already-cleared CBIT as an FF acknowledgement; the printed TX PASS was therefore false and did not indicate a valid frame.
+- Source comparison identified the concrete divergence: Project125 uses `DMA_WAIT_OUTER = 8` with eight independent `#FFFF` polling windows in its DMA receive, reverse-read, video and BIOS transfer paths. Project126 used only one `#FFFF` window in both maximum-frame DMA directions.
+- Updated `neogs_sub/p126_ipc.asm` to use the same eight-window completion watchdog for both ATM→NeoGS receive and NeoGS→ATM reverse DMA. DMA register setup, page-42 mapping, frame ABI, dummy-read behavior and E0/E1/FF control sequence are unchanged.
+- This is a direct timing/timeout parity correction from Project125. The page-42 destination remains Project126-specific because its resident stack/code allocation differs from Project125's page-03 layout.
+- Next target run must show `DMA HOST END DETECTED` (forward) and `DMA RX MAX FRAME HOST END` (reverse), followed by full CRC and payload checks. ATM-side TX completion must not be considered a PASS unless NeoGS reports a valid frame.
+- Verification status: source commit recorded; CI and hardware retest pending. No 16 KiB DMA HARDWARE PASS is claimed.
