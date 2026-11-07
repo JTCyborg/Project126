@@ -812,10 +812,17 @@ p126_ngs_image_finish:
         ld      hl,p126_ngs_image_installed_log
         jr      .image_finish_log
 .image_finish_x86io:
-        ; Page 04h is pinned in WIN2 (8000h-BFFFh). Resident code is in WIN0,
-        ; stack is in WIN1, and WIN3 remains exclusively owned by guest RAM.
-        ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
-        out     (P126_NGS_OVERLAY_WINDOW_PORT),a ; MPAG selects WIN2/page 04h
+        ; Prove that MPAG selects two distinct physical pages through WIN2.
+        ; The test saves/restores the last byte of page 04h and page 05h;
+        ; X86IO is only 796 bytes, so BFFFh is outside its image.
+        call    p126_ngs_overlay_win2_selftest
+        jr      nc,.image_finish_x86io_map_ok
+        ld      hl,p126_ngs_overlay_win2_test_fail_log
+        call    p126_ngs_ipc_log
+        jr      .image_finish_bad
+.image_finish_x86io_map_ok:
+        ld      hl,p126_ngs_overlay_win2_test_pass_log
+        call    p126_ngs_ipc_log
         ld      a,1
         ld      (p126_ngs_io_overlay_ready),a
         ld      hl,p126_ngs_io_overlay_installed_log
@@ -834,6 +841,77 @@ p126_ngs_image_finish:
         ld      a,P126_STATUS_BAD_FRAME
         scf
         ret
+
+; Runtime WIN2 selector/read-write test for physical pages 04h and 05h.
+; OUT: carry clear on success. WIN2 always returns mapped to X86IO/page 04h.
+; The tested byte is BFFFh (page offset 3FFFh), beyond the X86IO image and
+; restored on both success and failure. Code runs in WIN0, stack in WIN1.
+p126_ngs_overlay_win2_selftest:
+        ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
+        out     (P126_NGS_OVERLAY_WINDOW_PORT),a
+        ld      a,(#BFFF)
+        ld      (p126_ngs_overlay_test_old04),a
+
+        ld      a,P126_NGS_OVERLAY_TEST_PAGE
+        rrca
+        out     (P126_NGS_OVERLAY_WINDOW_PORT),a
+        ld      a,(#BFFF)
+        ld      (p126_ngs_overlay_test_old05),a
+
+        ld      a,#55
+        ld      (#BFFF),a
+        ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
+        out     (P126_NGS_OVERLAY_WINDOW_PORT),a
+        ld      a,#AA
+        ld      (#BFFF),a
+
+        ld      a,P126_NGS_OVERLAY_TEST_PAGE
+        rrca
+        out     (P126_NGS_OVERLAY_WINDOW_PORT),a
+        ld      a,(#BFFF)
+        cp      #55
+        jr      nz,.overlay_win2_test_failed
+        ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
+        out     (P126_NGS_OVERLAY_WINDOW_PORT),a
+        ld      a,(#BFFF)
+        cp      #AA
+        jr      nz,.overlay_win2_test_failed
+
+        ; Restore both saved bytes and leave X86IO/page 04h mapped.
+        ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
+        out     (P126_NGS_OVERLAY_WINDOW_PORT),a
+        ld      a,(p126_ngs_overlay_test_old04)
+        ld      (#BFFF),a
+        ld      a,P126_NGS_OVERLAY_TEST_PAGE
+        rrca
+        out     (P126_NGS_OVERLAY_WINDOW_PORT),a
+        ld      a,(p126_ngs_overlay_test_old05)
+        ld      (#BFFF),a
+        ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
+        out     (P126_NGS_OVERLAY_WINDOW_PORT),a
+        or      a
+        ret
+
+.overlay_win2_test_failed:
+        ; Best-effort restoration even when one selector did not behave.
+        ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
+        out     (P126_NGS_OVERLAY_WINDOW_PORT),a
+        ld      a,(p126_ngs_overlay_test_old04)
+        ld      (#BFFF),a
+        ld      a,P126_NGS_OVERLAY_TEST_PAGE
+        rrca
+        out     (P126_NGS_OVERLAY_WINDOW_PORT),a
+        ld      a,(p126_ngs_overlay_test_old05)
+        ld      (#BFFF),a
+        ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
+        out     (P126_NGS_OVERLAY_WINDOW_PORT),a
+        scf
+        ret
+
+p126_ngs_overlay_test_old04: db 0
+p126_ngs_overlay_test_old05: db 0
+p126_ngs_overlay_win2_test_pass_log: db "[NGS] WIN2 PAGE04/05 TEST PASS",13,10,0
+p126_ngs_overlay_win2_test_fail_log: db "[NGS] WIN2 PAGE04/05 TEST FAIL",13,10,0
 
 p126_ngs_image_active:       db 0
 p126_ngs_image_received:     db 0
