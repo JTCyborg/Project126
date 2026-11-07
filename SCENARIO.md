@@ -1140,7 +1140,7 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 - [x] Выполнен первичный source scan CPU/IPC units: прямых memory operands в logical 8000h–BFFFh не обнаружено; WIN2 определён как кандидат overlay aperture, но полное отсутствие использования WIN2 ещё требует runtime/source audit.
 - [x] Зафиксирован проектный вариант: WIN2 (8000h–BFFFh) как 16-KiB overlay execution/data window; candidate physical pool pages 04h–0Fh. Страницы 00h–03h не выдаются allocator'у.
 - [x] Определены требования к fixed-origin module linking, manifest, DMA/IPC streaming, page-42 staging, WIN3 destination copy/readback, resident call/return gate и bounded nested calls.
-- [ ] Подтвердить точное WIN2 page-selector register/encoding по аппаратной документации или проверенной Project125 процедуре; не выводить encoding из одного startup значения OUT (#00),#80.
+- [x] Подтвердить WIN2 page-selector register/encoding по Project125 reference: MPAG #00, selector ROR8(physical_page). Project126 hardware validation остаётся отдельной задачей.
 - [ ] Реализовать manifest/IMAGE module service и ATM TR-DOS streaming loader.
 - [ ] Реализовать resident call gate, mapping save/restore и allocator.
 - [ ] Перенести первый реальный модуль (XT PPI/keyboard) из resident image только после готовности и проверки его загрузки.
