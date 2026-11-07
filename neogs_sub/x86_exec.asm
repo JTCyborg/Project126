@@ -59,6 +59,13 @@ x86_cpu_step:
         jp      z,x86_exec_nop
         cp      #F4
         jp      z,x86_exec_hlt
+        ; 40-4F: INC/DEC r16. Carry flag is preserved by both operations.
+        ld      a,(x86_exec_opcode)
+        cp      #40
+        jp      c,.not_incdec_reg
+        cp      #50
+        jp      c,x86_exec_incdec_reg
+.not_incdec_reg:
         ; B0-BF: MOV r8/r16, immediate.
         ld      a,(x86_exec_opcode)
         cp      #B0
@@ -68,6 +75,63 @@ x86_cpu_step:
         jp      x86_exec_mov_imm_reg
 .not_mov_imm_reg:
         scf
+        ret
+
+; 40-47 INC r16, 48-4F DEC r16. Uses the common 16-bit ALU flag
+; calculation, then restores CF because INC/DEC leave CF unchanged.
+x86_exec_incdec_reg:
+        ld      a,(x86_exec_opcode)
+        and     #08
+        ld      (x86_exec_is_dec),a
+        ld      a,(x86_exec_opcode)
+        and     #07
+        add     a,a
+        ld      e,a
+        ld      d,0
+        ld      hl,x86_exec_reg16_table
+        add     hl,de
+        ld      e,(hl)
+        inc     hl
+        ld      d,(hl)
+        ld      (x86_exec_reg_ptr),de
+
+        ; Read the selected guest word register.
+        ex      de,hl
+        ld      e,(hl)
+        inc     hl
+        ld      d,(hl)
+        ex      de,hl
+
+        ; Save CF, run the 16-bit add/subtract-by-one flag calculation.
+        ld      de,1
+        ld      hl,(x86_reg_flags)
+        ld      a,l
+        and     1
+        ld      (x86_exec_saved_cf),a
+        ld      a,(x86_exec_is_dec)
+        or      a
+        call    nz,x86_alu_sub16
+        call    z,x86_alu_add16
+
+        ; Restore the original carry flag.
+        ld      hl,(x86_reg_flags)
+        ld      a,l
+        and     #FE
+        ld      l,a
+        ld      a,(x86_exec_saved_cf)
+        or      l
+        ld      l,a
+        ld      (x86_reg_flags),hl
+
+        ; Commit the arithmetic result to the selected register.
+        ld      (x86_exec_result_word),hl
+        ld      de,(x86_exec_reg_ptr)
+        ex      de,hl
+        ld      de,(x86_exec_result_word)
+        ld      (hl),e
+        inc     hl
+        ld      (hl),d
+        or      a
         ret
 
 ; B0-B7: MOV r8,imm8. Byte-register encoding is AL,CL,DL,BL,AH,CH,DH,BH.
@@ -185,6 +249,10 @@ x86_exec_imm_low: db 0
 x86_exec_opcode: db 0
 x86_exec_target_ip: dw 0
 x86_exec_imm_word: dw 0
+x86_exec_reg_ptr: dw 0
+x86_exec_result_word: dw 0
+x86_exec_saved_cf: db 0
+x86_exec_is_dec: db 0
 x86_exec_reg16_table:
         dw x86_reg_ax,x86_reg_cx,x86_reg_dx,x86_reg_bx
         dw x86_reg_sp,x86_reg_bp,x86_reg_si,x86_reg_di
