@@ -20,7 +20,7 @@ Later 80186/286/386 instructions are not part of the target CPU.
 | 0F | PCem 8086 default unhandled-opcode path (consume as no-op) | `neogs_sub/x86_exec.asm` |
 | 60–6F | PCem 8086 conditional-branch aliases | `neogs_sub/x86_exec.asm` |
 | 86–87 | XCHG r/m8/16,r8/16 | `neogs_sub/x86_exec.asm` + `x86_modrm.asm` |
-| 8F | POP r/m16 (ModR/M /0) | `neogs_sub/x86_exec.asm` + `x86_modrm.asm` |
+| 8F | POP r/m16 (PCem applies the operation for every /n extension) | `neogs_sub/x86_exec.asm` + `x86_modrm.asm` |
 | 70–7F | Jcc rel8 (all 16 conditions) | `neogs_sub/x86_exec.asm` |
 | 50–57 | PUSH r16 | `neogs_sub/x86_exec.asm` |
 | 58–5F | POP r16 | `neogs_sub/x86_exec.asm` |
@@ -60,7 +60,7 @@ Later 80186/286/386 instructions are not part of the target CPU.
 | C0–C3 | RET near aliases / RET imm16 | `neogs_sub/x86_exec.asm` |
 | CC–CF | INT3, INT imm8, INTO, IRET | `neogs_sub/x86_exec.asm` + `x86_modrm.asm` |
 | C4–C5 | LES, LDS far-pointer loads | `neogs_sub/x86_exec.asm` + `x86_modrm.asm` |
-| C6–C7 | MOV r/m8/16, immediate (ModR/M /0) | `neogs_sub/x86_exec.asm` + `x86_modrm.asm` |
+| C6–C7 | MOV r/m8/16, immediate (PCem applies the operation for every /n extension) | `neogs_sub/x86_exec.asm` + `x86_modrm.asm` |
 | C8–CB | RETF aliases / RETF imm16 | `neogs_sub/x86_exec.asm` |
 | 9C–9F | PUSHF, POPF, SAHF, LAHF | `neogs_sub/x86_exec.asm` |
 |  B0–B7 | MOV r8,imm8 (AL,CL,DL,BL,AH,CH,DH,BH) | `neogs_sub/x86_exec.asm` |
@@ -87,7 +87,7 @@ The 4 direct-offset MOV opcodes A0–A3 were added in commit `f8111740994d26d55c
 The 7 XCHG AX,r16 opcodes were added in commit `1a257238d23d31d897137518f6bfe47c5657ef13`.
 PUSH/POP segment-register instructions (`06h`, `07h`, `0Eh`, `16h`, `17h`, `1Eh`, `1Fh`) were added in commit `a823db1e33a008fba0467b532a70999b99d8bfaf`; POP SS sets the pending one-instruction interrupt-inhibit latch. DAA/DAS/AAA/AAS (`27h`, `2Fh`, `37h`, `3Fh`) were added in commit `676b8e9330c41bbbc6802825c7941cfa39498b86`, following the PCem 8086 adjustment rules for AF/CF and SZP handling.
 F6 Group 3 byte MUL/IMUL/DIV/IDIV extensions /4–/7 were added in commits `1d8ec38f0b2cd718f676307038f529686b98e77d`, `af57b8fc42c488abb62f8fb3595630fbcc04d7ff` and `082df6cdc7712d94c756d90cee5017db7259f162`. The byte divide helpers follow PCem's 8086 behavior: divide-by-zero enters vector 0; quotient is truncated to AL and remainder stored in AH. F7 word MUL/IMUL/DIV/IDIV /4–/7 were added in commits `5129127ff36913c344ffab5817fccefbdfdd5aa8` and `6ed4246737024ab41058591a3ce625c7e6e76b71`. The 16x16 multiply and 32/16 restoring divide paths preserve the PCem 8086 quotient truncation behavior; divide-by-zero enters vector 0. Group 3 /0–/7 is now covered for both F6 byte and F7 word forms.
-FE/FF Group 4/5 support was added in commits `5c233c9c56feeab5d15968fcbd27395012f41678` and `5f600de347b07ec1229d53bf6b6e8d71455be7f4`: FE /0-/1 byte INC/DEC; FF /0-/1 word INC/DEC, /2 near CALL, /3 far memory CALL, /4 near JMP, /5 far memory JMP and /6 PUSH r/m16. INC/DEC preserve CF; far pointer forms require memory operands.
+FE/FF Group 4/5 support was added in commits `5c233c9c56feeab5d15968fcbd27395012f41678` and `5f600de347b07ec1229d53bf6b6e8d71455be7f4`: FE /0 byte INC and /1-/7 byte DEC (PCem treats any nonzero extension as DEC); FF /0-/1 word INC/DEC, /2 near CALL, /3 far memory CALL, /4 near JMP, /5 far memory JMP, /6 PUSH r/m16; /7 consumes ModR/M and does nothing as in PCem. INC/DEC preserve CF; far pointer forms require memory operands.
 Group 1 immediate opcodes `80h`–`83h` were added in commits `dcc8af7fe1a5b73b9e40194eed658802d9ff0952` and `35e8ae8d1e5c91e710cdedf8d3fd08ba27d19a46`. The /0–/7 extension field selects ADD/OR/ADC/SBB/AND/SUB/XOR/CMP; 83h sign-extends its byte immediate to 16 bits. ADC (`10h`–`15h`) and SBB (`18h`–`1Dh`) register/memory and accumulator-immediate forms were added in commits `e77b5e31087e6788953463acde4c2f4042254930`, `74927444438a57edc7d2a27fa09235278db9e31e` and `d8fd9af6bae2b70887404d38871e0a39465e2e22`. They capture guest CF as carry/borrow input and propagate it across both bytes for word operations. OR (`08h`–`0Dh`), AND (`20h`–`25h`), XOR (`30h`–`35h`) and TEST (`84h`–`85h`) were added in commits `12c177661869d3d463f141afa32c55287759a7b2`, `8e06a7f2a163ddbf8373e446689250a119a6ba06` and `02819be2c824700714656cf5b02a59f149edde9f`. Logical operations update SF/ZF/PF and clear CF/AF/OF; TEST does not write its destination. ADD (`00h`–`05h`), SUB (`28h`–`2Dh`) and CMP (`38h`–`3Dh`) register/memory and accumulator-immediate forms were added in commits `8861c3c510e0792d9187f13ef9867b8b9c3ed9f3` and `413d98ac389b7ad25c3911ba8e7643e6ef4ac365`. They use the existing 8/16-bit ALU routines and ModR/M operand helpers; CMP updates flags without writing the destination.
 The 16 register INC/DEC opcodes were added in commits `75a3e69da4549ffe2f2346b86cac5d8263a61ca4` and `e4dfd3b34d26c778e4a8029484ad67b76c560e83`. INC/DEC use the existing 16-bit ALU flag engine and explicitly preserve CF.
 
@@ -99,7 +99,7 @@ Group 2 shift/rotate opcodes D0h–D3h were added in commits `c3908954816b2cecea
 
 String opcodes A4h–A7h and AAh–AFh are implemented with SI/DI updates controlled by DF, ES-fixed destinations, and DS/segment-override sources. REP/REPE/REPNE loops decrement CX and apply ZF termination for CMPS/SCAS. Repetition currently runs within one interpreter step; interrupt servicing between individual repeated iterations remains pending.
 
-The 8Eh MOV Sreg,r/m16 handler accepts the CS selector (/1), matching PCem's original 8086 path; this encoding differs from later x86 profiles. SS loads arm the one-instruction IRQ-inhibit latch.
+The 8Eh MOV Sreg,r/m16 handler accepts the CS selector (/1), matching PCem's original 8086 path; this encoding differs from later x86 profiles. Reserved /4-/7 selectors are ignored as in PCem. The 8Ch handler likewise ignores /4-/7. SS loads arm the one-instruction IRQ-inhibit latch.
 
 The instruction entry now consumes segment override (`26h`, `2Eh`, `36h`, `3Eh`), LOCK/LOCK alias (`F0h`/`F1h`) and REPNE/REP (`F2h`/`F3h`) prefixes before dispatch. Segment overrides are applied to ModR/M effective addresses and direct-offset/XLAT data accesses. REP state is recorded for string execution; LOCK state is recorded, with no external bus-lock side effect in the single-guest-CPU model. REP string execution is still pending.
 
