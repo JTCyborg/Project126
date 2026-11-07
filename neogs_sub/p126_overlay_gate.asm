@@ -325,6 +325,20 @@ x86_io_log_access:
         pop     ix
         ret
 
+; One-shot BIOS watchdog memory dump through the fixed-origin X86IO overlay.
+x86_io_dump_bios_table:
+        push    af
+        push    ix
+        ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
+        ld      (p126_overlay_request_selector),a
+        pop     ix
+        pop     af
+        push    ix
+        ld      ix,x86_io_dump_bios_table_impl
+        call    p126_overlay_call
+        pop     ix
+        ret
+
 ; Nested-call regression entry: page04 X86IO -> page05 X86ALU.
 ; Returns A=08h when the page05 ADD8 implementation returned correctly.
 x86_io_overlay_nested_gate_probe:
