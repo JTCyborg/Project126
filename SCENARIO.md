@@ -1424,3 +1424,10 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 - A Spectrum/ATM port-FE bit-4 beeper output is a candidate, but the exact ATM Turbo 2+ output path and a non-blocking high-rate timer/interrupt source must be confirmed before implementing a host driver. A 50 Hz frame interrupt is insufficient; a busy-wait in the host main loop is prohibited.
 - Detailed interface, proposed AUDIO event payload, fail-silent rules and acceptance tests: `docs/PC_SPEAKER_ATM.md`.
 - Status: DESIGN DOCUMENTED; guest PIT/PPI audio behavior, IPC event delivery, ATM waveform generation and real-hardware sound test are NOT IMPLEMENTED.
+
+
+## 2026-11-07 — BIOS table trace extension and 8237 DMA readback fix
+
+- Reviewed the latest target trace from `spectrum_out.txt`. The 256-instruction diagnostic stop occurred at `F000:E076` with `SI=E0B8`; the BIOS had read the `F2 08` pair and had not yet consumed the following `B9 00` pair or the second table terminator at `F000:E0BA`. This is a deliberate watchdog stop, not evidence of a stuck BIOS loop. Increased the temporary trace window to 512 instructions so the next run can show the table exit and subsequent BIOS initialization. The watchdog remains diagnostic and is not a POST pass.
+- Found the concrete cause of `X86 DMA FAIL: ADDRESS READ/FLIPFLOP` in `neogs_sub/x86_devices.asm`: `x86_dev_dma_read8` loaded the guest register byte into A, then called `x86_dev_dma_toggle_flipflop`, which overwrote A with the flip-flop state. Consequently, the self-test read the pointer bit instead of the address byte. The read handler now preserves AF across the toggle helper and returns the original byte; the low/high flip-flop sequencing remains unchanged.
+- Validation required on the next target run: expect `X86 DMA REGISTER SELFTEST PASS` if no additional issue is exposed; BIOS trace should progress beyond the two port-table terminators. Build validation is pending. No BIOS POST pass or complete DMA transfer engine is claimed.
