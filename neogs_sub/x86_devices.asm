@@ -385,10 +385,12 @@ x86_dev_pit_write8:
         or      a
         jp      nz,.pit_write_done
 .pit_write_update_out:
-        ; PCem pit_load(): channel 2 OUT changes on a complete count load.
+        ; PCem pit_load(): channel 2 becomes active after a complete count.
         ld      a,(x86_dev_pit_channel)
         cp      2
         jp      nz,.pit_write_done
+        ld      a,1
+        ld      (x86_dev_pit_loaded2),a
         ld      a,(x86_dev_pit_mode+2)
         cp      2
         jr      z,.pit_write_out_high
@@ -481,6 +483,8 @@ x86_dev_pit_write8:
         ld      a,(x86_dev_pit_channel)
         cp      2
         jr      nz,.pit_control_done
+        xor     a
+        ld      (x86_dev_pit_loaded2),a
         ld      a,(x86_dev_pit_mode+2)
         or      a
         jr      z,.pit_control_out_low
@@ -567,6 +571,45 @@ x86_dev_pit_reset_impl:
         ld      (x86_dev_pit_read_value),a
         ld      (x86_dev_pit_write_value),a
         ld      (x86_dev_pit_out2),a
+        ld      (x86_dev_pit_gate2),a
+        ld      (x86_dev_pit_loaded2),a
+        ret
+
+; PCem pit_set_gate() edge behavior for XT speaker channel 2.
+; A=PB0/GATE2 level. No clock is advanced by this static pin model.
+x86_dev_pit_gate2_write:
+        and     1
+        ld      b,a
+        ld      a,(x86_dev_pit_gate2)
+        cp      b
+        ret     z
+        ld      a,b
+        ld      (x86_dev_pit_gate2),a
+        or      a
+        ret     z                       ; falling edge only gates the counter
+        ld      a,(x86_dev_pit_loaded2)
+        or      a
+        ret     z                       ; PCem disabled[]: latch gate only
+        ld      a,(x86_dev_pit_mode+2)
+        cp      1
+        jr      z,.pit_gate_out_low
+        cp      5
+        jr      z,.pit_gate_out_low
+        cp      2
+        jr      z,.pit_gate_out_high
+        cp      3
+        jr      z,.pit_gate_out_high
+        or      a
+        ret
+.pit_gate_out_low:
+        xor     a
+        ld      (x86_dev_pit_out2),a
+        or      a
+        ret
+.pit_gate_out_high:
+        ld      a,1
+        ld      (x86_dev_pit_out2),a
+        or      a
         ret
 
 ; Reset-time regression for channel 0 LSB/MSB, latch/readback and channel 1 LSB.
@@ -669,6 +712,29 @@ x86_dev_pit_selftest_impl:
         ld      a,#00
         call    x86_dev_pit_write8
         jp      c,.pit_selftest_fail
+        ld      a,(x86_dev_pit_out2)
+        or      a
+        jp      nz,.pit_selftest_fail
+        ; PCem modes 1/5 are retriggered by a GATE rising edge and drive
+        ; OUT low. Control word alone must not mark the counter loaded.
+        ld      hl,#0043
+        ld      (x86_dev_port),hl
+        ld      a,#B2
+        call    x86_dev_pit_write8
+        jp      c,.pit_selftest_fail
+        ld      a,(x86_dev_pit_out2)
+        cp      1
+        jp      nz,.pit_selftest_fail
+        ld      hl,#0042
+        ld      (x86_dev_port),hl
+        ld      a,#10
+        call    x86_dev_pit_write8
+        jp      c,.pit_selftest_fail
+        xor     a
+        call    x86_dev_pit_write8
+        jp      c,.pit_selftest_fail
+        ld      a,1
+        call    x86_dev_pit_gate2_write
         ld      a,(x86_dev_pit_out2)
         or      a
         jp      nz,.pit_selftest_fail
@@ -1119,6 +1185,8 @@ x86_dev_pit_read_value: db 0
 x86_dev_pit_write_value: db 0
 ; Static channel-2 OUT pin observed by XT port 62h bit 5.
 x86_dev_pit_out2: db 0
+x86_dev_pit_gate2: db 0
+x86_dev_pit_loaded2: db 0
 x86_dev_pit_selftest_pass: db "[NGS] X86 PIT REGISTER SELFTEST PASS",13,10,0
 x86_dev_pit_selftest_fail: db "[NGS] X86 PIT REGISTER SELFTEST FAIL",13,10,0
 x86_dev_dma_selftest_fail: db "[NGS] X86 DMA REGISTER SELFTEST FAIL",13,10,0
