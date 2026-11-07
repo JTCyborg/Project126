@@ -998,8 +998,6 @@ p126_ngs_overlay_win2_selftest:
         jr      .overlay_win2_test_restore_maps
 
 .overlay_win2_test_failed:
-        ; Emit the exact failed phase before restoring the physical pages.
-        call    p126_ngs_overlay_log_test_failure
         ; Best-effort restoration even when one WIN2 selector is incorrect.
         ld      a,P126_NGS_X86IO_OVERLAY_PAGE
         rrca
