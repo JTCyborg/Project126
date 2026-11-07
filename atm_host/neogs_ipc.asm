@@ -698,6 +698,125 @@ p126_ipc_dma_receive_test::
 p126_ipc_dma_rx_stage: db 0
 p126_ipc_dma_rx_error: db 0
 
+; -------------------------------------------------------------------------
+; Receive and render the one-shot 8086 BIOS stop event.
+; The request is the existing E1 reverse-DMA control command. Payload bytes
+; travel only through ZX DMA; DBIT/GSDAT are not used for diagnostics.
+; OUT: carry clear when a valid event frame was rendered.
+; -------------------------------------------------------------------------
+p126_ipc_dma_receive_debug_frame::
+        ld      a,P126_CMD_NGS_FRAME
+        call    p126_ipc_send_command
+        jr      c,.debug_dma_failed
+
+        ; Reverse DMA reads the complete 16 KiB frame from the ROM aperture.
+        ; The first aperture read is discarded by the documented GS ABI.
+        di
+        ld      hl,0
+        ld      a,(hl)
+        ld      hl,0
+        ld      de,P126_IPC_DMA_RX_BUFFER
+        ld      bc,P126_IPC_MAX_FRAME_SIZE
+        ldir
+
+        ld      a,P126_CMD_DMA_END
+        call    p126_ipc_send_command
+        jr      c,.debug_dma_failed
+
+        ld      hl,P126_IPC_DMA_RX_BUFFER
+        ld      bc,P126_IPC_MAX_FRAME_SIZE
+        call    p126_ipc_validate_frame
+        jr      c,.debug_dma_failed
+
+        ; Decode the compact stop event from the first five payload bytes.
+        ld      a,(P126_IPC_DMA_RX_BUFFER+P126_IPC_HEADER_SIZE)
+        cp      1
+        jr      z,.debug_budget
+        cp      2
+        jr      z,.debug_halted
+        cp      3
+        jr      z,.debug_fault
+        cp      4
+        jr      z,.debug_reset_fault
+        ld      hl,p126_ipc_debug_event_missing
+        jr      .debug_render
+.debug_budget:
+        ld      hl,p126_ipc_debug_budget
+        jr      .debug_render
+.debug_halted:
+        ld      hl,p126_ipc_debug_halted
+        jr      .debug_render
+.debug_fault:
+        ld      hl,p126_ipc_debug_fault
+        jr      .debug_render
+.debug_reset_fault:
+        ld      hl,p126_ipc_debug_reset_fault
+.debug_render:
+        call    p126_ipc_console_string
+        ld      hl,(P126_IPC_DMA_RX_BUFFER+P126_IPC_HEADER_SIZE+1)
+        call    p126_ipc_console_hex16
+        ld      a,':'
+        call    BIOS_DebugConsole_PrintChar
+        ld      hl,(P126_IPC_DMA_RX_BUFFER+P126_IPC_HEADER_SIZE+3)
+        call    p126_ipc_console_hex16
+        ld      a,13
+        call    BIOS_DebugConsole_PrintChar
+        ld      a,10
+        call    BIOS_DebugConsole_PrintChar
+        or      a
+        ret
+
+.debug_dma_failed:
+        ld      hl,p126_ipc_debug_dma_failed
+        call    p126_ipc_console_string
+        scf
+        ret
+
+p126_ipc_console_string:
+        ld      a,(hl)
+        or      a
+        ret     z
+        push    hl
+        call    BIOS_DebugConsole_PrintChar
+        pop     hl
+        inc     hl
+        jr      p126_ipc_console_string
+
+p126_ipc_console_hex16:
+        ld      a,h
+        call    p126_ipc_console_hex8
+        ld      a,l
+        jp      p126_ipc_console_hex8
+
+p126_ipc_console_hex8:
+        ld      (p126_ipc_console_hex_byte),a
+        rrca
+        rrca
+        rrca
+        rrca
+        and     #0F
+        call    p126_ipc_console_hex_nibble
+        ld      a,(p126_ipc_console_hex_byte)
+        and     #0F
+        jp      p126_ipc_console_hex_nibble
+
+p126_ipc_console_hex_nibble:
+        and     #0F
+        add     a,'0'
+        cp      '9'+1
+        jr      c,.console_hex_emit
+        add     a,7
+.console_hex_emit:
+        jp      BIOS_DebugConsole_PrintChar
+
+p126_ipc_console_hex_byte: db 0
+p126_ipc_debug_budget: db "[X86] BIOS PAUSED: 16-INSTRUCTION SLICE COMPLETE; CS:IP=",0
+p126_ipc_debug_halted: db "[X86] BIOS HALTED BY GUEST; CS:IP=",0
+p126_ipc_debug_fault: db "[X86] BIOS STOPPED: OPCODE OR MEMORY FAULT; CS:IP=",0
+p126_ipc_debug_reset_fault: db "[X86] BIOS RESET VECTOR FAILED; CS:IP=",0
+p126_ipc_debug_event_missing: db "[X86] BIOS TRACE EVENT MISSING; CS:IP=",0
+p126_ipc_debug_dma_failed: db "[X86] DIAGNOSTIC DMA FAILED",13,10,0
+
 ; Print A as two hexadecimal digits on ATM's independent #EF stream.
 ; Preserves AF and BC.
 p126_ipc_debug_hex_byte:
