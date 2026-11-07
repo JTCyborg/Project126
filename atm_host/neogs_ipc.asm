@@ -363,6 +363,76 @@ p126_ipc_crc16_test_vector:
         db "123456789"
 
 ; -------------------------------------------------------------------------
+; Fast ATM->NeoGS transmit preflight.
+; This is deliberately structural only: full CRC validation belongs to the
+; receiving NeoGS endpoint, after the Project125-compatible DMA LDIR.
+; IN: HL=frame pointer, BC=actual frame size.
+; OUT: carry clear/A=0 or carry set/A=status.
+; -------------------------------------------------------------------------
+p126_ipc_validate_tx_frame::
+        ld      (p126_ipc_frame_ptr),hl
+        ld      (p126_ipc_frame_size),bc
+        ld      a,b
+        or      a
+        jr      nz,.p126_tx_min_ok
+        ld      a,c
+        cp      P126_IPC_HEADER_SIZE
+        jp      c,.p126_tx_bad
+.p126_tx_min_ok:
+        ld      a,b
+        cp      #40
+        jp      nc,.p126_tx_bad
+        push    hl
+        pop     ix
+        ld      a,(ix+0)
+        cp      'P'
+        jp      nz,.p126_tx_magic
+        ld      a,(ix+1)
+        cp      '1'
+        jp      nz,.p126_tx_magic
+        ld      a,(ix+2)
+        cp      '2'
+        jp      nz,.p126_tx_magic
+        ld      a,(ix+3)
+        cp      '6'
+        jp      nz,.p126_tx_magic
+        ld      a,(ix+4)
+        cp      P126_IPC_MAJOR
+        jp      nz,.p126_tx_version
+        ld      a,(ix+5)
+        cp      P126_IPC_MINOR
+        jp      nz,.p126_tx_version
+        ld      a,(ix+6)
+        cp      P126_MSG_REQUEST
+        jp      nz,.p126_tx_bad
+        ld      a,(ix+9)
+        and     #F8
+        jp      nz,.p126_tx_bad
+        ; actual_size must equal header_size + declared_payload_length.
+        ld      l,(ix+12)
+        ld      h,(ix+13)
+        ld      de,P126_IPC_HEADER_SIZE
+        add     hl,de
+        ld      de,(p126_ipc_frame_size)
+        or      a
+        sbc     hl,de
+        jp      nz,.p126_tx_bad
+        xor     a
+        ret
+.p126_tx_magic:
+        ld      a,P126_STATUS_BAD_MAGIC
+        scf
+        ret
+.p126_tx_version:
+        ld      a,P126_STATUS_BAD_VERSION
+        scf
+        ret
+.p126_tx_bad:
+        ld      a,P126_STATUS_BAD_FRAME
+        scf
+        ret
+
+; -------------------------------------------------------------------------
 ; Emit a build/runtime identity to ATM's independent debug port #EF.
 ; Preserves AF, BC and HL.
 ; -------------------------------------------------------------------------
@@ -414,7 +484,11 @@ p126_ipc_dma_send_frame::
         call    p126_ipc_debug_string
         ld      hl,(p126_ipc_dma_source)
         ld      bc,(p126_ipc_dma_size)
-        call    p126_ipc_validate_frame
+        ; Match the proven Project125 host path: validate the frame envelope
+        ; here, but do not spend the transfer startup path recalculating the
+        ; complete 16 KiB CRC. The frame builder already wrote the CRC; NeoGS
+        ; performs the authoritative full CRC check after DMA reception.
+        call    p126_ipc_validate_tx_frame
         jr      nc,.p126_dma_frame_valid
         ld      (p126_ipc_dma_error),a
         push    af
@@ -661,8 +735,8 @@ p126_ipc_log_crc_expected:        db " FRAME CRC=",0
 p126_ipc_log_bad_magic_ptr: db "[ATM IPC] BAD MAGIC PTR=",0
 p126_ipc_log_bad_magic_data: db " DATA=",0
 p126_ipc_log_dma_tx_begin:        db "[ATM IPC] DMA TX BEGIN",13,10,0
-p126_ipc_log_dma_tx_validate_ok:  db "[ATM IPC] FRAME VALID",13,10,0
-p126_ipc_log_dma_tx_validate_bad: db "[ATM IPC] FRAME VALIDATION FAILED",13,10,0
+p126_ipc_log_dma_tx_validate_ok:  db "[ATM IPC] FRAME STRUCTURE VALID",13,10,0
+p126_ipc_log_dma_tx_validate_bad: db "[ATM IPC] FRAME STRUCTURE INVALID",13,10,0
 p126_ipc_log_dma_tx_e0:           db "[ATM IPC] SEND E0",13,10,0
 p126_ipc_log_dma_tx_e0_timeout:   db "[ATM IPC] E0 ACK TIMEOUT",13,10,0
 p126_ipc_log_dma_tx_ready:        db "[ATM IPC] E0 ACK / READY",13,10,0
