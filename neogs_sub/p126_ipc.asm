@@ -783,14 +783,14 @@ p126_ngs_bios_image_ready:   db 0
 p126_ngs_image_id:           dw 0
 p126_ngs_image_verify_count: dw 0
 p126_ngs_image_verify_byte:  db 0
-p126_ngs_image_begin_log:    db "[NGS] SYSBIOS IMAGE BEGIN",13,10,0
-p126_ngs_image_fragment_log: db "[NGS] SYSBIOS IMAGE FRAGMENT",13,10,0
-p126_ngs_image_finish_log:   db "[NGS] SYSBIOS IMAGE FINISH",13,10,0
-p126_ngs_image_installed_log: db "[NGS] SYSBIOS IMAGE INSTALLED AT PAGE 10",13,10,0
-p126_ngs_image_verify_ok_log: db "[NGS] SYSBIOS PAGE 10 READBACK MATCH",13,10,0
-p126_ngs_image_begin_rejected_log: db "[NGS] SYSBIOS IMAGE BEGIN REJECTED",13,10,0
-p126_ngs_image_fragment_rejected_log: db "[NGS] SYSBIOS IMAGE FRAGMENT REJECTED",13,10,0
-p126_ngs_image_finish_rejected_log: db "[NGS] SYSBIOS IMAGE FINISH REJECTED",13,10,0
+p126_ngs_image_begin_log:    db "[NGS] IMG BEGIN",13,10,0
+p126_ngs_image_fragment_log: db "[NGS] IMG FRAG",13,10,0
+p126_ngs_image_finish_log:   db "[NGS] IMG FINISH",13,10,0
+p126_ngs_image_installed_log: db "[NGS] IMG PAGE10 OK",13,10,0
+p126_ngs_image_verify_ok_log: db "[NGS] PAGE10 READ OK",13,10,0
+p126_ngs_image_begin_rejected_log: db "[NGS] IMG BEGIN BAD",13,10,0
+p126_ngs_image_fragment_rejected_log: db "[NGS] IMG FRAG BAD",13,10,0
+p126_ngs_image_finish_rejected_log: db "[NGS] IMG FINISH BAD",13,10,0
 
 ; Standard CRC-16/CCITT-FALSE regression vector.
 ; OUT: Carry clear and HL=#29B1 on pass; Carry set on failure.
@@ -827,24 +827,24 @@ p126_ngs_ipc_crc16_test_vector:
 p126_ngs_ipc_log_dma_e0:          db "[NGS] DMA E0 RECEIVED",13,10,0
 p126_ngs_ipc_log_dma_cfg_begin:   db "[NGS] DMA CONFIG BEGIN",13,10,0
 p126_ngs_ipc_log_dma_armed:       db "[NGS] DMA ARMED",13,10,0
-p126_ngs_ipc_log_dma_ready:       db "[NGS] DMA READY / CBIT RELEASED",13,10,0
-p126_ngs_ipc_log_dma_host_end:    db "[NGS] DMA HOST END DETECTED",13,10,0
+p126_ngs_ipc_log_dma_ready:       db "[NGS] DMA READY",13,10,0
+p126_ngs_ipc_log_dma_host_end:    db "[NGS] DMA HOST END",13,10,0
 p126_ngs_ipc_log_dma_timeout:     db "[NGS] DMA WAIT TIMEOUT",13,10,0
-p126_ngs_ipc_log_bad_length:      db "[NGS] DMA FRAME LENGTH INVALID",13,10,0
+p126_ngs_ipc_log_bad_length:      db "[NGS] DMA BAD LENGTH",13,10,0
 p126_ngs_ipc_log_dma_stopped:     db "[NGS] DMA STOPPED",13,10,0
-p126_ngs_ipc_log_dma_page42_premapped: db "[NGS] DMA PRODUCTION PAGE 42 PRE-MAPPED",13,10,0
-p126_ngs_ipc_log_dma_page42_mapped: db "[NGS] DMA PRODUCTION PAGE 42 STILL MAPPED",13,10,0
+p126_ngs_ipc_log_dma_page42_premapped: db "[NGS] DMA PAGE42 PREMAP",13,10,0
+p126_ngs_ipc_log_dma_page42_mapped: db "[NGS] DMA PAGE42 MAPPED",13,10,0
 p126_ngs_ipc_log_dma_end:         db "[NGS] DMA END RECEIVED",13,10,0
 p126_ngs_ipc_log_dma_addr:        db "[NGS] DMA ADDR READBACK=",0
 p126_ngs_ipc_log_rx_header:       db "[NGS] DMA RX HEADER=",0
 p126_ngs_ipc_log_frame_valid:     db "[NGS] DMA FRAME VALID",13,10,0
 p126_ngs_ipc_log_frame_rejected:  db "[NGS] DMA FRAME REJECTED STATUS=",0
-p126_ngs_ipc_log_dma_rx_request: db "[NGS] DMA RX MAX FRAME REQUESTED",13,10,0
-p126_ngs_ipc_log_dma_rx_armed:   db "[NGS] DMA RX MAX FRAME ARMED",13,10,0
-p126_ngs_ipc_log_dma_rx_end:     db "[NGS] DMA RX MAX FRAME HOST END",13,10,0
+p126_ngs_ipc_log_dma_rx_request: db "[NGS] DMA RX REQ",13,10,0
+p126_ngs_ipc_log_dma_rx_armed:   db "[NGS] DMA RX ARMED",13,10,0
+p126_ngs_ipc_log_dma_rx_end:     db "[NGS] DMA RX END",13,10,0
 p126_ngs_ipc_log_dma_rx_addr:    db "[NGS] DMA RX ADDR READBACK=",0
-p126_ngs_ipc_log_dma_rx_timeout: db "[NGS] DMA RX MAX FRAME TIMEOUT",13,10,0
-p126_ngs_ipc_log_dma_rx_length_bad: db "[NGS] DMA RX MAX FRAME LENGTH INVALID",13,10,0
+p126_ngs_ipc_log_dma_rx_timeout: db "[NGS] DMA RX TIMEOUT",13,10,0
+p126_ngs_ipc_log_dma_rx_length_bad: db "[NGS] DMA RX BAD LENGTH",13,10,0
 
 ; Emit CR/LF on NeoGS's independent #EF diagnostic channel.
 p126_ngs_ipc_log_crlf:
