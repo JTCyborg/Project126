@@ -93,8 +93,11 @@ P126_CRC16_CHECK_L        EQU #B1
 ; IMAGE service v1.0 fixed image profiles.
 ; SYSBIOS: 8 KiB image to physical page 10h.
 ; X86IO: fixed-origin 8000h overlay to physical page 04h, maximum 4 KiB.
+; X86ALU: fixed-origin 8000h overlay to physical page 05h, maximum 4 KiB.
 P126_IMAGE_KIND_SYSBIOS      EQU #00
 P126_IMAGE_KIND_X86IO        EQU #01
+P126_IMAGE_KIND_X86ALU       EQU #02
 P126_IMAGE_X86IO_MAX_SIZE    EQU #1000
+P126_IMAGE_X86ALU_MAX_SIZE   EQU #1000
 P126_IMAGE_SYSBIOS_SIZE      EQU #2000
 P126_IMAGE_FRAGMENT_EXT_SIZE EQU 10
