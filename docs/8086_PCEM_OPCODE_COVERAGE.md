@@ -8,8 +8,8 @@ Later 80186/286/386 instructions are not part of the target CPU.
 
 - Denominator: 256 possible opcode-byte values in the documented original 8086 opcode map, including the 8087 ESC opcode range and undocumented 8086-compatible values where PCem has an execution path.
 - Numerator: opcode-byte values with a concrete execution path in the Project126 dispatcher.
-- Current numerator: 234.
-- **Opcode-byte dispatch coverage: 234 / 256 = 91.41%.**
+- Current numerator: 242.
+- **Opcode-byte dispatch coverage: 242 / 256 = 94.53%.**
 - This is a source-coverage metric, not a claim of full semantic correctness. ModR/M forms, memory addressing, prefixes, flags, interrupt behavior and corner cases are tracked separately and must also be complete before the CPU is called 100%.
 - An instruction family is not considered complete merely because one opcode in the family is present.
 
@@ -63,6 +63,7 @@ Later 80186/286/386 instructions are not part of the target CPU.
 |  B0–B7 | MOV r8,imm8 (AL,CL,DL,BL,AH,CH,DH,BH) | `neogs_sub/x86_exec.asm` |
 |  B8–BF | MOV r16,imm16 (AX,CX,DX,BX,SP,BP,SI,DI) | `neogs_sub/x86_exec.asm` |
 | E0–E3 | LOOPNE, LOOPE, LOOP, JCXZ | `neogs_sub/x86_exec.asm` |
+| E4–E7, EC–EF | IN/OUT immediate-port and DX-port byte/word forms | `neogs_sub/x86_exec.asm` + `x86_io.asm` |
 | E8 | CALL rel16 | `neogs_sub/x86_exec.asm` |
 | E9 | JMP rel16 | `neogs_sub/x86_exec.asm` |
 | EA | JMP ptr16:16 | `neogs_sub/x86_exec.asm` |
@@ -88,6 +89,7 @@ The 16 register INC/DEC opcodes were added in commits `75a3e69da4549ffe2f2346b86
 
 ## Decoder foundation
 
+IN/OUT opcodes E4h–E7h and ECh–EFh were added in commits `4c42f31171d5227d46aac919ced64d390c604477`, `82c8bdd429796fab4b8326b5be27fb873fdabda7` and `5191f19be7ba4bd13b88bd7c16d50de87ced4b40`. They route only through the software virtual I/O backend: port 00E0h is a deterministic test latch and unmapped reads return FFh/FFFFh; no physical NeoGS IN/OUT is issued. External device bridging through DMA/IPC remains pending.
 Group 2 shift/rotate opcodes D0h–D3h were added in commits `c3908954816b2cecea231c97ed79e5c19e2ac19f` and `27abfc5b6df962c34880658765d283764f690e39`. The implementation uses unmasked 8086 CL counts, preserves flags for zero count, and applies per-operation CF/OF/SZP/AF updates. Software interrupt instructions INT3/INT/INTO and IRET (`CCh`–`CFh`) were added in commit `d614503ad5e6cff3d15c957416a1036cabeb2ad8`. Interrupt entry pushes FLAGS|F000, CS and post-instruction IP, clears IF/TF, then loads IP:CS from the guest IVT; IRET restores IP, CS and the 8086 FLAGS image. Asynchronous NMI and maskable IRQ boundary checks are now present: NMI uses vector 2; IRQ requires IF and uses `x86_irq_vector` (reset default 8); HLT is released by accepted interrupts. MOV SS, POP SS and STI arm a one-instruction maskable-interrupt inhibit latch. The host/IPC event producer that sets pending IRQ/NMI and supplies the PIC vector is not yet connected.
 
 String opcodes A4h–A7h and AAh–AFh are implemented with SI/DI updates controlled by DF, ES-fixed destinations, and DS/segment-override sources. REP/REPE/REPNE loops decrement CX and apply ZF termination for CMPS/SCAS. Repetition currently runs within one interpreter step; interrupt servicing between individual repeated iterations remains pending.
