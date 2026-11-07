@@ -948,8 +948,8 @@ x86_io_log_out:       db "OUT",0
 x86_io_log_port_text: db " P=",0
 x86_io_log_value_text: db " V=",0
 x86_io_log_at_text:  db " @",0
-x86_io_bios_table_prefix: db "[BIOS TABLE] E0A8=",0
-x86_io_bios_table_data_text: db " DATA=",0
+x86_io_bios_table_prefix: db "[BIOS TABLE] CURSOR=",0
+x86_io_bios_table_data_text: db " DATA@E0A8=",0
 x86_io_pic_selftest_pass: db "[NGS] X86 PIC REGISTER SELFTEST PASS",13,10,0
 x86_io_pic_selftest_fail: db "[NGS] X86 PIC REGISTER SELFTEST FAIL",13,10,0
 
