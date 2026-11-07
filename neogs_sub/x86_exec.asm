@@ -510,6 +510,7 @@ x86_exec_adc_sbb_family:
         and     1
         ld      b,a
         ld      a,(x86_reg_ax)
+        ld      (x86_exec_adc_sbb_lhs8),a
         call    x86_exec_adc_sbb8
         ld      (x86_reg_ax),a
         or      a
@@ -519,6 +520,7 @@ x86_exec_adc_sbb_family:
         ret     c
         ex      de,hl
         ld      hl,(x86_reg_ax)
+        ld      (x86_exec_adc_sbb_lhs16),hl
         ld      a,(x86_reg_flags)
         and     1
         ld      b,a
@@ -529,14 +531,18 @@ x86_exec_adc_sbb_family:
 
 ; Dispatch wrappers preserve the common A/C or HL/DE operand contracts.
 x86_exec_adc_sbb8:
+        ld      (x86_exec_adc_sbb_lhs8),a
         ld      a,(x86_exec_alu_is_sbb)
         or      a
+        ld      a,(x86_exec_adc_sbb_lhs8)
         jp      nz,x86_alu_sbb8
         jp      x86_alu_adc8
 
 x86_exec_adc_sbb16:
+        ld      (x86_exec_adc_sbb_lhs16),hl
         ld      a,(x86_exec_alu_is_sbb)
         or      a
+        ld      hl,(x86_exec_adc_sbb_lhs16)
         jp      nz,x86_alu_sbb16
         jp      x86_alu_adc16
 
@@ -1957,6 +1963,8 @@ x86_exec_alu_result16: dw 0
 x86_exec_alu_is_cmp: db 0
 x86_exec_alu_operation: db 0
 x86_exec_alu_is_sbb: db 0
+x86_exec_adc_sbb_lhs8: db 0
+x86_exec_adc_sbb_lhs16: dw 0
 x86_exec_mov_byte: db 0
 x86_exec_sreg_opcode: db 0
 x86_exec_sreg_index: db 0
