@@ -95,7 +95,7 @@ VGA BIOS is a separate image and is not one of these three system BIOS choices. 
 
 - Runtime RAM/ROM/VGA read and write handlers.
 - VGA register/plane/latch implementation and renderer.
-- PIT/DMA/page registers/VGA/RTC/IDE/FDC device emulation; PIC IRQ generation/CPU acknowledge and complete PPI/keyboard electrical behavior.
+- PIT/VGA/RTC/IDE/FDC device emulation; DMA transfer engine and FDC/IDE request service; PIC IRQ0/timer source and complete PPI/keyboard electrical behavior.
 - Guest BIOS banking for images larger than 8 KiB.
 - ATM-side physical I/O request service handlers.
 - BIOS POST/boot validation on NeoGS.
@@ -103,6 +103,15 @@ VGA BIOS is a separate image and is not one of these three system BIOS choices. 
 A source-level address map and compile-time assertions are not BUILD/EMULATOR/HARDWARE PASS for those runtime components.
 
 
+
+### DMA 8237 register-model status
+
+A register-level 8237-compatible controller slice is implemented in `neogs_sub/x86_io.asm`:
+- Ports 00h–07h: four channel address/count pairs with the shared low/high-byte flip-flop.
+- Ports 08h–0Fh: status/terminal-count read, command, software request, single-channel mask, mode, clear flip-flop, master clear, clear mask and all-mask write.
+- Ports 80h–83h: channel page registers.
+- Reset-time self-test checks channel 0 address=1234h and count=5678h low/high programming/readback, channel 1 page register 81h, channel 2 mask/unmask commands and master-clear state.
+- Still pending: DMA bus transfer engine, channel arbitration/DRQ from devices, terminal-count generation, auto-initialize, memory-to-memory mode, FDC/IDE integration and forwarding transfer requests through DMA/IPC. This is not yet a functioning disk DMA path.
 
 ### PIC 8259A master register-model status
 
