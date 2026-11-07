@@ -8,8 +8,8 @@ Later 80186/286/386 instructions are not part of the target CPU.
 
 - Denominator: 256 possible opcode-byte values in the documented original 8086 opcode map, including the 8087 ESC opcode range and undocumented 8086-compatible values where PCem has an execution path.
 - Numerator: opcode-byte values with a concrete execution path in the Project126 dispatcher.
-- Current numerator: 242.
-- **Opcode-byte dispatch coverage: 242 / 256 = 94.53%.**
+- Current numerator: 245.
+- **Opcode-byte dispatch coverage: 245 / 256 = 95.70%.**
 - This is a source-coverage metric, not a claim of full semantic correctness. ModR/M forms, memory addressing, prefixes, flags, interrupt behavior and corner cases are tracked separately and must also be complete before the CPU is called 100%.
 - An instruction family is not considered complete merely because one opcode in the family is present.
 
@@ -31,6 +31,8 @@ Later 80186/286/386 instructions are not part of the target CPU.
 | A0–A3 | MOV AL/AX to/from direct DS offset (moffs16) | `neogs_sub/x86_exec.asm` |
 | A8–A9 | TEST AL/AX, immediate | `neogs_sub/x86_exec.asm` |
 | D0–D3 | Group 2 ROL/ROR/RCL/RCR/SHL/SHR/SAR byte/word | `neogs_sub/x86_exec.asm` + `x86_modrm.asm` |
+| D4–D6 | AAM, AAD, SALC | `neogs_sub/x86_exec.asm` |
+| D8–DF | ESC ModR/M decode; no-8087 operation ignored | `neogs_sub/x86_exec.asm` + `x86_modrm.asm` |
 | D7 | XLAT | `neogs_sub/x86_exec.asm` |
 | 10–15 | ADC r/m,r and AL/AX, immediate | `neogs_sub/x86_exec.asm` + `x86_alu.asm` + `x86_modrm.asm` |
 | 18–1D | SBB r/m,r and AL/AX, immediate | `neogs_sub/x86_exec.asm` + `x86_alu.asm` + `x86_modrm.asm` |
@@ -89,6 +91,7 @@ The 16 register INC/DEC opcodes were added in commits `75a3e69da4549ffe2f2346b86
 
 ## Decoder foundation
 
+AAM/AAD (`D4h`/`D5h`) and undocumented SALC (`D6h`) were added in commits `4aa0a0f00c18897c388126fff512b0d1e9e61793` and `21a49ef2278fa98ac62274e5dd0d24ae4a92ebf1`. AAM base zero routes through divide-error vector 0. ESC (`D8h`–`DFh`) decodes ModR/M/displacement and performs no coprocessor action because Project126 has no 8087.
 IN/OUT opcodes E4h–E7h and ECh–EFh were added in commits `4c42f31171d5227d46aac919ced64d390c604477`, `82c8bdd429796fab4b8326b5be27fb873fdabda7` and `5191f19be7ba4bd13b88bd7c16d50de87ced4b40`. They route only through the software virtual I/O backend: port 00E0h is a deterministic test latch and unmapped reads return FFh/FFFFh; no physical NeoGS IN/OUT is issued. External device bridging through DMA/IPC remains pending.
 Group 2 shift/rotate opcodes D0h–D3h were added in commits `c3908954816b2cecea231c97ed79e5c19e2ac19f` and `27abfc5b6df962c34880658765d283764f690e39`. The implementation uses unmasked 8086 CL counts, preserves flags for zero count, and applies per-operation CF/OF/SZP/AF updates. Software interrupt instructions INT3/INT/INTO and IRET (`CCh`–`CFh`) were added in commit `d614503ad5e6cff3d15c957416a1036cabeb2ad8`. Interrupt entry pushes FLAGS|F000, CS and post-instruction IP, clears IF/TF, then loads IP:CS from the guest IVT; IRET restores IP, CS and the 8086 FLAGS image. Asynchronous NMI and maskable IRQ boundary checks are now present: NMI uses vector 2; IRQ requires IF and uses `x86_irq_vector` (reset default 8); HLT is released by accepted interrupts. MOV SS, POP SS and STI arm a one-instruction maskable-interrupt inhibit latch. The host/IPC event producer that sets pending IRQ/NMI and supplies the PIC vector is not yet connected.
 
