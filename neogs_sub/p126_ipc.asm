@@ -843,69 +843,107 @@ p126_ngs_image_finish:
         ret
 
 ; Runtime WIN2 selector/read-write test for physical pages 04h and 05h.
-; OUT: carry clear on success. WIN2 always returns mapped to X86IO/page 04h.
-; The tested byte is BFFFh (page offset 3FFFh), beyond the X86IO image and
-; restored on both success and failure. Code runs in WIN0, stack in WIN1.
+; WIN3/MPAGEX is the physical reference. For each page, compare its last
+; byte through WIN2/BFFFh and WIN3/CFFFh, write through WIN2, then read the
+; same physical byte through WIN3. Save/restore both bytes and return with
+; WIN2=page04 (X86IO), WIN3=page42 (production DMA staging).
+; OUT: carry clear on success.
 p126_ngs_overlay_win2_selftest:
+        ; Save the original last byte of physical page 04h via WIN3.
+        ld      a,P126_NGS_X86IO_OVERLAY_PAGE
+        rrca
+        out     (P126_NGS_MPAGEX_PORT),a
+        ld      a,(#CFFF)
+        ld      (p126_ngs_overlay_test_old04),a
+
+        ; WIN2 page 04h must expose the exact same physical byte.
         ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
         out     (P126_NGS_OVERLAY_WINDOW_PORT),a
         ld      a,(#BFFF)
-        ld      (p126_ngs_overlay_test_old04),a
+        ld      b,a
+        ld      a,(p126_ngs_overlay_test_old04)
+        cp      b
+        jr      nz,.overlay_win2_test_failed
 
+        ; Save the original last byte of physical page 05h via WIN3.
+        ld      a,P126_NGS_OVERLAY_TEST_PAGE
+        rrca
+        out     (P126_NGS_MPAGEX_PORT),a
+        ld      a,(#CFFF)
+        ld      (p126_ngs_overlay_test_old05),a
+
+        ; WIN2 page 05h must expose the same byte as WIN3/MPAGEX.
         ld      a,P126_NGS_OVERLAY_TEST_PAGE
         rrca
         out     (P126_NGS_OVERLAY_WINDOW_PORT),a
         ld      a,(#BFFF)
-        ld      (p126_ngs_overlay_test_old05),a
+        ld      b,a
+        ld      a,(p126_ngs_overlay_test_old05)
+        cp      b
+        jr      nz,.overlay_win2_test_failed
 
+        ; Verify writes through WIN2 are visible through WIN3 on page 05h.
         ld      a,#55
         ld      (#BFFF),a
+        ld      a,P126_NGS_OVERLAY_TEST_PAGE
+        rrca
+        out     (P126_NGS_MPAGEX_PORT),a
+        ld      a,(#CFFF)
+        cp      #55
+        jr      nz,.overlay_win2_test_failed
+
+        ; Verify writes through WIN2 are visible through WIN3 on page 04h.
         ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
         out     (P126_NGS_OVERLAY_WINDOW_PORT),a
         ld      a,#AA
         ld      (#BFFF),a
-
-        ld      a,P126_NGS_OVERLAY_TEST_PAGE
+        ld      a,P126_NGS_X86IO_OVERLAY_PAGE
         rrca
-        out     (P126_NGS_OVERLAY_WINDOW_PORT),a
-        ld      a,(#BFFF)
-        cp      #55
-        jr      nz,.overlay_win2_test_failed
-        ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
-        out     (P126_NGS_OVERLAY_WINDOW_PORT),a
-        ld      a,(#BFFF)
+        out     (P126_NGS_MPAGEX_PORT),a
+        ld      a,(#CFFF)
         cp      #AA
         jr      nz,.overlay_win2_test_failed
 
-        ; Restore both saved bytes and leave X86IO/page 04h mapped.
-        ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
-        out     (P126_NGS_OVERLAY_WINDOW_PORT),a
+        ; Restore both original physical bytes through WIN3.
+        ld      a,P126_NGS_X86IO_OVERLAY_PAGE
+        rrca
+        out     (P126_NGS_MPAGEX_PORT),a
         ld      a,(p126_ngs_overlay_test_old04)
-        ld      (#BFFF),a
+        ld      (#CFFF),a
         ld      a,P126_NGS_OVERLAY_TEST_PAGE
         rrca
-        out     (P126_NGS_OVERLAY_WINDOW_PORT),a
+        out     (P126_NGS_MPAGEX_PORT),a
         ld      a,(p126_ngs_overlay_test_old05)
-        ld      (#BFFF),a
-        ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
-        out     (P126_NGS_OVERLAY_WINDOW_PORT),a
+        ld      (#CFFF),a
+        jr      .overlay_win2_test_restore_maps
+
+.overlay_win2_test_failed:
+        ; Best-effort restoration even when one WIN2 selector is incorrect.
+        ld      a,P126_NGS_X86IO_OVERLAY_PAGE
+        rrca
+        out     (P126_NGS_MPAGEX_PORT),a
+        ld      a,(p126_ngs_overlay_test_old04)
+        ld      (#CFFF),a
+        ld      a,P126_NGS_OVERLAY_TEST_PAGE
+        rrca
+        out     (P126_NGS_MPAGEX_PORT),a
+        ld      a,(p126_ngs_overlay_test_old05)
+        ld      (#CFFF),a
+        call    p126_ngs_overlay_test_restore_maps
+        scf
+        ret
+
+.overlay_win2_test_restore_maps:
+        call    p126_ngs_overlay_test_restore_maps
         or      a
         ret
 
-.overlay_win2_test_failed:
-        ; Best-effort restoration even when one selector did not behave.
-        ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
-        out     (P126_NGS_OVERLAY_WINDOW_PORT),a
-        ld      a,(p126_ngs_overlay_test_old04)
-        ld      (#BFFF),a
-        ld      a,P126_NGS_OVERLAY_TEST_PAGE
+p126_ngs_overlay_test_restore_maps:
+        ld      a,P126_NGS_DMA_PAGE
         rrca
-        out     (P126_NGS_OVERLAY_WINDOW_PORT),a
-        ld      a,(p126_ngs_overlay_test_old05)
-        ld      (#BFFF),a
+        out     (P126_NGS_MPAGEX_PORT),a
         ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
         out     (P126_NGS_OVERLAY_WINDOW_PORT),a
-        scf
         ret
 
 p126_ngs_overlay_test_old04: db 0
