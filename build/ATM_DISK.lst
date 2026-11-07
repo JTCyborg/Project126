@@ -3226,63 +3226,108 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
 646++ 756A              ; staging window. The reverse-DMA test reuses this same buffer after TX.
 647++ 756A              p126_neogs_dma_smoke_test:
 647++ 756A
-648++ 756A 21 12 C0             ld      hl,p126_neogs_dma_test_frame+P126_IPC_HEADER_SIZE
-649++ 756D 01 EE 3F             ld      bc,P126_IPC_MAX_PAYLOAD
-650++ 7570 1E 00                ld      e,0
-651++ 7572              .p126_neogs_dma_fill:
-652++ 7572 7B                   ld      a,e
-653++ 7573 77                   ld      (hl),a
-654++ 7574 23                   inc     hl
-655++ 7575 1C                   inc     e
-656++ 7576 0B                   dec     bc
-657++ 7577 78                   ld      a,b
-658++ 7578 B1                   or      c
-659++ 7579 20 F7                jr      nz,.p126_neogs_dma_fill
-660++ 757B
-661++ 757B                      ; CRC-16/CCITT-FALSE over header[0..15] and all 16366 payload bytes.
-662++ 757B 21 FF FF             ld      hl,#FFFF
-663++ 757E 11 00 C0             ld      de,p126_neogs_dma_test_frame
-664++ 7581 06 10                ld      b,16
-665++ 7583              .p126_neogs_dma_crc_header:
-666++ 7583 1A                   ld      a,(de)
-667++ 7584 13                   inc     de
-668++ 7585 CD 45 67             call    p126_ipc_crc16_update
-669++ 7588 10 F9                djnz    .p126_neogs_dma_crc_header
-670++ 758A 13                   inc     de
-671++ 758B 13                   inc     de
-672++ 758C 01 EE 3F             ld      bc,P126_IPC_MAX_PAYLOAD
-673++ 758F              .p126_neogs_dma_crc_payload:
-674++ 758F 1A                   ld      a,(de)
-675++ 7590 13                   inc     de
-676++ 7591 CD 45 67             call    p126_ipc_crc16_update
-677++ 7594 0B                   dec     bc
-678++ 7595 78                   ld      a,b
-679++ 7596 B1                   or      c
-680++ 7597 20 F6                jr      nz,.p126_neogs_dma_crc_payload
-681++ 7599 22 10 C0             ld      (p126_neogs_dma_test_frame+P126_IPC_OFF_CRC),hl
-682++ 759C 21 00 C0             ld      hl,p126_neogs_dma_test_frame
-683++ 759F 01 00 40             ld      bc,P126_IPC_MAX_FRAME_SIZE
-684++ 75A2 C3 F2 68             jp      p126_ipc_dma_send_frame
-685++ 75A5
-686++ 75A5                      ORG     #C000
-687++ C000              p126_neogs_dma_test_frame:
-688++ C000 50 31 32 36          db      'P','1','2','6',P126_IPC_MAJOR,P126_IPC_MINOR
-688++ C004 01 00
-689++ C006 01 05 00 00          db      P126_MSG_REQUEST,P126_SERVICE_DIAGNOSTICS,P126_OP_DIAGNOSTIC,0
-690++ C00A 02 00                db      #02,#00              ; sequence = 2
-691++ C00C EE 3F                db      #EE,#3F              ; payload length = 3FEEh (16366 bytes)
-692++ C00E 00 00                db      #00,#00              ; status = OK
-693++ C010 00 00                db      #00,#00              ; CRC, filled at runtime
-694++ C012 00 00 00...          defs    P126_IPC_MAX_PAYLOAD,0
-695++ 0000                      ASSERT  p126_neogs_dma_test_frame = #C000
-696++ 0000                      ASSERT  p126_neogs_dma_test_frame + P126_IPC_MAX_FRAME_SIZE = #10000
-697++ 0000
+648++ 756A                      ; The ATM host TR-DOS file is packaged only through A800h. The
+649++ 756A                      ; C000h staging buffer is runtime RAM, not part of that file, so
+650++ 756A                      ; initialize every header byte explicitly on each test invocation.
+651++ 756A 21 00 C0             ld      hl,p126_neogs_dma_test_frame
+652++ 756D 3E 50                ld      a,'P'
+653++ 756F 77                   ld      (hl),a
+654++ 7570 23                   inc     hl
+655++ 7571 3E 31                ld      a,'1'
+656++ 7573 77                   ld      (hl),a
+657++ 7574 23                   inc     hl
+658++ 7575 3E 32                ld      a,'2'
+659++ 7577 77                   ld      (hl),a
+660++ 7578 23                   inc     hl
+661++ 7579 3E 36                ld      a,'6'
+662++ 757B 77                   ld      (hl),a
+663++ 757C 23                   inc     hl
+664++ 757D 3E 01                ld      a,P126_IPC_MAJOR
+665++ 757F 77                   ld      (hl),a
+666++ 7580 23                   inc     hl
+667++ 7581 3E 00                ld      a,P126_IPC_MINOR
+668++ 7583 77                   ld      (hl),a
+669++ 7584 23                   inc     hl
+670++ 7585 3E 01                ld      a,P126_MSG_REQUEST
+671++ 7587 77                   ld      (hl),a
+672++ 7588 23                   inc     hl
+673++ 7589 3E 05                ld      a,P126_SERVICE_DIAGNOSTICS
+674++ 758B 77                   ld      (hl),a
+675++ 758C 23                   inc     hl
+676++ 758D 3E 00                ld      a,P126_OP_DIAGNOSTIC
+677++ 758F 77                   ld      (hl),a
+678++ 7590 23                   inc     hl
+679++ 7591 AF                   xor     a
+680++ 7592 77                   ld      (hl),a                 ; flags
+681++ 7593 23                   inc     hl
+682++ 7594 3E 02                ld      a,#02
+683++ 7596 77                   ld      (hl),a                 ; sequence low
+684++ 7597 23                   inc     hl
+685++ 7598 AF                   xor     a
+686++ 7599 77                   ld      (hl),a                 ; sequence high
+687++ 759A 23                   inc     hl
+688++ 759B 3E EE                ld      a,#EE
+689++ 759D 77                   ld      (hl),a                 ; payload length low
+690++ 759E 23                   inc     hl
+691++ 759F 3E 3F                ld      a,#3F
+692++ 75A1 77                   ld      (hl),a                 ; payload length high
+693++ 75A2 23                   inc     hl
+694++ 75A3 AF                   xor     a
+695++ 75A4 77                   ld      (hl),a                 ; status low
+696++ 75A5 23                   inc     hl
+697++ 75A6 77                   ld      (hl),a                 ; status high
+698++ 75A7 23                   inc     hl
+699++ 75A8 77                   ld      (hl),a                 ; CRC low (filled below)
+700++ 75A9 23                   inc     hl
+701++ 75AA 77                   ld      (hl),a                 ; CRC high (filled below)
+702++ 75AB
+703++ 75AB 21 12 C0             ld      hl,p126_neogs_dma_test_frame+P126_IPC_HEADER_SIZE
+704++ 75AE 01 EE 3F             ld      bc,P126_IPC_MAX_PAYLOAD
+705++ 75B1 1E 00                ld      e,0
+706++ 75B3              .p126_neogs_dma_fill:
+707++ 75B3 7B                   ld      a,e
+708++ 75B4 77                   ld      (hl),a
+709++ 75B5 23                   inc     hl
+710++ 75B6 1C                   inc     e
+711++ 75B7 0B                   dec     bc
+712++ 75B8 78                   ld      a,b
+713++ 75B9 B1                   or      c
+714++ 75BA 20 F7                jr      nz,.p126_neogs_dma_fill
+715++ 75BC
+716++ 75BC                      ; CRC-16/CCITT-FALSE over header[0..15] and all 16366 payload bytes.
+717++ 75BC 21 FF FF             ld      hl,#FFFF
+718++ 75BF 11 00 C0             ld      de,p126_neogs_dma_test_frame
+719++ 75C2 06 10                ld      b,16
+720++ 75C4              .p126_neogs_dma_crc_header:
+721++ 75C4 1A                   ld      a,(de)
+722++ 75C5 13                   inc     de
+723++ 75C6 CD 45 67             call    p126_ipc_crc16_update
+724++ 75C9 10 F9                djnz    .p126_neogs_dma_crc_header
+725++ 75CB 13                   inc     de
+726++ 75CC 13                   inc     de
+727++ 75CD 01 EE 3F             ld      bc,P126_IPC_MAX_PAYLOAD
+728++ 75D0              .p126_neogs_dma_crc_payload:
+729++ 75D0 1A                   ld      a,(de)
+730++ 75D1 13                   inc     de
+731++ 75D2 CD 45 67             call    p126_ipc_crc16_update
+732++ 75D5 0B                   dec     bc
+733++ 75D6 78                   ld      a,b
+734++ 75D7 B1                   or      c
+735++ 75D8 20 F6                jr      nz,.p126_neogs_dma_crc_payload
+736++ 75DA 22 10 C0             ld      (p126_neogs_dma_test_frame+P126_IPC_OFF_CRC),hl
+737++ 75DD 21 00 C0             ld      hl,p126_neogs_dma_test_frame
+738++ 75E0 01 00 40             ld      bc,P126_IPC_MAX_FRAME_SIZE
+739++ 75E3 C3 F2 68             jp      p126_ipc_dma_send_frame
+740++ 75E6
+741++ 75E6              p126_neogs_dma_test_frame EQU #C000
+742++ 75E6                      ASSERT  p126_neogs_dma_test_frame + P126_IPC_MAX_FRAME_SIZE = #10000
+743++ 75E6
 # file closed: p126_neogs_loader.asm
-345+  0000
-346+  0000              ; Project125-derived ATM-native text console, relocated to window 2.
-347+  0000              ; Its renderer maps video pages only for each write and restores host pages.
-348+  0000                      PAGE 0
-349+  0000                      ORG #A000
+345+  75E6
+346+  75E6              ; Project125-derived ATM-native text console, relocated to window 2.
+347+  75E6              ; Its renderer maps video pages only for each write and restores host pages.
+348+  75E6                      PAGE 0
+349+  75E6                      ORG #A000
 350+  A000                      INCLUDE "atm_host/p126_screen_console.asm"
 # file opened: p126_screen_console.asm
   1++ A000              ; =========================================================================
@@ -4636,9 +4681,9 @@ Value    Label
 0x7545   p126_neogs_core_length
 0x7539   p126_neogs_core_name
 0x756A   p126_neogs_dma_smoke_test
-0x7583   p126_neogs_dma_smoke_test.p126_neogs_dma_crc_header
-0x758F   p126_neogs_dma_smoke_test.p126_neogs_dma_crc_payload
-0x7572   p126_neogs_dma_smoke_test.p126_neogs_dma_fill
+0x75C4   p126_neogs_dma_smoke_test.p126_neogs_dma_crc_header
+0x75D0   p126_neogs_dma_smoke_test.p126_neogs_dma_crc_payload
+0x75B3   p126_neogs_dma_smoke_test.p126_neogs_dma_fill
 0xC000   p126_neogs_dma_test_frame
 0x7543   p126_neogs_file_length
 0x7564   p126_neogs_file_sector
