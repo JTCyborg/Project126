@@ -51,6 +51,10 @@ x86_cpu_step:
 
         cp      #06
         jp      c,x86_exec_add_family
+        cp      #FE
+        jp      z,x86_exec_group4_5
+        cp      #FF
+        jp      z,x86_exec_group4_5
         cp      #80
         jp      z,x86_exec_group1_immediate
         cp      #81
@@ -553,6 +557,191 @@ x86_exec_adc_sbb16:
         ld      hl,(x86_exec_adc_sbb_lhs16)
         jp      nz,x86_alu_sbb16
         jp      x86_alu_adc16
+
+; FE Group 4: INC/DEC r/m8.
+; FF Group 5: INC/DEC, near/far CALL/JMP and PUSH r/m16.
+x86_exec_group4_5:
+        ld      a,(x86_exec_opcode)
+        ld      (x86_exec_group45_opcode),a
+        call    x86_decode_modrm16
+        ret     c
+        ld      a,(x86_modrm_reg)
+        ld      (x86_exec_group45_ext),a
+        ld      a,(x86_exec_group45_opcode)
+        cp      #FE
+        jp      z,x86_exec_group4_byte
+
+        ld      a,(x86_exec_group45_ext)
+        cp      0
+        jp      z,x86_exec_group5_incdec
+        cp      1
+        jp      z,x86_exec_group5_incdec
+        cp      2
+        jp      z,x86_exec_group5_call_near
+        cp      3
+        jp      z,x86_exec_group5_call_far
+        cp      4
+        jp      z,x86_exec_group5_jmp_near
+        cp      5
+        jp      z,x86_exec_group5_jmp_far
+        cp      6
+        jp      z,x86_exec_group5_push
+        scf
+        ret
+
+x86_exec_group4_byte:
+        ld      a,(x86_exec_group45_ext)
+        cp      0
+        jr      z,.group4_inc
+        cp      1
+        jr      nz,.group4_invalid
+        call    x86_modrm_read_rm8
+        ld      (x86_exec_group45_value8),a
+        call    x86_exec_group45_save_cf
+        ld      a,(x86_exec_group45_value8)
+        ld      c,1
+        call    x86_alu_sub8
+        call    x86_exec_group45_restore_cf
+        jp      x86_modrm_write_rm8
+.group4_inc:
+        call    x86_modrm_read_rm8
+        ld      (x86_exec_group45_value8),a
+        call    x86_exec_group45_save_cf
+        ld      a,(x86_exec_group45_value8)
+        ld      c,1
+        call    x86_alu_add8
+        call    x86_exec_group45_restore_cf
+        jp      x86_modrm_write_rm8
+.group4_invalid:
+        scf
+        ret
+
+x86_exec_group5_incdec:
+        call    x86_modrm_read_rm16
+        ld      (x86_exec_group45_value16),hl
+        call    x86_exec_group45_save_cf
+        ld      hl,(x86_exec_group45_value16)
+        ld      de,1
+        ld      a,(x86_exec_group45_ext)
+        or      a
+        jr      nz,.group5_dec
+        call    x86_alu_add16
+        jr      .group5_incdec_done
+.group5_dec:
+        call    x86_alu_sub16
+.group5_incdec_done:
+        ld      (x86_exec_group45_value16),hl
+        call    x86_exec_group45_restore_cf
+        ld      hl,(x86_exec_group45_value16)
+        jp      x86_modrm_write_rm16
+
+x86_exec_group5_call_near:
+        call    x86_modrm_read_rm16
+        ld      (x86_exec_target_ip),hl
+        ld      hl,(x86_reg_ip)
+        call    x86_exec_push_word
+        ret     c
+        ld      hl,(x86_exec_target_ip)
+        ld      (x86_reg_ip),hl
+        or      a
+        ret
+
+x86_exec_group5_call_far:
+        ld      a,(x86_ea_is_reg)
+        or      a
+        jr      nz,.group5_far_invalid
+        call    x86_modrm_read_rm16
+        ld      (x86_exec_target_ip),hl
+        ld      hl,(x86_ea_offset)
+        inc     hl
+        inc     hl
+        ld      (x86_ea_offset),hl
+        call    x86_modrm_read_rm16
+        ld      (x86_exec_target_cs),hl
+        ld      hl,(x86_reg_cs)
+        call    x86_exec_push_word
+        ret     c
+        ld      hl,(x86_reg_ip)
+        call    x86_exec_push_word
+        ret     c
+        ld      hl,(x86_exec_target_cs)
+        ld      (x86_reg_cs),hl
+        ld      hl,(x86_exec_target_ip)
+        ld      (x86_reg_ip),hl
+        or      a
+        ret
+.group5_far_invalid:
+        scf
+        ret
+
+x86_exec_group5_jmp_near:
+        call    x86_modrm_read_rm16
+        ld      (x86_reg_ip),hl
+        or      a
+        ret
+
+x86_exec_group5_jmp_far:
+        ld      a,(x86_ea_is_reg)
+        or      a
+        jr      nz,.group5_jmp_far_invalid
+        call    x86_modrm_read_rm16
+        ld      (x86_exec_target_ip),hl
+        ld      hl,(x86_ea_offset)
+        inc     hl
+        inc     hl
+        ld      (x86_ea_offset),hl
+        call    x86_modrm_read_rm16
+        ld      (x86_exec_target_cs),hl
+        ld      hl,(x86_exec_target_cs)
+        ld      (x86_reg_cs),hl
+        ld      hl,(x86_exec_target_ip)
+        ld      (x86_reg_ip),hl
+        or      a
+        ret
+.group5_jmp_far_invalid:
+        scf
+        ret
+
+x86_exec_group5_push:
+        call    x86_modrm_read_rm16
+        jp      x86_exec_push_word
+
+; PUSH helper: HL=value, decrements SP before writing low/high bytes to SS.
+x86_exec_push_word:
+        ld      (x86_exec_stack_value),hl
+        ld      hl,(x86_reg_sp)
+        dec     hl
+        dec     hl
+        ld      (x86_reg_sp),hl
+        ld      (x86_exec_stack_offset),hl
+        call    x86_exec_stack_make_address
+        ld      a,(x86_exec_stack_value)
+        call    x86_guest_mem_write8
+        ret     c
+        ld      hl,(x86_exec_stack_offset)
+        inc     hl
+        ld      (x86_exec_stack_offset),hl
+        call    x86_exec_stack_make_address
+        ld      a,(x86_exec_stack_value+1)
+        call    x86_guest_mem_write8
+        ret
+
+x86_exec_group45_save_cf:
+        ld      a,(x86_reg_flags)
+        and     1
+        ld      (x86_exec_saved_cf),a
+        ret
+
+x86_exec_group45_restore_cf:
+        ld      hl,(x86_reg_flags)
+        ld      a,l
+        and     #FE
+        ld      l,a
+        ld      a,(x86_exec_saved_cf)
+        or      l
+        ld      l,a
+        ld      (x86_reg_flags),hl
+        ret
 
 ; 80/82 Group 1 byte immediate; 81 word immediate; 83 sign-extended
 ; byte immediate to word. ModR/M /0..7 select ADD/OR/ADC/SBB/AND/SUB/XOR/CMP.
@@ -2162,6 +2351,10 @@ x86_exec_alu_result16: dw 0
 x86_exec_alu_is_cmp: db 0
 x86_exec_alu_operation: db 0
 x86_exec_alu_is_sbb: db 0
+x86_exec_group45_opcode: db 0
+x86_exec_group45_ext: db 0
+x86_exec_group45_value8: db 0
+x86_exec_group45_value16: dw 0
 x86_exec_group1_opcode: db 0
 x86_exec_group1_ext: db 0
 x86_exec_group1_is_cmp: db 0
