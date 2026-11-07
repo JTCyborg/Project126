@@ -543,7 +543,7 @@ p126_log_draw_begin:           db "[CAT] DRAW BEGIN",13,10,0
 p126_log_draw_done:            db "[CAT] DRAW DONE",13,10,0
 p126_log_key_seen:             db "[CAT] CURSOR KEY DETECTED",13,10,0
 p126_log_enter_confirmed:      db "[CAT] ENTER CONFIRMED",13,10,0
-p126_log_bios_loaded:          db "[CAT] SYSBIOS IMAGE TRANSFER COMPLETE",13,10,0
+p126_log_bios_loaded:          db "[CAT] IMAGE SEQUENCE SENT; CHECK NGS INSTALL RESULT",13,10,0
 p126_log_bios_failed:          db "[CAT] SYSBIOS IMAGE TRANSFER FAILED",13,10,0
 
 p126_catalog_enabled:  db 0
