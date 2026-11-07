@@ -598,7 +598,7 @@ p126_ngs_image_begin:
         jr      z,.image_begin_x86io
         cp      P126_IMAGE_KIND_X86ALU
         jr      z,.image_begin_x86alu
-        jr      .image_begin_bad
+        jp      .image_begin_bad
 
 .image_begin_sysbios:
         ld      hl,(#C016)
