@@ -80,9 +80,9 @@ p126_catalog_poll_keyboard::
         bit     3, a
         jp      nz,.catalog_page_down
         bit     0, a
-        jr      nz, .catalog_move_up
+        jp      nz, .catalog_move_up
         bit     1, a
-        jr      nz, .catalog_move_down
+        jp      nz, .catalog_move_down
         ret
 
 .catalog_page_up:
