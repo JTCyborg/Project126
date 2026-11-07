@@ -226,6 +226,8 @@ p126_ipc_validate_frame::
         inc     de
         call    p126_ipc_crc16_update
         djnz    .p126_frame_crc_head
+        inc     de
+        inc     de
         push    de
         ld      ix,(p126_ipc_frame_ptr)
         ld      e,(ix+12)
@@ -348,6 +350,8 @@ P126_IPC_DMA_WINDOW EQU #0000
 P126_IPC_DMA_END    EQU #FF
 
 p126_ipc_dma_send_frame::
+        ld      hl,p126_ipc_log_dma_tx_begin
+        call    p126_ipc_debug_string
         ld      a,1
         ld      (p126_ipc_dma_stage),a
         ld      (p126_ipc_dma_source),hl
@@ -355,9 +359,15 @@ p126_ipc_dma_send_frame::
         call    p126_ipc_validate_frame
         jr      nc,.p126_dma_frame_valid
         ld      (p126_ipc_dma_error),a
+        push    af
+        ld      hl,p126_ipc_log_dma_tx_validate_bad
+        call    p126_ipc_debug_string
+        pop     af
         scf
         ret
 .p126_dma_frame_valid:
+        ld      hl,p126_ipc_log_dma_tx_validate_ok
+        call    p126_ipc_debug_string
         xor     a
         ld      (p126_ipc_dma_error),a
 
@@ -376,9 +386,13 @@ p126_ipc_dma_send_frame::
 .p126_dma_size_valid:
         ld      a,3
         ld      (p126_ipc_dma_stage),a
+        ld      hl,p126_ipc_log_dma_tx_e0
+        call    p126_ipc_debug_string
         ld      a,P126_CMD_HOST_FRAME
         call    p126_ipc_send_command
         ret     c
+        ld      hl,p126_ipc_log_dma_tx_ready
+        call    p126_ipc_debug_string
 
         ld      a,4
         ld      (p126_ipc_dma_stage),a
@@ -390,10 +404,14 @@ p126_ipc_dma_send_frame::
 
         ld      a,5
         ld      (p126_ipc_dma_stage),a
+        ld      hl,p126_ipc_log_dma_tx_ff
+        call    p126_ipc_debug_string
         ld      a,P126_IPC_DMA_END
         out     (P126_GSCOM),a
         call    p126_ipc_wait_cbit_clear
         ret     c
+        ld      hl,p126_ipc_log_dma_tx_done
+        call    p126_ipc_debug_string
         xor     a
         ld      (p126_ipc_dma_stage),a
         ret
@@ -410,3 +428,29 @@ p126_ipc_dma_size:   dw 0
 p126_ipc_dma_stage:  db 0
 
 p126_ipc_dma_error: db 0
+
+; ATM-local trace output, on ATM's own physical #EF stream.
+; IN: HL=zero-terminated string. Preserves AF/BC; clobbers HL.
+p126_ipc_debug_string:
+        push    af
+        push    bc
+        ld      bc,#00EF
+.p126_ipc_debug_loop:
+        ld      a,(hl)
+        inc     hl
+        or      a
+        jr      z,.p126_ipc_debug_done
+        out     (c),a
+        jr      .p126_ipc_debug_loop
+.p126_ipc_debug_done:
+        pop     bc
+        pop     af
+        ret
+
+p126_ipc_log_dma_tx_begin:        db "[ATM IPC] DMA TX BEGIN",13,10,0
+p126_ipc_log_dma_tx_validate_ok:  db "[ATM IPC] FRAME VALID",13,10,0
+p126_ipc_log_dma_tx_validate_bad: db "[ATM IPC] FRAME VALIDATION FAILED",13,10,0
+p126_ipc_log_dma_tx_e0:           db "[ATM IPC] SEND E0",13,10,0
+p126_ipc_log_dma_tx_ready:        db "[ATM IPC] E0 ACK / READY",13,10,0
+p126_ipc_log_dma_tx_ff:           db "[ATM IPC] SEND FF",13,10,0
+p126_ipc_log_dma_tx_done:         db "[ATM IPC] DMA TX COMPLETE",13,10,0
