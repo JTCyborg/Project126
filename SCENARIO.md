@@ -636,3 +636,12 @@ This is diagnostic instrumentation; the next ATM log must report the letter afte
 - Corrected stage-2 validation to accept lengths 1..255 and exactly 256, while rejecting zero and values above 256. The existing #14 header already encodes a 256-byte block as the 16-bit negative length FF00h and streams exactly 256 bytes from the first TR-DOS sector.
 - This is a direct correction of the observed stage-2 failure. It does not claim that #14, #13, bootstrap entry, resident transfer, BIOS loading, or hardware execution have passed; those are later stages and require a new target log.
 - Reference behavior inspected in Project125: `zx_main/neogs_driver.asm` uses the same 256-byte #C000 sector buffer and encodes #14 length as a 16-bit negative value before issuing RECEIVE BLOCK. Project125 also supports repeated sector-sized chunks for larger loader files; Project126 currently intentionally constrains its stage-0 image to one 256-byte block.
+
+
+## DMA smoke-test diagnostics and completion acknowledgement ordering (2026-11-07)
+
+- ATM sender records the failing transaction stage: 1=local frame validation, 2=DMA aperture size, 3=E0/READY handshake, 4=payload copy, 5=FF/completion acknowledgement. A successful transaction resets the stage to 0. The ATM failure line prints [BOOT] DMA FAIL STAGE=n on ATM's own #EF stream.
+- NeoGS emits its own independent #EF markers: DMA E0 RECEIVED, DMA READY, and DMA END RECEIVED. The resident loop continues to emit DMA FRAME VALID or DMA FRAME REJECTED after the dispatcher returns.
+- Corrected the receive transaction ordering: after FFh, NeoGS disables DMA and maps the staging page, validates frame bounds and CRC while CBIT remains asserted, then clears CBIT. Invalid-length and CRC/frame-error paths also release CBIT after validation has failed; timeout cleanup still disables DMA before release.
+- The stage marker localizes the host-side wait that failed but does not, by itself, prove payload integrity. Correlate ATM and NeoGS independent logs.
+- Verification: source changes committed; CI build and target hardware DMA transfer remain pending. No DMA runtime PASS is claimed.

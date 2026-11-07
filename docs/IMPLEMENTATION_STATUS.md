@@ -344,3 +344,11 @@ The ATM log `DMA SMOKE FRAME SENT` means the transport handshake completed; it i
 - Corrected stage-2 validation to accept lengths 1..255 and exactly 256, while rejecting zero and values above 256. The existing #14 header already encodes a 256-byte block as the 16-bit negative length FF00h and streams exactly 256 bytes from the first TR-DOS sector.
 - This is a direct correction of the observed stage-2 failure. It does not claim that #14, #13, bootstrap entry, resident transfer, BIOS loading, or hardware execution have passed; those are later stages and require a new target log.
 - Reference behavior inspected in Project125: `zx_main/neogs_driver.asm` uses the same 256-byte #C000 sector buffer and encodes #14 length as a 16-bit negative value before issuing RECEIVE BLOCK. Project125 also supports repeated sector-sized chunks for larger loader files; Project126 currently intentionally constrains its stage-0 image to one 256-byte block.
+
+
+## DMA smoke-test stage diagnostics and receiver acknowledgement fix (2026-11-07)
+
+- ATM sender records stage 1 (local frame validator), 2 (frame/aperture size), 3 (E0 command and READY wait), 4 (DMA payload copy), or 5 (FF end marker and final completion wait). On successful return the stage resets to zero. ATM prints [BOOT] DMA FAIL STAGE=n on its own #EF stream when the smoke test fails.
+- NeoGS now logs E0 command reception, DMA armed/READY, and FF/end detection directly through the resident logger on NeoGS's independent #EF port. The resident main loop retains its existing DMA FRAME VALID and DMA FRAME REJECTED outcome messages.
+- Fixed the receiver lifecycle against ABI 1.0 section 3.1: CBIT is no longer cleared immediately when FFh is detected. DMA is stopped, page 42h is mapped, frame length and CRC are validated, and only then is CBIT cleared. Malformed-length and validation-error paths also clear CBIT after recording the failure; timeout still disables DMA before releasing the host.
+- Verification status: source-level change only until the corresponding GitHub Actions build completes. Hardware READY/payload/FF/CRC exchange remains unverified. The next target log must correlate both independent #EF streams; no DMA PASS is inferred from ATM alone.
