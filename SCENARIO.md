@@ -677,4 +677,4 @@ This is diagnostic instrumentation; the next ATM log must report the letter afte
 - The two streams remain physically independent; ATM messages are not forwarded or re-labelled as NeoGS messages.
 - Fixed the NeoGS CRC validator's frame-pointer clobber (the same class of defect previously fixed in ATM) and corrected both validators to start payload CRC at frame offset 18 rather than offset 16.
 - Logging is at transaction boundaries, not inside polling loops. It still adds latency around DMA copy; timing-sensitive behavior must be checked on target hardware.
-- **Verification:** source changes committed; CI/assembly and target hardware trace correlation pending. Do not infer DMA PASS until ATM reports final completion and NeoGS independently reports FRAME VALID.
+- **Verification:** GitHub Actions run [42351776510](https://github.com/JTCyborg/Project126/actions/runs/42351776510), commit `d9b2a391ddaf0bbf4ccd918b34a58cbecc17f40e`, completed successfully. ATM IPC and NeoGS assembly, including the new trace code, passed; TR-DOS image packaging and artifact publication also completed. This is BUILD PASS only. No hardware trace or DMA runtime PASS is claimed.
