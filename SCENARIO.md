@@ -444,7 +444,7 @@ Project126 не должен повторять практику, при кот�
 
 ## 14. NeoGS guest-RAM bank window and first memory backend
 
-The first guest-RAM backend uses the physical allocation already assigned to guest RAM: NeoGS pages 44h–83h (1 MiB), corresponding linearly to guest physical address + 110000h. NeoGS logical WIN3, address C000h–FFFFh, is reserved as a 16 KiB banked aperture. The firmware selects a physical page by writing its page number to NeoGS WIN3 register port 23h. The helper computes page 44h + guest_address[19:14] and offset C000h + guest_address[13:0].
+The first guest-RAM backend uses the physical allocation already assigned to guest RAM: NeoGS pages 44h–83h (1 MiB), corresponding linearly to guest physical address + 110000h. NeoGS logical WIN3, address C000h–FFFFh, is reserved as a 16 KiB banked aperture. The firmware selects a physical page through MPAGEX port 10h (the C000h–FFFFh WIN3 selector), not PG3 port 23h. The MPAGEX selector byte is the physical page number rotated right once (`RRCA`), matching Project125. The helper computes page 44h + guest_address[19:14] and offset C000h + guest_address[13:0].
 
 WIN3 is volatile and owned exclusively by the guest memory backend. Resident code, data, stack and any interrupt handler that can run during a banked access must stay in WIN0–WIN2. The helper does not attempt to restore the prior WIN3 page because the page register is write-only. This logical-window contract is fixed for the initial backend; final kernel placement/linking across WIN0–WIN2 remains a later integration task.
 
@@ -463,7 +463,7 @@ This stage must be built and then exercised on NeoGS with boundary and data-rete
 - RAM regions (00000–9FFFF and C8000–FDFFF) use the existing 1 MiB guest RAM backing at NeoGS pages 44h–83h.
 - VGA BIOS C0000–C7FFF is read from the separate VGA BIOS slot, pages 20h–21h. System BIOS FE000–FFFFF is read from the system BIOS slot, page 10h; the guest-visible 8 KiB range maps to the first 8 KiB of that 256 KiB slot. Both ROM regions reject writes.
 - VGA aperture A0000–BFFFF is routed to pages 30h–37h, the first 128 KiB of the 256 KiB VRAM allocation. This first backend is explicitly byte-linear staging only. It does not implement VGA plane/latch/read-mode/write-mode behavior and must not be represented as a complete IBM VGA memory model.
-- All physical slots are accessed through WIN3 (C000h–FFFFh) using the page-select port 23h. Page-bias constants are defined and asserted in `shared/p126_neogs_memory_map.inc`.
+- All physical slots are accessed through WIN3 (C000h–FFFFh) using MPAGEX port 10h with the Project125 `RRCA` page-selector encoding. Page-bias constants are defined and asserted in `shared/p126_neogs_memory_map.inc`.
 - The generic selector uses the 20-bit guest address to select a 16 KiB page and return the in-window offset. WIN3 remains volatile; resident code, data, stack and interrupt handlers must remain in WIN0–WIN2.
 - **Verification boundary:** build-time assembly and map checks can validate encoding and image placement only. No hardware page switching, ROM image contents, VGA rendering or full VGA semantics are claimed.
 
@@ -814,7 +814,7 @@ DMA mapping, DMA registers, направления, Project125 handshake и ABI 
 
 Следующий диагностический этап после подтверждённого Project125-parity smoke PASS переводит только тестовые DMA endpoints на выделенную production staging page 42h. Проверенный page-03 механизм сохранён в истории сценария как эталон и fallback; его аппаратный результат не переносится автоматически на page 42h.
 
-- NeoGS отображает физическую page 42h в WIN3 (logical C000h-FFFFh) через selector port #23 до настройки/старта DMA. Код, данные и стек остаются вне WIN3.
+- NeoGS отображает физическую page 42h в WIN3 (logical C000h-FFFFh) через MPAGEX port #10 до настройки/старта DMA, кодируя номер страницы инструкцией RRCA (42h → 21h); PG3 port #23 не является селектором WIN3. Код, данные и стек остаются вне WIN3.
 - ATM→NeoGS: DMA module 1, physical destination 108000h (HAD=10h, MAD=80h, LAD=00h). ATM формирует полный 274-byte ABI 1.0 кадр: 18-byte header + payload 00h..FFh; CRC-16/CCITT-FALSE рассчитывается по header[0..15] и полному payload. NeoGS после FF/end останавливает DMA, проверяет границу кадра в пределах 4000h и валидирует полный CRC из C000h.
 - NeoGS→ATM: тот же deterministic 274-byte response создаётся в page 42h через C000h и передаётся DMA read с физического адреса 108000h. ATM сохраняет Project125 reverse-read sequence: DI, один discarded read из ROM aperture 0000h, затем 274 bytes; после FF/end проверяются полный CRC и каждый байт payload.
 - Для обоих направлений ожидаемое продвижение физического DMA address: 108000h→108112h. Новые независимые маркеры: `+[NGS] DMA PRODUCTION PAGE 42 PRE-MAPPED`, `+[NGS] DMA RX ADDR READBACK=108112`, `+[NGS] DMA FRAME VALID`, ATM `+[ATM IPC] DMA RX FRAME CRC VALID` и `+[ATM IPC] DMA RX PATTERN PASS`.
@@ -833,3 +833,12 @@ DMA mapping, DMA registers, направления, Project125 handshake и ABI 
 
 - **BUILD PASS:** commit `cd37fcb1e720b4455a815f9b65b34eaf62c6f4b3`, workflow run [42356391039](https://github.com/JTCyborg/Project126/actions/runs/42356391039). NeoGS, ATM IPC and standalone NeoGS IPC assembled successfully with zero errors; TR-DOS disk packaging completed (655360 bytes). One pre-existing disk-generated-path backslash warning remains.
 - The generated TR-DOS disk and listings/maps are available in the workflow artifact. **Page-42 hardware access is still unverified** pending the next ATM/NeoGS log.
+
+
+## 2026-11-07 — исправление селектора WIN3 по Project125
+
+Аппаратный лог 09:44 показал прямой DMA с продвижением адреса 108000h→108112h, но нулевой заголовок при чтении C000h. Одновременно reverse-тест вывел CRC 7C1C — тот же CRC, что у ATM request. Для сформированного NeoGS response (тип RESPONSE, payload 00h..FFh) независимый CRC-16/CCITT-FALSE равен D867. Следовательно, прежний reverse PATTERN PASS повторно прочитал содержимое request и не доказывал, что NeoGS строит response в физической page 42h.
+
+Причина найдена при буквальной сверке с Project125: WIN3 (C000h–FFFFh) выбирается через MPAGEX port #10, а физический номер страницы перед OUT кодируется RRCA. Project126 использовал PG3 port #23 и передавал сырое значение 42h. Это приводило к тому, что CPU-окно и физический DMA-адрес указывали на разные страницы. Исправлены оба page-42 endpoint и общий x86 memory backend: MPAGEX=#10, selector=`RRCA(page)`, page 42h → selector 21h. Общие memory-map constants/assertion также исправлены с #23 на #10.
+
+DMA module/address registers, physical DMA base 108000h, host aperture 0000h, dummy-read правило обратного направления и E0/FF handshake не менялись. Проверка page 42h после исправления требует нового аппаратного запуска: ATM→NeoGS должен показать заголовок `50313236` и `DMA FRAME VALID`; NeoGS→ATM должен показать CRC D867 и `PATTERN PASS`. До этого production page-42 HARDWARE PASS не заявляется.
