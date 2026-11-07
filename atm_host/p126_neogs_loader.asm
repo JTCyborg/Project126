@@ -818,7 +818,7 @@ p126_neogs_io_name:   db "X86IO   "
 p126_neogs_overlay_size: dw 0
 p126_neogs_overlay_data_ptr: dw #C11C
 p126_neogs_io_log_begin: db "[NGS HOST] X86IO IMAGE BEGIN",13,10,0
-p126_neogs_io_log_ready: db "[NGS HOST] X86IO OVERLAY INSTALLED",13,10,0
+p126_neogs_io_log_ready: db "[NGS HOST] X86IO IMAGE TX COMPLETE",13,10,0
 p126_neogs_name_ptr: dw 0
 p126_neogs_file_length: dw 0
 p126_neogs_core_length: dw 0
