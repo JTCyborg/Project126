@@ -192,7 +192,7 @@ x86_exec_add_family:
         ld      a,(x86_exec_opcode)
         ld      (x86_exec_alu_opcode),a
         cp      #04
-        jr      nc,.add_accumulator
+        jp      nc,.add_accumulator
 
         call    x86_decode_modrm16
         ret     c
