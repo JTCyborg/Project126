@@ -826,7 +826,7 @@ p126_ngs_image_fragment:
         ld      hl,p126_ngs_alu_overlay_verify_ok_log
         jr      .image_verify_log
 .image_dev_verify_log:
-        ld      hl,p126_ngs_dev_overlay_installed_log
+        ld      hl,p126_ngs_image_fragment_log
 .image_verify_log:
         call    p126_ngs_ipc_log
         xor     a
@@ -946,7 +946,7 @@ p126_ngs_image_finish:
         call    x86_dev_reset
         ld      a,1
         ld      (p126_ngs_dev_overlay_ready),a
-        ld      hl,p126_ngs_dev_overlay_installed_log
+        ld      hl,p126_ngs_image_finish_log
         jr      .image_finish_log
 .image_finish_dev_probe_bad:
         jp      .image_finish_bad
@@ -1226,7 +1226,6 @@ p126_ngs_io_overlay_installed_log: db "[NGS] X86IO PAGE04 WIN2 OK",13,10,0
 p126_ngs_io_overlay_verify_ok_log: db "[NGS] X86IO PAGE04 READBACK OK",13,10,0
 p126_ngs_alu_overlay_verify_ok_log: db "[NGS] X86ALU PAGE05 READBACK OK",13,10,0
 p126_ngs_alu_overlay_installed_log: db "[NGS] X86ALU PAGE05 GATE OK",13,10,0
-p126_ngs_dev_overlay_installed_log: db "[NGS] DEV PAGE06 OK",13,10,0
 p126_ngs_alu_overlay_probe_fail_log: db "[NGS] X86ALU PAGE05 GATE FAIL",13,10,0
 p126_ngs_image_begin_rejected_log: db "[NGS] IMG BEGIN BAD",13,10,0
 p126_ngs_image_fragment_rejected_log: db "[NGS] IMG FRAG BAD",13,10,0
