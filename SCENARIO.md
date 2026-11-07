@@ -1129,7 +1129,7 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 - [ ] Добавить проверки размера/пересечений, page-switch restore, запрет вызова функции после выгрузки overlay, и тесты вложенных/повторных вызовов.
 - [ ] Перенести расширяемые device models (PIC/PIT/DMA/VGA/RTC/IDE) в отдельные overlay-модули после проверки менеджера. Не увеличивать лимит X86CORE.C и не менять физическую карту страниц без отдельного решения.
 
-Причина приоритета: после первого PPI/I/O среза X86CORE.C занимает 16379 из 16384 байт; осталось 5 байт. Следующий полноценный контроллер нельзя безопасно добавить в resident image до решения overlay/loading architecture.
+Причина приоритета: X86CORE.C теперь занимает 16204 из 16384 байт; осталось 180 байт. Следующий полноценный контроллер нельзя безопасно добавлять в resident image — его следует выносить в отдельный overlay после завершения allocator/manifest/loader и проверки call gate на плате.
 
 
 ## 2026-11-07 — Overlay Manager: source audit and design baseline
@@ -1142,9 +1142,11 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 - [x] Определены требования к fixed-origin module linking, manifest, DMA/IPC streaming, page-42 staging, WIN3 destination copy/readback, resident call/return gate и bounded nested calls.
 - [x] Подтвердить WIN2 page-selector register/encoding по Project125 reference: MPAG #00, selector ROR8(physical_page). Project126 hardware validation остаётся отдельной задачей.
 - [ ] Реализовать manifest/IMAGE module service и ATM TR-DOS streaming loader.
-- [ ] Реализовать resident call gate, mapping save/restore и allocator.
+- [x] Реализовать базовый resident call gate: сохранение WIN2 selector на WIN1 stack и восстановление через resident RET trampoline; существующие X86IO API переведены на resident wrappers.
+- [ ] Реализовать dynamic page allocator и таблицу модулей; ограничить выдачу страницами 05h–0Fh, page04h оставить закреплённой за X86IO.
 - [ ] Перенести первый реальный модуль (XT PPI/keyboard) из resident image только после готовности и проверки его загрузки.
-- [ ] Выполнить CI и аппаратные тесты загрузки, checksum/readback, вызовов, вложенности и восстановления WIN2 mapping.
+- [ ] Добавить generic IMAGE manifest/loader и ATM streaming дополнительных overlay-модулей.
+- [ ] Выполнить аппаратные тесты загрузки, checksum/readback, X86IO-вызовов через gate, вложенности и восстановления WIN2 mapping.
 
 Полная спецификация проектного baseline: [docs/P126_OVERLAY_MANAGER_DESIGN.md](docs/P126_OVERLAY_MANAGER_DESIGN.md). Это завершённый source audit/design checkpoint, не реализация и не hardware PASS.
 
@@ -1178,3 +1180,13 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 - [ ] После аппаратной проверки X86IO продолжить вынос следующих крупных модулей; PIC/PIT/DMA/VGA/RTC/IDE пока не добавлять обратно в resident core.
 
 Спецификации: [Overlay Manager](docs/P126_OVERLAY_MANAGER_DESIGN.md), [DMA/IPC IMAGE profile](docs/P126_DMA_IPC_PROTOCOL.md), [NeoGS memory map](docs/P126_NEOGS_MEMORY_MAP.md). Это source implementation + CI BUILD PASS, не аппаратный PASS.
+
+
+## 2026-11-07 — resident WIN2 call gate и X86IO wrappers
+
+- Добавлен `neogs_sub/p126_overlay_gate.asm` в resident image. API принимает entry в IX; запрашиваемый MPAG selector предварительно записывается в resident request byte. Текущий selector сохраняется на WIN1 stack, WIN2 переключается через MPAG #00, управление передаётся в overlay, а resident RET trampoline восстанавливает предыдущий selector.
+- Вложенность поддерживается структурой стека: каждый вызов сохраняет собственный previous-selector frame; scratch entry/request используются только до входа в вызываемый модуль.
+- Существующие публичные точки `x86_io_reset`, `x86_io_keyboard_push`, `x86_io_read8/16`, `x86_io_write8/16`, `x86_io_log_access` стали resident wrappers. Реализации в `x86_io.asm` переименованы в `*_impl` и остаются на странице 04h.
+- После успешного WIN2 page04/page05 self-test программное состояние gate синхронизируется с фактическим selector #02. На старте оно равно #80 (page01 placeholder).
+- **BUILD PASS:** GitHub Actions run [42397778997](https://github.com/JTCyborg/Project126/actions/runs/42397778997), commit `b0e708b00aaf85996b415dacebbe4bb8e657c731`. X86CORE.C — 16,204/16,384 байта (180 свободно); X86IO.C — 796/4,096. NeoGS, ATM, standalone IPC и TR-DOS assembly/package прошли без ошибок и предупреждений.
+- **Не подтверждено:** физическое выполнение gate, nested/repeated switching, сохранение AF/результатов на реальной NeoGS, динамический allocator, module manifest и generic loader. BIOS/CPU functional status не меняется.
