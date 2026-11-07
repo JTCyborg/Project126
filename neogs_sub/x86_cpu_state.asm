@@ -589,10 +589,11 @@ x86_bios_trace_marker_arm:
         or      a
         sbc     hl,de
         ret     nz
-        ; The second table terminator is at F000:E0BA. LODSB advances SI
-        ; to E0BB before CMP; stop after CMP, JZ, XOR DH,03 and JNZ.
+        ; Stop after the first table's CMP/JZ/XOR DH,03/JNZ sequence.
+        ; This captures DH immediately after the first XOR, before the
+        ; second table can change DL or issue any further OUT instructions.
         ld      hl,(x86_reg_si)
-        ld      de,#E0BB
+        ld      de,#E0B0
         or      a
         sbc     hl,de
         ret     nz

@@ -1462,3 +1462,10 @@ The latest target log confirms that the first table terminator is read correctly
 The BIOS source shows that `E0BF` begins the table-loop exit logic. The first terminator toggles `DH` from 0 to 3 and returns to `E06E` for the second table. The second table occupies `E0B0..E0BA` and contains the pairs `BF/00`, `B8/01`, `D8/01`, `F2/08`, `B9/00`, followed by `FF`. Its terminator should leave `SI=E0BB`; `XOR DH,03` should then clear DH and set ZF, so `JNZ E06E` must fall through to `E0C4`, where RAM sizing begins.
 
 The temporary diagnostic now targets this second terminator and runs four instructions from its `CMP`: `CMP`, `JZ`, `XOR DH,03`, `JNZ`. Expected stop: `CS:IP=F000:E0C4`, `SI=E0BB`, and `DH=00`. This remains an observational stop, not a BIOS POST pass. The next target trace will determine whether execution reaches the RAM test at `E0C4`.
+
+
+## 2026-11-07 — BIOS DH loop-state capture
+
+The target reached the second table terminator at `F000:E0BA`, read `FF`, and executed `XOR DH,03` followed by `JNZ`. It returned to `F000:E06E` with `SI=E0BB`, `DX=00B9`, and `FLAGS=0006`; this means the second XOR result was nonzero, so the loop state was not as expected. The trace alone does not identify whether the first XOR failed to set DH or whether DH was subsequently overwritten.
+
+The temporary diagnostic is therefore moved back to the first terminator and now stops after its four-instruction sequence (`CMP`, `JZ`, `XOR DH,03`, `JNZ`). Immediately after the first loop branch, the expected state is `DH=03` (with DL still `61h`, so `DX=0361h`). This isolates the first XOR result before the second table executes. No functional CPU or BIOS behavior has been changed.
