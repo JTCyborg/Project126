@@ -39,6 +39,15 @@ p126_catalog_initialize::
         call    p126_catalog_count_files
         ld      hl, p126_log_count_done
         call    p126_catalog_log
+        ld      a, (p126_catalog_total)
+        call    p126_host_debug_hex_byte
+        push    bc
+        ld      bc,#00EF
+        ld      a,13
+        out     (c),a
+        ld      a,10
+        out     (c),a
+        pop     bc
         ld      a, 1
         ld      (p126_catalog_enabled), a
         ld      hl, p126_log_draw_begin
@@ -332,10 +341,10 @@ p126_catalog_read_disk:
         cp      8
         jr      nc, .catalog_sectors_complete
 
-        ; TR-DOS sectors are numbered 1..16, never 0..15.
-        ; Directory sectors occupy 1..8 on logical track 0.
+        ; #3D13 sector-read convention uses zero-based E. The ROM
+        ; driver advances to physical sector E+1 internally. Therefore
+        ; the eight directory sectors are requested as E=0..7.
         ld      a, (p126_catalog_sector_index)
-        inc     a
         ld      e, a
         ld      d, 0
         ld      hl, (p126_catalog_buffer_ptr)
@@ -604,7 +613,7 @@ p126_log_io_error:             db "[CAT] IO RESULT=ERROR",13,10,0
 p126_log_io_success:           db "[CAT] IO RESULT=OK",13,10,0
 p126_log_read_ok:              db "[CAT] read_disk OK",13,10,0
 p126_log_read_failed:          db "[CAT] read_disk CARRY=1",13,10,0
-p126_log_count_done:           db "[CAT] directory COUNT DONE",13,10,0
+p126_log_count_done:           db "[CAT] FILE COUNT=",0
 p126_log_draw_begin:           db "[CAT] DRAW BEGIN",13,10,0
 p126_log_draw_done:            db "[CAT] DRAW DONE",13,10,0
 p126_log_key_seen:             db "[CAT] CURSOR KEY DETECTED",13,10,0
