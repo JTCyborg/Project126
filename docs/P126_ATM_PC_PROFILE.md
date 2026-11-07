@@ -64,15 +64,16 @@ The profile reserves the following PC/XT-style interfaces. They are guest-visibl
 | 0070–0071 | DS12887-compatible RTC/CMOS extension | Custom ATM-PC extension; time source is ATM; guest register model pending |
 | 0080–0083 | DMA page registers | X86DEV/page06 partial register model: channel page latches |
 | 00E0 | Project126 diagnostic latch | Implemented 16-bit read/write test latch; not a PC hardware device |
-| 00A0, 0213 | Generic Turbo XT BIOS board-control ports | Not yet modeled; BIOS2 source describes NMI control (00A0) and expansion-unit enable (0213) |
+| 00A0, 0213 | Generic Turbo XT BIOS board-control ports | X86DEV/page06 static latches: NMI gate state and expansion-unit enable state; no actual NMI delivery or expansion hardware |
 | 01F0–01F7, 03F6 | Primary ATA-compatible guest disk task file/control | Software device architecture reserved; task-file/IPC service pending |
 | 03B0–03DF | IBM VGA/CGA/MDA register interfaces | VGA/CGA/MDA register and status behavior pending |
 | 03F0–03F5, 03F7 | 765-compatible floppy controller (3F7 status/direction) | Reserved; floppy service remains a separate device decision |
 | 03F8–03FF, 02F8–02FF | 8250-compatible COM1/COM2 UARTs | BIOS2 source probes these UARTs; guest UART model/ATM serial bridge pending |
 | 03BC, 0378, 0278 | Parallel printer ports | BIOS2 source probes three possible LPT bases; guest printer service pending |
+| 00C0 | Legacy data-bus test latch | X86DEV/page06 read/write latch; does not emulate a physical bus |
 | 0201 | Game controller port | BIOS2 source probes joystick bits; guest model pending |
 | 0241, 0341 | Optional board timer probes | BIOS2 source probes optional BCD timers; behavior not modeled |
-| 03D8, 03B8 | CGA/MDA mode-control ports | BIOS2 source uses these to blank the display; video register model pending |
+| 03D8, 03B8 | CGA/MDA mode-control ports | X86DEV/page06 static mode latches; CGA/MDA rendering and retrace status pending |
 
 Port 03F6 is assigned to the ATA control register and is intentionally excluded from the floppy-controller register set (the legacy PC/XT decode shares this neighborhood). The RTC ports are a deliberate custom extension; the physical DS12887/time source remains on ATM. This does not grant NeoGS direct access to a physical RTC.
 
@@ -114,7 +115,7 @@ A source-level address map and compile-time assertions are not BUILD/EMULATOR/HA
 
 ### X86DEV overlay (physical page 06h)
 
-The 8237 DMA and 8253 PIT register models have been split from X86IO into a fixed-origin overlay on physical page06 (WIN2 selector03h). X86IO delegates ports through resident nested overlay wrappers. ATM loads `X86DEV.C` from TR-DOS after X86ALU; the NeoGS IMAGE service validates and reads back the image, calls its reset/self-test entry through the overlay gate, and publishes `X86DEV_READY` only after the signature and return mapping checks succeed. The resident CPU/BIOS readiness gate now requires X86IO, X86ALU, X86DEV and SYSBIOS.
+The 8237 DMA, 8253 PIT and XT board-control register models have been split from X86IO into a fixed-origin overlay on physical page06 (WIN2 selector03h). X86IO delegates ports through resident nested overlay wrappers. ATM loads `X86DEV.C` from TR-DOS after X86ALU; the NeoGS IMAGE service validates and reads back the image, calls its reset/self-test entry through the overlay gate, and publishes `X86DEV_READY` only after the signature and return mapping checks succeed. The board-control self-test covers 00A0h, 0213h, 03B8h and 03D8h latches. The resident CPU/BIOS readiness gate now requires X86IO, X86ALU, X86DEV and SYSBIOS.
 
 The dynamic page allocator now reserves page06 for X86DEV and allocates only pages07h–0Fh (nine pages). The allocator regression was updated to check all nine pages and page07 first-fit reuse.
 
