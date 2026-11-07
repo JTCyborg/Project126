@@ -431,9 +431,9 @@ x86_exec_logic_family:
         ld      (x86_exec_alu_operation),a
         ld      a,(x86_exec_alu_opcode)
         cp      #84
-        jr      z,.logic_test_rm_reg
+        jp      z,.logic_test_rm_reg
         cp      #85
-        jr      z,.logic_test_rm_reg
+        jp      z,.logic_test_rm_reg
         bit     2,a
         jp      nz,.logic_accumulator_immediate
 
