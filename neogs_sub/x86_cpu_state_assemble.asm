@@ -181,12 +181,12 @@ x86_alu_module_start:
         INCLUDE "neogs_sub/x86_alu.asm"
 x86_alu_module_end:
 
-; Resident bank-call gate and compatibility entry points for X86IO.
-        INCLUDE "neogs_sub/p126_overlay_gate.asm"
-
 ; Link the ABI 1.0 DMA receiver/dispatcher into the fixed resident image.
 p126_ngs_ipc_module_start:
         INCLUDE "neogs_sub/p126_ipc.asm"
+
+; Resident bank-call gate and compatibility entry points for X86IO.
+        INCLUDE "neogs_sub/p126_overlay_gate.asm"
 p126_ngs_ipc_module_end:
 
 ; The XT PPI/keyboard I/O model is the first fixed-origin overlay.
