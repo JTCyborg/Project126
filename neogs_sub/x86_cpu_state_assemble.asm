@@ -171,6 +171,10 @@ x86_alu_module_start:
         INCLUDE "neogs_sub/x86_alu.asm"
 x86_alu_module_end:
 
+x86_io_module_start:
+        INCLUDE "neogs_sub/x86_io.asm"
+x86_io_module_end:
+
 ; Link the ABI 1.0 DMA receiver/dispatcher into the core image.
 ; The final resident loader and main-loop placement remain separate work.
 p126_ngs_ipc_module_start:
@@ -193,6 +197,9 @@ p126_ngs_ipc_module_end:
     DISPLAY "P126_X86_ALU_START=", /H, x86_alu_module_start
     DISPLAY "P126_X86_ALU_END=", /H, x86_alu_module_end
     DISPLAY "P126_X86_ALU_SIZE=", /D, x86_alu_module_end-x86_alu_module_start
+    DISPLAY "P126_X86_IO_START=", /H, x86_io_module_start
+    DISPLAY "P126_X86_IO_END=", /H, x86_io_module_end
+    DISPLAY "P126_X86_IO_SIZE=", /D, x86_io_module_end-x86_io_module_start
     DISPLAY "P126_NGS_IPC_START=", /H, p126_ngs_ipc_module_start
     DISPLAY "P126_NGS_IPC_END=", /H, p126_ngs_ipc_module_end
     DISPLAY "P126_NGS_IPC_SIZE=", /D, p126_ngs_ipc_module_end-p126_ngs_ipc_module_start
@@ -208,6 +215,8 @@ p126_ngs_ipc_module_end:
     ASSERT x86_modrm_module_start = x86_cpu_exec_module_end
     ASSERT x86_alu_module_start = x86_modrm_module_end
     ASSERT x86_alu_module_end > x86_alu_module_start
+    ASSERT x86_io_module_end > x86_io_module_start
+    ASSERT x86_io_module_start = x86_alu_module_end
     ASSERT p126_ngs_ipc_module_end > p126_ngs_ipc_module_start
-    ASSERT p126_ngs_ipc_module_start = x86_alu_module_end
+    ASSERT p126_ngs_ipc_module_start = x86_io_module_end
     ASSERT p126_ngs_ipc_module_end <= #4000
