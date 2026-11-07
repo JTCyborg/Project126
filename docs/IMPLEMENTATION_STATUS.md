@@ -638,3 +638,13 @@ Source commit: `aac9d7e60c391510150016d3b29906a7b2f90e3d`.
 - Added explicit `DI` at loader entry, matching Project125, plus markers after selection resolution/type validation, around TR-DOS mapping, and immediately before/after each #3D13 call.
 - These markers are diagnostic boundaries only; they do not assert a root cause. The last visible marker in the next hardware log will isolate the failing stage.
 - Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build and hardware retest pending. BIOS read/transfer/install remain **HARDWARE PENDING**.
+
+
+## 2026-11-07 — BIOS selected-entry pointer fix (build and hardware pending)
+
+- Latest target trace isolated the BIOS loader failure to the file-type check: selection lookup completed, but the loader rejected the entry before changing the TR-DOS map or calling the ROM.
+- Root cause was a register-lifetime bug introduced with diagnostics: the selected-entry pointer returned in HL was overwritten by loading the diagnostic message pointer before HL was pushed. The loader consequently inspected the diagnostic string instead of the directory entry.
+- Corrected by pushing HL immediately after p126_catalog_find_index succeeds, logging the selection marker, restoring HL, then copying the filename and checking the type byte.
+- Catalogue keyboard handling and renderer, TR-DOS ABI/sector reading, DMA and IMAGE protocol are unchanged.
+- Expected target evidence: BIOS FILE TYPE C OK, TRDOS MAP SWITCH DONE, then the C=0Ah/C=08h call/return markers.
+- CI assembly/package and physical BIOS read/transfer/install verification are pending. Do not claim BIOS hardware PASS yet.
