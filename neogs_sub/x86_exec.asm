@@ -46,7 +46,31 @@ x86_cpu_fetch16:
 ; One architectural instruction boundary. The dispatcher intentionally
 ; rejects unknown opcodes rather than silently advancing or corrupting state.
 x86_cpu_step:
-        ; NMI has priority and is not masked by IF or MOV-SS inhibition.
+        ; PCem checks the saved TF state first, then NMI, then maskable IRQ.
+        ; The noint shadow suppresses TF but deliberately does not mask NMI.
+        ld      a,(x86_irq_inhibit)
+        or      a
+        jr      z,.boundary_tf_check
+        xor     a
+        ld      (x86_tf_pending),a
+        jr      .boundary_nmi_check
+
+.boundary_tf_check:
+        ; TF is sampled before the previous instruction and tested against
+        ; the current FLAGS image at this instruction boundary.
+        ld      a,(x86_tf_pending)
+        or      a
+        jr      z,.boundary_nmi_check
+        xor     a
+        ld      (x86_tf_pending),a
+        ld      hl,(x86_reg_flags)
+        bit     0,h
+        jr      z,.boundary_nmi_check
+        ld      a,1
+        jp      x86_exec_interrupt
+
+.boundary_nmi_check:
+        ; NMI is not masked by IF or the one-boundary noint shadow.
         ld      a,(x86_pending_nmi)
         or      a
         jr      z,.boundary_irq_inhibit
@@ -56,30 +80,13 @@ x86_cpu_step:
         jp      x86_exec_interrupt
 
 .boundary_irq_inhibit:
-        ; PCem's noint latch suppresses both TF and maskable IRQ delivery for
-        ; one boundary after STI, MOV SS or POP SS.
+        ; Consume the one-boundary shadow after TF/NMI priority is resolved.
         ld      a,(x86_irq_inhibit)
         or      a
-        jr      z,.boundary_tf_check
+        jr      z,.boundary_irq_pending
         xor     a
         ld      (x86_irq_inhibit),a
-        ld      (x86_tf_pending),a
         jr      .boundary_halt_check
-
-.boundary_tf_check:
-        ; PCem snapshots TF before executing an instruction and tests the
-        ; saved value plus the post-instruction TF state at its boundary.
-        ; NMI has already been serviced; this check precedes maskable IRQ.
-        ld      a,(x86_tf_pending)
-        or      a
-        jr      z,.boundary_irq_pending
-        xor     a
-        ld      (x86_tf_pending),a
-        ld      hl,(x86_reg_flags)
-        bit     0,h
-        jr      z,.boundary_irq_pending
-        ld      a,1
-        jp      x86_exec_interrupt
 
 .boundary_irq_pending:
         ld      a,(x86_pending_irq)
