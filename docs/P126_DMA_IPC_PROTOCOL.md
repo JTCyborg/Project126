@@ -347,3 +347,8 @@ Before enabling fragmentation, the target diagnostic sends one ABI 1.0 frame of 
 ## ATM max-frame test staging requirement
 
 The ATM host binary is packaged only through `p126_host_program_end` (currently constrained to `A800h`). A staging buffer at `C000h` is runtime RAM and must not rely on static `db/defs` bytes placed outside the packaged host image. The max-frame test must initialize its complete 18-byte header at runtime before payload fill and CRC calculation. The 2026-11-07 hardware diagnostic `PTR=C000 DATA=20444D41` exposed this exact defect; commit `b366a37318d89f02f613e848e106db9f3fcf219c` implements the runtime header initialization. Build and target verification remain pending.
+
+
+## ATM transmit preflight
+
+The ATM sender performs structural validation only before E0/READY: frame bounds, P126 magic, ABI version, REQUEST message type, reserved flags, and declared payload length. It deliberately does not recalculate the outgoing payload CRC in the pre-transfer path. The frame builder calculates CRC-16/CCITT-FALSE, and NeoGS validates the complete received frame after DMA closes. ATM still performs full CRC validation on reverse-DMA frames. This preserves the Project125 host transport sequence and avoids a redundant 16 KiB CRC pass before DMA startup.
