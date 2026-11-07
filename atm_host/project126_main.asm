@@ -342,6 +342,7 @@ p126_host_version_text:
         INCLUDE "atm_host/neogs_ipc.asm"
         INCLUDE "atm_host/p126_disk_catalog.asm"
         INCLUDE "atm_host/p126_neogs_loader.asm"
+        INCLUDE "atm_host/p126_bios_loader.asm"
 
 ; Project125-derived ATM-native text console, relocated to window 2.
 ; Its renderer maps video pages only for each write and restores host pages.
