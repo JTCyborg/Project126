@@ -1491,3 +1491,12 @@ The temporary diagnostic is therefore moved back to the first terminator and now
 - Removed the marker-arm call while retaining the existing 512-instruction trace budget and watchdog/fault snapshots. The next target run will execute beyond E0C4 and report either a guest fault/HLT or the state reached after the 512-instruction window.
 - Source commit: `1acd1318fef57530c8c278da10604e67248d4421`. Build and target validation of this follow-up are pending.
 - The repeated PIC/DMA/PIT/board-latch PASS lines and repeated image-stage messages are diagnostic duplication; they are not evidence of repeated BIOS failures. Log cleanup is deferred until the next BIOS stage is identified.
+
+
+## 2026-11-07 — Extend BIOS POST execution window
+
+- Latest target run passed the previous E0C4 port-table checkpoint and advanced to `F000:E6E0`.
+- The terminal history repeats `LODSW; ADD; ADD; LOOP`; `CX=0FC6` at the stop. The loop counter had decreased by `0080h` over the 512-instruction diagnostic window, matching 128 iterations × 4 instructions. This is consistent with the configured instruction budget expiring, not evidence of a LOOP implementation fault.
+- Confirmed in `x86_cpu_state.asm` that `x86_bios_trace_remaining` was initialized to `0200h` (512 instructions), although the execution path already has a 16-bit watchdog.
+- Changed the diagnostic execution budget to `FFFFh`, retaining the watchdog/fault/HLT snapshots. This allows the current BIOS RAM-sizing loop and subsequent POST code to execute rather than stopping after 512 instructions.
+- Source commit: `3c7c31beec3a0df46d6ff7e278716ea1433d7194`. Build and target validation are pending. No RAM-sizing or full POST pass is claimed yet.
