@@ -114,6 +114,10 @@ x86_cpu_step:
         cp      #98
         jp      c,x86_exec_xchg_ax_reg
 .not_xchg_ax_reg:
+        cp      #8C
+        jp      z,x86_exec_mov_sreg_rm
+        cp      #8E
+        jp      z,x86_exec_mov_sreg_rm
         cp      #8F
         jp      z,x86_exec_pop_rm16
         cp      #86
@@ -197,6 +201,73 @@ x86_exec_mov_rm_reg:
 .mov_r16_from_rm16:
         call    x86_modrm_read_rm16
         jp      x86_modrm_write_reg16
+
+; 8C MOV r/m16,Sreg; 8E MOV Sreg,r/m16.
+; 8086 segment-register encoding: ES=0, CS=1, SS=2, DS=3.
+; MOV into CS (/1 with opcode 8E) is invalid. Loading SS arms the
+; one-instruction maskable-interrupt inhibition latch for interrupt logic.
+x86_exec_mov_sreg_rm:
+        ld      a,(x86_exec_opcode)
+        ld      (x86_exec_sreg_opcode),a
+        call    x86_decode_modrm16
+        ret     c
+        ld      a,(x86_modrm_reg)
+        cp      4
+        jr      nc,.mov_sreg_invalid
+        ld      (x86_exec_sreg_index),a
+
+        ld      a,(x86_exec_sreg_opcode)
+        bit     1,a
+        jr      nz,.mov_sreg_from_rm
+
+        ; 8C: segment register -> r/m16.
+        ld      a,(x86_exec_sreg_index)
+        call    x86_exec_sreg_get_pointer
+        ld      hl,(x86_exec_sreg_ptr)
+        ld      e,(hl)
+        inc     hl
+        ld      d,(hl)
+        ex      de,hl
+        jp      x86_modrm_write_rm16
+
+.mov_sreg_from_rm:
+        ld      a,(x86_exec_sreg_index)
+        cp      1
+        jr      z,.mov_sreg_invalid
+        call    x86_modrm_read_rm16
+        ld      (x86_exec_sreg_value),hl
+        ld      a,(x86_exec_sreg_index)
+        call    x86_exec_sreg_get_pointer
+        ld      hl,(x86_exec_sreg_ptr)
+        ld      de,(x86_exec_sreg_value)
+        ld      (hl),e
+        inc     hl
+        ld      (hl),d
+        ld      a,(x86_exec_sreg_index)
+        cp      2
+        jr      nz,.mov_sreg_done
+        ld      a,1
+        ld      (x86_irq_inhibit),a
+.mov_sreg_done:
+        or      a
+        ret
+
+.mov_sreg_invalid:
+        scf
+        ret
+
+; A=segment-register index, stores its pointer in x86_exec_sreg_ptr.
+x86_exec_sreg_get_pointer:
+        add     a,a
+        ld      e,a
+        ld      d,0
+        ld      hl,x86_exec_sreg_table
+        add     hl,de
+        ld      e,(hl)
+        inc     hl
+        ld      d,(hl)
+        ld      (x86_exec_sreg_ptr),de
+        ret
 
 ; 8F POP r/m16. Only ModR/M extension /0 is defined on the 8086.
 ; Resolve EA before advancing SP, then commit the popped word.
@@ -1324,6 +1395,12 @@ x86_exec_test_result: db 0,0
 x86_exec_test_immediate: dw 0
 x86_exec_mov_opcode: db 0
 x86_exec_mov_byte: db 0
+x86_exec_sreg_opcode: db 0
+x86_exec_sreg_index: db 0
+x86_exec_sreg_ptr: dw 0
+x86_exec_sreg_value: dw 0
+x86_exec_sreg_table:
+        dw x86_reg_es,x86_reg_cs,x86_reg_ss,x86_reg_ds
 x86_exec_xchg_opcode: db 0
 x86_exec_xchg_rm_byte: db 0
 x86_exec_xchg_reg_byte: db 0
