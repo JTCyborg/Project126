@@ -1060,7 +1060,6 @@ x86_exec_group3_test:
         ld      (x86_exec_group3_imm8),a
         call    x86_modrm_read_rm8
         ret     c
-        ret     c
         ld      (x86_exec_group3_value8),a
         ld      a,(x86_exec_group3_imm8)
         ld      c,a
@@ -1075,7 +1074,6 @@ x86_exec_group3_test:
         ld      (x86_exec_group3_imm16),hl
         call    x86_modrm_read_rm16
         ret     c
-        ret     c
         ld      de,(x86_exec_group3_imm16)
         ld      b,1
         call    x86_alu_logic16
@@ -1088,12 +1086,10 @@ x86_exec_group3_not:
         jr      nz,.group3_not_word
         call    x86_modrm_read_rm8
         ret     c
-        ret     c
         cpl
         jp      x86_modrm_write_rm8
 .group3_not_word:
         call    x86_modrm_read_rm16
-        ret     c
         ret     c
         ld      a,l
         cpl
@@ -1109,14 +1105,12 @@ x86_exec_group3_neg:
         jr      nz,.group3_neg_word
         call    x86_modrm_read_rm8
         ret     c
-        ret     c
         ld      c,a
         xor     a
         call    x86_alu_sub8
         jp      x86_modrm_write_rm8
 .group3_neg_word:
         call    x86_modrm_read_rm16
-        ret     c
         ret     c
         ex      de,hl
         ld      hl,0
@@ -1149,7 +1143,6 @@ x86_exec_group3_muldiv:
 x86_exec_group3_mul8:
         call    x86_modrm_read_rm8
         ret     c
-        ret     c
         ld      (x86_exec_group3_operand8),a
         ld      a,(x86_reg_ax)
         ld      (x86_exec_group3_original_al),a
@@ -1162,7 +1155,6 @@ x86_exec_group3_mul8:
 
 x86_exec_group3_imul8:
         call    x86_modrm_read_rm8
-        ret     c
         ret     c
         ld      (x86_exec_group3_operand8),a
         ld      a,(x86_reg_ax)
@@ -1288,7 +1280,6 @@ x86_exec_group3_mul8_flags:
 x86_exec_group3_div8:
         call    x86_modrm_read_rm8
         ret     c
-        ret     c
         or      a
         jp      z,x86_exec_group3_divide_error
         ld      c,a
@@ -1303,7 +1294,6 @@ x86_exec_group3_div8:
 
 x86_exec_group3_idiv8:
         call    x86_modrm_read_rm8
-        ret     c
         ret     c
         or      a
         jp      z,x86_exec_group3_divide_error
@@ -1403,7 +1393,6 @@ x86_exec_group3_divide_error:
 x86_exec_group3_mul16:
         call    x86_modrm_read_rm16
         ret     c
-        ret     c
         ld      (x86_exec_group3_operand16),hl
         ld      hl,(x86_reg_ax)
         ld      (x86_exec_group3_original_ax),hl
@@ -1415,7 +1404,6 @@ x86_exec_group3_mul16:
 
 x86_exec_group3_imul16:
         call    x86_modrm_read_rm16
-        ret     c
         ret     c
         ld      (x86_exec_group3_operand16),hl
         ld      hl,(x86_reg_ax)
@@ -1572,7 +1560,6 @@ x86_exec_group3_mul16_flags:
 x86_exec_group3_div16:
         call    x86_modrm_read_rm16
         ret     c
-        ret     c
         ld      (x86_exec_divisor16),hl
         ld      a,h
         or      l
@@ -1590,7 +1577,6 @@ x86_exec_group3_div16:
 
 x86_exec_group3_idiv16:
         call    x86_modrm_read_rm16
-        ret     c
         ret     c
         ld      (x86_exec_divisor16),hl
         ld      a,h
@@ -2278,7 +2264,6 @@ x86_exec_mov_rm_reg:
 .mov_r8_from_rm8:
         call    x86_modrm_read_rm8
         ret     c
-        ret     c
         ld      c,a
         ld      a,(x86_modrm_reg)
         jp      x86_modrm_write_reg8
@@ -2290,7 +2275,6 @@ x86_exec_mov_rm_reg:
         jp      x86_modrm_write_rm16
 .mov_r16_from_rm16:
         call    x86_modrm_read_rm16
-        ret     c
         ret     c
         jp      x86_modrm_write_reg16
 
@@ -2403,7 +2387,6 @@ x86_exec_xchg_rm_reg:
 
         call    x86_modrm_read_rm8
         ret     c
-        ret     c
         ld      (x86_exec_xchg_rm_byte),a
         ld      a,(x86_modrm_reg)
         call    x86_modrm_read_reg8
@@ -2412,7 +2395,6 @@ x86_exec_xchg_rm_reg:
 
 .xchg_word:
         call    x86_modrm_read_rm16
-        ret     c
         ret     c
         ld      (x86_exec_xchg_rm_word),hl
         call    x86_modrm_read_reg16
@@ -2570,14 +2552,12 @@ x86_exec_les_lds:
 
         call    x86_modrm_read_rm16
         ret     c
-        ret     c
         ld      (x86_exec_les_lds_offset),hl
         ld      hl,(x86_ea_offset)
         inc     hl
         inc     hl
         ld      (x86_ea_offset),hl
         call    x86_modrm_read_rm16
-        ret     c
         ret     c
         ld      (x86_exec_les_lds_segment),hl
 
