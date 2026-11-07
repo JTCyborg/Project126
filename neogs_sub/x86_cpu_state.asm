@@ -1339,6 +1339,11 @@ x86_cpu_state_selftest:
         cp      P126_X86_MEM_SYSBIOS
         jp      nz,.fail
 
+        ; Verify that ModR/M byte destinations use the register selector,
+        ; not the source byte value (PCem-compatible 8086 behavior).
+        call    x86_modrm_reg8_selftest
+        jp      c,.fail
+
         pop     hl
         pop     de
         pop     bc
