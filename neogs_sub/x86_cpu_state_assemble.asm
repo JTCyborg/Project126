@@ -227,6 +227,12 @@ x86_alu_module_start:
 x86_alu_module_end:
         SAVEBIN "build/X86ALU.C",x86_alu_module_start,x86_alu_module_end-x86_alu_module_start
 
+        ORG     #8000
+x86_dev_module_start:
+        INCLUDE "neogs_sub/x86_devices.asm"
+x86_dev_module_end:
+        SAVEBIN "build/X86DEV.C",x86_dev_module_start,x86_dev_module_end-x86_dev_module_start
+
 ; The stage-0 loader receives only X86CORE.C at logical origin 0000h.
         SAVEBIN "build/x86_cpu_state.bin",0,p126_ngs_ipc_module_end
         SAVEBIN "build/X86CORE.C",0,p126_ngs_ipc_module_end
