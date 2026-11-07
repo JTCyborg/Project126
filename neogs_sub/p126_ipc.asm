@@ -160,12 +160,12 @@ P126_NGS_DMA_LAD      EQU #1E
 P126_NGS_DMA_CST      EQU #1F
 P126_NGS_ZXSTAT       EQU #04
 P126_NGS_CLRCBIT      EQU #05
-P126_NGS_PG3_PORT     EQU #23
+P126_NGS_PG3_PORT     EQU P126_NGS_BANK_WINDOW_PORT
 ; Production DMA staging allocation: physical page 42h = 108000h.
 ; WIN3 (C000h-FFFFh) is the dedicated bank window; resident code/data/stack
 ; remain outside WIN3. Map the page before arming DMA and keep it mapped
 ; until frame validation or reverse-transfer completion.
-P126_NGS_DMA_PROD_PAGE EQU #42
+P126_NGS_DMA_PROD_PAGE EQU P126_NGS_DMA_PAGE
 P126_NGS_DMA_TIMEOUT   EQU #FFFF
 
 p126_ngs_ipc_dma_receive_frame::
