@@ -73,14 +73,19 @@ p126_ngs_resident_main_loop:
         ld      hl,p126_ngs_resident_frame_ok
         call    p126_ngs_resident_log
 .check_bios_ready:
+        ; CPU execution calls the fixed-origin I/O overlay at 8000h.
+        ; Do not enter the BIOS until its page-04 image has been verified
+        ; and mapped into WIN2 by IMAGE_FINISH.
+        ld      a,(p126_ngs_io_overlay_ready)
+        or      a
+        jr      z,p126_ngs_resident_main_loop
         ld      a,(p126_ngs_bios_image_ready)
         or      a
         jr      z,p126_ngs_resident_main_loop
         ; Consume the installation event before probing: one-shot transition.
         xor     a
         ld      (p126_ngs_bios_image_ready),a
-        ; Begin BIOS bring-up only after IMAGE_FINISH and page-10 readback.
-        ; The trace runs continuously until HLT/fault or the 65535-step safety watchdog.
+        ; Begin BIOS bring-up only after both IMAGE_FINISH/readback gates.
         call    x86_bios_startup_trace
         jr      p126_ngs_resident_main_loop
 
@@ -173,15 +178,24 @@ x86_alu_module_start:
         INCLUDE "neogs_sub/x86_alu.asm"
 x86_alu_module_end:
 
+; Link the ABI 1.0 DMA receiver/dispatcher into the fixed resident image.
+p126_ngs_ipc_module_start:
+        INCLUDE "neogs_sub/p126_ipc.asm"
+p126_ngs_ipc_module_end:
+
+; The XT PPI/keyboard I/O model is the first fixed-origin overlay.
+; CPU call sites are linked to 8000h symbols in this same assembly pass;
+; the ATM host loads this binary into physical page 04h before BIOS execution.
+        ASSERT p126_ngs_ipc_module_end <= #4000
+        ORG     #8000
 x86_io_module_start:
         INCLUDE "neogs_sub/x86_io.asm"
 x86_io_module_end:
 
-; Link the ABI 1.0 DMA receiver/dispatcher into the core image.
-; The final resident loader and main-loop placement remain separate work.
-p126_ngs_ipc_module_start:
-        INCLUDE "neogs_sub/p126_ipc.asm"
-p126_ngs_ipc_module_end:
+; Emit independent TR-DOS files. The raw audit image still contains both
+; address regions; only X86CORE.C is loaded by stage-0.
+        SAVEBIN "build/X86CORE.C",0,p126_ngs_ipc_module_end
+        SAVEBIN "build/X86IO.C",x86_io_module_start,x86_io_module_end-x86_io_module_start
 
 ; Export explicit boundaries for build/map inspection.
     DISPLAY "P126_NGS_RESIDENT_START=", /H, p126_ngs_resident_entry_vector
@@ -207,6 +221,9 @@ p126_ngs_ipc_module_end:
     DISPLAY "P126_NGS_IPC_SIZE=", /D, p126_ngs_ipc_module_end-p126_ngs_ipc_module_start
     DISPLAY "P126_X86_IMAGE_END=", /H, p126_ngs_ipc_module_end
     DISPLAY "P126_X86_IMAGE_SIZE=", /D, p126_ngs_ipc_module_end
+    DISPLAY "P126_X86IO_OVERLAY_START=", /H, x86_io_module_start
+    DISPLAY "P126_X86IO_OVERLAY_END=", /H, x86_io_module_end
+    DISPLAY "P126_X86IO_OVERLAY_SIZE=", /D, x86_io_module_end-x86_io_module_start
 
     ASSERT p126_ngs_resident_entry_vector = 0
     ASSERT x86_cpu_state_module_start > p126_ngs_resident_entry_vector
@@ -217,8 +234,10 @@ p126_ngs_ipc_module_end:
     ASSERT x86_modrm_module_start = x86_cpu_exec_module_end
     ASSERT x86_alu_module_start = x86_modrm_module_end
     ASSERT x86_alu_module_end > x86_alu_module_start
-    ASSERT x86_io_module_end > x86_io_module_start
-    ASSERT x86_io_module_start = x86_alu_module_end
     ASSERT p126_ngs_ipc_module_end > p126_ngs_ipc_module_start
-    ASSERT p126_ngs_ipc_module_start = x86_io_module_end
+    ASSERT p126_ngs_ipc_module_start = x86_alu_module_end
     ASSERT p126_ngs_ipc_module_end <= #4000
+    ASSERT x86_io_module_start = #8000
+    ASSERT x86_io_module_end > x86_io_module_start
+    ASSERT x86_io_module_end <= #C000
+    ASSERT x86_io_module_end-x86_io_module_start <= P126_IMAGE_X86IO_MAX_SIZE
