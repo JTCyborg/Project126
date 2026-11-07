@@ -91,64 +91,83 @@ x86_bios_reset_vector_probe:
         ret
 
 ; -------------------------------------------------------------------------
-; First BIOS bring-up slice.
-; Runs only after the resident receives and verifies IMAGE_FINISH.
-; Execute the reset vector, then at most 16 further BIOS instructions.
-; Stop at the first unsupported opcode, memory fault or guest HLT so the
-; current core state can be inspected without entering an uncontrolled loop.
+; Continuous BIOS bring-up execution.
+; Runs after IMAGE_FINISH and page-10 readback verification. The old
+; 16-instruction slice is removed. Execution continues until guest HLT,
+; unsupported opcode, guest-memory fault, or a 65535-instruction watchdog.
+; The watchdog is only a runaway-loop safety net; it is not a BIOS slice.
+; Progress is reported every 256 instructions to avoid flooding #EF.
 ; -------------------------------------------------------------------------
 x86_bios_startup_trace:
         call    x86_bios_reset_vector_probe
         jr      nc,.reset_vector_ok
-        ld      hl,x86_bios_screen_reset_fail
-        call    x86_bios_trace_screen_send_string
-        call    x86_bios_trace_screen_send_location
+        ld      a,4
+        call    x86_bios_trace_capture_event
         ret
 .reset_vector_ok:
+        xor     a
+        ld      (x86_bios_trace_event_status),a
         ld      hl,x86_bios_trace_start_log
         call    p126_ngs_resident_log
-        ld      a,16
-        ld      (x86_bios_trace_remaining),a
-        xor     a
-        ld      (x86_bios_trace_executed),a
+        ld      hl,#FFFF
+        ld      (x86_bios_trace_remaining),hl
+        ld      hl,0
+        ld      (x86_bios_trace_executed),hl
 .trace_loop:
         call    x86_cpu_step
         jr      c,.trace_fault
-        ld      a,(x86_bios_trace_executed)
-        inc     a
-        ld      (x86_bios_trace_executed),a
-        call    x86_bios_trace_log_cs_ip
+        ld      hl,(x86_bios_trace_executed)
+        inc     hl
+        ld      (x86_bios_trace_executed),hl
+        ld      a,l
+        or      a
+        call    z,x86_bios_trace_log_cs_ip
         ld      a,(x86_halted)
         or      a
         jr      nz,.trace_halted
-        ld      a,(x86_bios_trace_remaining)
-        dec     a
-        ld      (x86_bios_trace_remaining),a
+        ld      hl,(x86_bios_trace_remaining)
+        dec     hl
+        ld      (x86_bios_trace_remaining),hl
+        ld      a,h
+        or      l
         jr      nz,.trace_loop
-        ld      hl,x86_bios_trace_budget_log
+        ld      a,5
+        call    x86_bios_trace_capture_event
+        ld      hl,x86_bios_trace_watchdog_log
         call    p126_ngs_resident_log
-        ld      hl,x86_bios_screen_budget
-        call    x86_bios_trace_screen_send_string
-        call    x86_bios_trace_screen_send_location
-        or      a
+        call    x86_bios_trace_log_cs_ip
+        scf
         ret
 .trace_fault:
+        ld      a,3
+        call    x86_bios_trace_capture_event
         ld      hl,x86_bios_trace_fault_log
         call    p126_ngs_resident_log
         call    x86_bios_trace_log_cs_ip
-        ld      hl,x86_bios_screen_fault
-        call    x86_bios_trace_screen_send_string
-        call    x86_bios_trace_screen_send_location
         scf
         ret
 .trace_halted:
+        ld      a,2
+        call    x86_bios_trace_capture_event
         ld      hl,x86_bios_trace_halted_log
         call    p126_ngs_resident_log
-        ld      hl,x86_bios_screen_halted
-        call    x86_bios_trace_screen_send_string
-        call    x86_bios_trace_screen_send_location
+        call    x86_bios_trace_log_cs_ip
         or      a
         ret
+
+; Capture a compact stop event for the DMA diagnostics response.
+; A=1 slice budget, 2 guest HLT, 3 opcode/memory fault, 4 reset-vector fault.
+x86_bios_trace_capture_event:
+        ld      (x86_bios_trace_event_status),a
+        ld      hl,(x86_reg_cs)
+        ld      (x86_bios_trace_event_cs),hl
+        ld      hl,(x86_reg_ip)
+        ld      (x86_bios_trace_event_ip),hl
+        ret
+
+x86_bios_trace_event_status: db 0
+x86_bios_trace_event_cs:     dw 0
+x86_bios_trace_event_ip:     dw 0
 
 ; Emit the post-instruction CS:IP on the independent NeoGS #EF channel.
 x86_bios_trace_log_cs_ip:
@@ -199,108 +218,13 @@ x86_bios_trace_emit_nibble:
         out     (#EF),a
         ret
 
-x86_bios_trace_remaining: db 0
-x86_bios_trace_executed:  db 0
-x86_bios_trace_start_log: db "[NGS] X86 BIOS INSTRUCTION TRACE START (16-STEP SLICE)",13,10,0
+x86_bios_trace_remaining: dw 0
+x86_bios_trace_executed:  dw 0
+x86_bios_trace_start_log: db "[NGS] X86 BIOS CONTINUOUS EXECUTION START",13,10,0
 x86_bios_trace_cs_ip_prefix: db "[X86] CS:IP=",0
 x86_bios_trace_fault_log: db "[NGS] X86 BIOS TRACE STOP: OPCODE OR MEMORY FAULT",13,10,0
 x86_bios_trace_halted_log: db "[NGS] X86 BIOS EXECUTION HALTED BY GUEST",13,10,0
-x86_bios_trace_budget_log: db "[NGS] X86 BIOS TRACE SLICE COMPLETE (16 INSTRUCTIONS)",13,10,0
-
-; -------------------------------------------------------------------------
-; Publish BIOS stop reasons to the ATM on-screen debug console.
-; NeoGS sends one GSDAT byte at a time and waits for the ATM to consume DBIT.
-; The ATM host polls this reverse channel from its idle loop and renders each
-; byte with BIOS_DebugConsole_PrintChar. #EF diagnostics remain independent.
-; -------------------------------------------------------------------------
-x86_bios_trace_screen_send_string:
-        ld      a,(hl)
-        or      a
-        ret     z
-        push    hl
-        call    x86_bios_trace_screen_send_char
-        pop     hl
-        ret     c
-        inc     hl
-        jr      x86_bios_trace_screen_send_string
-
-; IN A=ASCII byte. OUT carry set only if ATM does not consume DBIT in time.
-x86_bios_trace_screen_send_char:
-        ld      (x86_bios_trace_screen_char),a
-        ; Allow the ATM host to finish its DMA return path and then poll the
-        ; reverse channel. Use the same eight bounded windows as the IPC path.
-        ld      d,8
-.wait_outer:
-        ld      bc,#FFFF
-.wait_host:
-        in      a,(#04)
-        bit     7,a
-        jr      z,.host_ready
-        dec     bc
-        ld      a,b
-        or      c
-        jr      nz,.wait_host
-        dec     d
-        jr      nz,.wait_outer
-        scf
-        ret
-.host_ready:
-        ld      a,(x86_bios_trace_screen_char)
-        out     (#03),a
-        or      a
-        ret
-
-; Append the current guest CS:IP to the screen-console stop message.
-x86_bios_trace_screen_send_location:
-        ld      hl,(x86_reg_cs)
-        call    x86_bios_trace_screen_emit_hex16
-        ld      a,':'
-        call    x86_bios_trace_screen_send_char
-        ret     c
-        ld      hl,(x86_reg_ip)
-        call    x86_bios_trace_screen_emit_hex16
-        ret     c
-        ld      a,13
-        call    x86_bios_trace_screen_send_char
-        ret     c
-        ld      a,10
-        jp      x86_bios_trace_screen_send_char
-
-x86_bios_trace_screen_emit_hex16:
-        ld      a,h
-        call    x86_bios_trace_screen_emit_hex8
-        ret     c
-        ld      a,l
-        jp      x86_bios_trace_screen_emit_hex8
-
-x86_bios_trace_screen_emit_hex8:
-        ld      (x86_bios_trace_screen_hex_byte),a
-        rrca
-        rrca
-        rrca
-        rrca
-        and     #0F
-        call    x86_bios_trace_screen_emit_nibble
-        ret     c
-        ld      a,(x86_bios_trace_screen_hex_byte)
-        and     #0F
-        jp      x86_bios_trace_screen_emit_nibble
-
-x86_bios_trace_screen_emit_nibble:
-        and     #0F
-        add     a,'0'
-        cp      '9'+1
-        jr      c,.digit
-        add     a,7
-.digit:
-        jp      x86_bios_trace_screen_send_char
-
-x86_bios_trace_screen_char: db 0
-x86_bios_trace_screen_hex_byte: db 0
-x86_bios_screen_reset_fail: db "[X86] BIOS RESET VECTOR FAILED AT CS:IP=",0
-x86_bios_screen_budget:    db "[X86] BIOS PAUSED: 16-INSTRUCTION SLICE COMPLETE; CS:IP=",0
-x86_bios_screen_fault:     db "[X86] BIOS STOPPED: OPCODE OR MEMORY FAULT; CS:IP=",0
-x86_bios_screen_halted:    db "[X86] BIOS HALTED BY GUEST; CS:IP=",0
+x86_bios_trace_watchdog_log: db "[NGS] X86 BIOS STOP: 65535-INSTRUCTION WATCHDOG",13,10,0
 
 ; physical = ((segment << 4) + offset) & 0FFFFFh
 x86_cpu_calc_phys:

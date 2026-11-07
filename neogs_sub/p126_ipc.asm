@@ -364,16 +364,24 @@ p126_ngs_ipc_dma_send_test_frame::
         ldir
         ld      hl,#C000+P126_IPC_HEADER_SIZE
         ld      bc,P126_IPC_MAX_PAYLOAD
-        ld      e,0
 .ngs_fill:
-        ld      a,e
+        xor     a
         ld      (hl),a
         inc     hl
-        inc     e
         dec     bc
         ld      a,b
         or      c
         jr      nz,.ngs_fill
+
+        ; Payload[0] = stop reason, [1..2] = CS, [3..4] = IP.
+        ; The remainder is zero-filled; the complete fixed-size DMA frame
+        ; remains protected by the shared ABI CRC.
+        ld      a,(x86_bios_trace_event_status)
+        ld      (#C012),a
+        ld      hl,(x86_bios_trace_event_cs)
+        ld      (#C013),hl
+        ld      hl,(x86_bios_trace_event_ip)
+        ld      (#C015),hl
 
         ; CRC covers header[0..15] followed by all 16366 payload bytes.
         ld      hl,#FFFF
@@ -540,6 +548,16 @@ p126_ngs_ipc_dispatch_once::
         ret
 
 .p126_ngs_dispatch_ngs_frame:
+        ; The host may request the stop record immediately after IMAGE_FINISH.
+        ; If the resident loop has not consumed BIOS_IMAGE_READY yet, execute
+        ; the bounded startup slice now so the DMA response contains its result.
+        ld      a,(p126_ngs_bios_image_ready)
+        or      a
+        jr      z,.ngs_frame_trace_ready
+        xor     a
+        ld      (p126_ngs_bios_image_ready),a
+        call    x86_bios_startup_trace
+.ngs_frame_trace_ready:
         ld      hl,p126_ngs_ipc_log_dma_rx_request
         call    p126_ngs_ipc_log
         call    p126_ngs_ipc_dma_send_test_frame
