@@ -172,6 +172,15 @@ x86_dev_board_selftest_impl:
         call    x86_dev_board_read8
         cp      1
         jp      nz,.board_selftest_fail
+        ; Legacy data-bus test latch (00C0h) must round-trip independently.
+        ld      hl,#00C0
+        ld      (x86_dev_port),hl
+        ld      a,#5A
+        call    x86_dev_board_write8
+        jp      c,.board_selftest_fail
+        call    x86_dev_board_read8
+        cp      #5A
+        jp      nz,.board_selftest_fail
         ld      hl,#03B8
         ld      (x86_dev_port),hl
         ld      a,#29
