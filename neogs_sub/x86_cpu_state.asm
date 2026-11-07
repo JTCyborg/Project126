@@ -201,6 +201,7 @@ x86_guest_ram_select_page:
         rrca
         and     #03
         add     a,b
+        rrca                            ; MPAGEX selector = physical page rotated right
         out     (P126_NGS_BANK_WINDOW_PORT),a
 
         ld      a,(x86_phys_addr+1)
@@ -306,6 +307,7 @@ x86_guest_mem_select_page:
         rrca
         and     #03
         add     a,b
+        rrca                            ; MPAGEX selector = physical page rotated right
         out     (P126_NGS_BANK_WINDOW_PORT),a
         ld      a,(x86_phys_addr+1)
         and     #3F
