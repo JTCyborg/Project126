@@ -756,3 +756,12 @@ The test is diagnostic only. BUILD PASS and hardware PASS are tracked separately
 - ATM→NeoGS диагностический приём ограничен размером 3000h, чтобы не выйти за границу страницы 03h. Производственная staging-страница 42h остаётся в карте памяти, но аппаратно ещё не проверена.
 - Удалён вводящий в заблуждение WIN3 RW probe на странице 42h: он проверял CPU-доступ, а не DMA-доставку. Проверкой данных теперь служат полная проверка кадра/CRC и тестовый payload.
 - Это диагностическая контрольная сборка. DMA HARDWARE PASS не заявляется до нового лога с корректным CRC и последовательностью 00..FF в обоих направлениях.
+
+
+## 2026-11-07 — DMA routines ported to Project125 WIN1 implementation
+
+- Project126 selects physical page 03h through PG1 port `#21`, matching Project125's `neo_set_pg1`; DMA buffers are not accessed through WIN3/port `#23`.
+- With page 03h in WIN1 (`#4000..#7FFF`), physical DMA destination `00D000h` is CPU-visible at logical `#5000`; reverse source `00E000h` is CPU-visible at logical `#6000`. DMA registers remain module 1, HAD=00, MAD=D0/E0, LAD=00, CST=#80. ATM aperture remains `#0000`.
+- Reverse frame is contiguous in WIN1: header `#6000`, payload `#6012`, CRC `#6010`. Corrected the response header's payload length to little-endian `0100h` (256 bytes); it previously declared `1260h` while only 256 bytes were generated.
+- ATM DMA primitives match Project125: forward `DI` + `LDIR` to `#0000` with no dummy write; reverse `DI`, one discarded read from `#0000`, then `LDIR` from `#0000` into the host buffer, followed by `#FF` and CBIT acknowledgement.
+- Source/build change only. No hardware DMA PASS is claimed until a new target log confirms both directions.

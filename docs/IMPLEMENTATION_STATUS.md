@@ -467,3 +467,12 @@ Verification boundary: source correction is committed. CI assembly/package resul
 - Diagnostic reservations are D000h..D111h and E000h..E111h in page 03h; the resident stack at 7FFEh is separate. The host→NeoGS diagnostic receiver rejects a frame larger than 3000h to keep the transaction inside page 03h. These are diagnostic-only carve-outs.
 - Production staging remains allocated at page 42h (108000h) in the physical map, but page 42h is **not** declared hardware-validated by this commit. After the parity test passes, page-42 DMA must be tested separately before switching the production endpoints back.
 - **Verification boundary:** source and documentation change only. A fresh CI build and a new target hardware log are required. No DMA hardware PASS is claimed.
+
+
+## 2026-11-07 — Project125 DMA implementation ported into Project126
+
+- NeoGS now selects physical page 03h in PG1 through port `#21`, matching the Project125 DMA window model; WIN3/port `#23` is not used for these diagnostic buffers.
+- Physical D000h and E000h are accessed by NeoGS at WIN1 logical 5000h and 6000h respectively. DMA engine register addresses remain D000h/E000h.
+- Reverse response is contiguous in WIN1 and its header declares the generated 256-byte payload (`0100h`), correcting the previous erroneous `1260h` length.
+- ATM DMA aperture operations follow Project125: no dummy write for forward transfer; DI plus one discarded read before reverse data collection.
+- Build and hardware verification pending. No hardware DMA PASS is claimed.
