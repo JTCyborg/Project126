@@ -1033,7 +1033,9 @@ p126_ngs_overlay_win2_selftest:
 .overlay_win2_test_config_failed:
         xor     a
         ld      (p126_ngs_overlay_test_fail_stage),a
-        jr      .overlay_win2_test_failed
+        call    p126_ngs_overlay_test_restore_maps
+        scf
+        ret
 
 .overlay_win2_test_failed:
         ; Best-effort restoration even when one WIN2 selector is incorrect.
