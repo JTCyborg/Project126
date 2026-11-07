@@ -792,7 +792,7 @@ Source commit: `aac9d7e60c391510150016d3b29906a7b2f90e3d`.
 
 ## 2026-11-07 — Latest PCem 8086 semantic review
 
-- Corrected 8Eh MOV Sreg,r/m16: the original PCem 8086 path permits loading CS through selector /1; this is not restricted as it is on later x86 profiles.
+- Corrected 8Eh MOV Sreg,r/m16: the original PCem 8086 path permits loading CS through selector /1; this is not restricted as it is on later x86 profiles. The PCem one-instruction maskable-IRQ inhibit latch is also applied after every 8Eh selector, including ignored /4-/7 encodings; 8Ch does not arm it.
 - Matched PCem's ModR/M extension behavior: 8F POP and C6/C7 MOV immediate execute for every /n selector; FE treats /0 as INC and every nonzero selector as DEC; FF /7 consumes ModR/M and has no operation; 8C/8E /4-/7 are ignored.
 - REP/REPE/REPNE string instructions now yield after each iteration, restore IP to the first prefix byte when continuing, and pass through the normal IRQ/NMI boundary before the next iteration. REPE/REPNE initialize ZF as PCem does, including when CX is zero.
 - BIOS image installation no longer triggers automatic reset-vector probing or guest execution. It only logs that x86 execution is gated.
