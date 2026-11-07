@@ -512,3 +512,9 @@ User-provided target log confirms both diagnostic DMA directions end-to-end on p
 - **BUILD PASS:** GitHub Actions run [42356251101](https://github.com/JTCyborg/Project126/actions/runs/42356251101), built commit `a91fc6a86873e4a5208067b55782cb0085ae930e` (includes the page-42 receiver and 274-byte ATM test frame). SjASMPlus assembled NeoGS, ATM IPC and standalone NeoGS IPC with 0 errors/0 warnings; NeoGS IPC image is 1408 bytes, combined NeoGS image 3350 bytes, ATM IPC image 1777 bytes; TR-DOS image packaged successfully. One pre-existing generated-path backslash warning remains in the disk assembler.
 - **HARDWARE PENDING:** page-42 target verification is not yet claimed. Do not mark page 42h as hardware PASS until the new ATM/NeoGS target log confirms full CRC and payload checks in both directions.
 - **Next after page-42 PASS:** maximum-size single-frame test, then ABI fragmentation/reassembly with per-fragment CRC/sequence/metadata validation, followed by sustained multi-frame streaming stress and error/recovery tests.
+
+
+### Latest page-42 source build confirmation
+
+- **BUILD PASS:** final self-contained source commit `cd37fcb1e720b4455a815f9b65b34eaf62c6f4b3`; GitHub Actions run [42356391039](https://github.com/JTCyborg/Project126/actions/runs/42356391039) completed successfully. NeoGS main image 3350 bytes, ATM IPC 1777 bytes, standalone NeoGS IPC 1408 bytes; all assembly units report 0 errors and 0 warnings. TR-DOS image packaged at 655360 bytes. The disk assembly emits one pre-existing generated-path backslash warning.
+- Build artifact: `project126-trdos-disk-and-build` is attached to the workflow run. This confirms source assembly and disk packaging only; production page-42 physical DMA remains **HARDWARE PENDING**.
