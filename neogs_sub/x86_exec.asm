@@ -81,6 +81,8 @@ x86_cpu_step:
         jp      z,x86_exec_lahf
         cp      #EA
         jp      z,x86_exec_jmp_far_imm
+        cp      #E8
+        jp      z,x86_exec_call_near_rel16
         cp      #E9
         jp      z,x86_exec_jmp_near_rel16
         cp      #EB
@@ -866,6 +868,37 @@ x86_exec_jmp_far_imm:
         or      a
         ret
 
+; E8 CALL rel16. Push the post-displacement IP to SS:SP-2,
+; then branch relative to the post-displacement IP.
+x86_exec_call_near_rel16:
+        call    x86_cpu_fetch16
+        ret     c
+        ld      (x86_exec_call_displacement),hl
+        ld      hl,(x86_reg_sp)
+        dec     hl
+        dec     hl
+        ld      (x86_reg_sp),hl
+        ld      (x86_exec_stack_offset),hl
+        ld      hl,(x86_reg_ip)
+        ld      (x86_exec_stack_value),hl
+        call    x86_exec_stack_make_address
+        ld      a,(x86_exec_stack_value)
+        call    x86_guest_mem_write8
+        ret     c
+        ld      hl,(x86_exec_stack_offset)
+        inc     hl
+        ld      (x86_exec_stack_offset),hl
+        call    x86_exec_stack_make_address
+        ld      a,(x86_exec_stack_value+1)
+        call    x86_guest_mem_write8
+        ret     c
+        ld      hl,(x86_reg_ip)
+        ld      de,(x86_exec_call_displacement)
+        add     hl,de
+        ld      (x86_reg_ip),hl
+        or      a
+        ret
+
 ; E9 cw — JMP near relative, signed displacement added to post-fetch IP.
 x86_exec_jmp_near_rel16:
         call    x86_cpu_fetch16
@@ -917,6 +950,7 @@ x86_exec_stack_value: dw 0
 x86_exec_stack_new_sp: dw 0
 x86_exec_target_cs: dw 0
 x86_exec_ret_adjust: dw 0
+x86_exec_call_displacement: dw 0
 x86_exec_jcc_condition: db 0
 x86_exec_jcc_displacement: db 0
 x86_exec_moffs_opcode: db 0
