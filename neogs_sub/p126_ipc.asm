@@ -173,6 +173,8 @@ p126_ngs_ipc_dma_receive_frame::
         out     (P126_NGS_DMA_LAD),a
         ld      a,#80
         out     (P126_NGS_DMA_CST),a
+        ld      hl,p126_ngs_ipc_log_dma_ready
+        call    p126_ngs_resident_log
         xor     a
         out     (P126_NGS_CLRCBIT),a
 
@@ -185,6 +187,7 @@ p126_ngs_ipc_dma_receive_frame::
         ld      a,b
         or      c
         jr      nz,.p126_ngs_dma_wait_end
+        ; Always stop DMA before releasing the command on timeout.
         xor     a
         out     (P126_NGS_DMA_CST),a
         out     (P126_NGS_CLRCBIT),a
@@ -193,11 +196,14 @@ p126_ngs_ipc_dma_receive_frame::
         ret
 
 .p126_ngs_dma_host_end:
+        ; FFh/CBIT marks the end of the host write. Stop DMA and map the
+        ; staging page, but keep CBIT asserted until validation is complete.
         xor     a
         out     (P126_NGS_DMA_CST),a
-        out     (P126_NGS_CLRCBIT),a
         ld      a,P126_NGS_DMA_TARGET_PAGE
         out     (P126_NGS_WIN3_PORT),a
+        ld      hl,p126_ngs_ipc_log_dma_end
+        call    p126_ngs_resident_log
 
         ; Derive exact frame size from the fixed header's payload length.
         ld      a,(#C00C)
@@ -220,14 +226,32 @@ p126_ngs_ipc_dma_receive_frame::
         ld      bc,(p126_ngs_ipc_rx_size)
         ld      hl,#C000
         call    p126_ngs_ipc_validate_frame
-        ret     c
+        jr      c,.p126_ngs_dma_validation_failed
+
+        ; Validation succeeded: only now acknowledge completion to ATM.
+        xor     a
+        out     (P126_NGS_CLRCBIT),a
         ld      hl,#C000
         ld      bc,(p126_ngs_ipc_rx_size)
         xor     a
         ret
 
+.p126_ngs_dma_validation_failed:
+        ; Preserve the ABI status and carry while releasing the host.
+        push    af
+        xor     a
+        out     (P126_NGS_CLRCBIT),a
+        pop     af
+        scf
+        ret
+
 .p126_ngs_dma_bad_length:
         ld      a,P126_STATUS_BAD_FRAME
+        scf
+        push    af
+        xor     a
+        out     (P126_NGS_CLRCBIT),a
+        pop     af
         scf
         ret
 
@@ -265,6 +289,8 @@ p126_ngs_ipc_dispatch_once::
         ret
 
 .p126_ngs_dispatch_host_frame:
+        ld      hl,p126_ngs_ipc_log_dma_e0
+        call    p126_ngs_resident_log
         call    p126_ngs_ipc_dma_receive_frame
         ret     c
         ld      a,1
@@ -302,3 +328,8 @@ p126_ngs_ipc_crc16_selftest::
 
 p126_ngs_ipc_crc16_test_vector:
         db "123456789"
+
+; Independent NeoGS #EF diagnostics for the DMA transaction lifecycle.
+p126_ngs_ipc_log_dma_e0:    db "[NGS] DMA E0 RECEIVED",13,10,0
+p126_ngs_ipc_log_dma_ready: db "[NGS] DMA READY",13,10,0
+p126_ngs_ipc_log_dma_end:   db "[NGS] DMA END RECEIVED",13,10,0
