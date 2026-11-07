@@ -8,8 +8,8 @@ Later 80186/286/386 instructions are not part of the target CPU.
 
 - Denominator: 256 possible opcode-byte values in the documented original 8086 opcode map, including the 8087 ESC opcode range and undocumented 8086-compatible values where PCem has an execution path.
 - Numerator: opcode-byte values with a concrete execution path in the Project126 dispatcher.
-- Current numerator: 44.
-- **Opcode-byte dispatch coverage: 44 / 256 = 17.19%.**
+- Current numerator: 48.
+- **Opcode-byte dispatch coverage: 48 / 256 = 18.75%.**
 - This is a source-coverage metric, not a claim of full semantic correctness. ModR/M forms, memory addressing, prefixes, flags, interrupt behavior and corner cases are tracked separately and must also be complete before the CPU is called 100%.
 - An instruction family is not considered complete merely because one opcode in the family is present.
 
@@ -17,6 +17,7 @@ Later 80186/286/386 instructions are not part of the target CPU.
 
 | Opcode | Instruction | Source |
 |---|---|---|
+| A0–A3 | MOV AL/AX to/from direct DS offset (moffs16) | `neogs_sub/x86_exec.asm` |
 | 40–47 | INC r16 | `neogs_sub/x86_exec.asm` |
 | 48–4F | DEC r16 | `neogs_sub/x86_exec.asm` |
 | 90 | NOP (XCHG AX,AX encoding) | `neogs_sub/x86_exec.asm` |
@@ -29,6 +30,7 @@ Later 80186/286/386 instructions are not part of the target CPU.
 | F4 | HLT | `neogs_sub/x86_exec.asm` |
 
 The 16 MOV-immediate opcodes were added in commit `28575e385d5d2a66c5ca448e72f7b4e2f01d2391`.
+The 4 direct-offset MOV opcodes A0–A3 were added in commit `f8111740994d26d55cbad90391456daf096345c6`; byte/word transfers use the Project126 guest-memory backend and DS as the default segment (segment overrides are pending).
 The 7 XCHG AX,r16 opcodes were added in commit `1a257238d23d31d897137518f6bfe47c5657ef13`.
 The 16 register INC/DEC opcodes were added in commits `75a3e69da4549ffe2f2346b86cac5d8263a61ca4` and `e4dfd3b34d26c778e4a8029484ad67b76c560e83`. INC/DEC use the existing 16-bit ALU flag engine and explicitly preserve CF.
 
