@@ -1493,22 +1493,22 @@ x86_exec_group3_mul16_flags:
         ; Signed overflow iff high word is not the sign extension of low.
         ld      hl,(x86_exec_mul16_product_high)
         ld      a,h
-        and     l
+        or      l
+        jr      z,.mul16_high_zero
         ld      a,h
-        cp      0
-        jr      nz,.mul16_check_negative_extension
-        ld      hl,(x86_exec_mul16_product_low)
-        bit     7,h
-        jr      z,.mul16_no_overflow
-        jr      .mul16_overflow
-.mul16_check_negative_extension:
-        ld      hl,(x86_exec_mul16_product_high)
-        ld      a,h
+        cp      #FF
+        jr      nz,.mul16_overflow
+        ld      a,l
         cp      #FF
         jr      nz,.mul16_overflow
         ld      hl,(x86_exec_mul16_product_low)
         bit     7,h
         jr      nz,.mul16_no_overflow
+        jr      .mul16_overflow
+.mul16_high_zero:
+        ld      hl,(x86_exec_mul16_product_low)
+        bit     7,h
+        jr      z,.mul16_no_overflow
         jr      .mul16_overflow
 .mul16_unsigned_overflow:
         ld      hl,(x86_exec_mul16_product_high)
