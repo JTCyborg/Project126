@@ -219,6 +219,11 @@ x86_cpu_step_fetch_opcode:
         jp      z,x86_exec_push_segment
         cp      #1F
         jp      z,x86_exec_pop_segment
+        cp      #D8
+        jp      c,.not_esc
+        cp      #E0
+        jp      c,x86_exec_esc
+.not_esc:
         cp      #D0
         jp      z,x86_exec_shift_group
         cp      #D1
@@ -2264,6 +2269,15 @@ x86_exec_salc:
 .salc_clear:
         xor     a
         ld      (x86_reg_ax),a
+        ret
+
+; D8-DF ESC opcodes. PCem decodes the ModR/M/EA bytes; with no 8087
+; device installed, the 8086 core consumes the instruction and performs no
+; coprocessor operation or external port access.
+x86_exec_esc:
+        call    x86_decode_modrm16
+        ret     c
+        or      a
         ret
 
 ; D0-D3 Group 2 shifts/rotates. 8086 CL counts are unmasked.
