@@ -185,9 +185,9 @@ x86_bios_startup_trace:
         ld      (x86_bios_trace_first_count),a
         ld      hl,x86_bios_trace_start_log
         call    p126_ngs_resident_log
-        ; Temporary diagnostic window: retain the first BIOS table traversal
-        ; in the 16-entry instruction history instead of a later SI wrap.
-        ld      hl,#0100
+        ; Temporary diagnostic window: allow both BIOS port tables to finish
+        ; and capture the first post-table initialization instructions.
+        ld      hl,#0200
         ld      (x86_bios_trace_remaining),hl
         ld      hl,0
         ld      (x86_bios_trace_executed),hl
@@ -772,7 +772,7 @@ x86_bios_trace_start_log: db "[NGS] X86 BIOS CONTINUOUS EXECUTION START",13,10,0
 x86_bios_trace_cs_ip_prefix: db "[X86] CS:IP=",0
 x86_bios_trace_fault_log: db "[NGS] X86 BIOS TRACE STOP: OPCODE OR MEMORY FAULT",13,10,0
 x86_bios_trace_halted_log: db "[NGS] X86 BIOS EXECUTION HALTED BY GUEST",13,10,0
-x86_bios_trace_watchdog_log: db "[NGS] X86 BIOS DIAGNOSTIC STOP: 256 INSTRUCTIONS",13,10,0
+x86_bios_trace_watchdog_log: db "[NGS] X86 BIOS DIAGNOSTIC STOP: 512 INSTRUCTIONS",13,10,0
 x86_bios_trace_regs_ax:    db "[X86 REG] AX=",0
 x86_bios_trace_regs_bx:    db " BX=",0
 x86_bios_trace_regs_cx:    db " CX=",0
