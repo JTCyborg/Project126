@@ -2564,7 +2564,8 @@ x86_exec_iret:
         ld      a,h
         and     #0F
         ld      h,a
-        set     1,l
+        ; PCem assigns the masked 12-bit stack image verbatim; do not
+        ; synthesize FLAGS bit 1 during IRET.
         ld      (x86_reg_flags),hl
         ld      hl,(x86_exec_target_cs)
         ld      (x86_reg_cs),hl
