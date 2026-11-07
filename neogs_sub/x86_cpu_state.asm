@@ -227,6 +227,10 @@ x86_bios_trace_screen_send_string:
 ; IN A=ASCII byte. OUT carry set only if ATM does not consume DBIT in time.
 x86_bios_trace_screen_send_char:
         ld      (x86_bios_trace_screen_char),a
+        ; Allow the ATM host to finish its DMA return path and then poll the
+        ; reverse channel. Use the same eight bounded windows as the IPC path.
+        ld      d,8
+.wait_outer:
         ld      bc,#FFFF
 .wait_host:
         in      a,(#04)
@@ -236,6 +240,8 @@ x86_bios_trace_screen_send_char:
         ld      a,b
         or      c
         jr      nz,.wait_host
+        dec     d
+        jr      nz,.wait_outer
         scf
         ret
 .host_ready:
