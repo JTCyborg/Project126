@@ -492,6 +492,9 @@ p126_ipc_dma_receive_test::
         ld      a,1
         jr      .rx_failed
 .rx_ready:
+        ; Project125 disables IM1 before the first ROM-aperture read; an
+        ; interrupt would fetch NeoGS DMA bytes at #0038h instead of ROM.
+        di
         ld      hl,0
         ld      a,(hl)                  ; required discarded first read
         ld      hl,0

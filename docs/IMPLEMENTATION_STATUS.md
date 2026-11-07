@@ -456,3 +456,14 @@ Verification boundary: source correction is committed. CI assembly/package resul
 - The test is invoked after the existing E0h host->NeoGS smoke transaction. It does not replace or alter E0h, DMA target address, module selection, or ABI 1.0.
 - Hardware prerequisite: ATM ROM must remain mapped at 0000h..3FFFh during reverse DMA reads. The NeoGS hardware documentation distinguishes this from host->NeoGS writes, which work with RAM mapped.
 - Verification boundary: source and packaging build must pass CI; target hardware must separately report [ATM IPC] DMA RX PATTERN PASS. No reverse-DMA hardware PASS is claimed by this source change.
+
+
+## 2026-11-07 — Project125 DMA parity correction (hardware diagnostic)
+
+- Rechecked the actual Project125 routines, not only the shared constants: `p125_dma_reverse_selftest` in `zx_main/bios_transfer.asm`, `command_load_x86` in `neogs_sub/main.asm`, and `NeoGS/dma_zx_doc.txt`.
+- Project125's known-good physical addresses are 00D000h for host→NeoGS writes and 00E000h for NeoGS→host reads, both in page 03h. The reverse host reader performs DI, one discarded read from ROM aperture 0000h, then copies the valid bytes. Forward writes do not perform a dummy write.
+- Project126's previous page-42 test had a misleading CPU-only WIN3 read/write probe. The observed address increment (108000h→108012h) proved DMA address-register progression only; it did not prove payload delivery. The all-zero received header and reverse CRC failure remain the baseline hardware failures.
+- The fixed smoke endpoints now use the Project125 physical test addresses and explicitly map page 03h into WIN3. The ATM reverse reader now executes DI before the dummy read. The false-positive WIN3 probe has been removed; validation is based on complete frame CRC and the 00..FF payload pattern.
+- Diagnostic reservations are D000h..D111h and E000h..E111h in page 03h; the resident stack at 7FFEh is separate. The host→NeoGS diagnostic receiver rejects a frame larger than 3000h to keep the transaction inside page 03h. These are diagnostic-only carve-outs.
+- Production staging remains allocated at page 42h (108000h) in the physical map, but page 42h is **not** declared hardware-validated by this commit. After the parity test passes, page-42 DMA must be tested separately before switching the production endpoints back.
+- **Verification boundary:** source and documentation change only. A fresh CI build and a new target hardware log are required. No DMA hardware PASS is claimed.

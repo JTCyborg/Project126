@@ -89,6 +89,8 @@
 - В Project126 фиксируется один активный DMA transaction. Завершение подтверждается только после end marker, отключения DMA на NeoGS и финального CBIT acknowledgement.
 - Буферы и адреса staging, ATM source/destination placement и аппаратное paging требуют отдельной спецификации и проверки. Физическая карта NeoGS 4 MiB закреплена разделом 12 и docs/P126_NEOGS_MEMORY_MAP.md; адреса Project125 не переносятся автоматически.
 - Общие ABI constants находятся в `shared/p126_ipc_protocol.inc`; CRC-16/CCITT-FALSE byte update/self-test реализованы в исходниках ATM и NeoGS. Это частичная реализация ABI, не готовый транспорт.
+- Для аппаратной локализации DMA smoke test временно использует физические адреса Project125: ATM→NeoGS `00D000h`, NeoGS→ATM `00E000h`, оба в странице 03h. В Project126 это два узких диагностических carve-out `D000h..D111h` и `E000h..E111h`; рабочий стек остаётся на `7FFEh`. Это не отменяет производственное выделение страницы 42h и не подтверждает её работоспособность.
+- Обратный DMA на ATM выполняется с `DI` до dummy read из ROM aperture. При чтении первый байт отбрасывается; при записи dummy write запрещён. Это прямое повторение аппаратных правил Project125.
 
 ### 7.2. Карта памяти и размещение ресурсов
 
@@ -744,3 +746,13 @@ Expected independent debug markers:
 - NeoGS: [NGS] DMA RX TEST REQUESTED, DMA RX TEST ARMED, DMA RX TEST HOST END.
 
 The test is diagnostic only. BUILD PASS and hardware PASS are tracked separately. If reverse DMA does not return the deterministic pattern, compare the ATM received frame/CRC with the NeoGS source buffer before changing paging or the transport.
+
+
+### 2026-11-07 — Project125 DMA parity diagnostic
+
+- Сверены реальные процедуры Project125: `p125_dma_reverse_selftest` в `zx_main/bios_transfer.asm` и `command_load_x86` в `neogs_sub/main.asm`, а также `NeoGS/dma_zx_doc.txt`.
+- Эталонные адреса: ATM→NeoGS запись в физический `00D000h`; NeoGS→ATM чтение из физического `00E000h`. В обоих случаях DMA module=1. Для обратного чтения ATM делает ровно один dummy read из ROM aperture `0000h`, затем читает данные начиная с исходного DMA-адреса; перед чтением выполняется `DI`. Для прямой записи dummy write отсутствует.
+- Project126 smoke endpoints переключены с непроверенной страницы 42h на эти эталонные адреса страницы 03h. WIN3 временно отображает страницу 03h для проверки принятого кадра. Диагностические области D000h..D111h и E000h..E111h не пересекаются с рабочим стеком 7FFEh.
+- ATM→NeoGS диагностический приём ограничен размером 3000h, чтобы не выйти за границу страницы 03h. Производственная staging-страница 42h остаётся в карте памяти, но аппаратно ещё не проверена.
+- Удалён вводящий в заблуждение WIN3 RW probe на странице 42h: он проверял CPU-доступ, а не DMA-доставку. Проверкой данных теперь служат полная проверка кадра/CRC и тестовый payload.
+- Это диагностическая контрольная сборка. DMA HARDWARE PASS не заявляется до нового лога с корректным CRC и последовательностью 00..FF в обоих направлениях.
