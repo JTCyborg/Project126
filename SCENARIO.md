@@ -1334,3 +1334,7 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 - Files changed: `atm_host/p126_disk_catalog.asm`, `atm_host/p126_screen_console.asm`.
 - Commits: `930c1858885d6f4792c88cd7f20e44d11134b89e`, `b69aa1b12bc8b6638587178a7688efd94a2b2333`.
 - Target ATM keyboard/hardware validation is pending. This is a UI navigation change; it does not change TR-DOS directory parsing, BIOS file validation, or image transfer.
+
+
+- Input mapping refinement: page navigation uses the existing CAPS SHIFT+5 (left) and CAPS SHIFT+8 (right) matrix combinations, not CAPS SHIFT+3/4. This preserves the familiar Spectrum cursor-key convention; the status line now advertises `CAPS+5/8 PAGE`.
+- Follow-up commits: `dd36cd8293591c4783fe7261d018559f322b4e36`, `89c9fd87eab2ffce2f8293e0206846ac7e5c60f6`.
