@@ -31,7 +31,7 @@ The ATM-visible ZX DMA aperture is 0000h..3FFFh (16 KiB), as documented by the N
 
 DMA writes deposit host-written aperture bytes at the NeoGS destination. DMA reads expose NeoGS source bytes through the same host aperture. No dummy write is required. The first read from the aperture is a dummy read and must be discarded before collecting the first valid byte. Read and write directions must not be interleaved in one armed DMA transaction.
 
-The aperture and direction are hardware-defined. Project126 production staging is page 42h (physical 108000h), as reserved in docs/P126_NEOGS_MEMORY_MAP.md. The current page-42 diagnostic maps that page into WIN3 through port #23 before arming DMA; resident code/data/stack remain outside WIN3. This new mapping is a separate hardware validation stage and is not covered by the page-03 Project125 parity PASS.
+The aperture and direction are hardware-defined. Project126 production staging is page 42h (physical 108000h), as reserved in docs/P126_NEOGS_MEMORY_MAP.md. The current page-42 diagnostic maps that page into WIN3 through MPAGEX port #10 before arming DMA, using the Project125 selector encoding (`physical_page >> 1` with bit 7 rotated into bit 6, implemented by `RRCA`); PG3 port #23 is not the WIN3 selector; resident code/data/stack remain outside WIN3. This new mapping is a separate hardware validation stage and is not covered by the page-03 Project125 parity PASS.
 
 For the current hardware-parity diagnostic only, the endpoints deliberately use the known Project125 physical addresses: ATM→NeoGS destination 00D000h and NeoGS→ATM source 00E000h (both in physical page 03h). The Project126 resident maps physical page 03h into WIN1 through PG1 port #21, exactly as Project125 does. The 274-byte diagnostic buffers occupy D000h..D111h and E000h..E111h; they are explicit carve-outs and do not overlap the operational stack at 7FFEh. This temporary diagnostic placement must not be mistaken for the production ABI staging allocation or generalized to arbitrary full-aperture frames. The ATM reverse reader performs DI before its mandatory dummy read, matching Project125 and preventing IM1 from fetching DMA bytes at #0038h.
 
@@ -318,9 +318,16 @@ This diagnostic does not change ABI 1.0, DMA module, physical staging address (1
 
 The diagnostic implementation now tests the reserved production staging page independently of the proven page-03 Project125 parity path:
 
-1. NeoGS writes physical page number 42h to WIN3 selector port #23 before DMA setup. The mapped CPU view is C000h-FFFFh; resident code, data and stack stay in WIN0-WIN2.
+1. NeoGS selects WIN3 through MPAGEX port #10 before DMA setup. It uses the exact Project125 selector sequence `LD A,42h / RRCA / OUT (10h),A` (encoded selector 21h); PG3 port #23 is not used for WIN3. The mapped CPU view is C000h-FFFFh; resident code, data and stack stay in WIN0-WIN2.
 2. For ATM→NeoGS, NeoGS arms DMA module 1 at physical 108000h (HAD=10h, MAD=80h, LAD=00h). ATM sends a 274-byte frame (18-byte header + 256-byte 00h..FFh payload). NeoGS stops DMA at FF/end, derives the declared frame size, enforces the 16 KiB page bound and validates the full CRC from C000h.
 3. For NeoGS→ATM, NeoGS constructs the same-size deterministic response in page 42h through C000h and arms DMA read at 108000h. ATM keeps the Project125 reverse sequence: DI, one discarded read from ROM aperture 0000h, then exactly 274 data bytes, FF/end, full-frame CRC and payload-pattern validation.
 4. A complete target PASS requires both directions, full payload integrity and the expected physical DMA address progression 108000h→108112h. The earlier page-03 Project125 parity PASS remains a separate result and must not be conflated with page-42 validation.
 
 This is a diagnostic test only; it does not yet implement ABI multi-frame fragmentation/reassembly or sustained streaming.
+
+
+## WIN3 page-selector correction — 2026-11-07
+
+The first production page-42 implementation used port 23h (PG3) and wrote the raw page number 42h. This did not reproduce Project125's WIN3 mapping. Project125 uses MPAGEX port 10h for the C000h–FFFFh window and rotates the physical page number right once before writing the selector. Project126 now follows that exact sequence for both DMA directions. The physical DMA destination/source remains 108000h; no DMA register, host aperture, dummy-read rule, or E0/FF handshake change is made.
+
+The 09:44 target log showed the reverse transfer CRC as 7C1C, identical to the ATM request frame, although the NeoGS response frame (RESPONSE header plus payload 00h..FFh) must have CRC D867. This means the earlier reverse PATTERN PASS was not proof that the response had been constructed in the selected production page; the reverse direction must be revalidated after correcting WIN3 selection. Production page-42 HARDWARE PASS remains pending.
