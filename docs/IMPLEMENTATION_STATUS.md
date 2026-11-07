@@ -658,3 +658,11 @@ Source commit: `aac9d7e60c391510150016d3b29906a7b2f90e3d`.
 - Updated the routine to switch only #7FFD to #10 and update #5C3B, leaving #EFF7/DOSEN and #3FF7 untouched.
 - Keyboard/catalogue code, TR-DOS ABI, disk-sector reader, DMA, IPC and IMAGE protocol are unchanged.
 - Hardware verification pending; require C=0Ah return and subsequent C=08h descriptor markers before declaring this stage successful.
+
+
+## 2026-11-07 — Selected BIOS filename diagnostic (build/hardware pending)
+
+- Added a timestamped #EF diagnostic line immediately after successful file-type validation: [CAT] BIOS FILE SELECTED: NAME    .C
+- The filename is emitted from the same eight-byte #5CDD field that the TR-DOS C=0Ah open routine uses, with the validated C extension appended.
+- The logger preserves AF/BC/DE/HL. No catalogue, TR-DOS ABI, disk I/O, DMA, IPC or IMAGE behavior was changed.
+- CI and hardware verification pending.
