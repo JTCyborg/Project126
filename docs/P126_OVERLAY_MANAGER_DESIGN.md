@@ -131,8 +131,9 @@ The manager is not complete until all of the following are true:
 - [x] NeoGS IMAGE receiver validates frame CRC, image kind, ID, fragment metadata, total size and frame length for SYSBIOS, X86IO and X86ALU fixed profiles.
 - [x] Destination page04/page05 readback is byte-for-byte verified before the respective overlay-ready flag is published.
 - [x] Resident call/return gate saves the previous WIN2 selector on the WIN1 stack and restores it at a resident RET trampoline; X86IO and X86ALU wrappers use this gate.
+- [x] Resident gate tracks active frames, resets depth at startup, permits at most 8 nested overlay calls, and rejects a ninth call with `P126_STATUS_BUSY`/carry before changing WIN2 or extending the stack.
 - [x] X86IO IMAGE_FINISH performs a boot-time page05→page04 X86IO wrapper call and verifies that the page05 test stub resumes after the gate restores WIN2; scratch bytes are restored before X86ALU is loaded.
-- [x] X86ALU IMAGE_FINISH calls the ALU probe through the gate, checks input A=#3C/C=1/HL=#1234, runs a nested page05→page04 X86IO→page05 ADD8 call (expects A=#08), restores `x86_reg_flags` after the nested probe, checks output A=#A5/HL=#5AA5, then confirms WIN2 is restored to page04 before X86ALU_READY.
+- [x] X86ALU IMAGE_FINISH calls the ALU probe through the gate, checks input A=#3C/C=1/HL=#1234, runs a nested page05→page04 X86IO→page05 ADD8 call (expects A=#08), verifies the outer frame remains at depth 1 with WIN2=page05, restores `x86_reg_flags` after the nested probe, checks output A=#A5/HL=#5AA5, then confirms WIN2 is restored to page04 before X86ALU_READY.
 - [ ] Physical target log confirms [NGS] WIN2 MAP/GATE TEST PASS and the nested page05→page04→page05 gate regression; deeper nesting beyond two frames, alternate-register use and stack-limit behavior remain to be tested.
 - [ ] Invalid/unloaded dynamic module calls fail closed.
 - [x] CI build/package passes with the boot-time gate self-test (run 42400955991, commit 0967d1d8; X86CORE 15655/16384 bytes (752 free), X86IO 796/4096 bytes, X86ALU 1187/4096 bytes; NeoGS, ATM, IPC and TR-DOS assembly 0 errors/0 warnings).
