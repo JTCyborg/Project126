@@ -477,10 +477,12 @@ p126_ipc_dma_stage:  db 0
 
 p126_ipc_dma_error: db 0
 
-; Reverse DMA diagnostic: NeoGS sends a CRC-protected 256-byte test frame.
+; Reverse DMA diagnostic: NeoGS sends a CRC-protected maximum-size 16 KiB frame.
 ; The first memory read from the DMA aperture is discarded per hardware docs.
-; Requires ROM visible at ATM 0000h..3FFFh while the reverse transfer is active.
-P126_IPC_DMA_RX_TEST_SIZE EQU P126_IPC_HEADER_SIZE+256
+; Destination is the same 16 KiB page-0 buffer used by the forward test.
+; Requires ROM visible at ATM 0000h..3FFFh during the reverse transfer.
+P126_IPC_DMA_RX_TEST_SIZE EQU P126_IPC_MAX_FRAME_SIZE
+P126_IPC_DMA_RX_BUFFER    EQU #C000
 p126_ipc_dma_receive_test::
         ld      a,1
         ld      (p126_ipc_dma_rx_stage),a
@@ -498,7 +500,7 @@ p126_ipc_dma_receive_test::
         ld      hl,0
         ld      a,(hl)                  ; required discarded first read
         ld      hl,0
-        ld      de,p126_ipc_dma_rx_buffer
+        ld      de,P126_IPC_DMA_RX_BUFFER
         ld      bc,P126_IPC_DMA_RX_TEST_SIZE
         ldir
         ld      hl,p126_ipc_log_dma_rx_copy_done
@@ -511,7 +513,7 @@ p126_ipc_dma_receive_test::
 .rx_end_ack:
         ld      a,2
         ld      (p126_ipc_dma_rx_stage),a
-        ld      hl,p126_ipc_dma_rx_buffer
+        ld      hl,P126_IPC_DMA_RX_BUFFER
         ld      bc,P126_IPC_DMA_RX_TEST_SIZE
         call    p126_ipc_validate_frame
         jr      nc,.rx_crc_ok
@@ -526,15 +528,19 @@ p126_ipc_dma_receive_test::
 .rx_crc_ok:
         ld      hl,p126_ipc_log_dma_rx_crc_ok
         call    p126_ipc_debug_string
-        ld      hl,p126_ipc_dma_rx_buffer+P126_IPC_HEADER_SIZE
-        xor     a
-        ld      b,0
+        ld      hl,P126_IPC_DMA_RX_BUFFER+P126_IPC_HEADER_SIZE
+        ld      bc,P126_IPC_MAX_PAYLOAD
+        ld      e,0
 .rx_pattern:
+        ld      a,e
         cp      (hl)
         jr      nz,.rx_pattern_bad
         inc     hl
-        inc     a
-        djnz    .rx_pattern
+        inc     e
+        dec     bc
+        ld      a,b
+        or      c
+        jr      nz,.rx_pattern
         ld      hl,p126_ipc_log_dma_rx_pattern_ok
         call    p126_ipc_debug_string
         xor     a
@@ -635,11 +641,14 @@ p126_ipc_log_dma_tx_copy_done:    db "[ATM IPC] DMA COPY DONE",13,10,0
 p126_ipc_log_dma_tx_ff:           db "[ATM IPC] SEND FF",13,10,0
 p126_ipc_log_dma_tx_ff_timeout:   db "[ATM IPC] FF ACK TIMEOUT",13,10,0
 p126_ipc_log_dma_tx_done:         db "[ATM IPC] DMA TX COMPLETE",13,10,0
-p126_ipc_log_dma_rx_begin:        db "[ATM IPC] DMA RX TEST BEGIN",13,10,0
+p126_ipc_log_dma_rx_begin:        db "[ATM IPC] DMA RX MAX FRAME BEGIN",13,10,0
 p126_ipc_log_dma_rx_copy_done:    db "[ATM IPC] DMA RX COPY DONE",13,10,0
 p126_ipc_log_dma_rx_crc_ok:       db "[ATM IPC] DMA RX FRAME CRC VALID",13,10,0
 p126_ipc_log_dma_rx_crc_bad:      db "[ATM IPC] DMA RX FRAME VALIDATION FAILED STATUS=",0
-p126_ipc_log_dma_rx_pattern_ok:   db "[ATM IPC] DMA RX PATTERN PASS",13,10,0
+p126_ipc_log_dma_rx_pattern_ok:   db "[ATM IPC] DMA RX 16K PATTERN PASS",13,10,0
 p126_ipc_log_dma_rx_pattern_bad:  db "[ATM IPC] DMA RX PATTERN FAIL",13,10,0
 p126_ipc_log_dma_rx_transport_bad: db "[ATM IPC] DMA RX TRANSPORT FAILED STAGE=",0
-p126_ipc_dma_rx_buffer:           defs P126_IPC_DMA_RX_TEST_SIZE,0
+; DMA RX storage aliases the 16 KiB ATM page-0 staging buffer at C000h.
+; It is intentionally shared with the forward test because the transfers
+; are sequential and the reverse test overwrites the request after TX.
+p126_ipc_dma_rx_buffer EQU P126_IPC_DMA_RX_BUFFER
