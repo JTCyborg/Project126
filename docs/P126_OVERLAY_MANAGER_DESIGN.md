@@ -32,7 +32,7 @@ Rationale:
 2. The operational stack remains in WIN1/page 03.
 3. Guest memory access continues to own WIN3 exclusively.
 4. An overlay can execute at a fixed logical origin (`8000h`) while its physical backing page is selected from the kernel pool.
-5. X86IO implementation symbols occupy `8000h–831Bh` on page04; X86ALU occupies `8000h–8496h` on page05. Both public CPU-facing APIs use resident wrappers. The resident call gate saves the current WIN2 selector on the WIN1 stack, maps the requested page, enters through IX, and restores the previous selector at a resident RET trampoline. The gate is source-built but has not yet passed a physical nested-switch test.
+5. X86IO occupies 814 bytes at the fixed origin on page04; X86ALU occupies 1,220 bytes at the fixed origin on page05. Both public CPU-facing APIs use resident wrappers. The resident call gate saves the current WIN2 selector on the WIN1 stack, maps the requested page, enters through IX, and restores the previous selector at a resident RET trampoline. The gate is source-built but has not yet passed a physical nested-switch test.
 
 Candidate physical overlay pool: pages `04h–0Fh` (12 pages, 192 KiB). Pages 04h and 05h are pinned to X86IO and X86ALU; pages 06h–0Fh are managed by a first-fit allocator. Pages 00–03 are excluded. The allocator tracks ten dynamic pages, reports exhaustion, rejects out-of-pool/double releases, and refuses to release the currently mapped or actively executing page. This is a page allocator primitive, not yet a module registry or loader.
 
