@@ -1,0 +1,362 @@
+﻿DAAal
+        ex af,af' ;'
+       push af
+       pop bc
+       res 1,c ;reset N flag
+DAAq
+       push bc
+       pop af
+        ld a,(_AL)
+        daa
+        ld (_AL),a
+        ex af,af' ;'
+       _Loop_
+
+DASal
+        ex af,af' ;'
+       push af
+       pop bc
+       set 1,c ;set N flag
+        jr DAAq
+
+AAAal ;labir
+        ex af,af' ;'
+        ld a,(_AL)
+        cp 10
+        ccf
+        jr nc,$+4
+        sub 10
+        ld (_AL),a
+        ex af,af' ;'
+       _Loop_
+
+AASal
+        ex af,af' ;'
+        ld a,(_AL)
+        rla
+        rra
+        jr nc,$+4
+        add a,10
+        ld (_AL),a
+        ex af,af' ;'
+       _Loop_
+
+AAMer
+;aam i8 ;ASCII коррекция после умножения
+;ah <= al/i8
+;al <= al mod i8
+;[костыль для para512: ah <= al/0x10, al <= al&0x0f]
+        get
+        next
+        ld l,a
+        ld h,-1
+        ld a,(_AL)
+_AAMer0
+        inc h
+        sub l
+        jr nc,_AAMer0
+        add a,l ;a=остаток, h=частное
+        ld l,a
+        ld (_AX),hl
+       _Loop_
+
+AADer
+;aad i8
+;ASCII Adjust AX Before Division
+;sets the value in the AL register to (AL + (10 * AH)), and then clears the AH register to 00H. TODO
+;пока костыль для megapole: ax=ah+al
+        get
+        next
+        ld hl,(_AX)
+        ld a,h
+        add a,l
+        ld l,a
+        ld h,0
+        ld (_AX),hl
+       _Loop_
+
+
+;cbw ;Expand AL to AX
+CBWer
+	ld a,(_AL);l ;al
+	rla
+	sbc a,a
+	ld (_AH),a;h,a ;ah
+       _Loop_
+
+;cwd ;Expand AX to DX:AX
+CWDer
+	ld a,(_AH);h ;ah
+	rla
+	sbc a,a
+	ld h,a
+	ld l,a
+	ld (_DX),hl
+       _Loop_
+
+ADDali8
+	get
+	next
+        ld hl,_AL
+        add a,(hl)
+keephlflagsfroma_loop
+        ld (hl),a
+keepflagsfroma_loop
+        KEEPHFCFPARITYOVERFLOW_FROMA
+       _Loop_
+SUBali8
+	get
+	next
+	ld c,a
+        ld hl,_AL
+        ld a,(hl)
+	sub c
+        jr keephlflagsfroma_loop
+	;ld (hl),a
+        ;KEEPCFPARITYOVERFLOW_FROMA
+       ;_Loop_
+ADCali8
+        ex af,af' ;'
+	get
+	next
+        ld hl,_AL
+        adc a,(hl)
+        jr keephlflagsfroma_loop
+	;ld (hl),a
+        ;KEEPCFPARITYOVERFLOW_FROMA
+       ;_Loop_
+SBBali8
+        ex af,af' ;'
+	get
+	next
+	ld c,a
+        ld hl,_AL
+        ld a,(hl)
+	sbc a,c
+        jr keephlflagsfroma_loop
+	;ld (hl),a
+        ;KEEPCFPARITYOVERFLOW_FROMA
+       ;_Loop_
+CMPali8
+	get
+	next
+	ld c,a
+        ld a,(_AL)
+	sub c
+        jr keepflagsfroma_loop
+        ;KEEPCFPARITYOVERFLOW_FROMA
+       ;_Loop_
+
+ADDaxi16
+        or a
+        ex af,af' ;'
+ADCaxi16
+	getBC
+        ld hl,(_AX)
+        ex af,af' ;'
+        ADCHLBC_KEEPCFPARITYOVERFLOW_FROMHL
+keepaxfromhl_loop
+        ld (_AX),hl
+       _Loop_
+SUBaxi16
+        or a
+        ex af,af' ;'
+SBBaxi16
+	getBC
+        ld hl,(_AX)
+        ex af,af' ;'
+        SBCHLBC_KEEPCFPARITYOVERFLOW_FROMHL
+        jr keepaxfromhl_loop
+        ;ld (_AX),hl
+       ;_Loop_
+CMPaxi16
+	getBC
+        ld hl,(_AX)
+        or a
+        SBCHLBC_KEEPCFPARITYOVERFLOW_FROMHL
+       _Loop_
+
+IMUL_bc_de_to_hlde
+	call MUL16SIGNED ;HLDE=DE*BC
+	ld a,d
+	rla ;LSW sign
+	jr c,IMULCX_NEG
+	ld a,h
+	or l
+	add a,255 ;set CF if LSW sign != HSW (result >=32768 or < -32768)
+	jp IMULCX_NEGQ
+IMULCX_NEG
+	ld a,h
+	and l
+	sub 255 ;set CF if LSW sign != HSW (result >=32768 or < -32768)
+IMULCX_NEGQ
+	sbc a,a ;keep CF
+	srl a ;keep CF
+        exx
+	ld e,a ;overflow (d7 != d6) if CF
+	exx
+	ex af,af' ;'
+        ret
+
+;HLDE=DE*BC
+MUL16SIGNED
+	bit 7,d
+	jr nz,MUL16SIGNED_NEGDE
+	bit 7,b
+	jp z,MUL16
+MUL16SIGNED_NEGBC
+	xor a
+	sub c
+	ld c,a
+	sbc a,b
+	sub c
+	ld b,a
+	jp MUL16NEGHLDE
+MUL16SIGNED_NEGDE
+	xor a
+	sub e
+	ld e,a
+	sbc a,d
+	sub e
+	ld d,a
+	bit 7,b
+	jr nz,MUL16SIGNED_NEGDE_NEGBC
+MUL16NEGHLDE
+	call MUL16
+	xor a
+	sub e
+	ld e,a
+	ld a,0
+	sbc a,d
+	ld d,a
+	ld a,0
+	sbc a,l
+	ld l,a
+	ld a,0
+	sbc a,h
+	ld h,a
+	ret
+MUL16SIGNED_NEGDE_NEGBC
+	xor a
+	sub c
+	ld c,a
+	sbc a,b
+	sub c
+	ld b,a
+;HLDE=DE*BC
+MUL16
+        ld hl,0
+	dup 16
+        rr d
+        rr e
+        jr nc,$+3
+        add hl,bc
+        rr h
+        rr l
+	edup
+        rr d
+        rr e
+	ret
+
+;BC = HLBC/DE, HL = HLBC%DE
+DIV32SIGNED
+	bit 7,h
+	jr nz,DIV32SIGNED_NEGHLBC
+	bit 7,d
+	;jr nz,DIV32SIGNED_NEGDE
+        jp z,DIV32
+DIV32SIGNED_NEGDE
+	xor a
+	sub e
+	ld e,a
+	sbc a,d
+	sub e
+	ld d,a
+	call DIV32
+	xor a
+	sub c
+	ld c,a
+	sbc a,b
+	sub c
+	ld b,a ;neg result
+	ret
+DIV32SIGNED_NEGHLBC
+	xor a
+	sub c
+	ld c,a
+	ld a,0
+	sbc a,b
+	ld b,a
+	ld a,0
+	sbc a,l
+	ld l,a
+	ld a,0
+	sbc a,h
+	ld h,a
+	bit 7,d
+	jr nz,DIV32SIGNED_NEGHLBC_NEGDE
+	call DIV32
+	xor a
+	sub c
+	ld c,a
+	sbc a,b
+	sub c
+	ld b,a ;neg result
+	xor a
+	sub l
+	ld l,a
+	sbc a,h
+	sub l
+	ld h,a ;знак остатка равен знаку делимого
+	ret	
+DIV32SIGNED_NEGHLBC_NEGDE
+	xor a
+	sub e
+	ld e,a
+	sbc a,d
+	sub e
+	ld d,a
+	call DIV32
+	xor a
+	sub l
+	ld l,a
+	sbc a,h
+	sub l
+	ld h,a ;знак остатка равен знаку делимого
+	ret
+
+;BC = HLBC/DE, HL = HLBC%DE ;ffff ffff/ffff почему-то остаток 8000!? TODO FIX
+DIV32
+	ld a,b
+	call DIV32_8
+	push af
+	ld a,c
+	call DIV32_8
+	pop bc
+	ld c,a
+	ret
+;A = HLA/DE, HL = HLA%DE
+DIV32_8
+	ld b,8
+DIV321
+	add a,a
+	adc hl,hl
+	jr c,DIV322
+	sbc hl,de
+	jr nc,DIV323
+	add hl,de
+	djnz DIV321
+	ret
+DIV322
+	ccf
+	sbc hl,de
+DIV323
+	inc a
+	djnz DIV321
+	ret
+
+FPU3er
+;DB /0 = FILD m32int ;Push m32int onto the FPU register stack ;DB F0+i = FCOMI ST, ST(i) ;Compare ST(0) with ST(i) and set status flags accordingly ;DB E3 finit
+;TODO
+        next
+        _Loop_

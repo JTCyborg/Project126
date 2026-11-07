@@ -1,0 +1,1222 @@
+;
+;	BD Software C Compiler v1.6
+;	Standard Library Machine Language Functions (part C)
+;	Copyright (c) 1982, 1986  by BD Software, Inc.
+;
+; This file is in "CSM" format; to convert to CRL format,
+; use CASM.SUB in conjunction with CASM.COM, ASM.COM and CLOAD.COM
+; 
+; Functions appearing in this file:
+;
+;	setfcb	open	close	creat	unlink	rename	fabort
+;	fcbaddr	read	write	seek	tell	hseek	htell
+;	cfsize	oflow	errno	[errmsg]	execl
+;
+
+
+	;INCLUDE "bds.lib"
+
+        if 1==0
+;
+; Setfcb:
+;	setfcb(fcbaddr, filename)
+;	char *filename;
+;
+; Parse a given filename onto a given FCB area. This function does NOT
+; recognize user number prefixes on filenames; that is a feature limited
+; to internal subroutines within the C low-level-file-I/O library and not
+; generally available to users.
+;
+
+	FUNCTION "SETFCB"
+        FUNCHEAD setfcbsz
+	call	arghak
+	push bc
+	lhld	arg2	;get pointer to name text
+igsp:	ld	a,(hl)
+	inc hl
+	cp	' '
+_1=$+1
+	jp z,igsp
+	cp	tab
+_2=$+1
+	jp z,igsp
+	dec hl
+	ex de,hl		;set DE pointing to 1st non-space char
+	lhld	arg1	;get --> fcb area
+	call	setfcb	; do it
+	ld hl,0	;all OK.
+	pop bc
+	ret
+	ENDFUNC setfcbsz,2
+        endif
+
+;
+; Open:
+;	int open(filename,mode)
+;	    char *filename;
+;
+; Open a file for read (mode == 0), write (mode == 1) or both (mode = 2),
+; and detect a user-number prefix. Returns a file descriptor.
+;
+        if NEDOOS==1
+	FUNCTION "OPEN"
+        FUNCHEAD opensz
+	call arghak
+	xor a
+	call fgfcb	;any fcb's free? ;return A=fd, DE=fd addr
+	jr nc,open2	;if not, error
+	ld a,10	;"no more file slots"
+	jp error
+open2:
+        push bc
+        push af ;fd
+        push de ;fd addr
+	lhld arg1
+	ex de,hl
+        OS_OPENHANDLE
+        pop hl ;fd addr
+        ld (hl),b
+        pop af ;fd
+        ld l,a
+        ld h,0
+        pop bc
+        ret
+	ENDFUNC opensz,0
+        
+        else ;CP/M
+	FUNCTION "OPEN"
+        FUNCHEAD opensz
+	call	arghak
+	xor	a
+	call	fgfcb	;any fcb's free?
+_1=$+1
+	jp nc,open2	;if not, error
+	ld	a,10	;"no more file slots"
+	jp	error
+
+open2:	sta	tmp
+	ex de,hl
+	lhld	arg1
+	ex de,hl
+	push bc
+	call	setfcu	;parse name and set usenum
+	;lda	usrnum
+	;call	setusr	;set new user number
+
+         ;jr $
+         ;jr $
+	ld	c,openc
+	call	bdos
+	cp	errorv	;successful open?
+	pop bc
+
+	ld	a,11	; set error code in case of error
+_2=$+1
+	jp z,oerror	;if error, go abort
+
+	lda	tmp
+	call	fgfd	;get HL pointing to fd table entry
+	lda	arg2
+	or	a	;open for read?
+	ld	d,3
+_3=$+1
+	jp z,open4
+	dec	a
+	ld	d,5
+_4=$+1
+	jp z,open4	;write?
+	dec	a
+	ld	a,12	;"bad mode" for open operation...
+_5=$+1
+	jp nz,oerror	;...if not mode 2
+	ld	d,7	;else must be mode 2.
+open4:	lda	usrnum	;get user number for the file
+	add	d	;add r/w bit codes
+	ld	(hl),a	;and store in fd table
+	inc hl	;clear max sector number field of fd entry
+	xor	a
+	ld	(hl),a
+	inc hl
+	ld	(hl),a
+	lda	tmp	;get back fd
+	ld	l,a
+	ld	h,0
+	;call	rstusr	;reset user number
+	ret
+
+oerror:	;call	rstusr	;reset user number
+         ;jr $
+	sta	errnum	;store error code number
+	jp	error	;and return general error condition
+	ENDFUNC opensz,5
+        endif
+
+;
+; Close:
+;	close(fd);
+;
+; Close a file opened via "open" or "creat":
+;
+
+	FUNCTION "CLOSE"
+        FUNCHEAD closesz
+	jp	close	;jump to the close routine in C.CCC
+	ENDFUNC closesz,0
+
+
+;
+; Creat:
+;	int creat(filename)
+;	    char *filename;
+; Creates the named file, first deleting any old versions, and opens it
+; for both read and write. Returns a file descriptor.
+;
+        if NEDOOS
+	FUNCTION "CREAT"
+        FUNCHEAD creatsz
+	call arghak
+	xor a
+	call fgfcb	;any fcb's free? ;return A=fd, DE=fd addr
+	jr nc,creat2	;if not, error
+	ld a,10	;"no more file slots"
+	jp error
+creat2:
+        push bc
+        push af ;fd
+        push de ;fd addr
+	lhld arg1
+	ex de,hl
+        OS_CREATEHANDLE
+        pop hl ;fd addr
+        ld (hl),b
+        pop af ;fd
+        ld l,a
+        ld h,0
+        pop bc
+        ret
+	ENDFUNC creatsz,0
+        
+        else
+
+	FUNCTION "CREAT"
+	EXTERNAL "UNLINK"
+	EXTERNAL "OPEN"
+        FUNCHEAD creatsz
+_1=$+1
+        jp (2 +1)*3
+_unlink=$
+        jp 0
+_open=$
+        jp 0
+
+	call	arghak
+	lhld	arg1
+	push bc
+
+	push hl
+_2=$+1
+	call	_unlink	;erase any old versions of file
+	pop de
+
+	;lda	usrnum	;set to appropriate user area computed by "unlink"
+	;call	setusr
+         ;jr $
+
+;;;from "open"         
+	xor	a
+	call	fgfcb	;any fcb's free?
+	jr nc,cropen2	;if not, error
+	ld	a,10	;"no more file slots"
+	jp	error
+cropen2:
+	sta	tmp
+	ex de,hl
+	lhld	arg1
+	ex de,hl
+	call	setfcu	;parse name and set usenum
+	;lda	usrnum
+	;call	setusr	;set new user number
+;;;        
+	ld	c,creatc	;create the file
+	;ld de,fcb	;assume fcb has been set by "unlink"
+	call	bdos
+	;call	rstusr	;restore previous user number
+	cp	errorv
+	pop bc
+_3=$+1
+	jp nz,creat0	;if no error, go open
+	ld	a,13	;"can't create file" error code
+	sta	errnum
+	jp	error
+
+creat0:	
+       lda tmp ;fd
+       ld l,a
+       ld h,0
+        ;ld hl,2	;now open for read/write
+	;push hl
+	;lhld	arg1
+	;push hl
+_4=$+1
+	ld de,_open
+        ;call	_open
+	;pop de
+	;pop de
+        ;push bc
+        ;push hl
+	;ld de,fcb	;assume fcb has been set by "unlink"
+        ;push de
+        ;OS_FWRITE
+        ;pop de
+        ;OS_FWRITE
+        ;pop hl
+        ;pop bc ;keep bc!!!
+         ;jr $
+	ret
+	ENDFUNC creatsz,4
+        endif
+
+;
+; Unlink:
+;	unlink(filename)
+;	char *filename;
+;
+; Deletes the named file. User number prefixes are recognized:
+;
+;TODO
+	FUNCTION "UNLINK"
+        FUNCHEAD unlinksz
+	call	ma1toh
+	push bc
+	ex de,hl	
+	ld hl,fcb
+	call	setfcu	;parse for fcb and compute user number
+	;lda	usrnum
+	;call	setusr	;set to correct user number
+	ld	c,delc	;delete
+	call	bdos
+	;call	rstusr	;restore original user number
+	ld hl,0
+	pop bc	;restore BC
+	cp	errorv	;was BDOS able to find the file?
+	ret nz		;if so, all done.
+	ld	a,11	;set error code for "file not found"
+	sta	errnum
+	dec hl	;return -1
+	ret
+	ENDFUNC unlinksz,0
+
+
+;
+; Rename:
+;	int rename(old_name,new_name)
+;	    char *old_name, *new_name;
+;
+; Renames the given file. User number prefixes are allowed, but only
+; the one on the first filename (if specified) effects the operation.
+;
+;TODO 
+	FUNCTION "RENAME"
+        FUNCHEAD renamesz
+	call	arghak
+	push bc
+;renam:
+	lhld	arg1	;get old name
+	ex de,hl
+_1=$+1
+	ld hl,wfcb
+	call	setfcu	;compute user number and set fcb
+	lda	usrnum
+	call	setusr	;set to user number of first name
+	lhld	arg2
+	ex de,hl
+_2=$+1
+	ld hl,wfcb+16
+	call	setfcu	;parse second name, but ignore user number
+_3=$+1
+	ld de,wfcb
+	ld	c,renc	;perform rename operation
+	call	bdos
+	;call	rstusr	;reset user number
+	ld hl,0
+	pop bc	;restore BC
+	cp	errorv	;was BDOS able to find the file?
+	ret nz		;if so, all done
+	ld	a,11	;set error code for "file not found"
+	sta	errnum
+	dec hl	;return -1
+	ret
+
+wfcb:	ds 53		;space for working fcb's
+	ENDFUNC renamesz,3
+
+
+;
+; Fabort:
+;	fabort(fd);
+; Abort all operations on file fd. Has no effect under MP/(hl) II.
+;
+
+	FUNCTION "FABORT"
+        FUNCHEAD fabortsz
+	call	ma1toh
+	call	fgfd
+_1=$+1
+	jp nc,abrt2	;legal fd?
+	ld	a,7
+	sta	errnum	;set "bad fd" error code
+	jp	error
+	
+abrt2:
+	IF NOT MPM2
+	ld	(hl),0	;clear entry in fd table
+	ENDIF
+
+	ld hl,0
+	ret
+	ENDFUNC fabortsz,1
+
+
+;
+; Fcbaddr:
+;	char *fcbaddr(fd)
+; Returns a pointer to the internal file control block associated
+; with open file having descriptor fd.
+;
+
+
+	FUNCTION "FCBADDR"
+        FUNCHEAD fcbaddrsz
+	call	ma1toh
+	call	fgfd	;is it an open file?
+_1=$+1
+	jp nc,fcbad2	;if so, go do it
+	ld	a,7
+	sta	errnum	;"bad fd" error code
+	jp	error
+
+fcbad2:	call	ma1toh
+	call	fgfcb	;get fcb addr in HL
+	ret
+	ENDFUNC fcbaddrsz,1
+
+
+;
+; Write:
+;	i = write(fd, buf, n);
+;
+; The random sector write function. Returns either the number
+; of sectors successfully written, or -1 on hard error. Any return
+; value other than n (the third arg) should be considered an error,
+; after which errno() can tell you the error condition and errmsg(errno()) 
+; can return a pointer to an appropriate error message text.
+;
+;NOW RETURNS NUMBER OF BYTES, NOT SECTORS!!!
+
+        if NEDOOS
+	FUNCTION "WRITE"
+        FUNCHEAD writesz
+	call arghak
+	lda	arg1
+	call	fgfd ;compute fd address for fd in A: ;return hl=fd addr
+        push bc
+        ld b,(hl)
+	ld de,(arg2)
+	ld hl,(arg3)
+        OS_WRITEHANDLE
+        pop bc
+        or a
+        ret z
+        ld hl,-1
+        ret
+	ENDFUNC writesz,0
+        
+        else
+
+	FUNCTION "WRITE"
+        FUNCHEAD writesz
+	call	arghak
+	lda	arg1
+	call	fgfd
+	shld	arg5	;save pointer to fd table entry
+	ld	d,(hl)	;save fd table entry in D
+	ld	a,7	;prepare for possible "bad fd"
+         or a
+_1=$+1
+	jp c,werror
+
+	;ld	a,d
+	;and	4
+	ld	a,9	;prepare for possible "no write permission"
+         or a
+_2=$+1
+	jp z,werror
+
+	push bc
+	;ld	a,d	;set user number
+	;call	setusr
+	lda	arg1	;get fd
+         ;jr $
+         ;jr $
+         ;jr $
+	call	fgfcb	;compute fcb address
+	shld	tmp2	;save it away
+	ld hl,0	;clear success count
+	shld	tmp2a
+         lhld	arg3
+         add hl,hl
+         ld l,h
+         ld h,0
+         shld arg3 ;size/128
+
+writ1:	lhld	arg3	;done yet?
+	ld	a,h
+	or	l
+_3=$+1
+	jp nz,writ2
+
+			;take care of maximum sector count for cfsize:
+	lhld	tmp2	;get fcb address
+	ld de,33	;point to random record field
+	add hl,de
+	ld	e,(hl)
+	inc hl
+	ld	d,(hl)	;DE now holds random record number for next rec
+	push de	;save it
+	lhld	arg5	;get fd table pointer
+	inc hl	;point to max value
+	ld	e,(hl)	;get in DE
+	inc hl
+	ld	d,(hl)	;now DE is old max value, HL points to end of entry
+	ex (sp),hl		;DE = old max, HL = current sector, STACK = tab ptr
+	ex de,hl		;HL = old max, DE = current sector
+	call	cmphd	;is  old max less than current sector?
+	pop hl	;get tab ptr in HL
+_4=$+1
+	jp nc,writ1a	;if old max not < current sector, don't update max
+	ld	(hl),d	;else update max value with new sector number
+	dec hl
+	ld	(hl),e
+	
+writ1a:	lhld	tmp2a	;if so, return count
+         xor a
+         srl h
+         rr l
+         rra
+         ld h,l
+         ld l,a ;count*128
+wrdone:	;call	rstusr	;reset user number
+	pop bc
+	ret
+
+writ2:	lhld	arg2	;else get transfer address
+	push hl	;save on stack
+	ex de,hl		;put in DE
+	ld	c,sdma	;set DMA there
+	call	bdos
+
+	pop hl	;get back transfer address
+	ld de,128	;bump by 128 bytes for next time
+	add hl,de
+	shld	arg2	;save -> to next 128 bytes
+
+	lhld	tmp2	;get addr of fcb
+	ex de,hl
+	;ld	c,writr	;write random sector
+	;call	bdos
+         ;jr $
+         OS_FWRITE
+	lhld	tmp2a	;get success count in HL
+	or	a	;error?
+_5=$+1
+	jp z,writ3	;if not, go do bookkeeping
+	
+	sta	errnum	;else save error code
+         ld hl,-1
+_6=$+1
+	jp	wrdone
+		
+writ3:	inc hl	; else bump successful sector count,
+	shld	tmp2a
+
+	lhld	arg3	; debump countdown,
+	dec hl
+	shld	arg3
+
+	lhld	tmp2	; get address of fcb
+	ld bc,33	; get address of random field
+	add hl,bc
+	ld	c,(hl)	; bump 16-bit value at random
+	inc hl	; record
+	ld	b,(hl)	;	field
+	inc bc	;	     of
+	ld	(hl),b	;	       fcb
+	dec hl	;		  by one
+	ld	(hl),c
+
+	ld	a,b	;overflow past 16-bit record count?
+	or	c
+_7=$+1
+	jp nz,writ1	; go for next sector if no overflow
+	inc hl	;else set 3rd byte of random sector count
+	inc hl
+	ld	(hl),1
+	ld	a,14	;set "past 65536th sector" error code
+	sta	errnum
+_8=$+1
+	jp	writ1a	;and don't read any more.
+
+werror:	sta	errnum
+	jp	error
+
+	ENDFUNC writesz,8
+        endif
+
+;
+; Seek:
+;
+; seek(fd, offset, origin)
+;	   seeks to offset records if origin == 0,
+;     to present position + offset if origin == 1,
+;	or to end of file + offset if origin == 2.
+; (note that in the last case, the offset must be non-positive)
+;
+; There are no errors returned by this function, aside from a
+; possible bad fd, because all the function does is fudge the
+; random-record field of an fcb...if the seek is out of bounds,
+; a subsequent direct file I/O operation (such as read or write)
+; will draw the error.
+;
+
+	FUNCTION "SEEK"
+	EXTERNAL "CFSIZE"
+        FUNCHEAD seeksz
+_1=$+1
+        jp (1 +1)*3
+_cfsize=$
+        jp 0
+
+	call	arghak
+	push bc	;save BC
+	lda	arg1
+	call	fgfcb	;figure addr of fcb
+	ld	a,7	;prepare for possible "bad fd" error code
+_2=$+1
+	jp nc,seek0
+	sta	errnum	;set the error code
+	pop bc	;restore BC
+	jp	error
+
+seek0:	push hl	;save addr of fcb
+	ld de,33	;get current position in DE
+	add hl,de
+	ld	e,(hl)	
+	inc hl
+	ld	d,(hl)
+	lhld	arg2	;get offset in HL
+	lda	arg3	;is origin == 0?
+	or	a
+_3=$+1
+	jp z,rseek2	;if so, HL holds new position
+	dec	a	;no. is origin == 1?
+_4=$+1
+	jp nz,rseek1
+	add hl,de	;yes. add offset to current position
+_5=$+1
+	jp	rseek2	;and result is in HL
+
+rseek1:			;else origin must be 2...
+	lhld	arg1	;compute file size
+	push de	;save current position
+	push hl
+_6=$+1
+	call	_cfsize
+	pop de	;pop argument
+	pop de	;pop useless current position
+	ex de,hl		;place file size in DE
+
+;	call	fgfd
+;	ld	a,(hl)
+;	call	setusr	;set the file's native user number
+;
+;	pop de	;get fcb pointer back in DE
+;	push de
+;	ld	c,cfsizc ;compute end of file position
+;	call	bdos
+;	call	rstusr	;reset user number
+;	pop hl	;get fcb addr in HL again
+;	push hl
+;	call	rseek3	;get DE = position
+
+	lhld	arg2	;add offset
+	add hl,de		;and HL holds new position
+rseek2:	ex (sp),hl		;get fcb, push	new position
+	ld de,33
+	add hl,de	;HL points to random field of fcb
+	pop de	;get new position in DE
+	ld	(hl),e	;and put into fcb
+	inc hl
+	ld	(hl),d
+	ex de,hl		;and return the position value
+	pop bc	;pop saved BC off stack
+	ret
+
+;rseek3:	ld de,33
+;	add hl,de
+;	ld	e,(hl)	
+;	inc hl
+;	ld	d,(hl)
+;	ret
+
+	ENDFUNC seeksz,6
+
+;
+; Tell:
+;
+; i = tell(fd);
+;
+; Return random record position of file:
+;
+
+	FUNCTION "TELL"
+        FUNCHEAD tellsz
+
+	call	ma1toh	;get fd in A
+	call	fgfcb
+_1=$+1
+	jp nc,tell0
+	ld	a,7	; "bad fd" error
+	sta	errnum
+	jp	error
+
+tell0:	ld de,33	;go to random record field
+	add hl,de
+	ld	a,(hl)	;get position in HL
+	inc hl
+	ld	h,(hl)
+	ld	l,a
+	ret
+
+	ENDFUNC tellsz,1
+
+
+;
+; Hseek:
+;
+; int hseek(fd, hoffset, loffset, origin)
+;
+; Like seek(), except offset is specified as a 24-bit value, the high-order
+; 8 bits in hoffset and the low-order 16 bits in loffset.
+;
+; NOTE: Seeking relative to EOF (origin value of 2) should NOT be performed
+; 	if there has been any WRITING done to the END OF THE FILE since
+;	the file was last opened.
+;
+
+	FUNCTION "HSEEK"
+        FUNCHEAD hseeksz
+
+	call	arghak
+	push bc	;save BC
+	lda	arg1
+	call	fgfcb	;figure addr of fcb
+	ld	a,7	;prepare for possible "bad fd" error code
+_1=$+1
+	jp nc,hseek0
+	sta	errnum	;set the error code
+	pop bc	;restore BC
+	jp	error
+
+hseek0:	push hl	;save addr of fcb
+_2=$+1
+	call	hseek3	; CDE = current position
+	lhld	arg3	; BHL = offset value
+	lda	arg2
+	ld	b,a
+	lda	arg4	;is origin == 0?
+	or	a
+_3=$+1
+	jp z,hseek2	;if so, BHL holds new position
+	dec	a	;no. is origin == 1?
+_4=$+1
+	jp z,hseek1a	;if so, go add offset to current position
+
+hseek1:	lda	arg1
+	call	fgfd	;origin == 2.
+	;ld	a,(hl)
+	;call	setusr	;set the file's native user number
+	pop de	;get fcb pointer back in DE
+	push de
+	ld	c,cfsizc ;compute end of file position
+	call	bdos
+	;call	rstusr	;reset user number
+	pop hl	;get fcb addr in HL again
+	push hl
+_5=$+1
+	call	hseek3	;get CDE = EOF record number
+	lhld	arg3	;BHL contains offset
+hseek1a:
+	add hl,de	;add CDE to BHL
+	ld	a,b
+	adc	c
+	ld	b,a	;BHL contains new position
+hseek2:	ex (sp),hl		;get fcb, push low 16 bits of new position
+	ld de,33
+	add hl,de	;HL points to random field of fcb
+	pop de	;get low 16 bits of new position in DE
+	ld	(hl),e	;and put into fcb
+	inc hl
+	ld	(hl),d
+	inc hl
+	ld	(hl),c	;and set high order byte
+	ex de,hl		;and return the low 16 bits of new position
+	pop bc	;pop saved BC off stack
+	ret
+
+hseek3:	ld de,33
+	add hl,de
+	ld	e,(hl)	
+	inc hl
+	ld	d,(hl)
+	inc hl
+	ld	c,(hl)
+	ret
+	ENDFUNC hseeksz,5
+
+;
+; Htell:
+;
+; i = htell(fd);
+;
+; Return high-order byte of 24-bit random record position of file:
+;
+
+	FUNCTION "HTELL"
+        FUNCHEAD htellsz
+
+	call	ma1toh	;get fd in A
+	call	fgfcb
+_1=$+1
+	jp nc,htell0
+	ld	a,7	; "bad fd" error
+	sta	errnum
+	jp	error
+
+htell0:	ld de,35	;go to random record field
+	add hl,de
+	ld	l,(hl)	;put value in L register,
+	ld	h,0	;zero H register.
+	ret
+
+	ENDFUNC htellsz,1
+
+
+;
+; cfsize:
+; 	cfsize(fd)
+;
+; Compute size of file, but leave random-record field at original value.
+;
+; NOTE: For files greater than 8 megabytes, do NOT use cfsize. Instead,
+; use hseek() to seek to end of file, then use htell() & tell() to obtain
+; high byte and low word, respectively, of the maximum record number.
+;
+
+	FUNCTION "CFSIZE"
+        FUNCHEAD cfsizesz
+;cfsize
+	call	ma1toh
+	call	fgfcb
+_1=$+1
+	jp nc,cfsiz2
+	ld	a,7	;"bad fd" error
+	sta	errnum
+	jp	error
+
+cfsiz2:	push bc	;save BC
+	push 	hl	;save fcb address
+	call	ma3toh	;set user area
+	call	fgfd	;get pointer to fd table entry
+
+	ld	a,(hl)
+	call	setusr
+	inc hl
+	shld	tmp2	;save pointer to max sector value
+
+	pop de	;restore fcb address into DE
+	ld hl,33	;get to random record field
+	add hl,de
+	push hl	;save ptr to random record field for after BDOS call
+
+	ld	a,(hl)
+	inc hl
+	ld	h,(hl)
+	ld	l,a	;HL = current setting
+	push hl	;save current value of random record field
+
+	ld	c,cfsizc	;compute file size
+	call	bdos
+	pop bc	;pop old random record value into BC
+	pop hl	;get pointer to random record field
+
+	ld	e,(hl)	;get end-of-file sector number into DE
+	inc hl
+	ld	d,(hl)
+
+	ld	(hl),b	;restore original value
+	dec hl
+	ld	(hl),c
+
+	lhld	tmp2	;get pointer to fd table max sector value
+	push hl	;save ptr to max value
+	ld	a,(hl)	;get max sector value in HL
+	inc hl
+	ld	h,(hl)
+	ld	l,a	;now old max in HL, fsize value in DE
+	call	cmphd	;is old max < current fsize?
+_2=$+1
+	jp nc,cfsiz3	;if not, just return old max as current max
+	ex (sp),hl		;get back pointer to old max value
+	ld	(hl),e	;update with new fsize value
+	inc hl
+	ld	(hl),d
+	ex de,hl		;put end-of-file sector number in HL for return
+
+cfsiz3:	pop de	;clean up stack
+	;call	rstusr	;reset user area
+	pop bc
+	ret
+	ENDFUNC cfsizesz,2
+
+;
+; Oflow:
+;	i = oflow(fd);
+;
+; Returns true if the highest-order byte (the third byte) of the
+; sector count in the fcb for the given file is non-zero:
+;
+
+	FUNCTION "OFLOW"
+        FUNCHEAD oflowsz
+	call	ma1toh
+	call	fgfcb
+_1=$+1
+	jp nc,oflow0
+	ld	a,7	;"bad fd" error
+	sta	errnum
+	jp	error	;abort if file isn't valid
+
+oflow0:	ld de,35	;look at high byte of sector position
+	add hl,de
+	ld	a,(hl)
+	or	a	;is it zero?
+	ld hl,0
+	ret z		;if so, no overflow
+	inc hl	;else overflow.
+	ret
+	ENDFUNC oflowsz,1
+
+
+;
+; Errno:
+;	int errno()
+; Returns last recorded file I/O error condition, set following the
+; last error encountered by the "read" and "write" functions.
+;
+
+	FUNCTION "ERRNO"
+        FUNCHEAD errnosz
+
+	lda	errnum
+	ld	l,a
+	ld	h,0
+	ret
+
+	ENDFUNC errnosz,0
+
+;
+; Errmsg:
+;	errmsg(n)
+; Prints out the BDS C file I/O error message having number n, as returned
+; by the "errno()" function.
+;
+
+        if 1==1
+	FUNCTION "ERRMSG"
+        FUNCHEAD errmsgsz
+
+nerrs:	equ	14	;highest legal error code
+
+
+	call	ma1toh	;get the number
+	cp	nerrs+1
+_1=$+1
+	jp c,errms2
+	ld hl,nerrs+1 ;get the error error message
+errms2:	add hl,hl	;double to get table offset
+_2=$+1
+	ld de,txtab	;get base of text pointer table
+	add hl,de	;add to get appropriate pointer
+	ld	a,(hl)	;return pointer in HL
+	inc hl
+	ld	h,(hl)
+	ld	l,a	
+	ret
+
+_3=$
+txtab:	dw	err0
+_4=$
+	dw	err1
+_5=$
+	dw	err2
+_6=$
+	dw	err3
+_7=$
+	dw	err4
+_8=$
+	dw	err5
+_9=$
+	dw	err6
+_10=$
+	dw	err7
+_11=$
+	dw	err8
+_12=$
+	dw	err9
+_13=$
+	dw	err10
+_14=$
+	dw	err11
+_15=$
+	dw	err12
+_16=$
+	dw	err13
+_17=$
+	dw	err14
+_18=$
+	dw	errerr
+	
+
+err0:	db	'No errors occurred yet',0
+err1:	db	'Reading unwritten data',0
+err2:	db	'Disk out of data space',0
+err3:	db	'Can''t close current extent',0
+err4:	db	'Seek to unwritten extent',0
+err5:	db	'Can''t create new extent',0
+err6:	db	'Seek past end of disk',0
+err7:	db	'Bad file descriptor',0
+err8:	db	'File not open for read',0
+err9:	db	'File not open for write',0
+err10:	db	'Too many files open',0
+err11:	db	'File not found',0
+err12:	db	'Bad mode to "open"',0
+err13:	db	'Can''t create the file',0
+err14:	db	'Seek past 65535th record',0
+
+errerr:	db 	'Errmsg: error number out of range',0
+	ENDFUNC errmsgsz,18
+        endif
+
+;
+; Execl modified 1/16/84 to work across user areas for programs > 16K long
+;
+
+	FUNCTION "EXECL"
+        FUNCHEAD execlsz
+
+	call	arghak
+	push bc
+	lhld	arg1
+	ex de,hl
+	ld hl,-60	;compute &nfcb for use here
+	add hl,sp
+	push hl	; save for much later (will pop	into BC)
+  	push hl	;make a few copies for local use below
+	push hl
+	call	setfcu	;set up COM file for execl-ing
+	;lda	usrnum
+	;call	setusr	;set destination user area
+	pop hl	;get new fcb addr
+	ld bc,9	;set extension to COM
+	add hl,bc
+	ld	(hl),'C'
+	inc hl
+	ld	(hl),'O'
+	inc hl
+	ld	(hl),'M'
+	pop de	;get new fcb addr again
+	ld	c,openc	;open the file for reading
+	call	bdos
+	cp	errorv
+_1=$+1
+	jp nz,noerrr
+err:	pop hl
+	pop bc
+	;call	rstusr
+	jp	error
+
+noerrr:	lhld	arg2	;any first parameter?
+	ld	a,h
+	or	l
+_2=$+1
+	jp nz,excl0
+	ld de,arg2	;no...null out first default fcb slot
+	push de
+	ld hl,fcb
+	call	setfcb
+	pop hl
+_3=$+1
+	jp	excl0a	;and go null out 2nd fcb slot
+
+excl0:	ex de,hl		;yes.. place into first default fcb slot
+	ld hl,fcb
+	call	setfcb
+	lhld	arg3	;any second parameter given?
+	ld	a,h
+	or	l
+_4=$+1
+	jp nz,excl0a
+	ld hl,arg3
+
+excl0a:	ex de,hl		;yes: stick it into second default fcb slot
+	ld hl,fcb+16
+	call	setfcb	
+	ld de,tbuff+1   ;now construct command line:
+	xor	a	;  zero tbuff+1 just in case there
+	ld (de),a	;  are no arg strings
+	ld hl,8	;get pointer to 1st arg string in HL
+	add hl,sp	;   by offsetting 4 objects from the current SP
+	ld	b,0	;char count for com. line buf.
+excl1:	push hl	;and construct command line
+	ld	a,(hl)	;get addr of next arg string pointer
+	inc hl
+	ld	h,(hl)
+	ld	l,a	;0000 indicates end of list.
+	or	h	;end of list?
+_5=$+1
+	jp z,excl3
+
+	ld	a,' '	;no. install next string
+	dec hl
+excl2:
+_6=$+1
+        call	mpuc	;convert to upper case for command line buffer
+	ld (de),a
+	inc de
+	inc	b
+	inc hl
+	ld	a,(hl)
+	or	a	;end of string?
+_7=$+1
+	jp nz,excl2
+	pop hl	;yes.
+	inc hl	;bump param pointer
+	inc hl	
+_8=$+1
+	jp	excl1	;and go do next string
+
+excl3:	pop hl	;clean up stack
+	ld	a,b	;check for command buffer overflow
+	cp	46h
+_9=$+1
+	jp c,excl30	;if no overflow, go load file
+_10=$+1
+	ld de,errmsg
+	ld	c,9	;else comlain and abort...
+	call	bdos
+_11=$+1
+	jp	err
+
+errmsg:	db	7,'EXECL: Command line overflow',cr,lf,'$'
+
+excl30:	ld hl,tbuff	;set length of command line
+	ld	(hl),b	;at location tbuff
+
+excl3a:
+_12=$+1
+	ld de,code0	;copy loader down to end of tbuff
+	ld hl,tpa-55
+	ld	b,55	;length of loader
+excl4:	ld a,(de)
+	ld	(hl),a
+	inc de
+	inc hl
+	dec	b
+_13=$+1
+	jp nz,excl4
+
+	pop bc	;get fcb pointer in BC
+			;reset the SP:
+	lhld	base+6	;get BDOS pointer in HL
+	lda	tpa	;look at first op byte of run-time pkg
+	cp	31h	;begin with "lxi sp,"?
+_14=$+1
+	jp nz,go0	;if so, use the same value now...
+	lhld	tpa+1	;else get special SP value
+_15=$+1
+	jp	go1
+
+go0:	cp	21h	;begin with "ld hl" (the NOBOOT sequence?)
+_16=$+1
+	jp nz,go1	;if not, just use the BDOS addr as top of memory
+	ld de,-2050	;for NOBOOT, subtract 2100 from BDOS addr
+	add hl,de	;and make that the new SP
+go1:	ld sp,hl
+
+	ld hl,base
+	push hl	;set base of ram as return addr
+	
+	lda	curusr	;push current user number for bootcode to reset
+	ld	e,a
+	push de
+
+	jp	tpa-55	;(go to `code0:')
+
+mpuc:	cp	61h	;convert character in A to upper case
+	ret c
+	cp	7bh
+	ret nc
+	sub	32
+	ret
+
+;
+; This loader code is now: 55 bytes long.
+; Modified for v1.51 to reset user area only after entire load (11/83)
+;
+
+code0:	ld de,tpa	;destination address of new program
+code1:	push de	;push	dma addr
+	push bc	;push	fcb pointer
+	ld	c,sdma	;set DMA address for new sector
+	call	bdos
+	pop de	;get pointer to working fcb in DE
+	push de	;and re-push	it
+	ld	c,reads	;read a sector
+	call	bdos
+	pop bc	;restore fcb pointer into BC
+	pop de	;and dma address into DE
+	or	a	;end of file?
+	jp z,tpa-8	;if not, get next sector (goto `code2:')
+
+	ld	d,b
+	ld	e,c
+	ld	c,closec
+	call	bdos
+
+	pop de	;restore current user number to E
+	ld	c,gsuser
+	call	bdos	;reset user number
+
+	ld	c,sdma	;reset DMA pointer
+	ld de,tbuff
+	call	bdos
+
+	jp	tpa	;and go invoke the program
+
+code2:	ld hl,80h	;bump dma address
+	add hl,de
+	ex de,hl
+	jp	tpa-52 	;and go loop (at code1)
+
+	ENDFUNC execlsz,16

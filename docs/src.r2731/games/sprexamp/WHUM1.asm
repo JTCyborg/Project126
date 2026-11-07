@@ -1,0 +1,39 @@
+        DEVICE ZXSPECTRUM1024
+        org 0xc000
+begin
+prsprqwid=0x0100 ;TODO прямо по какому-то адресу код, а не jp
+        dw human0
+        dw human0step
+        dw human1
+        dw human1step
+        dw human2
+        dw human2step
+        dw human3
+        dw human3step
+        dw human4
+        dw human4step
+        dw human5
+        dw human5step
+        dw human6
+        dw human6step
+        dw human7
+        dw human7step
+        dw bulletright
+        dw bulletleft
+        dw human2hit
+        dw human3hit
+        dw human4hit
+        dw human5hit
+        dw herostandright0
+        dw herostandright1
+        dw herostandleft0
+        dw herostandleft1
+        dw herorunright0
+        dw herorunright1
+        dw herorunright2
+        dw herorunleft0
+        dw herorunleft1
+        dw herorunleft2
+        include "WHUM1.ast"
+end
+	savebin "sprexamp/WHUM1.bin",begin,end-begin

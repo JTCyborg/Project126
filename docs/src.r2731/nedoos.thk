@@ -1,0 +1,366 @@
+Планы
+
+сократить размер некоторых программ выносом tpg и др. переменных вне com-файла
+
+если ктото закрыл пайп по чтению, то можно и по записи закрыть его и прибить
+[15:44]???? ??????: если ктото закрыл по записи, то по чтению закрыть после окончания напайпленного в нём
+[15:45]???? ??????: если с обоих сторон закрыли -- тоже прибить
+
+nvview, nvhexed: поиск
+надо сделать YIELD с вызовом потом своего обработчика прерываний (чтобы в играх использовать не HALT)
+упростить запуск команд оси из программ (как? rst0? сохранять hl в некоторых функциях?)
+в nvview и texted правильно считать ширину строк с табом (как переходить на подстроку вверх?)
+функции чтения argc, argv[i] (сами строки пока хранить там же, где сейчас)
+TRDOSFS: пробелы и спецсимволы в именах
+scratch: слои (несколько bitmap + master bitmap, который обновляется после каждого действия с любым bitmap)
+scratch: 256 цветов штриховкой
+scratch: печать масштабируемым шрифтом
+set file attributes в ядре и в nv (через меню?)
+nv: надо запрос замены при копировании (NS)
+
+в nv показ полного имени внизу (можно в комстроке (вместо последнего слова, если не закреплено, иначе через пробел(если нету) после конца)(и сбрасывать закреплённость), при вводе буквы затирать (и устанавливать закреплённость), при вводе пробела закреплять)
+что делают стрелки? по идее они должны считать незакреплённое несуществующим и работать как pgup/pgdn
+что делает enter? по идее он не должен учитывать незакреплённое
+курсор в комстроке не двигать, пока не закреплено, но пробел при незакреплённом ставится от конца комстроки+закрепляет
+
+часть stdio.asm (но не терминал!) в ядро, чтобы работал вывод по PRCHAR? (для CP/M). старые программы с простым PRCHAR переделать на OS_PRCHAR или на stdio!!!
+убрать scrollup/down из ядра (используется только в nv/nvview/nvhexed(только в nvfast, там больше свободного места, чем в версии с stdio), more(переделать на stdout!!!), telnet(переделать на stdout!!!), nmisvc(только up, переделать на stdout!!!))
+Расширение функционала батников (уже передаются параметры, но надо goto, if, обрезалки имён...)
+make скомпилить или по книжке Борланда, упрощённый
+perl - как-то скомпилить исходник
+cmd: Передача stdin, stdout по цепочке (с ручным перенаправлением)
+Чтение клавиатуры из stderrin (иначе нельзя dir |more.com из netterm)
+вытащить движки jpg, gif, png, bmp из browser отдельными задачами, использовать их в scratch, view (данные передавать через страницы, управление через пайпы)
+при переключении фокуса на 1 фрейм не давать никому фокус, чтобы старая задача успела доделать ld a,(scrpg)...out (c),a
+меню игр с картинками и краткой информацией (слева в основном списке у каждой крупное название, автор, год и иконка 32x31 (чтобы не склеивались), при подъезжании курсора плавно показывать картинку и инфу справа?). иконки и описания хранить в nedogame/ отдельными файлами
+
+
+
+
+как в отладчике NMI сделать трассировку?
+
+
+освободить rst 0, QUIT делать через общий вызов.
+сделать функции "вызов с переключением 0000" (в аккумуляторе старый номер страницы), "возврат с переключением 0000" (по аккумулятору) или лучше просто один джамп по ahl (возвращает старый a и адрес возврата, снимает его со стека)?
+тогда дальний вызов со сменой 0000 будет так:
+;ahl
+ld c...
+CALLBDOS ;в текущем стеке будет адрес возврата
+
+вход:
+push af
+push hl
+...
+возврат:
+pop hl
+pop af
+ld c...
+CALLBDOS
+
+можно ли без bdos? а откуда ось узнает текущую страницу в 0? байт в странице процесса?
+
+
+
+
+
+[17:02] alone_coder: is PCL5 still supported in hp printers?
+[17:02] SevenFFF: Yes it is
+[17:03] ZXGuesser: only in high end models possibly
+[17:03] ZXGuesser: I've not looked at HP for a while since they went insane
+[17:04] SevenFFF: In all the major vendors. And jet direct printing too. It's just telnet to port 9100, send the text, and close the connection 
+[17:04] ZXGuesser: but getting PCL etc in my new brother pushed me up to the next price tier
+[17:04] SevenFFF: My bog standard $70 brother laser has PCL5 and jetdirect
+
+
+
+вставляй пустой отформатированный диск в nemo (divide)
+заходи в E:/
+и там прямо в пустоте жми ентер (или пробел)
+получается панелька с мусором 
+
+
+cd ../nedogame/ - wrong path
+
+
+Буферы очередей в странице
+
+flush
+
+Именованные пайпы (при создании имя есть, но по нему нельзя открыть)
+
+Ускорение TRDOSFS (сейчас файлы пишутся по одному байту, да и читаются небыстро)
+
+Шедулинг в ядре?
+
+IDE и Self-hosting
+
+cpm prog.com par1 par2... - должен перекодировать параметры в CP/M-формат, включить текстмод для этой задачи, пропатчить возможное определение размера памяти по (0006)
+
+
+
+
+nvhexed ускорить печать большого курсора (напечатать цифры вместо прозрачности)
+
+nv вставка имени файла с 1-символьным расширением добавляет 2 пробела в конце
+
+nv запускать по nv.ext программы с заданным параметром (так можно сделать привязку .ans:cmd type)
+nv привязка расширений к F3, F4
+
+nv запуск хобеты при MEMFROMTOP?
+
+nv меню, где смена сортировки, сравнение файлов
+
+nv грузить цвета? как? он же в терминале? просто перенумерация цветов?
+
+???повисание в tp?
+
+переделать линкер в bdsc
+
+more подгружать из файла по мере надобности
+
+nvview надо стримить из файла (сделать виртуальное резервирование страниц, реально занимать не больше 64 K)
+
+сделать в nvview, more, texted чтение из файла с учётом, что из фс может прийти неполная страница
+
+todo no keyroll after '.' (interpret as noshift)
+todo no keyroll "s." (сейчас выдаёт "s./")
+рус-лат на ss+space, ё на ~
+
+удалить fdel - нигде не используется
+
+fat12
+автоопределение дискеты TR-DOS/FAT12?
+
+залезание командером в trd/scl/tap?
+
+
+
+
+
+
+в драйверы дисковых устройств передавать адрес в юзерспейсе (не пересчитанный), пересчитывать внутри
+а как в trdosio перегонять байты туда?
+
+драйвер фдд наравне с прочими?
+
+todo в ядре:
+4000 дрова
+дальше фатфс
+8000 продолжение фатфс (дрова тут нельзя)
+дальше структуры фатфс
+c000 структуры fil (нельзя использовать одновременно две)
+
+
+нельзя сделать в keynolang tab по нажатию, иначе не получится обработать ext+keys
+или в программах учитывать этот факт и проверять таб только по keylang? а как отладит тот, у кого ps/2 клава?
+
+
+
+
+как сделать sandbox для отладки системы под системой? хотя бы для запуска без выхода
+для этого достаточно переопределять директорию bin
+
+
+cmd: переоткрывать bat-файл на каждой строке (если в этой строке вызов программы), чтобы не отнимать файловые записи?
+перед выполнением команды сохранять историю в файл?
+
+
+fatfs: почему-то после чтения за границей файла в FATFS не работает SEEK на 0 (ошибка 1 - физическая)
+
+как переименовать на TRDOSFS файл типа FETT.fnt.C | (d:\backup\spectrum\system\MULTIST-Outrage.TRD)
+если в расширении TR-DOS есть 0x0d, то nv показывает искажённо
+в TRDOSFS определять одно/трёхсимвольные расширения, чтобы не было кривых символов
+
+
+
+
+
+вместо скролла терминала в nv:
+The technology is called The Alternate Screen Buffer. Terminal emulator provides two modes: primary and alternate. Alternate screen buffer has no scroll back, when you switch between these buffers the contents in them is preserved. To switch between them use smcup and rmcup ANSI Escape Sequences. In binary form they are:
+
+$ tput smcup|hexdump -C 
+00000000  1b 5b 3f 31 30 34 39 68                           |.[?1049h|
+
+$ tput rmcup|hexdump -C 
+00000000  1b 5b 3f 31 30 34 39 6c                           |.[?1049l|
+
+
+
+как сделать, чтобы твоя программа не тормозила другие:
+- если делать нечего - делай YIELD
+- если просто не можешь читать-писать пайп - делай YIELDKEEP /* а если не помогло, тогда уже YIELD. нельзя всё время делать YIELDKEEP? (теперь можно)*/
+
+
+эмулятор MSX методом перехвата биоса (как imsx). должны работать игры:
+Bomberman Special
+Bosconian
+Castle Excellent
+Galaxian
+Step Up
+Stop (Ita) Express
+Boulder Dash
+Bouncing Block
+Mappy
+Rise Out
+Tank Battalion
+Flappy
+
+		Фирма	Формат файла	Примечание
+1	3-D Bomberman	Hudson	BIN	
+2	3D Golf	Hudson	ROM	
+3	Adven'chuta! 	Mia	ROM	
+4	Aguas Bravas	Load N Run	BIN	
+5	Athletic Ball	ASCII	BIN/ROM	BIN шел под названием Ghost Flipper
+6	Back Gammon	Tecno Soft	BIN	
+7	Banana	Studio Gen	ROM	
+8	Battle Ship Clapton 2	T&E Soft	BIN/ROM	
+9	Binary Land	Hudson	ROM	
+10	Becky	Mia	ROM	
+11	Bifamu	Bandai	ROM	
+12	Black Onyx 1, The 	ASCII	ROM	
+13	Boggy'84 	Nippon Columbia	ROM	
+14	Boing Boing	Idealogic	BIN	
+15	Bokosuka Wars	ASCII	ROM	
+16	Bomberman	Hudson	ROM
+17	Bomberman Special	Hudson	ROM
+18	Boogie Woogi Jungle	Ample	BIN/ROM
+19	Boomerang	ASCII	ROM
+20	Bosconian	Namcot	ROM
+21	Bouken Roman 	System Soft	ROM
+22	Boulder Dash	Orpheus	BIN
+23	Boulder Dash (2)	Orpheus	BIN
+24	Bouncing Block	Idealogic	BIN
+25	British Bob	Relevo Videogames	ROM
+26	Buru To Marty Kikiippatsu	HAL	ROM
+27	Bytebusters	Aacksoft	BIN
+28	Cannon Ball	Hudson	BIN/ROM
+29	Captain Chef	Nippon Columbia	BIN/ROM
+30	Captain Cosmo	Nexa	ROM
+31	Car Race	Ample	ROM
+32	Casio Worldopen	Casio	ROM
+33	Castle Combat	?	BIN
+34	Castle	ASCII	ROM
+35	Castle Excellent	ASCII	ROM
+36	Chack'n Pop	Taito	ROM
+37	Champion Boulder Dash 	Comptiq	ROM
+38	Chick Fighter	Hudson	BIN
+39	Color Ball	Hudson	ROM
+40	Comecocos	Idealogic	BIN
+41	Cyclon	?	BIN
+42	Dig Dug	Namcot	ROM
+43	Dog Fighter	Hudson	BIN
+44	Donpan	Tomy/Colpax	BIN
+45	Dorodon	UPL	BIN/ROM
+46	Dragon Attack	HAL	ROM
+47	Dragon Slayer 	Square	ROM
+48	Driller Tanks	Hudson	ROM	
+49	Eric and the Floaters	Hudson	BIN	Вариант Bomberman c другим названием
+50	Erika	Jast	ROM	
+51	Exerion 1	Jaleco	BIN/ROM	
+52	Exerion 2	Jaleco	ROM	
+53	Fairy	Zap	BIN/ROM	
+54	F16 Fighting Falcon 	Nexa	BIN/ROM	
+55	Fire Rescue	Hudson	BIN/ROM	
+56	Flappy v1.0	dB-Soft	BIN	
+57	Flappy Limited	dB-Soft	ROM	
+58	Front Line	Taito	BIN/ROM	
+59	Fruit Search	HAL	ROM	
+60	Funky Mouse	Zap	ROM	
+61	Galaga	Namcot	ROM	
+62	Galaxian	Namcot	ROM	
+63	Galaxians	?	BIN	
+64	Gang Man	Hudson	BIN
+65	Ghostmaze	?	BIN
+66	Glider	Zap	ROM
+67	Hanafuda Koi Koi 	Ramsoft	ROM
+68	Harapeko Pakkun	ASCII	ROM
+69	Hitsuji Yai - Preety Sheep	Hudson	ROM
+70	Heavy Boxing	HAL	ROM
+71	Heli Tank	ASCII / Nabu Network	ROM
+72	Ice World	Casio	BIN/ROM
+73	Iga Ninpouten 1	Casio	ROM
+74	Iga Ninpouten 2	Casio	ROM
+75	Indian no Bouken	Hudson	BIN/ROM
+76	Jigsaw Set	Mia	ROM
+77	Jump Coaster	Nippon Columbia	ROM
+78	Jyankyo	Hudson	ROM
+79	Kageno Densetsu 	Taito	ROM
+80	Killer Station	Hudson	BIN
+81	Kinasai	?	BIN
+82	King & Balloon	Namcot	ROM
+83	Kinnikuman	Bandai	ROM
+84	Lonesome Tank	ETF Laboratory/Micro Art	BIN
+85	Machinegun Joe vs the Mafia 	Hudson	BIN/ROM
+86	Macross	Bothtec	ROM
+87	Manes	Zap	ROM
+88	Mappy	Namcot	ROM
+89	Mayhem	Mr. Micro	BIN
+90	Midnight Building 	Waylimit	ROM
+91	Mini Golf	Namcot	ROM
+92	MJ-05	Hudson	BIN
+93	MSX Baseball 	Matsushita Electric	BIN/ROM
+94	MSX Baseball 2	Matsushita Electric (Panasoft)	ROM
+95	MSX Soccer	Matsushita Electric	ROM
+96	Moai no Hibou	Casio	ROM	
+97	Mobile Planet Suthirus	HAL	ROM	
+98	Mobile Suit Gundam	Bandai	BIN/ROM	
+99	Mr. Chin	HAL	ROM	
+100	Mr. Do	Nippon Columbia	ROM	
+101	Mr. Do's Wild Ride 	Nippon Columbia	ROM	
+102	Nessen Koushiyen 	Casio	ROM	
+103	Night Flight	Tomy/Colpax	BIN	
+104	Ninja Jajamaru Kun 	Jaleco	ROM	
+105	Ninja Kun	Micro Cabin	ROM	
+106	Norseman	Electric Software	BIN/ROM	
+107	Nuts&Milk	Hudson	BIN	Режим редактора практически не работает, но в Blue MSX также. К игровому процессу претензий нет
+108	Nyorols	Mia	ROM	
+109	Othello	Pony Cannon	ROM	
+110	Outland	?	BIN	
+111	Pac-Man	Namcot	ROM	
+112	Pachinko U.F.O	Casio	ROM	
+113	Pai Panic	ASCII	BIN/ROM	
+114	Panic Junction	Morwood Software/Centralsoft	BIN	
+115	Peetan	Nippon Columbia	BIN/ROM	
+116	Pegasus	Victor	ROM	
+117	Penguin Race	Alfonso D.C.	ROM	
+118	Picture Puzzle	HAL	ROM	
+119	Pipi	Jaleco	BIN/ROM	
+120	Police Story, The 	Pony Cannon	ROM	
+121	Protector, The	Pony Cannon	ROM	
+122	Preety Sheep	Hudson	BIN	Англоязычный вариант Hitsuji Yai
+123	Psychedelia	?	BIN	Демка. Может показаться, что она не работает, но если понажимать клавиши, то будут узоры (и настройки). В Blue MSX аналогично
+124	Pyramid Warp	T&E Soft	ROM	
+125	Rally-X	Namcot	ROM	
+126	Raid On Bungeling Bay	Sony	ROM	
+127	Rise Out	Daewoo	ROM	Версия игры ASCII с немного другой графикой
+128	Rise Out from Dungeons	ASCII	BIN/ROM	
+129	Roger Rubbish	?	BIN	
+130	Scramble Eggs 	Ample	ROM	
+131	Senjyo	Tehkan	BIN	
+132	Shougi Sinan 1	Pony Cannon	ROM	
+133	Skate Dragon	Idealogic	BIN	
+134	Soukoban	ASCII	ROM	
+135	Space Busters	Aacksoft	BIN	Вариант Byte Busters с музыкой во время игры и "спецэффектами"
+136	Space Invader 	Taito	BIN/ROM	
+137	Spelunker	Irem	ROM	
+138	Spider	Hudson	ROM	
+139	Star Trap	Jast	ROM	
+140	Step Up	HAL	ROM	
+141	Stop (Ita) Express	Hudson	BIN/ROM	
+142	Submarine Shooter	Hudson	BIN	
+143	Super Baby	Hudson	BIN	Испаноязычный вариант Color Ball
+144	Super Doors	Hudson	BIN
+145	Super Drinker	Ample	ROM
+146	Takeru Densetsu	Takeru	ROM
+147	Tank Battalion	Namcot	BIN/ROM
+148	Tawarakun	ASCII	ROM
+149	Tear of Nile	Victor	ROM
+150	Tensai Rabbian Daifunsen	Toshiba Emi	ROM
+151	Tensidachino Gogo	Jast	ROM
+152	Thunder Ball	ASCII	ROM
+153	Time Bomb	Double Brain/Methodic Solutions	BIN
+154	Top Roller 	Jaleco	ROM
+155	Topple Zip	Bothtec	ROM
+156	Turmoil	ASCII	BIN/ROM
+157	Warp & Warp	Namcot	BIN/ROM
+158	Yokai Yasiki	Casio	ROM

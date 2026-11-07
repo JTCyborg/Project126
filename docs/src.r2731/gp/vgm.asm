@@ -1,0 +1,2021 @@
+; Video Game Music player
+;
+; Supported sound chips:
+;   AY-3-8910
+;   YM3526 (OPL1), YM3812 (OPL2), YMF262 (OPL3), YMF278B (OPL4)
+;   dual YM2203 (OPN), dual YM2151 (OPM), YM2608 (OPNA)
+;   Y8950 (MSX-AUDIO), YM2612 (OPN2)
+;
+; Known mapping limitations:
+;   YM2612 -> TurboSound-FM or YM2608:
+;     - DAC channel not supported
+;   Dual YM2203 -> YM2608:
+;     - only one SSG available
+;   YM2608 -> TurboSound-FM:
+;     - no ADPCM
+;     - SSG envelope volume differs
+;   Y8950 -> MoonSound:
+;     - no ADPCM without YM2608
+;     - MoonSound + YM2608 provide full feature coverage
+;
+; Custom playback rates via hardware timers:
+;   MoonSound, TurboSound-FM, YM2608
+
+	DEVICE ZXSPECTRUM128
+	include "../_sdk/sys_h.asm"
+	include "playerdefs.asm"
+
+HEADER_DATA_OFFSET = 0x8034
+HEADER_SIZE_MAX = 256
+TITLELENGTH = 64
+MEMORYSTREAMMAXPAGES = 250
+MEMORYSTREAMERRORMASK = 255 ; TODO: do we need to enforce loading the entire file?
+
+	org PLAYERSTART
+
+begin   PLAYERHEADER 0
+
+isfilesupported
+;cde = file extension
+;out: zf=1 if this player can handle the file and the sound hardware is available, zf=0 otherwise
+	ld a,c
+	cp 'v'
+	ret nz
+	ld a,d
+	cp 'g'
+	ret nz
+	ld a,e
+	cp 'm'
+	ret z
+	cp 'z'
+	ret
+
+cleanupvars
+;out: zf=0 so this function can be used as error handler
+	ld hl,playerwindowloading
+	ld (CUSTOMUIADDR),hl
+	or 255
+	jp initprogress
+
+playerinit
+;ix = GPSETTINGS
+;a = player page
+;out: zf=1 if init is successful, hl=init message
+	ld a,(ix+GPSETTINGS.sharedpages+0) : ld (page8000),a
+	ld a,(ix+GPSETTINGS.sharedpages+1) : ld (pageC000),a
+	ld a,(ix+GPSETTINGS.sharedpages+2) : ld (filedatapage),a
+	ld hl,(ix+GPSETTINGS.drawprogresscallback)
+	ld (drawloadingprogress.callback),hl
+	ld a,(ix+GPSETTINGS.tfmstatus)
+	ld (tfmstatus),a
+	cp 1
+	call z,enablenormaltfm
+	ld a,(ix+GPSETTINGS.moonsoundstatus)
+	ld (moonsoundstatus),a
+	or a
+	call nz,usemoonsoundtimer
+	ld a,(ix+GPSETTINGS.opmstatus)
+	ld (opmstatus),a
+	ld a,(ix+GPSETTINGS.opnastatus)
+	ld (opnastatus),a
+	or a
+	call nz,enableopna
+;hardware detection is done when loading VGM
+	call cleanupvars
+	ld hl,initokstr
+	xor a
+	ret
+
+enablenormaltfm
+	ld a,0x21 ;'ld hl,nn' op
+	ld (vgmopninit.callturnturbooff),a
+	ld hl,opnsettimer
+	ld (settimerproc),hl
+	ld hl,opnstoptimers
+	ld (stoptimerproc),hl
+	ret
+
+usemoonsoundtimer
+	ld hl,opl4settimer
+	ld (settimerproc),hl
+	ld hl,opl4stoptimers
+	ld (stoptimerproc),hl
+	ret
+
+	macro a_or_dw addr
+	ld hl,(addr+0)
+	or h
+	or l
+	ld de,(addr+2)
+	or d
+	or e
+	endm
+
+musicload
+;cde = file extension
+;hl = input file name
+;out: hl = device mask, zf=1 if the file is ready for playing, zf=0 otherwise
+	push hl
+	ld hl,waittimervsync
+	ld (waittimercallback),hl
+	ld hl,44100/VSYNC_FREQ
+	ld (waittimerstep),hl
+	ld a,COLOR_PANEL_FILE
+	ld (playerwindowui.ratelabelcolor+CUSTOMUISETCOLOR.color),a
+	ld hl,0
+	ld (waitcounterlo),hl
+	ld (samplecounterlo),hl
+	ld (dataoffsetlo),hl
+	ld (dataoffsethi),hl
+	ld (devicemask),hl
+	ld (totaldatablocksizelo),hl
+	ld a,l
+	ld (samplecounterhi),a
+	ld (waitcounterhi),a
+	ld (vgmheadercopy),a
+	ld (totaldatablocksizehi),a
+	ld a,e
+	pop de
+	cp 'z'
+	jr z,.loadcompressed
+	call memorystreamloadfile
+	jr z,.doneloading
+	call turnturboon
+	call cleanupvars
+	ld hl,(ERRORSTRINGADDR)
+	ld a,l
+	or h
+	ret nz
+	ld a,(memorystreamerrorcode)
+	dec a
+	ret m ;MEMORYSTREAMERROR_SUCCESS
+	ld hl,fileioerrorstr
+	ld (ERRORSTRINGADDR),hl
+	dec a
+	ret m ;MEMORYSTREAMERROR_FILEIO
+	ld hl,oomerrorstr
+	ld (ERRORSTRINGADDR),hl
+	dec a
+	ret m ;MEMORYSTREAMERROR_OOM
+	ld hl,0
+	ld (ERRORSTRINGADDR),hl
+	dec a
+	ret
+.loadcompressed
+	call decompressfiletomemorystream
+	jp nz,cleanupvars
+.doneloading
+;setup timer
+	ld hl,(HEADER_RECORDING_RATE)
+	inc h
+	dec h
+	jr nz,donesettingtimer
+	ld a,l
+settimerproc=$+1
+	call settimerstub
+	jr nz,donesettingtimer
+	ld a,12
+	ld (playerwindowui.ratelabelcolor+CUSTOMUISETCOLOR.color),a
+donesettingtimer
+;setup play progress
+	call initprogress
+	ld hl,(HEADER_SAMPLES_COUNT+2)
+	ld bc,(HEADER_LOOP_SAMPLES_COUNT+2)
+	add hl,bc
+	inc hl ;+1 as if low-word addition sets cf
+	ld a,l
+	inc h
+	dec h
+	jr z,$+4
+	ld a,255
+	call setprogressdelta
+;check for GD3
+	xor a
+	ld (titlestr),a
+	a_or_dw HEADER_GD3_OFFSET
+	call nz,parsegd3
+;setup loop
+	xor a
+	a_or_dw HEADER_LOOP_OFFSET
+	ld (loopoffsetlo),hl
+	ld (loopoffsethi),de
+	jr z,$+4
+	ld a,1
+	inc a
+	ld (loopcounter),a
+;fill VGM info
+	ld hl,(totaldatablocksizelo)
+	ld a,(totaldatablocksizehi)
+	ld bc,1023
+	add hl,bc
+	adc a,0
+	ld l,h
+	srl a : rr l
+	srl a : rr l
+	ld h,a
+	or l
+	jr z,.nopcm
+	ld de,vgmdatablocksizestr
+	call hltodecimalstring
+	ld hl,kbytestr
+	call strcopy_hltode
+	jr .donepcm
+.nopcm	ld hl,nonestr
+	ld de,vgmdatablocksizestr
+	call strcopy_hltode
+.donepcm
+	ld hl,(HEADER_RECORDING_RATE)
+	ld a,h
+	or l
+	jr z,.zerorate
+	ld de,vgmratestr
+	call hltodecimalstring
+	ld hl,hzstr
+	call strcopy_hltode
+	jr .donerecordingrate
+.zerorate
+	ld hl,zeroratestr
+	ld de,vgmratestr
+	call strcopy_hltode
+.donerecordingrate
+	ld hl,(HEADER_SAMPLES_COUNT+0) : exx
+	ld hl,(HEADER_SAMPLES_COUNT+2) : exx
+	ld de,vgmlengthstr
+	call samplecounttotimestring
+	xor a
+	ld hl,(HEADER_LOOP_SAMPLES_COUNT+0) : or h : or l : exx
+	ld hl,(HEADER_LOOP_SAMPLES_COUNT+2) : or h : or l : exx
+	jr z,.finalizevgminfo
+	ld a,' ' : ld (de),a : inc de
+	ld a,'+' : ld (de),a : inc de
+	ld a,' ' : ld (de),a : inc de
+	call samplecounttotimestring
+.finalizevgminfo
+	ld hl,playerwindowui
+	ld (CUSTOMUIADDR),hl
+;start command stream
+dataoffsetlo=$+1
+	ld hl,0
+dataoffsethi=$+1
+	ld de,0
+	call memorystreamseek
+	xor a
+devicemask=$+1
+	ld hl,0
+	ret
+
+settimerstub
+	or 255
+stoptimerstub
+	ret
+
+checkvgmchip
+;hl = header addr
+;de = chip name string
+;out: zf=1 if not found, zf=0 and c=255 otherwise
+	ld a,(hl)
+	inc hl
+	or (hl)
+	inc hl
+	or (hl)
+	inc hl
+	or (hl)
+	ret z
+	push de
+	bit 6,(hl)
+	push af
+.strend=$+1
+	ld hl,0
+.strcharleft=$+1
+	ld b,0
+	ld a,b
+	cp VGM_CHIP_STR_MAX_LEN
+	jr z,.noseparator
+	ld de,chipseparatorstr
+	call strncopy_detohl
+.noseparator
+	pop af
+	jr z,.singlechip
+	ld de,dualchipstr
+	call strncopy_detohl
+.singlechip
+	pop de
+	call strncopy_detohl
+	ld (.strend),hl
+	ld a,b
+	ld (.strcharleft),a
+	or 255
+	ld c,a
+	ret
+
+	macro check_vgm_chip headeraddr,straddr
+	ld hl,headeraddr
+	ld de,straddr
+	call checkvgmchip
+	endm
+
+	macro set_device_mask devicebit
+	ld hl,devicemask+devicebit/8
+	set devicebit%8,(hl)
+	endm
+
+	macro check_device_mask devicebit
+	ld hl,devicemask+devicebit/8
+	bit devicebit%8,(hl)
+	endm
+
+inithardware
+;out: zf=1 if hardware is found, zf=0 otherwise
+	ld hl,vgmchipsstr
+	ld (checkvgmchip.strend),hl
+	ld a,VGM_CHIP_STR_MAX_LEN
+	ld (checkvgmchip.strcharleft),a
+;init AY
+	check_vgm_chip HEADER_CLOCK_AY8910,ay8910str
+	call nz,initAY8910
+;init OPM
+	check_vgm_chip HEADER_CLOCK_YM2151,ym2151str
+	call nz,initYM2151
+	jp nz,.missinghardwareerror
+;init TFM
+	ld c,0
+	check_vgm_chip HEADER_CLOCK_YM2203,ym2203str
+	check_vgm_chip HEADER_CLOCK_YM2608,ym2608str
+	check_vgm_chip HEADER_CLOCK_SN76489,sn76489str
+	check_vgm_chip HEADER_CLOCK_YM2612,ym2612str
+	inc c
+	dec c
+.opninitfunc=$+1
+	call nz,initYM2203
+	jp nz,.missinghardwareerror
+;init Moonsound
+	ld c,0
+	check_vgm_chip HEADER_CLOCK_Y8950,y8950str
+	jr z,.nomsxmusic
+	push bc
+	check_device_mask DEVICE_OPNA_BIT
+	call z,initYM2608
+	pop bc
+.nomsxmusic
+	check_vgm_chip HEADER_CLOCK_YM3526,ym3526str
+	check_vgm_chip HEADER_CLOCK_YM3812,ym3812str
+	ld a,c
+	ld (useYM3812),a
+	check_vgm_chip HEADER_CLOCK_YMF262,ymf262str
+	inc c
+	dec c
+	jr nz,.opl4notneeded
+	check_vgm_chip HEADER_CLOCK_YMF278B,ymf278bstr
+	jr z,.opl4notneeded
+	ld a,(moonsoundstatus)
+	cp 2
+	jr nz,.missinghardwareerror
+	or a
+.opl4notneeded
+	call nz,initYMF278B
+	jp nz,.missinghardwareerror
+;zf=0 if there is no supported device
+	ld hl,(devicemask)
+	ld a,l
+	or h
+	cp 1
+	sbc a,a
+	ret z
+.missinghardwareerror
+	ld hl,missinghardwareerrorstr
+	ld (ERRORSTRINGADDR),hl
+	ret
+
+missinghardwareerrorstr
+	db "Unable to initialize the sound device!",0
+fileioerrorstr
+	db "Unable to read the file!",0
+oomerrorstr
+	db "Not enough memory to load the module!",0
+gziperrorstr
+	db "Failed to decompress the file!",0
+
+playerdeinit
+	ret
+
+	include "../_sdk/file.asm"
+	define ON_FILE_OPENED_CALLBACK onfileopened
+	define ON_DATA_LOADED_CALLBACK ondataloaded
+	define UNUSED_PAGE_ADDR page8000
+	include "common/memorystream.asm"
+	include "common/muldiv.asm"
+	include "common/opl4.asm"
+	include "vgm/opl4.asm"
+	define OPN_ENABLE_FM 1
+	include "common/opn.asm"
+	include "common/opm.asm"
+	include "common/opna.asm"
+	include "common/turbo.asm"
+	include "vgm/opn.asm"
+	include "vgm/opm.asm"
+	include "vgm/ssg.asm"
+	include "vgm/opna.asm"
+	include "progress.asm"
+
+ondataloaded
+;output: zf=1 if hardware is found, zf=0 otherwise
+	ld a,(memorystreampagecount)
+	call updateprogress
+	call drawloadingprogress
+	ret nz
+	call memorystreamgetpos
+	push de
+	push hl
+	ld a,(vgmheadercopy)
+	or a
+	jr nz,.headerloaded
+;copy header
+	ld a,(memorystreampages)
+	SETPG8000
+	ld bc,HEADER_SIZE_MAX
+	ld hl,vgmheadercopy
+	ld de,vgmheadercopy+1
+	ld (hl),0
+	ldir
+	ld hl,(HEADER_DATA_OFFSET)
+	ld a,h
+	or l
+	ld bc,0x40
+	jr z,$+4
+	ld c,0x34
+	add hl,bc
+	ld (dataoffsetlo),hl
+	ld bc,hl
+	ld hl,-HEADER_SIZE_MAX-1
+	add hl,bc
+	jr nc,$+5
+	ld bc,HEADER_SIZE_MAX
+	ld hl,0x8000
+	ld de,vgmheadercopy
+	ldir
+;we've got the header, now we know which hardware we need
+	call inithardware
+	jr z,.checkfirstdatablock
+	pop hl
+	pop de
+	ret
+.checkfirstdatablock
+	ld hl,(dataoffsetlo)
+	ld de,(dataoffsethi)
+	push de
+	push hl
+	call memorystreamseek
+	pop hl
+	pop de
+	call .checkdatablock
+	pop hl
+	pop de
+	push de
+	push hl
+.headerloaded
+.blockendlo=$+1
+	ld bc,0
+	sub hl,bc
+.blockendhi=$+1
+	ld bc,0
+	ex de,hl
+	sbc hl,bc
+	jr c,.done
+.blockstartlo=$+1
+	ld hl,0
+.blockstarthi=$+1
+	ld de,0
+	call memorystreamseek
+	call memorystreamread3 ;c = 0x67, e = 0x66, d = data type
+	ld e,d
+	call processdatablock
+	call memorystreamgetpos
+	ld (dataoffsetlo),hl
+	ld (dataoffsethi),de
+	call .checkdatablock
+;free unused pages
+	ld hl,(dataoffsetlo)
+	ld a,(dataoffsethi)
+	add hl,hl : rla
+	add hl,hl : rla
+	call memorystreamfreecustompagecount
+.done	pop hl
+	pop de
+	call memorystreamseek
+	xor a
+	ret
+.checkdatablock
+;dehl = current stream offset
+	ld (.blockstartlo),hl
+	ld (.blockstarthi),de
+	ld hl,0xffff
+	ld (.blockendlo),hl
+	ld (.blockendhi),hl
+	call memorystreamread3 ;c = 0x67, e = 0x66, d = data type
+	ld a,c
+	cp 0x67
+	ret nz
+	ld a,e
+	cp 0x66
+	ret nz
+	call memorystreamread4 ;adbc = data size
+	xor a
+	ld hl,32 ;include the next data block header
+	add hl,bc
+	adc a,d
+	ld bc,(.blockstartlo)
+	add hl,bc
+	ld (.blockendlo),hl
+	ld l,a
+	ld h,0
+	ld bc,(.blockstarthi)
+	adc hl,bc
+	ld (.blockendhi),hl
+	ret
+
+waittimervsync
+	YIELD
+	ret
+
+musicplay
+;out: zf=0 if still playing, zf=1 otherwise
+waittimercallback=$+1
+	call 0
+playloop
+waitcounterlo=$+1
+	ld hl,0
+waitcounterhi=$+1
+	ld a,0
+waittimerstep=$+1
+	ld bc,0
+	sub hl,bc
+	ld d,0
+	sbc a,d
+	jr nc,exitplayloop
+;read command
+	memory_stream_read_1 e
+	ld hl,cmdtable
+	add hl,de
+	ld e,(hl)
+	inc h
+	ld d,(hl)
+	ld hl,playloop
+	push hl
+	ex hl,de
+	jp (hl)
+exitplayloop
+	ld (waitcounterlo),hl
+	ld (waitcounterhi),a
+;update progress
+samplecounterlo=$+1
+	ld hl,0
+samplecounterhi=$+1
+	ld a,0
+	add hl,bc
+	adc a,d
+	jr nc,$+4
+	ld a,255
+	ld (samplecounterlo),hl
+	ld (samplecounterhi),a
+	call updateprogress
+;continue playing
+	or 1
+	ret
+
+wait1	ld hl,waitcounterlo
+	inc (hl)
+	ret nz
+	inc hl
+	inc (hl)
+	ret nz
+	ld hl,waitcounterhi
+	inc (hl)
+	ret
+
+wait2	ld a,2
+waitn	ld hl,waitcounterlo
+	add a,(hl)
+	ld (hl),a
+	ret nc
+	inc hl
+	inc (hl)
+	ret nz
+	ld hl,waitcounterhi
+	inc (hl)
+	ret
+
+wait3	ld a,3  : jp waitn
+wait4	ld a,4  : jp waitn
+wait5	ld a,5  : jp waitn
+wait6	ld a,6  : jp waitn
+wait7	ld a,7  : jp waitn
+wait8	ld a,8  : jp waitn
+wait9	ld a,9  : jp waitn
+wait10	ld a,10 : jp waitn
+wait11	ld a,11 : jp waitn
+wait12	ld a,12 : jp waitn
+wait13	ld a,13 : jp waitn
+wait14	ld a,14 : jp waitn
+wait15	ld a,15 : jp waitn
+wait16	ld a,16 : jp waitn
+
+wait735	ld de,735
+waitnn	ld hl,(waitcounterlo)
+	add hl,de
+	ld (waitcounterlo),hl
+	ret nc
+	ld hl,waitcounterhi
+	inc (hl)
+	ret
+
+wait882	ld de,882
+	jp waitnn
+
+waitvar	memory_stream_read_2 e,d
+	jp waitnn
+
+	macro skip_n n
+	ld b,n
+	jp memorystreamskip
+	endm
+
+skip1	ret
+skip2	skip_n 1
+skip3	skip_n 2
+skip4	skip_n 3
+skip5	skip_n 4
+skip6	skip_n 5
+skip11	skip_n 10
+skip12	skip_n 11
+
+endofsounddata
+loopcounter=$+1
+	ld a,0
+	dec a
+	ld (loopcounter),a
+	jp nz,seektoloop
+cmdunsupported
+;stop playing
+	pop af
+	xor a
+	ret
+
+cmdYM2203_tfm
+	memory_stream_read_2 e,d
+	jp opnwritemusiconlyfm1
+
+cmdYM2203dp_tfm
+	memory_stream_read_2 e,d
+	jp opnwritemusiconlyfm2
+
+cmdYM2612p0_tfm
+cmdYM2608p0_tfm
+	memory_stream_read_2 e,d
+	ld a,e
+	cp 0x08
+	jp c,opnwritefm1
+	cp 0x0b
+	jr c,.writessgvolume
+	cp 0x28
+	jp nz,opnwritemusiconlyfm1
+	bit 2,d
+	jp z,opnwritefm1
+	res 2,d
+	jp opnwritefm2
+.writessgvolume
+	ld a,d
+	and 31
+	add a,.ssgattenuationtable%256
+	ld l,a
+	adc a,.ssgattenuationtable/256
+	sub l
+	ld h,a
+	ld d,(hl)
+	jp opnwritefm1
+.ssgattenuationtable
+	db 0x00,0x00,0x01,0x01,0x02,0x02,0x03,0x03
+	db 0x04,0x05,0x05,0x06,0x07,0x07,0x08,0x08
+	db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
+	db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
+
+cmdYM2612p1_tfm
+cmdYM2608p1_tfm
+	memory_stream_read_2 e,d
+	ld a,e
+	cp 0x30
+	ret c
+	jp opnwritefm2
+
+cmdYMF278B
+	memory_stream_read_3 c,e,d
+	dec c
+	jp z,opl4writemusiconlyfm2
+	jp p,opl4writewavemusiconly
+	jp opl4writemusiconlyfm1
+
+cmdYMF262p0
+cmdYM3812
+cmdY8950_opl3
+cmdYM3526
+	memory_stream_read_2 e,d
+	jp opl4writemusiconlyfm1
+
+cmdYMF262p1
+cmdYM3812dp
+cmdY8950dp_opl3
+cmdYM3526dp
+	memory_stream_read_2 e,d
+	jp opl4writemusiconlyfm2
+
+cmdYM2151
+	memory_stream_read_2 e,d
+	jp opmwritemusiconlychip0
+
+cmdYM2151dp
+	memory_stream_read_2 e,d
+	jp opmwritemusiconlychip1
+
+cmdAY8910
+	memory_stream_read_2 e,d
+	bit 7,e
+	jp z,ssgwritemusiconlychip0
+	res 7,e
+	jp ssgwritemusiconlychip1
+
+cmdYMF262dp0 equ memorystreamread2
+cmdYMF262dp1 equ memorystreamread2
+
+cmddatablock
+	memory_stream_read_2 a,e ;a = 0x66 guard, e = type
+	cp 0x66
+	jp nz,cmdunsupported
+processdatablock
+;e = data type
+	call memorystreamread4 ;adbc = data size
+totaldatablocksizelo=$+1
+	ld hl,0
+	add hl,bc
+	ld (totaldatablocksizelo),hl
+totaldatablocksizehi=$+1
+	ld a,0
+	adc a,d
+	ld (totaldatablocksizehi),a
+	ld a,e
+	ld hl,bc
+	cp 0x88
+y8950datablockhandler=$+1
+	jp z,$+3
+	cp 0x81
+opnadatablockhandler=$+1
+	jp z,$+3
+	cp 0x84
+	jp z,opl4loadromdatablock
+	cp 0x87
+	jp z,opl4loadramdatablock
+	push de
+	push bc
+	call memorystreamgetpos
+	pop bc
+	pop af
+	add hl,bc
+	adc a,e
+	ld e,a
+	adc a,d
+	sub e
+	ld d,a
+	jp memorystreamseek
+
+seektoloop
+	ld bc,0x1c
+loopoffsethi=$+1
+	ld de,0
+loopoffsetlo=$+1
+	ld hl,0
+seektopos
+;dehl + bc = position
+;out: hl = read address
+	add hl,bc
+	jp nc,memorystreamseek
+	inc de
+	jp memorystreamseek
+
+parsegd3
+;dehl = GD3 offset
+	ld bc,32
+	call seektopos
+	ld b,TITLELENGTH
+	ld de,titlestr
+	ld a,' '
+.fillloop
+	ld (de),a
+	inc de
+	djnz .fillloop
+	xor a
+	ld (de),a
+	ld b,TITLELENGTH
+	ld de,titlestr
+	call gd3stringcopy   ;track name
+	call z,gd3stringskip ;track name in Japanese
+	push hl
+	ld hl,fromstr
+	call z,stringcopy
+	pop hl
+	call z,gd3stringcopy ;game name
+	call z,gd3stringskip ;game name in Japanese
+	call z,gd3stringskip ;system name
+	call z,gd3stringskip ;system name in Japanese
+	push hl
+	ld hl,bystr
+	call z,stringcopy
+	pop hl
+	call z,gd3stringcopy ;author
+	ld a,b
+	cp 57
+	ret c
+	xor a
+	ld (titlestr),a
+	ret
+
+gd3stringcopy
+;hl = memorystreamcurrentaddr
+;de = dest
+;b = bytes remaining
+;out: zf=1 if encountered zero terminator, zf=0 if out of space
+	memory_stream_read_byte a
+	memory_stream_read_byte c
+	or a
+	ret z
+	ld (de),a
+	inc de
+	djnz gd3stringcopy
+	ret
+
+gd3stringskip
+;hl = memorystreamcurrentaddr
+;out: zf=1
+	memory_stream_read_byte a
+	memory_stream_read_byte c
+	or c
+	jr nz,gd3stringskip
+	ret
+
+stringcopy
+;hl = source
+;de = dest
+;b = bytes remaining
+;out: zf=1 if encountered zero terminator, zf=0 if out of space
+	ld a,(hl)
+	or a
+	ret z
+	ld (de),a
+	inc hl
+	inc de
+	djnz stringcopy
+	ret
+
+cmdtable
+	db skip1           %256 ; 00
+	db skip1           %256 ; 01
+	db skip1           %256 ; 02
+	db skip1           %256 ; 03
+	db skip1           %256 ; 04
+	db skip1           %256 ; 05
+	db skip1           %256 ; 06
+	db skip1           %256 ; 07
+	db skip1           %256 ; 08
+	db skip1           %256 ; 09
+	db skip1           %256 ; 0A
+	db skip1           %256 ; 0B
+	db skip1           %256 ; 0C
+	db skip1           %256 ; 0D
+	db skip1           %256 ; 0E
+	db skip1           %256 ; 0F
+	db skip1           %256 ; 10
+	db skip1           %256 ; 11
+	db skip1           %256 ; 12
+	db skip1           %256 ; 13
+	db skip1           %256 ; 14
+	db skip1           %256 ; 15
+	db skip1           %256 ; 16
+	db skip1           %256 ; 17
+	db skip1           %256 ; 18
+	db skip1           %256 ; 19
+	db skip1           %256 ; 1A
+	db skip1           %256 ; 1B
+	db skip1           %256 ; 1C
+	db skip1           %256 ; 1D
+	db skip1           %256 ; 1E
+	db skip1           %256 ; 1F
+	db skip1           %256 ; 20
+	db skip1           %256 ; 21
+	db skip1           %256 ; 22
+	db skip1           %256 ; 23
+	db skip1           %256 ; 24
+	db skip1           %256 ; 25
+	db skip1           %256 ; 26
+	db skip1           %256 ; 27
+	db skip1           %256 ; 28
+	db skip1           %256 ; 29
+	db skip1           %256 ; 2A
+	db skip1           %256 ; 2B
+	db skip1           %256 ; 2C
+	db skip1           %256 ; 2D
+	db skip1           %256 ; 2E
+	db skip1           %256 ; 2F
+	db cmdunsupported  %256 ; 30
+	db skip2           %256 ; 31
+	db skip2           %256 ; 32
+	db skip2           %256 ; 33
+	db skip2           %256 ; 34
+	db skip2           %256 ; 35
+	db skip2           %256 ; 36
+	db skip2           %256 ; 37
+	db skip2           %256 ; 38
+	db skip2           %256 ; 39
+	db skip2           %256 ; 3A
+	db skip2           %256 ; 3B
+	db skip2           %256 ; 3C
+	db skip2           %256 ; 3D
+	db skip2           %256 ; 3E
+	db skip2           %256 ; 3F
+	db skip3           %256 ; 40
+	db skip3           %256 ; 41
+	db skip3           %256 ; 42
+	db skip3           %256 ; 43
+	db skip3           %256 ; 44
+	db skip3           %256 ; 45
+	db skip3           %256 ; 46
+	db skip3           %256 ; 47
+	db skip3           %256 ; 48
+	db skip3           %256 ; 49
+	db skip3           %256 ; 4A
+	db skip3           %256 ; 4B
+	db skip3           %256 ; 4C
+	db skip3           %256 ; 4D
+	db skip3           %256 ; 4E
+	db skip2           %256 ; 4F
+	db cmdSN76489      %256 ; 50
+	db cmdYM2413       %256 ; 51
+	db cmdYM2612p0_tfm %256 ; 52
+	db cmdYM2612p1_tfm %256 ; 53
+	db cmdYM2151       %256 ; 54
+	db cmdYM2203_tfm   %256 ; 55
+	db cmdYM2608p0_tfm %256 ; 56
+	db cmdYM2608p1_tfm %256 ; 57
+	db cmdunsupported  %256 ; 58
+	db cmdunsupported  %256 ; 59
+	db cmdYM3812       %256 ; 5A
+	db cmdYM3526       %256 ; 5B
+	db cmdY8950_opl3   %256 ; 5C
+	db skip3           %256 ; 5D
+	db cmdYMF262p0     %256 ; 5E
+	db cmdYMF262p1     %256 ; 5F
+	db cmdunsupported  %256 ; 60
+	db waitvar         %256 ; 61
+	db wait735         %256 ; 62
+	db wait882         %256 ; 63
+	db cmdunsupported  %256 ; 64
+	db cmdunsupported  %256 ; 65
+	db endofsounddata  %256 ; 66
+	db cmddatablock    %256 ; 67
+	db skip12          %256 ; 68
+	db cmdunsupported  %256 ; 69
+	db cmdunsupported  %256 ; 6A
+	db cmdunsupported  %256 ; 6B
+	db cmdunsupported  %256 ; 6C
+	db cmdunsupported  %256 ; 6D
+	db cmdunsupported  %256 ; 6E
+	db cmdunsupported  %256 ; 6F
+	db wait1           %256 ; 70
+	db wait2           %256 ; 71
+	db wait3           %256 ; 72
+	db wait4           %256 ; 73
+	db wait5           %256 ; 74
+	db wait6           %256 ; 75
+	db wait7           %256 ; 76
+	db wait8           %256 ; 77
+	db wait9           %256 ; 78
+	db wait10          %256 ; 79
+	db wait11          %256 ; 7A
+	db wait12          %256 ; 7B
+	db wait13          %256 ; 7C
+	db wait14          %256 ; 7D
+	db wait15          %256 ; 7E
+	db wait16          %256 ; 7F
+	db skip1           %256 ; 80
+	db wait1           %256 ; 81
+	db wait2           %256 ; 82
+	db wait3           %256 ; 83
+	db wait4           %256 ; 84
+	db wait5           %256 ; 85
+	db wait6           %256 ; 86
+	db wait7           %256 ; 87
+	db wait8           %256 ; 88
+	db wait9           %256 ; 89
+	db wait10          %256 ; 8A
+	db wait11          %256 ; 8B
+	db wait12          %256 ; 8C
+	db wait13          %256 ; 8D
+	db wait14          %256 ; 8E
+	db wait15          %256 ; 8F
+	db skip5           %256 ; 90
+	db skip5           %256 ; 91
+	db skip6           %256 ; 92
+	db skip11          %256 ; 93
+	db skip2           %256 ; 94
+	db skip5           %256 ; 95
+	db cmdunsupported  %256 ; 96
+	db cmdunsupported  %256 ; 97
+	db cmdunsupported  %256 ; 98
+	db cmdunsupported  %256 ; 99
+	db cmdunsupported  %256 ; 9A
+	db cmdunsupported  %256 ; 9B
+	db cmdunsupported  %256 ; 9C
+	db cmdunsupported  %256 ; 9D
+	db cmdunsupported  %256 ; 9E
+	db cmdunsupported  %256 ; 9F
+	db cmdAY8910       %256 ; A0
+	db skip3           %256 ; A1
+	db cmdunsupported  %256 ; A2
+	db cmdunsupported  %256 ; A3
+	db cmdYM2151dp     %256 ; A4
+	db cmdYM2203dp_tfm %256 ; A5
+	db skip3           %256 ; A6
+	db skip3           %256 ; A7
+	db skip3           %256 ; A8
+	db skip3           %256 ; A9
+	db cmdYM3812dp     %256 ; AA
+	db cmdYM3526dp     %256 ; AB
+	db cmdY8950dp_opl3 %256 ; AC
+	db skip3           %256 ; AD
+	db cmdYMF262dp0    %256 ; AE
+	db cmdYMF262dp0    %256 ; AF
+	db skip3           %256 ; B0
+	db skip3           %256 ; B1
+	db skip3           %256 ; B2
+	db skip3           %256 ; B3
+	db skip3           %256 ; B4
+	db skip3           %256 ; B5
+	db skip3           %256 ; B6
+	db skip3           %256 ; B7
+	db skip3           %256 ; B8
+	db skip3           %256 ; B9
+	db skip3           %256 ; BA
+	db skip3           %256 ; BB
+	db skip3           %256 ; BC
+	db skip3           %256 ; BD
+	db skip3           %256 ; BE
+	db skip3           %256 ; BF
+	db skip4           %256 ; C0
+	db skip4           %256 ; C1
+	db skip4           %256 ; C2
+	db skip4           %256 ; C3
+	db skip4           %256 ; C4
+	db skip4           %256 ; C5
+	db skip4           %256 ; C6
+	db skip4           %256 ; C7
+	db skip4           %256 ; C8
+	db skip4           %256 ; C9
+	db skip4           %256 ; CA
+	db skip4           %256 ; CB
+	db skip4           %256 ; CC
+	db skip4           %256 ; CD
+	db skip4           %256 ; CE
+	db skip4           %256 ; CF
+	db cmdYMF278B      %256 ; D0
+	db skip4           %256 ; D1
+	db cmdunsupported  %256 ; D2
+	db skip4           %256 ; D3
+	db skip4           %256 ; D4
+	db skip4           %256 ; D5
+	db skip4           %256 ; D6
+	db skip4           %256 ; D7
+	db skip4           %256 ; D8
+	db skip4           %256 ; D9
+	db skip4           %256 ; DA
+	db skip4           %256 ; DB
+	db skip4           %256 ; DC
+	db skip4           %256 ; DD
+	db skip4           %256 ; DE
+	db skip4           %256 ; DF
+	db cmdunsupported  %256 ; E0
+	db skip5           %256 ; E1
+	db skip5           %256 ; E2
+	db skip5           %256 ; E3
+	db skip5           %256 ; E4
+	db skip5           %256 ; E5
+	db skip5           %256 ; E6
+	db skip5           %256 ; E7
+	db skip5           %256 ; E8
+	db skip5           %256 ; E9
+	db skip5           %256 ; EA
+	db skip5           %256 ; EB
+	db skip5           %256 ; EC
+	db skip5           %256 ; ED
+	db skip5           %256 ; EE
+	db skip5           %256 ; EF
+	db skip5           %256 ; F0
+	db skip5           %256 ; F1
+	db skip5           %256 ; F2
+	db skip5           %256 ; F3
+	db skip5           %256 ; F4
+	db skip5           %256 ; F5
+	db skip5           %256 ; F6
+	db skip5           %256 ; F7
+	db skip5           %256 ; F8
+	db skip5           %256 ; F9
+	db skip5           %256 ; FA
+	db skip5           %256 ; FB
+	db skip5           %256 ; FC
+	db skip5           %256 ; FD
+	db skip5           %256 ; FE
+	db skip5           %256 ; FF
+	db skip1           /256 ; 00
+	db skip1           /256 ; 01
+	db skip1           /256 ; 02
+	db skip1           /256 ; 03
+	db skip1           /256 ; 04
+	db skip1           /256 ; 05
+	db skip1           /256 ; 06
+	db skip1           /256 ; 07
+	db skip1           /256 ; 08
+	db skip1           /256 ; 09
+	db skip1           /256 ; 0A
+	db skip1           /256 ; 0B
+	db skip1           /256 ; 0C
+	db skip1           /256 ; 0D
+	db skip1           /256 ; 0E
+	db skip1           /256 ; 0F
+	db skip1           /256 ; 10
+	db skip1           /256 ; 11
+	db skip1           /256 ; 12
+	db skip1           /256 ; 13
+	db skip1           /256 ; 14
+	db skip1           /256 ; 15
+	db skip1           /256 ; 16
+	db skip1           /256 ; 17
+	db skip1           /256 ; 18
+	db skip1           /256 ; 19
+	db skip1           /256 ; 1A
+	db skip1           /256 ; 1B
+	db skip1           /256 ; 1C
+	db skip1           /256 ; 1D
+	db skip1           /256 ; 1E
+	db skip1           /256 ; 1F
+	db skip1           /256 ; 20
+	db skip1           /256 ; 21
+	db skip1           /256 ; 22
+	db skip1           /256 ; 23
+	db skip1           /256 ; 24
+	db skip1           /256 ; 25
+	db skip1           /256 ; 26
+	db skip1           /256 ; 27
+	db skip1           /256 ; 28
+	db skip1           /256 ; 29
+	db skip1           /256 ; 2A
+	db skip1           /256 ; 2B
+	db skip1           /256 ; 2C
+	db skip1           /256 ; 2D
+	db skip1           /256 ; 2E
+	db skip1           /256 ; 2F
+	db cmdunsupported  /256 ; 30
+	db skip2           /256 ; 31
+	db skip2           /256 ; 32
+	db skip2           /256 ; 33
+	db skip2           /256 ; 34
+	db skip2           /256 ; 35
+	db skip2           /256 ; 36
+	db skip2           /256 ; 37
+	db skip2           /256 ; 38
+	db skip2           /256 ; 39
+	db skip2           /256 ; 3A
+	db skip2           /256 ; 3B
+	db skip2           /256 ; 3C
+	db skip2           /256 ; 3D
+	db skip2           /256 ; 3E
+	db skip2           /256 ; 3F
+	db skip3           /256 ; 40
+	db skip3           /256 ; 41
+	db skip3           /256 ; 42
+	db skip3           /256 ; 43
+	db skip3           /256 ; 44
+	db skip3           /256 ; 45
+	db skip3           /256 ; 46
+	db skip3           /256 ; 47
+	db skip3           /256 ; 48
+	db skip3           /256 ; 49
+	db skip3           /256 ; 4A
+	db skip3           /256 ; 4B
+	db skip3           /256 ; 4C
+	db skip3           /256 ; 4D
+	db skip3           /256 ; 4E
+	db skip2           /256 ; 4F
+	db cmdSN76489      /256 ; 50
+	db cmdYM2413       /256 ; 51
+	db cmdYM2612p0_tfm /256 ; 52
+	db cmdYM2612p1_tfm /256 ; 53
+	db cmdYM2151       /256 ; 54
+	db cmdYM2203_tfm   /256 ; 55
+	db cmdYM2608p0_tfm /256 ; 56
+	db cmdYM2608p1_tfm /256 ; 57
+	db cmdunsupported  /256 ; 58
+	db cmdunsupported  /256 ; 59
+	db cmdYM3812       /256 ; 5A
+	db cmdYM3526       /256 ; 5B
+	db cmdY8950_opl3   /256 ; 5C
+	db skip3           /256 ; 5D
+	db cmdYMF262p0     /256 ; 5E
+	db cmdYMF262p1     /256 ; 5F
+	db cmdunsupported  /256 ; 60
+	db waitvar         /256 ; 61
+	db wait735         /256 ; 62
+	db wait882         /256 ; 63
+	db cmdunsupported  /256 ; 64
+	db cmdunsupported  /256 ; 65
+	db endofsounddata  /256 ; 66
+	db cmddatablock    /256 ; 67
+	db skip12          /256 ; 68
+	db cmdunsupported  /256 ; 69
+	db cmdunsupported  /256 ; 6A
+	db cmdunsupported  /256 ; 6B
+	db cmdunsupported  /256 ; 6C
+	db cmdunsupported  /256 ; 6D
+	db cmdunsupported  /256 ; 6E
+	db cmdunsupported  /256 ; 6F
+	db wait1           /256 ; 70
+	db wait2           /256 ; 71
+	db wait3           /256 ; 72
+	db wait4           /256 ; 73
+	db wait5           /256 ; 74
+	db wait6           /256 ; 75
+	db wait7           /256 ; 76
+	db wait8           /256 ; 77
+	db wait9           /256 ; 78
+	db wait10          /256 ; 79
+	db wait11          /256 ; 7A
+	db wait12          /256 ; 7B
+	db wait13          /256 ; 7C
+	db wait14          /256 ; 7D
+	db wait15          /256 ; 7E
+	db wait16          /256 ; 7F
+	db skip1           /256 ; 80
+	db wait1           /256 ; 81
+	db wait2           /256 ; 82
+	db wait3           /256 ; 83
+	db wait4           /256 ; 84
+	db wait5           /256 ; 85
+	db wait6           /256 ; 86
+	db wait7           /256 ; 87
+	db wait8           /256 ; 88
+	db wait9           /256 ; 89
+	db wait10          /256 ; 8A
+	db wait11          /256 ; 8B
+	db wait12          /256 ; 8C
+	db wait13          /256 ; 8D
+	db wait14          /256 ; 8E
+	db wait15          /256 ; 8F
+	db skip5           /256 ; 90
+	db skip5           /256 ; 91
+	db skip6           /256 ; 92
+	db skip11          /256 ; 93
+	db skip2           /256 ; 94
+	db skip5           /256 ; 95
+	db cmdunsupported  /256 ; 96
+	db cmdunsupported  /256 ; 97
+	db cmdunsupported  /256 ; 98
+	db cmdunsupported  /256 ; 99
+	db cmdunsupported  /256 ; 9A
+	db cmdunsupported  /256 ; 9B
+	db cmdunsupported  /256 ; 9C
+	db cmdunsupported  /256 ; 9D
+	db cmdunsupported  /256 ; 9E
+	db cmdunsupported  /256 ; 9F
+	db cmdAY8910       /256 ; A0
+	db skip3           /256 ; A1
+	db cmdunsupported  /256 ; A2
+	db cmdunsupported  /256 ; A3
+	db cmdYM2151dp     /256 ; A4
+	db cmdYM2203dp_tfm /256 ; A5
+	db skip3           /256 ; A6
+	db skip3           /256 ; A7
+	db skip3           /256 ; A8
+	db skip3           /256 ; A9
+	db cmdYM3812dp     /256 ; AA
+	db cmdYM3526dp     /256 ; AB
+	db cmdY8950dp_opl3 /256 ; AC
+	db skip3           /256 ; AD
+	db cmdYMF262dp0    /256 ; AE
+	db cmdYMF262dp0    /256 ; AF
+	db skip3           /256 ; B0
+	db skip3           /256 ; B1
+	db skip3           /256 ; B2
+	db skip3           /256 ; B3
+	db skip3           /256 ; B4
+	db skip3           /256 ; B5
+	db skip3           /256 ; B6
+	db skip3           /256 ; B7
+	db skip3           /256 ; B8
+	db skip3           /256 ; B9
+	db skip3           /256 ; BA
+	db skip3           /256 ; BB
+	db skip3           /256 ; BC
+	db skip3           /256 ; BD
+	db skip3           /256 ; BE
+	db skip3           /256 ; BF
+	db skip4           /256 ; C0
+	db skip4           /256 ; C1
+	db skip4           /256 ; C2
+	db skip4           /256 ; C3
+	db skip4           /256 ; C4
+	db skip4           /256 ; C5
+	db skip4           /256 ; C6
+	db skip4           /256 ; C7
+	db skip4           /256 ; C8
+	db skip4           /256 ; C9
+	db skip4           /256 ; CA
+	db skip4           /256 ; CB
+	db skip4           /256 ; CC
+	db skip4           /256 ; CD
+	db skip4           /256 ; CE
+	db skip4           /256 ; CF
+	db cmdYMF278B      /256 ; D0
+	db skip4           /256 ; D1
+	db cmdunsupported  /256 ; D2
+	db skip4           /256 ; D3
+	db skip4           /256 ; D4
+	db skip4           /256 ; D5
+	db skip4           /256 ; D6
+	db skip4           /256 ; D7
+	db skip4           /256 ; D8
+	db skip4           /256 ; D9
+	db skip4           /256 ; DA
+	db skip4           /256 ; DB
+	db skip4           /256 ; DC
+	db skip4           /256 ; DD
+	db skip4           /256 ; DE
+	db skip4           /256 ; DF
+	db cmdunsupported  /256 ; E0
+	db skip5           /256 ; E1
+	db skip5           /256 ; E2
+	db skip5           /256 ; E3
+	db skip5           /256 ; E4
+	db skip5           /256 ; E5
+	db skip5           /256 ; E6
+	db skip5           /256 ; E7
+	db skip5           /256 ; E8
+	db skip5           /256 ; E9
+	db skip5           /256 ; EA
+	db skip5           /256 ; EB
+	db skip5           /256 ; EC
+	db skip5           /256 ; ED
+	db skip5           /256 ; EE
+	db skip5           /256 ; EF
+	db skip5           /256 ; F0
+	db skip5           /256 ; F1
+	db skip5           /256 ; F2
+	db skip5           /256 ; F3
+	db skip5           /256 ; F4
+	db skip5           /256 ; F5
+	db skip5           /256 ; F6
+	db skip5           /256 ; F7
+	db skip5           /256 ; F8
+	db skip5           /256 ; F9
+	db skip5           /256 ; FA
+	db skip5           /256 ; FB
+	db skip5           /256 ; FC
+	db skip5           /256 ; FD
+	db skip5           /256 ; FE
+	db skip5           /256 ; FF
+
+onfileopened
+	ld a,(filehandle)
+	ld b,a
+	OS_GETFILESIZE
+	ld a,e
+setuploadingprogress
+;ahl = file size
+	ld de,0x3fff
+	add hl,de
+	adc a,0
+	add hl,hl : rla
+	add hl,hl : rla
+	jp setprogressdelta
+
+decompressfiletomemorystream
+;de = input file name
+;out: zf=1 is successful, zf=0 otherwise
+	call openstream_file
+	or a
+	ret nz
+;setup progress using the last 4 bytes containing decompressed file size
+	ld a,(filehandle)
+	ld b,a
+	OS_GETFILESIZE
+	ld bc,4
+	sub hl,bc
+	jr nc,$+3
+	dec de
+	ld a,(filehandle)
+	ld b,a
+	OS_SEEKHANDLE
+	ld de,memorystreamsize
+	ld hl,4
+	call readstream_file
+	ld a,(filehandle)
+	ld b,a
+	ld hl,0
+	ld de,hl
+	OS_SEEKHANDLE
+	ld hl,(memorystreamsize+0)
+	ld a,(memorystreamsize+2)
+	call setuploadingprogress
+;init memory stream
+	xor a
+	ld (memorystreampagecount),a
+	ld hl,0
+	ld (memorystreamsize+0),hl
+	ld (memorystreamsize+2),hl
+	call memorystreamstart
+;backup the data from app page
+	ld a,(filedatapage)
+	SETPG8000
+	ld hl,GzipWorkBuffersStart
+	ld de,0x8000
+	ld bc,GzipWorkBuffersEnd-GzipWorkBuffersStart
+	ldir
+;decompress
+	call setsharedpages
+	ld (savedSP),sp
+	call GzipExtract
+	call closestream_file
+	call restoreappdata
+	xor a
+	ret
+
+restoreappdata
+filedatapage=$+1
+	ld a,0
+	SETPG8000
+	ld hl,0x8000
+	ld de,GzipWorkBuffersStart
+	ld bc,GzipWorkBuffersEnd-GzipWorkBuffersStart
+	ldir
+	ret
+
+GzipThrowException
+GzipExitWithError
+	ld hl,gziperrorstr
+	ld (ERRORSTRINGADDR),hl
+GzipThrowExceptionNoError
+savedSP=$+1
+	ld sp,0
+	call memorystreamfree
+	call restoreappdata
+	call closestream_file
+	call turnturboon
+	or 1
+	ret
+
+setsharedpages
+page8000=$+1
+	ld a,0
+	SETPG8000
+pageC000=$+1
+	ld a,0
+	SETPGC000
+	ret
+
+GzipReadInputBuffer
+;de = InputBuffer
+;hl = InputBufSize
+	exx
+	ex af,af'
+	push af,bc,de,hl,ix,iy
+	ld de,InputBuffer
+	ld hl,InputBufSize
+	call readstream_file
+	pop iy,ix,hl,de,bc,af
+	exx
+	ex af,af'
+	ret
+
+GzipWriteOutputBuffer
+;de = OutputBuffer
+;hl = size
+	ld a,l
+	add a,0xff
+	ld a,h
+	adc a,0x3f
+	rlca
+	rlca
+	and 3
+	ret z
+	ld b,a
+	exx
+	ex af,af'
+	push af,bc,de,hl,ix,iy
+	exx
+;allocate memory
+	ld a,(memorystreampagecount)
+	ld c,a
+	push hl
+	add a,memorystreampages%256
+	ld l,a
+	adc a,memorystreampages/256
+	sub l
+	ld h,a
+.allocloop
+	push bc
+	push hl
+	OS_NEWPAGE
+	or a
+	pop hl
+	pop bc
+	jr z,.pageallocated
+	ld a,c
+	ld (memorystreampagecount),a
+	ld hl,oomerrorstr
+	ld (ERRORSTRINGADDR),hl
+	jp GzipThrowExceptionNoError
+.pageallocated
+	ld (hl),e
+	inc hl
+	inc c
+	djnz .allocloop
+	ld a,c
+	ld (memorystreampagecount),a
+	ld hl,(memorystreamsize+0)
+	ld de,(memorystreamsize+2)
+	push hl
+	push de
+	call memorystreamseek
+	pop bc
+	pop hl
+	pop de
+	add hl,de
+	ld (memorystreamsize+0),hl
+	jr nc,$+7
+	inc bc
+	ld (memorystreamsize+2),bc
+	ex de,hl
+	ld de,OutputBuffer
+;copy data to memory stream
+	ld bc,hl
+	add hl,de
+	bit 7,h
+	jr z,.below8000
+	push hl
+	ld bc,0x8000-OutputBuffer
+	call memorystreamwrite
+	pop hl
+	res 7,h
+	push hl
+	ld de,0x4000
+	sub hl,de
+	ld a,(page8000)
+	jr c,.write8000
+	jr z,.write8000
+	ex (sp),hl
+	SETPGC000
+	ld de,0xc000
+	ld bc,0x4000
+	call memorystreamwrite
+	ld a,(pageC000)
+.write8000
+	SETPGC000
+	ld de,0xc000
+	pop bc
+.below8000
+	call memorystreamwrite
+	call ondataloaded
+	jp nz,GzipThrowExceptionNoError
+	pop iy,ix,hl,de,bc,af
+	exx
+	ex af,af'
+	jp setsharedpages
+
+drawloadingprogress
+.callback=$+1
+	jp 0
+
+	include "common/gunzip.asm"
+
+initAY8910
+	call ssginit
+	ld a,(HEADER_CLOCK_AY8910+3)
+	and 0x40
+	jr nz,.dualchip
+	set_device_mask DEVICE_AY_BIT
+	ret
+.dualchip
+	set_device_mask DEVICE_TURBOSOUND_BIT
+	ret
+
+initYM2608
+opnastatus=$+1
+	ld a,0
+	dec a
+	ret m
+	call vgmopnainit
+	set_device_mask DEVICE_OPNA_BIT
+	xor a
+	ret
+
+initYM2203
+tfmstatus=$+1
+	ld a,0
+	dec a
+	ret m
+	call vgmopninit
+	set_device_mask DEVICE_TFM_BIT
+	xor a
+	ret
+
+initYMF278B
+moonsoundstatus=$+1
+	ld a,0
+	dec a
+	ret m
+	call vgmopl4init
+	ld a,(HEADER_CLOCK_YM3812+3)
+	ld hl,HEADER_CLOCK_YM3526+3
+	or (hl)
+	ld hl,HEADER_CLOCK_Y8950+3
+	or (hl)
+	and 0x40
+	jr nz,notOPL2
+useYM3812=$+1
+	or 0
+	ld de,0x0005
+	call nz,opl4writefm2
+notOPL2
+	set_device_mask DEVICE_MOONSOUND_BIT
+	xor a
+	ret
+
+initYM2151
+opmstatus=$+1
+	ld a,0
+	dec a
+	ret m
+	jr nz,.hasdualopm
+	call opmdisablechip1
+	ld a,(HEADER_CLOCK_YM2151+3)
+	and 0x40
+	ret nz
+.hasdualopm
+	call opminit
+	ld a,(HEADER_CLOCK_YM2151+3)
+	and 0x40
+	jr nz,.dualchip
+	set_device_mask DEVICE_OPM_BIT
+	xor a
+	ret
+.dualchip
+	set_device_mask DEVICE_DUAL_OPM_BIT
+	xor a
+	ret
+
+musicunload
+stoptimerproc=$+1
+	call stoptimerstub
+	check_device_mask DEVICE_MOONSOUND_BIT
+	call nz,opl4mute
+	check_device_mask DEVICE_TFM_BIT
+	call nz,vgmopnmute
+	check_device_mask DEVICE_AY_BIT
+	call nz,ssgmute
+	check_device_mask DEVICE_TURBOSOUND_BIT
+	call nz,ssgmute
+	check_device_mask DEVICE_OPM_BIT
+	call nz,opmmute
+	check_device_mask DEVICE_DUAL_OPM_BIT
+	call nz,opmmute
+	check_device_mask DEVICE_OPNA_BIT
+	call nz,opnamute
+	call cleanupvars
+	jp memorystreamfree
+
+	macro set_cmd_handler cmd,handler
+	ld hl,cmdtable+cmd
+	ld (hl),handler%256
+	inc h
+	ld (hl),handler/256
+	endm
+
+enableopna
+	ld hl,initYM2608
+	ld (inithardware.opninitfunc),hl
+	ld hl,opnaloaddatablock
+	ld (opnadatablockhandler),hl
+	ld hl,y8950loaddatablock_opna
+	ld (y8950datablockhandler),hl
+	ld hl,opnasettimer
+	ld (settimerproc),hl
+	ld hl,opnastoptimers
+	ld (stoptimerproc),hl
+	set_cmd_handler 0x52,cmdYM2612p0_opna
+	set_cmd_handler 0x53,cmdYM2612p1_opna
+	set_cmd_handler 0x55,cmdYM2203_opna
+	set_cmd_handler 0x56,cmdYM2608p0_opna
+	set_cmd_handler 0x57,cmdYM2608p1_opna
+	set_cmd_handler 0x5c,cmdY8950_opna
+	set_cmd_handler 0xa5,cmdYM2203dp_opna
+	ret
+
+cmdY8950_opna
+; MSX-AUDIO is an evolutionary design: an OPL1 FM synth combined with the Delta-T engine,
+; which later became a standard component in chips such as YM2608 and YM2610.
+	memory_stream_read_2 e,d
+	ld a,e
+	cp 0x20
+	jp nc,opl4writefm1
+	cp 0x13
+	ret nc
+	sub 0x07
+	ret c
+	ld e,a
+	cp 0x09
+	jr z,.convertdeltanlo
+	cp 0x0a
+	jr z,.convertdeltanhi
+	cp 0x0b
+	jr z,.adpcmvolume
+	dec a
+	jp nz,opnawritemusiconlyfm2
+	ld a,d
+	and %00000100
+	or %11000000
+	ld d,a
+	jp opnawritectrl2
+.convertdeltanlo
+	ld a,d
+	ld (.deltan),a
+.writeconverteddeltan
+.deltan=$+1
+	ld hl,0
+;scale deltaN by 224/256
+	ld d,l
+	ld b,h
+	xor a
+	ld e,a
+	add hl,hl : rla
+	add hl,hl : rla
+	add hl,hl : rla
+	add hl,hl : rla
+	add hl,hl : rla
+	ex de,hl
+	ld c,a
+	ld a,b
+	sbc hl, de : sbc a,c
+;a:hl = deltaN*224
+	ld d,a
+	ld e,0x0a
+	call opnawritefm2
+	ld d,h
+	dec e
+	jp opnawritefm2
+.convertdeltanhi
+	ld a,d
+	ld (.deltan+1),a
+	jr .writeconverteddeltan
+.adpcmvolume
+;RE2-Y2608 is way too loud vs. MoonSound
+	srl d
+	srl d
+	srl d
+	jp opnawritefm2
+
+y8950loaddatablock_opna
+	call opnaloaddatablock
+	ld de,0xc001 ;force LR on
+	jp opnawritectrl2
+
+cmdYM2203_opna
+	memory_stream_read_2 e,d
+	opn_write_music_only opnawritefm1
+	ret
+
+cmdYM2203dp_opna
+	memory_stream_read_2 e,d
+	ld a,e
+	cp 0x30
+	jp nc,opnawritefm2
+	cp 0x28
+	ret nz
+	set 2,d
+	jp opnawritefm1
+
+cmdYM2612p0_opna
+cmdYM2608p0_opna
+	memory_stream_read_2 e,d
+	jp opnawritemusiconlyfm1
+
+cmdYM2612p1_opna
+cmdYM2608p1_opna
+	memory_stream_read_2 e,d
+	jp opnawritemusiconlyfm2
+
+cmdSN76489
+	memory_stream_read_1 a
+	ret
+
+cmdYM2413
+	memory_stream_read_2 e,d
+	ret
+
+hltodecimalstring
+;hl = number
+;de = string buffer
+	ld ixl,e
+	ld bc,-10000
+	inc ixl
+	call .writedigit
+	ld bc,-1000
+	call .writedigit
+	ld bc,-100
+	call .writedigit
+	ld bc,-10
+	call .writedigit
+	ld bc,-1
+	dec ixl ;ensure the last zero is printed
+	call .writedigit
+	xor a
+	ld (de),a
+	ret
+.writedigit
+	ld a,'0'-1
+	inc a
+	add hl,bc
+	jr c,$-2
+	sbc hl,bc
+	ld (de),a
+	inc de
+	cp '0'
+	ret nz
+;remove leading zeroes
+	ld a,e
+	cp ixl
+	ret nz
+	dec de
+	ret
+
+samplecounttotimestring
+;hl'hl = 32 bit sample count
+;de = string buffer
+	ld bc,-2646000&0xffff
+	exx
+	ld bc,-2646000>>16
+	exx
+	call .writefield ;minutes
+	ld a,':'
+	ld (de),a
+	inc de
+	ld bc,-44100&0xffff
+	exx
+	ld bc,-44100>>16
+	exx
+	call .writefield ;seconds
+	xor a
+	ld (de),a
+	ret
+.writefield
+	ld a,255
+.loop	inc a
+	add hl,bc : exx
+	adc hl,bc : exx
+	jr c,.loop
+	sbc hl,bc : exx
+	sbc hl,bc : exx
+	ld bc,0x2ff6 ;b='0'-1, c=-10
+	inc b
+	add a,c
+	jr c,$-2
+	ex de,hl
+	ld (hl),b
+	ex de,hl
+	inc de
+	add a,'0'+10
+	ld (de),a
+	inc de
+	ret
+
+strncopy_detohl
+;de = source string
+;hl = destionation buffer
+;b = max. characters to write
+	inc b
+	dec b
+	ret z
+.loop	ld a,(de)
+	ld (hl),a
+	or a
+	ret z
+	inc hl
+	inc de
+	djnz .loop
+	ld (hl),b
+	ret
+
+strcopy_hltode
+	ld a,(hl)
+	ld (de),a
+	or a
+	ret z
+	inc hl
+	inc de
+	jr strcopy_hltode
+
+vgmchipstextstr db "Chips: "
+VGM_CHIP_STR_MAX_LEN = 27
+vgmchipsstr ds VGM_CHIP_STR_MAX_LEN+1
+chipseparatorstr db ", ",0
+dualchipstr db "Dual-",0
+ay8910str db "AY8910",0
+sn76489str db "SN76489",0
+ym2151str db "YM2151",0
+ym2203str db "YM2203",0
+ym2608str db "YM2608",0
+ym2612str db "YM2612",0
+y8950str db "MSX-AUDIO",0
+ym3526str db "YM3526",0
+ym3812str db "YM3812",0
+ymf262str db "YMF262",0
+ymf278bstr db "YMF278B",0
+vgmdatablocktextstr db "(AD)PCM Samples: "
+vgmdatablocksizestr ds 10
+nonestr db "None",0
+kbytestr db "KB",0
+vgmratetextstr db "Recording Rate: "
+vgmratestr ds 10
+hzstr db "Hz",0
+zeroratestr db "Undefined",0
+vgmlengthtextstr db "Length: "
+vgmlengthstr ds 12
+
+initokstr
+	db "OK\r\n",0
+playernamestr
+	db "VGM Player",0
+fromstr
+	db " [",0
+bystr
+	db "] by ",0
+loadingtitlestr
+	db "Loading video game music...",0
+playerwindowloading
+	PROGRESSIVELOADINGWINDOWTEMPLATE loadingtitlestr,musicprogress+1
+
+playerwindowui
+	CUSTOMUISETCOLOR ,COLOR_PANEL
+	CUSTOMUIDRAWWINDOW ,6,8,66,7
+	CUSTOMUISETCOLOR ,15
+	CUSTOMUISEPARATOR ,7,13,64,196,196,196
+	CUSTOMUIPLAYERWINDOWTITLE ,8,8
+	CUSTOMUISONGTITLE ,8,10,titlestr
+	CUSTOMUIPLAYPROGRESS ,8,11,musicprogress+1
+	CUSTOMUIPLAYTIME ,67,8
+	CUSTOMUISETCOLOR ,COLOR_PANEL_FILE
+	CUSTOMUIPRINTTEXT ,10,14,vgmchipstextstr
+	CUSTOMUIPRINTTEXT ,9,15,vgmlengthtextstr
+	CUSTOMUIPRINTTEXT ,45,14,vgmdatablocktextstr
+.ratelabelcolor
+	CUSTOMUISETCOLOR ,COLOR_PANEL_FILE
+	CUSTOMUIPRINTTEXT ,46,15,vgmratetextstr
+	CUSTOMUISETCOLOR
+	CUSTOMUISEPARATOR ,7,17,66,196,196,196
+	CUSTOMUIVERTICALLINE ,74,9,8
+	CUSTOMUIDRAWEND
+end
+
+GzipWorkBuffersStart = SYSTEM_MEMORY_END
+vgmheadercopy = $
+vgmheadercopyend = vgmheadercopy+HEADER_SIZE_MAX
+GzipOutputBuffersStart = vgmheadercopyend
+waveheaderbuffer = vgmheadercopyend
+waveheaderbufferend = waveheaderbuffer+WAVEHEADERBUFFERSIZE
+titlestr = waveheaderbufferend
+titlestrend = titlestr+TITLELENGTH
+
+HEADER_CLOCK_SN76489 = vgmheadercopy+0x0c
+HEADER_GD3_OFFSET    = vgmheadercopy+0x14
+HEADER_SAMPLES_COUNT = vgmheadercopy+0x18
+HEADER_LOOP_OFFSET   = vgmheadercopy+0x1c
+HEADER_LOOP_SAMPLES_COUNT = vgmheadercopy+0x20
+HEADER_RECORDING_RATE= vgmheadercopy+0x24
+HEADER_CLOCK_YM2612  = vgmheadercopy+0x2c
+HEADER_CLOCK_YM2151  = vgmheadercopy+0x30
+HEADER_CLOCK_YM2203  = vgmheadercopy+0x44
+HEADER_CLOCK_YM2608  = vgmheadercopy+0x48
+HEADER_CLOCK_YM3812  = vgmheadercopy+0x50
+HEADER_CLOCK_YM3526  = vgmheadercopy+0x54
+HEADER_CLOCK_Y8950   = vgmheadercopy+0x58
+HEADER_CLOCK_YMF262  = vgmheadercopy+0x5c
+HEADER_CLOCK_YMF278B = vgmheadercopy+0x60
+HEADER_CLOCK_AY8910  = vgmheadercopy+0x74
+
+	assert vgmheadercopyend <= PLAYEREND ;ensure everything is within the player page
+	assert GzipOutputBuffersEnd <= 0x10000
+	assert GzipWorkBuffersEnd <= 0x3500 ;ensure the buffers and stack are not overlapping
+
+	savebin "vgm.bin",begin,end-begin

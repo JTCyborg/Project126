@@ -1,0 +1,590 @@
+;процедуры для генерации карты, нижнего уровня (зависят от типа экрана)
+
+ClearMap
+        ld hl,tpushpgs +SKIPPGS ;первая страница 0 слоя, первая страница 1 слоя, первая страница 2 слоя, первая страница 3 слоя, вторая страница 0 слоя...
+        ld b,16
+ClearMap0
+        push bc
+        push hl
+        ld a,(hl)
+        SETPGC000
+        ld hl,0xc000
+        xor a
+ClearMap1
+        inc l
+        ld (hl),a
+        inc l
+        ld (hl),a
+        inc l
+        inc l ;skip push
+        jr nz,ClearMap1
+        inc h
+        jr nz,ClearMap1
+        pop hl
+        pop bc
+        inc hl
+        djnz ClearMap0
+        ret
+
+MapNextPg
+       push af
+       push bc
+        ld a,ly
+        sub 4
+        ld ly,a
+        ld a,(iy)
+        SETPGC000
+       pop bc
+       pop af
+        ld h,0xff
+        ret
+
+MapNextPg_de
+       push af
+       push bc
+        ld a,ly
+        sub 4
+        ld ly,a
+        ld a,(iy)
+        SETPGC000
+       pop bc
+       pop af
+        ld d,0xff
+        ret
+
+FindPlacesForGrass ;записывает в grassbuf
+;по чётным столбцам сверху вниз ищем переходы 0->1
+        ld de,grassbuf
+        ld c,0xfd
+        ld b,+(MAPWID+1)/2
+        xor a ;RLE counter
+        ex af,af' ;'
+findgrass_columns0
+        call findgrass_column4
+        inc c
+        call findgrass_column4
+        ld a,c
+        sub 5
+        ld c,a
+        djnz findgrass_columns0
+        xor a
+        ld (de),a;0 ;иначе в последнем столбце может появиться лажа
+        ret
+
+findgrass_column4
+        ld iy,tpushpgs +SKIPPGS+12 ;первая страница 0 слоя, первая страница 1 слоя, первая страница 2 слоя, первая страница 3 слоя, вторая страница 0 слоя...
+        call findgrass_column2
+findgrass_column2
+        call findgrass_column
+findgrass_column
+;iy=tpushpgs+
+;c=LSB of addr
+;de=gfx
+       push bc
+       push iy
+        ld a,(iy)
+        ld h,0xff
+        ld l,c
+        SETPGC000        
+        ld b,BIGMAPHGT-1;MAPHGT-1
+findgrass1
+        ld a,(hl)
+        cpl
+        and 0x47;c
+        dec h ;dec h - это сверху вниз!
+        bit 6,h
+       ;jr z,$
+        call z,MapNextPg
+        and (hl)
+        ex af,af' ;'
+        inc a
+         jr nz,findgrass_nooverflow
+         ld (de),a;0 ;0=просто пропуск 255 пикс
+         inc de
+        ld a,d
+        cp (grassbuf+grassbufsz)/256
+        jp z,nowhere ;buffer overflow
+         ld a,1
+findgrass_nooverflow
+        ex af,af' ;'
+        jr z,findgrass_empty
+       ;ld a,(hl)
+       ;xor 0x80
+       ;ld (hl),a
+        ex af,af' ;'
+        ld (de),a
+        inc de
+        ld a,d
+        cp (grassbuf+grassbufsz)/256
+        jp z,nowhere ;buffer overflow
+        xor a
+        ex af,af' ;'
+findgrass_empty
+        djnz findgrass1
+       pop iy
+       pop bc
+        inc ly
+        ret
+
+MakeMaskFromMap
+;FIXME в случае неполной маски (нужна защита от влетания в стену на краю карты - надо полную маску или при любой порче ландшафта крайний левый пикс маски формировать из 5 левых пикс, справа аналогично?)
+;TODO x в маске считается для центра червя, x=0 соответствует x=4 в карте
+;то есть берём байт маски из карты так: ----M-M- M-M-m-m- m-m-----
+
+       call SetPgMask8000
+       if 0;1
+        ld hl,MASK -0x4000
+        ld de,MASK+1 -0x4000
+        ld bc,MASKSZ-1
+        ld (hl),0
+        ldir
+       endif
+
+        ld hl,MASKDO -0x4000
+        ld e,0xfd
+        ld b,MASKWID
+MakeMaskFromMap0
+        call MakeMaskFromMap_column4
+        inc e
+        call MakeMaskFromMap_column4 ;hl is same
+        inc hl
+        ld a,e
+        sub 5
+        ld e,a
+        djnz MakeMaskFromMap0
+
+       call setpgsmain40008000 
+       call SetPgMask
+
+       if 0;1
+        LD HL,MASKSZ+MASK-(MASKWID*2) ;fill last lines (костыль, пока карты нет)
+        LD BC,+(MASKWID*2)*256+255
+        LD (HL),C
+        INC HL
+        DJNZ $-2
+       endif
+       
+;extra bottom line of mask is always filled (for element placement)
+        LD HL,MASKSZ+MASK
+        LD BC,MASKWID*256+255
+        LD (HL),C
+        INC HL
+        DJNZ $-2
+        ret
+
+MakeMaskFromMap_column4
+        ld iy,tpushpgs+SKIPPGS +12 ;первая страница 0 слоя, первая страница 1 слоя, первая страница 2 слоя, первая страница 3 слоя, вторая страница 0 слоя...
+        call MakeMaskFromMap_column2
+MakeMaskFromMap_column2
+        call MakeMaskFromMap_column
+MakeMaskFromMap_column
+;e=LSB of addr
+;iy=tpushpgs+
+;hl=mask
+        push bc
+        push de
+        push hl
+        push iy
+        ld a,(iy)
+        SETPGC000
+        ld d,0xff-8 ;сверху вниз ;-8, потому что маска для ног червя
+        ld bc,MASKWID
+        ld hx,+((BIGMAPHGT-8)/2)&0xff
+MakeMaskFromMap_column0
+        ld a,(de)
+        rla
+        rl (hl)
+        add hl,bc
+        dec d
+        dec d
+        bit 6,d
+        call z,MapNextPg_de
+        dec hx
+        jr nz,MakeMaskFromMap_column0
+        ;jr $
+        pop iy
+        pop hl
+        pop de
+        pop bc
+        inc ly
+        ret
+
+TexturizeGroundInMap
+        call SetPgTexture8000
+        ld de,0x8000
+        ld c,0xfd ;c=LSB of addr
+TexturizeGroundInMap0
+        call TexturizeGroundInMappp4
+        inc c
+        call TexturizeGroundInMappp4
+        ld a,c
+        sub 5
+        ld c,a
+        jr nc,TexturizeGroundInMap0
+        jp setpgsmain40008000
+
+TexturizeGroundInMappp4
+;c=LSB of addr
+        ld hl,tpushpgs +SKIPPGS+12 ;первая страница 0 слоя, первая страница 1 слоя, первая страница 2 слоя, первая страница 3 слоя, вторая страница 0 слоя...
+        call TexturizeGroundInMappp2
+TexturizeGroundInMappp2
+        call TexturizeGroundInMappp
+TexturizeGroundInMappp
+;hl=tpushpgs+
+;c=LSB of addr
+;de=gfx
+        push hl
+        ld b,4
+TexturizeGround0
+        push bc
+        push hl
+        ld a,(hl)
+        ld h,0xff
+        ld l,c
+        SETPGC000
+       push de
+        ld b,64
+TexturizeGround1
+        ld a,(de)
+        inc e
+        and (hl)
+        ld (hl),a
+        dec h
+        djnz TexturizeGround1
+        ld a,e
+       pop de
+        xor e
+        and 0x7f
+        xor e
+        ld e,a
+        pop hl
+        pop bc
+        dec l
+        dec l
+        dec l
+        dec l
+        djnz TexturizeGround0
+        ld hl,128
+        add hl,de
+        ex de,hl
+        pop hl
+        res 5,d
+        inc l
+        ret
+
+AddGrassInMap
+        ld ix,grassbuf
+        ld c,0xfd ;c=LSB of addr
+        ld b,+(MAPWID+1)/2
+        xor a ;RLE counter
+        ex af,af' ;'
+addgrass_columns0
+        call addgrass_column4
+        inc c
+        call addgrass_column4
+        ld a,c
+        sub 5
+        ld c,a
+        djnz addgrass_columns0
+        ret
+        
+addgrass_column4
+        ld iy,tpushpgs +SKIPPGS+12 ;первая страница 0 слоя, первая страница 1 слоя, первая страница 2 слоя, первая страница 3 слоя, вторая страница 0 слоя...
+        call addgrass_column2
+addgrass_column2
+        call addgrass_column
+addgrass_column
+;iy=tpushpgs+
+;c=LSB of addr
+;de=gfx
+       push bc
+       push iy
+        ld a,(iy)
+        ld h,0xff
+        ld l,c
+        SETPGC000
+        ld b,BIGMAPHGT-1;MAPHGT-1
+addgrass0
+        ;dec h
+        ;bit 6,h
+        ;call z,MapNextPg
+        ex af,af' ;'
+addgrass_noadd1
+        inc a
+        cp (ix)
+        jr nz,addgrass_noadd
+        inc ix
+         or a
+         jr z,addgrass_noadd1 ;0=просто пропуск 255 пикс
+     push bc
+     push hl
+     push iy
+        LD de,grass16
+        ld a,ly
+        and 3 ;xphase
+        add a,a
+        add a,a
+        add a,a
+        add a,e
+        ld e,a
+        jr nc,$+3
+        inc d
+addgrass1
+        ld a,(de)
+        or a
+        jr z,addgrass1q
+       and 0x47
+       jr z,addgrass_noleft
+       xor (hl)
+       and 0x47
+       xor (hl)
+       ld (hl),a
+addgrass_noleft
+        ld a,(de)
+       and 0xb8
+       jr z,addgrass_noright
+       xor (hl)
+       and 0xb8
+       xor (hl)
+       ld (hl),a
+addgrass_noright
+        dec h
+        bit 6,h
+        call z,MapNextPg
+        inc de
+        djnz addgrass1 ;чтобы не вылететь за карту
+addgrass1q
+     pop iy
+        ld a,(iy)
+        SETPGC000
+     pop hl
+     pop bc
+        xor a
+addgrass_noadd
+        ex af,af' ;'
+        dec h
+        bit 6,h
+        call z,MapNextPg
+        djnz addgrass0
+       pop iy
+       pop bc
+        inc ly
+        ret
+
+PRLMNerror
+        INC C ;don't fit, next x
+        POP DE
+        LD A,C
+        CP MASKWID-5 ;ширина элемента не более 10 знакомест
+        jp C,PRLMN00
+;       pop de
+       pop af
+;        scf
+        ret
+
+PRLMN
+;draw element in map and mask
+;c=X (in chr)
+;b=N
+       call SetPgLmn8000
+
+        ld a,b
+        SCF 
+        rla ;a=N*2+1
+        LD HL,LMNS
+PRLMN0  LD E,(HL)
+        INC HL
+        LD D,(HL) ;size in bytes
+        INC HL
+        DEC A
+        JR Z,PRLMNO
+        ADD HL,DE
+        JR PRLMN0
+PRLMNO
+        LD D,(HL) ;width
+        INC HL
+        LD E,(HL) ;hgt
+        INC HL
+
+       call SetPgMask
+        
+
+;TODO
+
+        ret ;FIXME
+        
+       PUSH HL ;gfx
+PRLMN00
+        LD HL,MASK+(MASKWID*(MAPHGT-TERRAINHGT));MASKBUF+(MASKWID*(MAPHGT-TERRAINHGT))
+        XOR A
+        LD B,A
+        ADD HL,BC ;+x
+        LD B,E ;hgt
+       PUSH DE
+        LD DE,MASKWID
+;есть ли достаточная высота неба под элемент?
+        OR (HL)
+        ADD HL,DE
+        DJNZ $-2
+        jr NZ,PRLMNerror ;don't fit, next x
+;ищем грунт (он точно есть, мы в маске сделали лишнюю залитую строку)
+         INC B
+         OR (HL)
+         ADD HL,DE
+        JR Z,$-3
+       POP DE
+        LD A,D ;wid
+        DEC A
+        RRA 
+        NEG 
+        ADD A,C
+        LD C,A ;x
+       ld a,b
+       add a,MAPHGT-TERRAINHGT
+       ld b,a ;y
+;PGMASK уже включено
+;b=y
+;c=x
+;d=width
+;e=hgt
+       POP HL ;gfx
+
+     PUSH BC ;c=x
+        XOR A
+        OR B ;y
+        PUSH HL ;gfx
+        PUSH DE ;width,hgt
+        LD HL,MASK;MASKBUF
+        LD DE,MASKWID
+        JR Z,$+5
+        ADD HL,DE
+        DJNZ $-1 ;hl=MASK+(y*MASKWID)
+        ADD HL,BC ;hl=MASK+(y*MASKWID)+x
+        POP BC ;width,hgt
+        POP DE ;gfx
+;hl=MASK+
+;de=gfx
+;b=width
+;c=hgt
+PRLMNmask1
+        PUSH BC
+        PUSH HL
+         xor a
+         ld c,a
+PRLMNmask2
+        LD A,(DE)
+         rra
+         rl c
+         rra
+         rr c
+         push af
+        OR (HL)
+        LD (HL),A
+        INC HL
+        INC DE
+         pop af
+        DJNZ PRLMNmask2
+         ld a,0
+         rra
+         rl c
+         rra
+         OR (HL)
+         LD (HL),A         
+        POP HL
+        LD C,MASKWID
+        ADD HL,BC
+        POP BC
+        DEC C
+        JR NZ,PRLMNmask1       
+        ex de,hl
+      LD D,(HL) ;width
+      INC HL
+      LD E,(HL) ;hgt
+      INC HL
+       POP BC
+       PUSH BC
+        XOR A
+        OR B ;y
+        PUSH HL ;gfx
+        PUSH DE ;width,hgt
+        LD HL,MAP;+(MAPWID*(MAPHGT-TERRAINHGT));#C000
+        LD DE,MAPWID*2
+        JR Z,$+5
+        ADD HL,DE
+        DJNZ $-1
+        ADD HL,BC
+        ADD HL,BC ;hl=MAP+(y*MAPWID*2)+(x*2)
+        
+;TODO
+        
+       ;LD A,PGMAP;16
+       ;CALL OUTME
+        POP BC ;width,hgt
+        POP DE ;gfx
+        
+;TODO
+              
+        
+        
+        LD A,B ;width
+     POP BC ;c=x
+        ADD A,C
+        LD C,A ;update x (чтобы не лепить объекты совсем рядом)
+       ;or a ;NC
+        RET 
+
+       if 0
+CheckGroundExist ;проверяем, есть ли земля на ниж. линии (CY=error)
+
+;TODO
+        xor a
+        inc a
+
+        ret nz
+        scf
+        ret ;error ;нет земли на ниж. линии
+       endif
+
+EorFillInMap
+        ld c,0xfd ;c=LSB of addr
+EorFillInMap0
+        call EorFillInMap_column4
+        inc c
+        call EorFillInMap_column4
+        ld a,c
+        sub 5
+        ld c,a
+        jr nc,EorFillInMap0
+        ret
+        
+EorFillInMap_column4
+;c=LSB of addr
+        ld iy,tpushpgs + SKIPPGS+12
+        call EorFillInMap_column2
+EorFillInMap_column2
+        call EorFillInMap_column
+EorFillInMap_column
+        xor a ;TODO 0xff для пещер
+;a=накопленный байт
+;iy=tpushpgs+
+;c=LSB of addr
+;b=число страниц осталось в этом столбце
+       push bc
+       push iy
+       push af
+        ld a,(iy)
+        ld h,0xff
+        ld l,c
+        SETPGC000
+       pop af
+        LD B,BIGMAPHGT&0xff
+MKMAPF0 XOR (HL)
+        LD (HL),A
+        dec h
+        bit 6,h
+        call z,MapNextPg
+        DJNZ MKMAPF0
+       pop iy
+       pop bc
+        inc ly
+        ret

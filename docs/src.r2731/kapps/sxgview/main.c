@@ -1,0 +1,967 @@
+/*
+ * sxgview - TS-Config SXG stills on ATM 320x200x16.
+ *
+ * Real header (16 bytes, bmp2sXg / moroz1999/sxg):
+ *   7F 'S' 'X' 'G', version, bgcolor, packing (0=raw), format (1=16c, 2=256c),
+ *   width LE, height LE, pal shift from 0x0E, pixel shift from 0x10.
+ * Palette: RGB555 LE. 4bpp: high nibble first. Typical TS sizes: 320x240, 360x288.
+ * ATM shows a 320x200 crop: center first. Arrows move by half a screen, or
+ * to the edge if less remains (360x288 still reaches the stop in one press).
+ *
+ * Keys: P = file RGB444 DDp / ATM2 pal (2 bits/channel, lo==hi like BQ).
+ *       Start is ATM2 pal. N = nibble order, arrows = pan, other = quit.
+ */
+#include <oscalls.h>
+#include <osfs.h>
+#include <graphic.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "gfx.h"
+
+#define SXG_MAGIC0     0x7Fu
+#define SXG_MAGIC1     'S'
+#define SXG_MAGIC2     'X'
+#define SXG_MAGIC3     'G'
+#define SXG_HDR_SIZE   16u
+#define SXG_MAX_W      1024u
+#define SXG_MAX_H      2048u
+
+#define KEY_LEFT  248
+#define KEY_DOWN  249
+#define KEY_UP    250
+#define KEY_RIGHT 251
+
+/* ATM pair encoding (doc 5.4 / iarlib gfxdraw.asm zx_ega_*_tab). */
+static const unsigned char left_tab[16] = {
+  0, 1, 2, 3, 4, 5, 6, 7, 64, 65, 66, 67, 68, 69, 70, 71
+};
+static const unsigned char right_tab[16] = {
+  0, 8, 16, 24, 32, 40, 48, 56, 128, 136, 144, 152, 160, 168, 176, 184
+};
+
+unsigned char g_row[160];
+
+extern unsigned char g_pair_tab[256];
+extern unsigned char g_left8[256];
+extern unsigned char g_right8[256];
+void plot_row(unsigned char y, const unsigned char *pix);
+void plot_row_4(unsigned char y, const unsigned char *src);
+void plot_row_8(unsigned char y, const unsigned char *src);
+
+static FILE *g_fp;
+static unsigned int g_width;
+static unsigned int g_height;
+static unsigned char g_bpp;
+static unsigned char g_bg;
+static unsigned int g_ncolors;
+static unsigned long g_pix_ofs;
+static unsigned char g_use_ddp;
+static unsigned char g_nibble_swap;
+static unsigned char g_ddp[GFX_PALETTE_OS_BYTES];
+static unsigned char g_idx_map[256];
+static unsigned char g_pixrow[GFX_EGA_SCREEN_W];
+static unsigned char g_srcrow[SXG_MAX_W];
+static unsigned char g_chunk[2048];
+static unsigned int g_chunk_i;
+static unsigned int g_chunk_n;
+static unsigned char g_pal_r[256];
+static unsigned char g_pal_g[256];
+static unsigned char g_pal_b[256];
+static unsigned char g_pal_bytes[512];
+static unsigned char g_opened;
+/* Crop origin in the source image; start centered. */
+static unsigned int g_src_x;
+static unsigned int g_src_y;
+
+static unsigned char adiff(unsigned char a, unsigned char b)
+{
+  if (a > b)
+  {
+    return (unsigned char)(a - b);
+  }
+  return (unsigned char)(b - a);
+}
+
+/* view.asm palcol: DDp %grbG11RB inverted, 4-bit RGB.
+ * Evo PWM uses the low 2 bits of each nibble (4096). ATM 64-color DAC is bits 2-3. */
+static void rgb4_to_ddp(unsigned char r, unsigned char g, unsigned char b,
+                        unsigned char *lo, unsigned char *hi)
+{
+  unsigned char v0;
+  unsigned char v1;
+
+  r = (unsigned char)(r & 15u);
+  g = (unsigned char)(g & 15u);
+  b = (unsigned char)(b & 15u);
+  v0 = (unsigned char)(((g & 1u) << 7) | ((r & 1u) << 6) | ((b & 1u) << 5)
+                       | ((g & 2u) << 3) | (r & 2u) | ((b & 2u) >> 1));
+  v1 = (unsigned char)(((g & 4u) << 5) | ((r & 4u) << 4) | ((b & 4u) << 3)
+                       | ((g & 8u) << 1) | ((r & 8u) >> 2) | ((b & 8u) >> 3));
+  *lo = (unsigned char)(0xFFu - v0);
+  *hi = (unsigned char)(0xFFu - v1);
+}
+
+/*
+ * ATM2 64-color: keep bits 2-3, copy them into bits 0-1 (0,5,10,15).
+ * rgb4_to_ddp then writes lo==hi, same as STANDARDPAL / BQ sprpal.
+ * PWM is on in the FPGA but duty matches the 2-bit color, so it does
+ * not shimmer; you lose the extra 12-bit shades on purpose.
+ */
+static void rgb4_to_64(unsigned char *r, unsigned char *g, unsigned char *b)
+{
+  unsigned char t;
+
+  t = (unsigned char)(*r & 12u);
+  *r = (unsigned char)(t | (t >> 2));
+  t = (unsigned char)(*g & 12u);
+  *g = (unsigned char)(t | (t >> 2));
+  t = (unsigned char)(*b & 12u);
+  *b = (unsigned char)(t | (t >> 2));
+}
+
+static unsigned int pal_word(const unsigned char *pal_bytes, unsigned int i);
+static void word_to_rgb4(unsigned int word, unsigned char *r4,
+                         unsigned char *g4, unsigned char *b4);
+
+static void pal_rgb4(const unsigned char *pal_bytes, unsigned int i,
+                     unsigned char *r4, unsigned char *g4, unsigned char *b4)
+{
+  word_to_rgb4(pal_word(pal_bytes, i), r4, g4, b4);
+}
+
+/* g_pal_r/g/b[0..15] stay RGB444 from the file; P only re-encodes this. */
+static void encode_hw_palette(void)
+{
+  unsigned int i;
+  unsigned char r4;
+  unsigned char g4;
+  unsigned char b4;
+  unsigned char lo;
+  unsigned char hi;
+
+  for (i = 0u; i < 16u; i++)
+  {
+    r4 = g_pal_r[i];
+    g4 = g_pal_g[i];
+    b4 = g_pal_b[i];
+    if (g_use_ddp == 0u)
+    {
+      rgb4_to_64(&r4, &g4, &b4);
+    }
+    rgb4_to_ddp(r4, g4, b4, &lo, &hi);
+    g_ddp[i * 2u] = lo;
+    g_ddp[i * 2u + 1u] = hi;
+  }
+}
+
+static unsigned char rgb555_to4(unsigned char c5)
+{
+  return (unsigned char)((c5 >> 1) & 15u);
+}
+
+static void fail(const char *msg)
+{
+  OS_SETGFX(GFX_MODE_TEXT_KEEP);
+  OS_CLS(0);
+  OS_SETCOLOR(7u);
+  OS_SETXY(0, 0);
+  printf("%s\r\n", msg);
+  OS_SETXY(0, 2);
+  printf("Press a key\r\n");
+  for (;;)
+  {
+    if ((unsigned char)OS_GETKEY() != 0u)
+    {
+      break;
+    }
+    YIELD();
+  }
+  if (g_opened)
+  {
+    OS_CLOSEHANDLE(g_fp);
+    g_opened = 0u;
+  }
+  gfx_shutdown();
+  exit(1);
+}
+
+static unsigned int read_exact(unsigned char *dst, unsigned int n)
+{
+  unsigned int got;
+  unsigned int chunk;
+
+  got = 0u;
+  while (got < n)
+  {
+    chunk = OS_READHANDLE(dst + got, g_fp, (unsigned int)(n - got));
+    if (chunk == 0u || chunk == 0xffffu)
+    {
+      return got;
+    }
+    got = (unsigned int)(got + chunk);
+  }
+  return got;
+}
+
+static unsigned char sat4(unsigned char r, unsigned char g, unsigned char b)
+{
+  unsigned char mx;
+  unsigned char mn;
+
+  mx = r;
+  if (g > mx)
+  {
+    mx = g;
+  }
+  if (b > mx)
+  {
+    mx = b;
+  }
+  mn = r;
+  if (g < mn)
+  {
+    mn = g;
+  }
+  if (b < mn)
+  {
+    mn = b;
+  }
+  return (unsigned char)(mx - mn);
+}
+
+static unsigned int pal_dist(unsigned char i, unsigned char j)
+{
+  return (unsigned int)adiff(g_pal_r[i], g_pal_r[j])
+         + (unsigned int)adiff(g_pal_g[i], g_pal_g[j])
+         + (unsigned int)adiff(g_pal_b[i], g_pal_b[j]);
+}
+
+/* 16 diverse CLUT entries: start at darkest, then maximin + saturation. */
+static void pick_16_diverse(unsigned char *pick)
+{
+  unsigned int i;
+  unsigned int k;
+  unsigned int best;
+  unsigned int best_score;
+  unsigned int lum;
+  unsigned int d;
+  unsigned int score;
+  unsigned char nsel;
+  unsigned char already;
+
+  best = 0u;
+  best_score = 0xffffu;
+  for (i = 0u; i < g_ncolors; i++)
+  {
+    lum = (unsigned int)g_pal_r[i] + g_pal_g[i] + g_pal_b[i];
+    if (lum < best_score)
+    {
+      best_score = lum;
+      best = i;
+    }
+  }
+  pick[0] = (unsigned char)best;
+
+  for (nsel = 1u; nsel < 16u; nsel++)
+  {
+    best = 0u;
+    best_score = 0u;
+    for (i = 0u; i < g_ncolors; i++)
+    {
+      already = 0u;
+      for (k = 0u; k < (unsigned int)nsel; k++)
+      {
+        if (pick[k] == (unsigned char)i)
+        {
+          already = 1u;
+          break;
+        }
+      }
+      if (already)
+      {
+        continue;
+      }
+      d = 0xffffu;
+      for (k = 0u; k < (unsigned int)nsel; k++)
+      {
+        score = pal_dist((unsigned char)i, pick[k]);
+        if (score < d)
+        {
+          d = score;
+        }
+      }
+      if (d == 0u)
+      {
+        continue;
+      }
+      score = d + d
+              + (unsigned int)sat4(g_pal_r[i], g_pal_g[i], g_pal_b[i]);
+      if (score > best_score)
+      {
+        best_score = score;
+        best = i;
+      }
+    }
+    if (best_score == 0u)
+    {
+      for (i = 0u; i < g_ncolors; i++)
+      {
+        already = 0u;
+        for (k = 0u; k < (unsigned int)nsel; k++)
+        {
+          if (pick[k] == (unsigned char)i)
+          {
+            already = 1u;
+            break;
+          }
+        }
+        if (!already)
+        {
+          best = i;
+          break;
+        }
+      }
+    }
+    pick[nsel] = (unsigned char)best;
+  }
+}
+
+static unsigned char nearest16(unsigned char r, unsigned char g, unsigned char b)
+{
+  unsigned char i;
+  unsigned char best;
+  unsigned int best_d;
+  unsigned int d;
+
+  best = 0u;
+  best_d = 0xffffu;
+  for (i = 0u; i < 16u; i++)
+  {
+    d = (unsigned int)adiff(r, g_pal_r[i])
+        + (unsigned int)adiff(g, g_pal_g[i])
+        + (unsigned int)adiff(b, g_pal_b[i]);
+    if (d < best_d)
+    {
+      best_d = d;
+      best = i;
+    }
+  }
+  return best;
+}
+
+static unsigned int pal_word(const unsigned char *pal_bytes, unsigned int i)
+{
+  return (unsigned int)pal_bytes[i * 2u]
+         | ((unsigned int)pal_bytes[i * 2u + 1u] << 8);
+}
+
+static void word_to_rgb4(unsigned int word, unsigned char *r4,
+                         unsigned char *g4, unsigned char *b4)
+{
+  *r4 = rgb555_to4((unsigned char)((word >> 10) & 0x1Fu));
+  *g4 = rgb555_to4((unsigned char)((word >> 5) & 0x1Fu));
+  *b4 = rgb555_to4((unsigned char)(word & 0x1Fu));
+}
+
+static void build_file_palette(const unsigned char *pal_bytes)
+{
+  unsigned int i;
+  unsigned char r4;
+  unsigned char g4;
+  unsigned char b4;
+  static unsigned char pick[16];
+  static unsigned char hw_r[16];
+  static unsigned char hw_g[16];
+  static unsigned char hw_b[16];
+
+  for (i = 0u; i < 256u; i++)
+  {
+    g_idx_map[i] = 0u;
+  }
+
+  if (g_bpp != 8u)
+  {
+    for (i = 0u; i < 16u; i++)
+    {
+      if (i < g_ncolors)
+      {
+        pal_rgb4(pal_bytes, i, &r4, &g4, &b4);
+      }
+      else
+      {
+        r4 = 0u;
+        g4 = 0u;
+        b4 = 0u;
+      }
+      g_pal_r[i] = r4;
+      g_pal_g[i] = g4;
+      g_pal_b[i] = b4;
+      g_idx_map[i] = (unsigned char)((i < g_ncolors) ? i : 0u);
+    }
+    encode_hw_palette();
+    return;
+  }
+
+  /* Full RGB444 CLUT, then 16 hardware slots. Mapping does not change on P. */
+  for (i = 0u; i < g_ncolors; i++)
+  {
+    pal_rgb4(pal_bytes, i, &r4, &g4, &b4);
+    g_pal_r[i] = r4;
+    g_pal_g[i] = g4;
+    g_pal_b[i] = b4;
+  }
+
+  if (g_ncolors <= 16u)
+  {
+    for (i = 0u; i < 16u; i++)
+    {
+      if (i < g_ncolors)
+      {
+        g_idx_map[i] = (unsigned char)i;
+      }
+      else
+      {
+        g_pal_r[i] = 0u;
+        g_pal_g[i] = 0u;
+        g_pal_b[i] = 0u;
+      }
+    }
+    encode_hw_palette();
+    return;
+  }
+
+  pick_16_diverse(pick);
+  for (i = 0u; i < 16u; i++)
+  {
+    hw_r[i] = g_pal_r[pick[i]];
+    hw_g[i] = g_pal_g[pick[i]];
+    hw_b[i] = g_pal_b[pick[i]];
+  }
+  for (i = 0u; i < 16u; i++)
+  {
+    g_pal_r[i] = hw_r[i];
+    g_pal_g[i] = hw_g[i];
+    g_pal_b[i] = hw_b[i];
+  }
+  encode_hw_palette();
+  for (i = 0u; i < g_ncolors; i++)
+  {
+    pal_rgb4(pal_bytes, i, &r4, &g4, &b4);
+    g_idx_map[i] = nearest16(r4, g4, b4);
+  }
+}
+
+static void apply_palette(void)
+{
+  /* Same write as BQ: lo on B, hi on D. ATM2 mode has lo==hi. */
+  gfx_set_palette_bytes(g_ddp);
+}
+
+static void build_pair_tab(void)
+{
+  unsigned int b;
+  unsigned char p0;
+  unsigned char p1;
+  unsigned char t;
+
+  for (b = 0u; b < 256u; b++)
+  {
+    p0 = (unsigned char)((b >> 4) & 15u);
+    p1 = (unsigned char)(b & 15u);
+    if (g_nibble_swap)
+    {
+      t = p0;
+      p0 = p1;
+      p1 = t;
+    }
+    p0 = g_idx_map[p0];
+    p1 = g_idx_map[p1];
+    g_pair_tab[b] = (unsigned char)(left_tab[p0] | right_tab[p1]);
+    g_left8[b] = left_tab[g_idx_map[b]];
+    g_right8[b] = right_tab[g_idx_map[b]];
+  }
+}
+
+static unsigned int row_bytes(void)
+{
+  if (g_bpp == 8u)
+  {
+    return g_width;
+  }
+  return (unsigned int)((g_width + 1u) / 2u);
+}
+
+static void unpack_row(const unsigned char *src, unsigned int vis_w,
+                       unsigned int dst_x)
+{
+  unsigned int x;
+  unsigned int si;
+  unsigned char v;
+  unsigned char p0;
+  unsigned char p1;
+
+  if (g_bpp == 8u)
+  {
+    for (x = 0u; x < vis_w; x++)
+    {
+      g_pixrow[dst_x + x] = g_idx_map[src[x]];
+    }
+    return;
+  }
+
+  si = 0u;
+  x = 0u;
+  while (x < vis_w)
+  {
+    v = src[si];
+    si++;
+    p0 = (unsigned char)((v >> 4) & 15u);
+    p1 = (unsigned char)(v & 15u);
+    if (g_nibble_swap)
+    {
+      v = p0;
+      p0 = p1;
+      p1 = v;
+    }
+    g_pixrow[dst_x + x] = g_idx_map[p0];
+    x++;
+    if (x < vis_w)
+    {
+      g_pixrow[dst_x + x] = g_idx_map[p1];
+      x++;
+    }
+  }
+}
+
+static void chunk_rewind(unsigned long ofs)
+{
+  OS_SEEKHANDLE(g_fp, ofs);
+  g_chunk_i = 0u;
+  g_chunk_n = 0u;
+}
+
+static unsigned int chunk_read(unsigned char *dst, unsigned int n)
+{
+  unsigned int got;
+  unsigned int take;
+
+  got = 0u;
+  while (got < n)
+  {
+    if (g_chunk_i >= g_chunk_n)
+    {
+      g_chunk_n = OS_READHANDLE(g_chunk, g_fp, (unsigned int)sizeof(g_chunk));
+      g_chunk_i = 0u;
+      if (g_chunk_n == 0u || g_chunk_n == 0xffffu)
+      {
+        return got;
+      }
+    }
+    take = (unsigned int)(n - got);
+    if (take > (unsigned int)(g_chunk_n - g_chunk_i))
+    {
+      take = (unsigned int)(g_chunk_n - g_chunk_i);
+    }
+    memcpy(dst + got, g_chunk + g_chunk_i, take);
+    g_chunk_i = (unsigned int)(g_chunk_i + take);
+    got = (unsigned int)(got + take);
+  }
+  return got;
+}
+
+static const unsigned char *chunk_row(unsigned int n)
+{
+  unsigned char *p;
+
+  if ((unsigned int)(g_chunk_n - g_chunk_i) >= n)
+  {
+    p = g_chunk + g_chunk_i;
+    g_chunk_i = (unsigned int)(g_chunk_i + n);
+    return p;
+  }
+  if (chunk_read(g_srcrow, n) < n)
+  {
+    return 0;
+  }
+  return g_srcrow;
+}
+
+static void draw_image(void)
+{
+  unsigned int src_x0;
+  unsigned int src_y0;
+  unsigned int dst_x0;
+  unsigned int dst_y0;
+  unsigned int vis_w;
+  unsigned int vis_h;
+  unsigned int maxx;
+  unsigned int maxy;
+  unsigned int rb;
+  unsigned int skip_head;
+  unsigned int y;
+  unsigned char full_w;
+  unsigned long ofs;
+  const unsigned char *row;
+
+  vis_w = g_width;
+  vis_h = g_height;
+  src_x0 = 0u;
+  src_y0 = 0u;
+  dst_x0 = 0u;
+  dst_y0 = 0u;
+  if (vis_w > GFX_EGA_SCREEN_W)
+  {
+    maxx = (unsigned int)(vis_w - GFX_EGA_SCREEN_W);
+    src_x0 = g_src_x;
+    if (src_x0 > maxx)
+    {
+      src_x0 = maxx;
+    }
+    if (g_bpp != 8u)
+    {
+      src_x0 = (unsigned int)(src_x0 & ~1u);
+    }
+    vis_w = GFX_EGA_SCREEN_W;
+  }
+  else
+  {
+    dst_x0 = (unsigned int)((GFX_EGA_SCREEN_W - vis_w) / 2u);
+    dst_x0 = (unsigned int)(dst_x0 & ~1u);
+  }
+  if (vis_h > GFX_EGA_SCREEN_H)
+  {
+    maxy = (unsigned int)(vis_h - GFX_EGA_SCREEN_H);
+    src_y0 = g_src_y;
+    if (src_y0 > maxy)
+    {
+      src_y0 = maxy;
+    }
+    vis_h = GFX_EGA_SCREEN_H;
+  }
+  else
+  {
+    dst_y0 = (unsigned int)((GFX_EGA_SCREEN_H - vis_h) / 2u);
+  }
+
+  rb = row_bytes();
+  skip_head = src_x0;
+  if (g_bpp != 8u)
+  {
+    skip_head = src_x0 / 2u;
+  }
+  full_w = (unsigned char)((dst_x0 == 0u && vis_w == GFX_EGA_SCREEN_W) ? 1u : 0u);
+
+  gfx_map_front();
+  if (dst_y0 != 0u || vis_h != GFX_EGA_SCREEN_H || full_w == 0u)
+  {
+    gfx_clear(g_idx_map[g_bg]);
+  }
+
+  ofs = g_pix_ofs + (unsigned long)src_y0 * (unsigned long)rb;
+  chunk_rewind(ofs);
+
+  for (y = 0u; y < vis_h; y++)
+  {
+    if (rb > SXG_MAX_W)
+    {
+      break;
+    }
+    row = chunk_row(rb);
+    if (row == 0)
+    {
+      break;
+    }
+    if (full_w)
+    {
+      if (g_bpp == 8u)
+      {
+        plot_row_8((unsigned char)(dst_y0 + y), row + src_x0);
+      }
+      else
+      {
+        plot_row_4((unsigned char)(dst_y0 + y), row + skip_head);
+      }
+    }
+    else
+    {
+      memset(g_pixrow, (char)g_idx_map[g_bg], GFX_EGA_SCREEN_W);
+      if (g_bpp == 8u)
+      {
+        unpack_row(row + src_x0, vis_w, dst_x0);
+      }
+      else
+      {
+        unpack_row(row + skip_head, vis_w, dst_x0);
+      }
+      plot_row((unsigned char)(dst_y0 + y), g_pixrow);
+    }
+  }
+}
+
+static unsigned int crop_max_x(void)
+{
+  if (g_width <= GFX_EGA_SCREEN_W)
+  {
+    return 0u;
+  }
+  return (unsigned int)(g_width - GFX_EGA_SCREEN_W);
+}
+
+static unsigned int crop_max_y(void)
+{
+  if (g_height <= GFX_EGA_SCREEN_H)
+  {
+    return 0u;
+  }
+  return (unsigned int)(g_height - GFX_EGA_SCREEN_H);
+}
+
+static void crop_align_x(void)
+{
+  if (g_bpp != 8u)
+  {
+    g_src_x = (unsigned int)(g_src_x & ~1u);
+  }
+}
+
+static void crop_center(void)
+{
+  g_src_x = (unsigned int)(crop_max_x() / 2u);
+  g_src_y = (unsigned int)(crop_max_y() / 2u);
+  crop_align_x();
+}
+
+/* Half-screen step, or remaining distance to the edge. Returns 1 if the crop moved. */
+static unsigned char crop_step(unsigned char dir)
+{
+  unsigned int maxv;
+  unsigned int step;
+  unsigned int remain;
+
+  if (dir == KEY_LEFT || dir == KEY_RIGHT)
+  {
+    maxv = crop_max_x();
+    step = GFX_EGA_SCREEN_W / 2u;
+    if (dir == KEY_LEFT)
+    {
+      if (g_src_x == 0u)
+      {
+        return 0u;
+      }
+      if (step > g_src_x)
+      {
+        step = g_src_x;
+      }
+      g_src_x = (unsigned int)(g_src_x - step);
+    }
+    else
+    {
+      if (g_src_x >= maxv)
+      {
+        return 0u;
+      }
+      remain = (unsigned int)(maxv - g_src_x);
+      if (step > remain)
+      {
+        step = remain;
+      }
+      g_src_x = (unsigned int)(g_src_x + step);
+    }
+    crop_align_x();
+    return 1u;
+  }
+
+  maxv = crop_max_y();
+  step = GFX_EGA_SCREEN_H / 2u;
+  if (dir == KEY_UP)
+  {
+    if (g_src_y == 0u)
+    {
+      return 0u;
+    }
+    if (step > g_src_y)
+    {
+      step = g_src_y;
+    }
+    g_src_y = (unsigned int)(g_src_y - step);
+    return 1u;
+  }
+  if (g_src_y >= maxv)
+  {
+    return 0u;
+  }
+  remain = (unsigned int)(maxv - g_src_y);
+  if (step > remain)
+  {
+    step = remain;
+  }
+  g_src_y = (unsigned int)(g_src_y + step);
+  return 1u;
+}
+
+static void drain_keys(void)
+{
+  unsigned int n;
+
+  for (n = 0u; n < 64u; n++)
+  {
+    if ((unsigned char)OS_GETKEY() == 0u)
+    {
+      break;
+    }
+  }
+}
+
+static unsigned char wait_command(void)
+{
+  unsigned char k;
+
+  for (;;)
+  {
+    YIELD();
+    k = (unsigned char)OS_GETKEY();
+    if (k == 0u)
+    {
+      continue;
+    }
+    if (k == 'P' || k == 'p')
+    {
+      /* Indices in VRAM stay; only the 16 hardware colours change. */
+      g_use_ddp = (unsigned char)(g_use_ddp ? 0u : 1u);
+      encode_hw_palette();
+      apply_palette();
+      continue;
+    }
+    if (k == 'N' || k == 'n')
+    {
+      g_nibble_swap = (unsigned char)(g_nibble_swap ? 0u : 1u);
+      build_pair_tab();
+      draw_image();
+      continue;
+    }
+    if (k == KEY_LEFT || k == KEY_RIGHT || k == KEY_UP || k == KEY_DOWN)
+    {
+      if (crop_step(k))
+      {
+        draw_image();
+      }
+      continue;
+    }
+    return k;
+  }
+}
+
+C_task main(int argc, char *argv[])
+{
+  unsigned char hdr[SXG_HDR_SIZE];
+  unsigned int pal_sz;
+  unsigned int pal_ofs;
+
+  g_opened = 0u;
+  g_bg = 0u;
+  g_use_ddp = 0u; /* ATM2 pal (lo==hi); P = file RGB444 DDp */
+  g_nibble_swap = 0u;
+  g_src_x = 0u;
+  g_src_y = 0u;
+
+  OS_SETGFX(GFX_MODE_TEXT_KEEP);
+  OS_CLS(0);
+  OS_HIDEFROMPARENT();
+  OS_SETCOLOR(7u);
+
+  if (argc < 2)
+  {
+    fail("sxgview <file.sxg>");
+  }
+
+  g_fp = OS_OPENHANDLE((unsigned char *)argv[1], 0x80);
+  if (((int)g_fp) & 0xff)
+  {
+    fail("Open error");
+  }
+  g_opened = 1u;
+
+  if (read_exact(hdr, SXG_HDR_SIZE) < SXG_HDR_SIZE)
+  {
+    fail("Short header");
+  }
+  if (hdr[0] != SXG_MAGIC0 || hdr[1] != SXG_MAGIC1
+      || hdr[2] != SXG_MAGIC2 || hdr[3] != SXG_MAGIC3)
+  {
+    fail("Not SXG");
+  }
+
+  g_bg = hdr[5];
+  if (hdr[6] != 0u)
+  {
+    fail("Packed SXG");
+  }
+  if (hdr[7] == 1u)
+  {
+    g_bpp = 4u;
+  }
+  else if (hdr[7] == 2u)
+  {
+    g_bpp = 8u;
+  }
+  else
+  {
+    fail("Format not 16/256");
+  }
+
+  g_width = (unsigned int)hdr[8] | ((unsigned int)hdr[9] << 8);
+  g_height = (unsigned int)hdr[10] | ((unsigned int)hdr[11] << 8);
+  if (g_width == 0u || g_height == 0u
+      || g_width > SXG_MAX_W || g_height > SXG_MAX_H)
+  {
+    fail("Bad size");
+  }
+
+  pal_ofs = 0x0Eu
+            + ((unsigned int)hdr[12] | ((unsigned int)hdr[13] << 8));
+  g_pix_ofs = 0x10u
+              + ((unsigned long)hdr[14] | ((unsigned long)hdr[15] << 8));
+  if (g_pix_ofs <= (unsigned long)pal_ofs)
+  {
+    fail("Bad offsets");
+  }
+  pal_sz = (unsigned int)(g_pix_ofs - (unsigned long)pal_ofs);
+  if ((pal_sz & 1u) != 0u || pal_sz > 512u)
+  {
+    fail("Bad palette");
+  }
+  g_ncolors = pal_sz / 2u;
+  if (g_ncolors == 0u)
+  {
+    fail("Empty palette");
+  }
+
+  OS_SEEKHANDLE(g_fp, (unsigned long)pal_ofs);
+  if (read_exact(g_pal_bytes, pal_sz) < pal_sz)
+  {
+    fail("Short palette");
+  }
+
+  build_file_palette(g_pal_bytes);
+  build_pair_tab();
+  crop_center();
+
+  /* Eat nv Enter before the picture. Do not drain after draw: that ate the first P. */
+  drain_keys();
+
+  gfx_enter_ega();
+  gfx_map_front();
+  apply_palette();
+  draw_image();
+
+  wait_command();
+
+  if (g_opened)
+  {
+    OS_CLOSEHANDLE(g_fp);
+    g_opened = 0u;
+  }
+  gfx_shutdown();
+  return 0;
+}

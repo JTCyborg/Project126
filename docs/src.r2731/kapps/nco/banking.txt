@@ -1,0 +1,61 @@
+nco - NC on Plan JT multibank
+=============================
+Scaffold from kapps/multibank/. Full rules: ../multibank/banking.txt
+
+Memory
+------
+  0100-7FFF  ROOT: main, loaders, JT wrappers, BSS, stack
+  8000-BFFF  CODE: one overlay (codeB_XX.bin), JT at 8000
+  C000-FFFF  DATA: one OS page via OS_SETPGC000
+
+Banks
+-----
+  01 UI       chrome, dialogs, drive, ini, progress
+  02 panel    read/sort/draw/navigation
+  03 fileops  copy/move/delete/rename/mkdir
+  04 cold     nv.ext / view-edit-run + F9 Menu / Files
+  05 CDFS     ATAPI + ISO9660 (EnableCDmount=on -> P:)
+
+Pack
+----
+  bin/nco.com
+  bin/nco/codeB_01.bin .. codeB_05.bin
+  -> release/bin/ and /bin/nco/ on disk image
+
+CD-ROM PoC
+----------
+  nc.ini EnableCDmount=1 adds P: when ATAPI present.
+  Panel browse + file copy to FAT only; no view/edit/run/delete on CD.
+  Kernel pgcdfs later (loaded page, not in hobeta).
+
+Startup
+-------
+  Print "Loading banks..." + per-file OK/FAIL while reading overlays.
+  Prefer path nco/ then bin/nco/; cache successful dir for next banks.
+  CRITICAL: never leave a private app page mapped at C000 across BDOS
+  file I/O (bank load / ini / nv.ext). Keep cold window_3 until panels
+  explicitly map their own pages. (Mapping empty g_dataPg at init used
+  to corrupt FAT when started from autoexec.)
+
+Dir load / sort (bank02)
+------------------------
+  Sort: meta page stays mapped; heapsort only swaps s_idx (0 SETPGC000/compare).
+  Dir fill: OS_READDIR into root g_panel_fi; meta keys written with meta mapped;
+  fileInfo flushed in PANEL_READ_STAGE batches (not 2 maps per file).
+  Never pass overlay CSTR to mb_*; fi for cache must not live @C000 during meta_map.
+
+Menu (bank04)
+-------------
+  Files Enter cycles like Right; only Save settings writes nc.ini and closes.
+  Esc/Save close runs panel resort via mb_panel_menu_apply (bank02).
+  Menu CSTR lives in bank04 - do not pass those literals into mb_*.
+  Prefer filling free space in banks 02-04 before adding bank05+.
+
+Console: BDOS (like nc). Do NOT call os_initstdio().
+Startup: OS_HIDEFROMPARENT(); OS_SETGFX(6); OS_SETSYSDRV();
+
+Do not call root mb_* wrappers from inside a bank unless SAVE/LEAVE restores
+the caller's page (current bank_call.c does). Same-bank: call r_* directly.
+
+Never pass bank string literals to mb_* / across @8000 switch - CSTR is in the
+overlay. Use root g_ui_* strings or root BSS buffers (g_copy_ow_msg, etc.).

@@ -1,0 +1,114 @@
+gp.com - Player for AY8910, GeneralSound, NeoGS, MoonSound/BomgeMoon, TurboSound,
+	MultiSound, a prototype sound card with two YM2151 chips and one YM2608
+	(see below for details).
+
+Supported formats:
+ - mp3  NeoGS
+ - mid  NeoGS rev.CM with VLSI VS1003/VS1033/VS1053 decoder chip,
+        MIDI UART connected to AY port A.2 (e.g. MultiSound)
+ - ogg  NeoGS rev.CM with VLSI VS1053/VS1063 decoder chip
+ - aac  NeoGS rev.CM with VLSI VS1033/VS1053/VS1063 decoder chip
+ - vgm  AY, MoonSound (chips YM3526, YM3812, YMF262, YMF278B),
+	TurboSound FM (2x YM2203), YM2151, YM2608
+ - vgz  same as vgm
+ - mwm  MoonSound
+ - pt2  AY
+ - pt3  AY, TurboSound (2x AY)
+ - mod  MoonSound, GeneralSound/NeoGS (via soundcard firmware)
+ - s3m  MoonSound
+
+You can turn off MoonSound .mod player if you've got both GeneralSound and 
+MoonSound installed in your computer. Moreover, you can turn off all players,
+which you're not using, to reduce application memory footprint. Check out the
+settings in bin\gp\gp.ini file. Note that MoonSound .mod player allows changing
+default panning of the channels, which may improve listening experience when
+using headphones.
+
+ZXM-MoonSound firmware
+
+Unfortunately, the firmware 1.0 is incompatible with ZX-Evolution/baseconf.
+OPL4 ports 7E and 7F are not working properly, only OPL3 ports are accessible.
+It's still possible to play OPL3 .vgm files using the player, but .mwm and 
+OPL4 .vgm are not going to work. You should update MoonSound to 
+baseconf-compatible firmware 1.01 to enable OPL4 on baseconf
+https://www.dropbox.com/s/1e0b2197emrhzos/zxm_moonsound01_frm0101.zip
+https://www.dropbox.com/s/hzcj8wbmion3d3g/zxm_moonsound01_src0101.zip
+Firmware 1.01 is fully backwards compatible with 1.0.
+
+If you're running NedoOS on a hardware other than ZX-Evolution (e.g. ATM), 
+you can get OPL4 working with the firmware 1.0. You'd need to recompile the
+player changing MOON_WREG = 0xc2 to MOON_WREG = 0x7e in moonsound.asm
+
+Please set parameter value BomgeMoon=1 in the config file bin\gp\gp.ini
+if you have OPL3-only sound card, such as BomgeMoon. This prevents
+the player from trying to detect OPL4 ports, which are unavailable on 
+your sound card.
+
+Wavekits for MoonBlaster modules (.mwm)
+
+Some MoonBlaster modules require wavekits, which contain custom samples.
+When you're playing <FileName>.mwm module, the player will try to load
+<FileName>.mwk first. If there's no such file, then the player will read 
+<WaveKitName> located in .mwm file at the offset 0x114. If <WaveKitName> is 
+NONE then no wavekit is needed. Otherwise, the player will try to load 
+<WaveKitName>.mwk, and if there's no such file then .mwm won't be played.
+
+VGM from arcade machines based on YMF278B
+
+MoonSound can correctly play VGM dumps from an arcade only if all needed music
+samples are located in the 1st megabyte of sound ROM *and* in the first 128
+wave table entries.
+
+NeoGS rev.CM
+
+This player supports VLSI codecs other than MosArt MA8201A(U). Revision CM of
+the PCB enables the use of a range of VLSI chips. I strongly recommend VS1053b
+for the best sound quality. Production files for NeoGS rev.CM can be found here
+http://svn.zxevo.ru/listing.php?repname=ngs&path=%2Fpcad%2FSolegstar%2F
+
+Playing MIDI
+
+If you can't hear music via MIDI UART connection or you only hear single
+notes, you can try setting variable MidiUartDelayOverride in bin\gp\gp.ini
+By default, the player selects value of UART delay automatically depending on
+CPU speed, but there can be inaccuracies leading to incorrect transfer rate
+different from the 31250 baud required by MIDI protocol.
+
+VLSI codecs only support MIDI format 0 (SMF 0) because SMF 1 and SMF 2 can't
+be streamed and must be preloaded entirely. The main difference between these
+formats is how notes are structured. Unfortunately, this player doesn't convert
+MIDI to SMF 0 automatically, so you'd have to convert MIDI files to SMF 0 
+offline using GN1:0 MIDI Converter (or a similar program)
+http://www.gnmidi.com/gn1to0.zip
+
+Chips YM2151 and YM2608
+
+This player supports a prototype sound card with two YM2151 chips and one YM2608.
+Port map:
+
+-------------------------------------------------------------------------------
+!      Port Address     !          Write            !          Read           !
+-------------------------------------------------------------------------------
+!          F1C1         ! Data to first YM2151      !           n/a           |
+!          F2C1         ! Address to first YM2151   ! Status of first YM2151  |
+!          F2C1         ! Data to second YM2151     !           n/a           |
+!          F3C1         ! Address to second YM2151  ! Status of second YM2151 |
+!          F4C1         ! Address to SSG/FM YM2608  ! Status0 of YM2608       |
+!          F5C1         ! Data to SSG/FM YM2608     ! SSG data from YM2608    |
+!          F6C1         ! Address to ADPCM/FM YM2608! Status1 of YM2608       |
+!          F7C1         ! Data to ADPCM/FM YM2608   ! ADPCM data from YM2608  |
+-------------------------------------------------------------------------------
+
+The addresses of all ports can be easily changed. The address values are defined in 
+the files common\opm.asm and common\opna.asm. The code is written with the assumption
+that the values can be arbitrary.
+
+Collections of chiptunes and tracker music
+
+https://zxart.ee/eng/music/
+https://modarchive.org/
+https://opl.wafflenet.com/
+https://vgmrips.net/packs/
+https://download.file-hunter.com/Music/
+https://ftp.modland.com/pub/modules
+https://www.dropbox.com/s/ela2itiw23swsj7/Moonsound_pack_latest.zip

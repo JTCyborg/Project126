@@ -1,0 +1,385 @@
+strcp
+;hl=s1
+;de=s2
+;out: Z (equal, hl=terminator of s1+1, de=terminator of s2+1), NZ (not equal, hl=erroraddr in s1, de=erroraddr in s2)
+strcp0.
+	ld a,[de] ;s2
+	cp [hl] ;s1
+	ret nz
+	inc hl
+	inc de
+	or a
+	jp nz,strcp0.
+	ret ;z
+
+dotname_to_cpmname
+;de -> hl
+;out: de=pointer to termination character
+        ;push hl ;buffer
+        
+        push de ;ASCIIZ string for parsing
+        push hl ;Pointer to 11 byte buffer
+	ld d,h
+	ld e,l
+	inc de
+	ld [hl],' '
+	ld bc,11-1
+	ldir ;empty filename
+        pop hl ;Pointer to 11 byte buffer
+        pop de ;ASCIIZ string for parsing
+
+;change dots to 1, except the last
+        ld a,(de)
+        cp '.'
+        jr z,parse_filename_changedots
+        push de
+        jr parse_filename_changedots0getgo
+parse_filename_changedots0get
+         ld a,1
+         ld (de),a
+parse_filename_changedots0getgo
+        ld b,d
+        ld c,e
+parse_filename_changedots0
+        ld a,(de)
+        cp '.'
+        jr z,parse_filename_changedots0get
+        inc de
+        or a
+        jr nz,parse_filename_changedots0
+        ld a,(bc)
+        cp 1
+        jr nz,$+5
+         ld a,'.'
+         ld (bc),a
+        pop de
+parse_filename_changedots
+
+        ld b,9
+	
+	ld a,(de)
+	cp '.'
+	jr nz,parse_filename0.
+	ld (hl),a
+	inc de
+	ld a,(de)
+	cp '.'
+	jr nz,parse_filenameq_findterminator.
+	inc hl
+	ld (hl),a
+	jr parse_filenameq_findterminator.
+parse_filename0.
+	ld a,[de]
+	or a
+	ret z ;jr z,parse_filenameq. ;no extension in string
+	cp '.'
+	jr z,parse_filenamedot. ;можем уже быть на терминаторе
+         ;cp 0x80
+         ;jr nc,$+4
+         ;or 0x20
+         cp 1
+         jr nz,$+5
+          ld a,'.'
+	  ld [de],a
+	ld [hl],a
+	inc de
+	inc hl
+	djnz parse_filename0.
+;9 bytes in filename, no dot (9th byte goes to extension)
+;возможно, длинное имя, надо найти, что раньше - точка или терминатор
+;можем уже быть на терминаторе или на точке
+        dec hl
+        ld [hl],' '
+parse_filenamelongname0.
+        ld a,[de]
+        or a
+        ret z ;jr z,parse_filenameq. ;a=0
+        inc de
+        cp '.'
+        jr z,parse_filenameLONGnamedot. ;можем уже быть на терминаторе
+        jr parse_filenamelongname0.
+parse_filenamedot.
+	inc de
+	inc hl
+	djnz $-1 ;hl points to extension in FCB
+	dec hl
+parse_filenameLONGnamedot.
+	ld a,[de] ;extension in string
+        or a
+        ret z ;jr z,parse_filenameq. ;a=0
+         ;cp 0x80
+         ;jr nc,$+4
+         ;or 0x20
+	ld [hl],a ;extension in FCB
+        inc hl
+        inc de
+	ld a,[de] ;extension in string
+        or a
+        ret z ;jr z,parse_filenameq. ;a=0
+         ;cp 0x80
+         ;jr nc,$+4
+         ;or 0x20
+	ld [hl],a ;extension in FCB
+        inc hl
+        inc de
+	ld a,[de] ;extension in string
+        or a
+        ret z ;jr z,parse_filenameq. ;a=0
+         ;cp 0x80
+         ;jr nc,$+4
+         ;or 0x20
+	ld [hl],a ;extension in FCB
+parse_filenameq_findterminator.
+        inc de
+        ld a,[de]
+        or a
+        jr nz,parse_filenameq_findterminator.
+;parse_filenameq. ;de на терминаторе
+        ;pop hl ;buffer
+        ret ;a=0
+
+cpmname_to_dotname
+;hl -> de
+        push hl
+        ld b,8
+cpmname_to_dotname0
+        ld a,(hl)
+        cp ' '
+        jr z,cpmname_to_dotname0q
+        ld (de),a
+        inc hl
+        inc de
+        djnz cpmname_to_dotname0
+cpmname_to_dotname0q
+        pop hl
+        ld bc,8
+        add hl,bc ;hl=pointer to ext
+        ld a,(hl)
+        cp ' '
+        jr z,cpmname_to_dotnameq
+        ld a,'.'
+        ld (de),a
+        inc de
+        ld  c,3
+        ldir
+cpmname_to_dotnameq
+        xor a
+        ld (de),a
+        ret
+
+makeprompt
+;keeps ix
+        push ix
+        ld de,cmdprompt ;de=pointer to 64 byte (MAXPATH_sz!) buf
+        OS_GETPATH ;TODO брать из описателя панели
+        pop ix
+        ret
+
+cmdcalctextaddr
+;out: hl=addr, a=curcmdx
+;keeps ix
+        ld hl,cmdbuf
+        ld a,(curcmdx)
+cmdcalctextaddr_hlbase_ax
+        ld c,a
+        ld b,0
+        add hl,bc
+        ret
+
+cmdcalcpromptsz
+;out: hl=len, a=(len+1)<64 or 64
+        ld hl,cmdprompt
+        call strlen
+        ld a,l
+        inc a
+         cp 64
+         ret c
+         ld a,64
+        ret
+
+cmdcalccurxy
+;out: de=yx
+;x=cmdpromptsz+curcmdx-curcmdscroll
+        call cmdcalcpromptsz ;a=promptsz
+        ld hl,curcmdx ;не на экране, а внутри команды
+        add a,(hl)
+        ld hl,curcmdscroll ;сдвиг команды относительно экрана
+        sub (hl)
+        ;ld d,txtscrhgt-1
+        ;ld d,CMDLINEY
+        ld de,(scrhgt-1) ;d
+        dec d
+        dec d
+        ld e,a
+        ret
+
+strlen
+;hl=str
+;out: hl=length
+        xor a
+        ld b,a
+        ld c,a ;чтобы точно найти терминатор
+        cpir ;найдём обязательно, если длина=0, то bc=-1 и т.д.
+        ld h,a
+        ld l,a
+        scf
+        sbc hl,bc
+        ret
+
+fixscroll_prcmd
+;цикл поиска скролла для текущего положения курсора
+editcmd_scroll0
+        call cmdcalccurxy ;e=scrx
+        call cmdcalcpromptsz ;a=promptsz
+        ld hl,curcmdscroll
+        dec a
+        cp e ;scrx
+        jr c,editcmd_noscrollleft ;x>=promptsz (x>(promptsz-1))
+;x<promptsz - скролл влево
+        dec (hl)
+        jr editcmd_scroll0
+editcmd_noscrollleft
+        ld a,e ;scrx
+        cp txtscrwid
+        jr c,editcmd_noscrollright
+;x>=txtscrwid - скролл вправо
+        inc (hl)
+        jr editcmd_scroll0
+editcmd_noscrollright
+;prcmd
+        ld de,_COLOR
+       if PRSTDIO
+        SETCOLOR_
+       else
+        call nv_setcolor
+       endif
+        ;ld de,+(txtscrhgt-1)*256+0
+        ;ld de,CMDLINEY*256+0
+        ld de,(scrhgt-1) ;d
+        dec d
+        dec d
+        ld e,0
+        call nv_setxy ;keeps de,hl,ix
+        call cmdcalcpromptsz
+        dec a
+        ld e,a ;!=0, т.к. буква дисковода
+        ld d,0
+        ld hl,cmdprompt
+        ld c,d;0
+        ;call prtext
+        call cmdprNchars
+        push bc
+        ld a,'>'
+        MYPRCHAR
+        pop bc
+        inc c
+        ld hl,(curcmdscroll)
+        ld h,0
+        ld de,cmdbuf
+        add hl,de
+        call prtext
+;добьём остаток строки пробелами
+        ;ld hl,tspaces
+        ;jp prtext
+        jp clearrestofline
+
+tspaces ;for drawfilecursor_sizeb_colorhl
+        ds txtscrwid-1,' '
+        db 0
+ 
+cmdprNchars
+;hl=buffer
+;de=size
+;out: hl=buffer+size
+        ex de,hl
+        push de
+        push hl
+        call sendchars
+        pop hl
+        pop de
+        add hl,de
+        ret
+        
+prtext
+;c=x
+        push bc
+        push hl
+        ld a,txtscrwid-1
+        sub c
+        ld c,a
+        push bc
+        call strlen ;hl=length
+        pop bc
+        ld b,0
+        call minhl_bc_tobc
+        ld h,b
+        ld l,c
+        pop de
+        pop bc ;c=x
+        ld a,h
+        or l
+;de=buf
+;hl=len
+        push bc
+        push de
+        push hl
+        call nz,sendchars
+        pop hl
+        pop de
+        pop bc
+        ld a,l
+        add a,c
+        ld c,a
+         add hl,de
+         inc hl
+;c=x        
+;hl=after terminator
+        ret
+
+minhl_bc_tobc
+        or a
+        sbc hl,bc
+        add hl,bc
+        ret nc ;bc<=hl
+        ld b,h
+        ld c,l
+        ret
+
+strdelch
+;delete char at (hl-1), shift string left
+;keeps ix
+editcmd_bs0
+        ld a,(hl)
+        dec hl
+        ld (hl),a
+        inc hl
+        inc hl
+        or a
+        jr nz,editcmd_bs0
+        ret
+
+strinsch
+;insert char E at (hl), shift string right
+;keeps ix
+editcmd_ins0
+        ld a,(hl)
+        ld (hl),e
+        ld e,a
+        inc hl
+        or a
+        jr nz,editcmd_ins0
+        ld (hl),a
+        ret
+
+curcmdscroll ;сдвиг команды относительно экрана
+        db 0
+curcmdx ;не на экране, а внутри команды
+        db 0
+cmdprompt
+        ds MAXPATH_sz;MAXCMDSZ+1
+tcmd
+        db "cmd "
+tcmd_sz=$-tcmd
+cmdbuf
+        db 0
+        ds cmdbuf+MAXCMDSZ+1-$

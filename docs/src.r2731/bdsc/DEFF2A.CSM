@@ -1,0 +1,1452 @@
+        DEVICE ZXSPECTRUM128
+        include "../_sdk/sys_h.asm"
+        include "8080.asm"
+
+NEDOOS=1
+
+;
+;	BD Software C Compiler v1.6
+;	Standard Library Machine Language Functions (part A)
+;	Copyright (c) 1982, 1986 by BD Software, Inc.
+;
+; This file is in "CSM" format; to convert to CRL format,
+; use CASM.SUB in conjunction with CASM.COM, ASM.COM and CLOAD.COM.
+; 
+; Functions appearing in this file:
+;
+; 	[cmode]	[iobreak] getchar	kbhit	ungetch	putchar
+;	gets	getline
+;	rand	srand 	srand1	nrand
+;	[csw]	setmem	movmem	memcmp
+;	call	calla
+;	inp 	outp	peek	poke
+;	sleep	pause 	exit
+;	bdos	bios	biosh
+;	codend	[externs]	endext	topofmem
+;	exec	execv
+; 	rbrk	sbrk	rsvstk
+;	index
+;	setjmp	longjmp
+;
+        include "liblib.asm"
+
+        if 1==1
+	FUNCTION "CMODE"
+        FUNCHEAD cmodesz
+	call	ma1toh		;get arg
+	ex de,hl			;put in DE
+	ld hl,chmode	;get address of char mode flag
+	ld	d,(hl)		;get old mode in D
+	ld	(hl),e		;set new mode
+	xor	a		;clear pushback byte
+	sta	ungetl
+	inc hl
+	ld	(hl),a		;and line buffer char count
+	ld	l,d		;return old value of chmode
+	ld	h,0
+	ret
+	ENDFUNC cmodesz,0
+        ;dw 0 ;no reloc pars
+        endif
+
+        if 1==1
+	FUNCTION "IOBREAK"
+        FUNCHEAD iobreaksz
+	call	ma1toh		;get arg
+	sta	iobrf
+	ret
+	ENDFUNC iobreaksz,0
+        ;dw 0 ;no reloc pars
+        endif
+
+	FUNCTION "GETCHAR"
+        FUNCHEAD getcharsz
+	lda	ungetl	;any character pushed back?
+	ld	l,a
+	or	a
+_1=$+1
+	jp z,getit
+	xor	a	;yes. return it and clear the pushback
+	sta	ungetl	;byte in C.CCC.
+	ld	h,a	;clear h
+	ret
+
+getit:
+	push 	bc
+	ld hl,chmode	;get address of chmode flag
+	;ld	a,(hl)
+         xor a
+	or	a
+_2=$+1
+	jp z,single		;jump if single mode
+	inc hl
+	push 	hl		;save &nleft
+	ld	a,(hl)		;get number of chars left in buf
+	or	a
+_3=$+1
+	jp nz,gnext		;jump if characters in buffer
+				;fill buffer:
+_4=$+1
+	ld de,gcbuff	;DE = buffer address
+	ld	c,getlin
+	call	bdos		;read console buffer
+	ld	c,conout
+	ld	e,lf
+	call	bdos		;linefeed to console
+_5=$+1
+	ld hl,gcline
+_6=$+1
+	shld	gcptr		;initialize gcptr
+_7=$+1
+	lda	gcnum		;number of chars just read
+	ld hl,nleft		;HL = &nleft
+	ld	(hl),a		;set number of characters
+	cp	maxl
+_8=$+1
+	jp z,gnext		;if buffer completely full, don't append nl
+	ld	e,a
+	ld	d,0		;DE = number of characters
+	inc	(hl)		;nleft++
+_9=$+1
+	ld hl,gcline
+	add hl,de		;HL = addr of next char pos after end
+	ld	(hl),newlin	;append newline char
+
+gnext:
+	pop hl		;now take a char from the buffer
+	dec	(hl)		;nleft--
+_10=$+1
+	lhld	gcptr		;get next char
+	ld	a,(hl)
+	inc hl		;bump ptr
+_11=$+1
+	shld	gcptr
+_12=$+1
+	jp	gotit
+
+single:
+	;ld	c,conin		;get single char from bdos
+	;call	bdos
+        YIELDGETKEYLOOP
+	cp	cr		;carriage return?
+_13=$+1
+	jp nz,gotit
+	;ld	c,conout	;if so, echo linefeed
+	;ld	e,lf
+	;call	bdos
+	;ld	a,newlin	;and return newline (linefeed)..
+
+gotit:	;ld	b,a		;save char in B
+	;lda	iobrf		;checking for BREAK character?
+	;or	a
+	;ld	a,b		;restore char into A
+	pop bc		;restore BC
+_14=$+1
+	jp z,gotit2		;if not checking for BREAK, skip test
+	;cp	cntrlc		;control-C ?
+	;jp z,exit		;if so, exit the program.
+gotit2:	;cp	1ah		;control-Z ?
+	;ld hl,-1		;if so, return -1.
+	;ret z
+	ld	l,a		;else return char in HL
+	ld	h,0
+	ret
+
+maxl	equ	79	;max length of line of buffered console input
+gcptr	ds	2	;pointer into line where first char is
+gcbuff	db	maxl	;max line length fro BDOS 10
+gcnum	db	0	;number of characters just read by BDOS 10
+gcline	ds	maxl+1	;buffer for characters, in case BDOS 10 is used
+	ENDFUNC getcharsz,14
+
+	FUNCTION "KBHIT"
+        FUNCHEAD kbhitsz
+	lda	ungetl	;any character ungotten?
+	ld	h,0
+	ld	l,a
+	or	a
+	ret nz		;if so, return true
+
+	lda	nleft	;get number of chars left in buffer
+	or	a
+	ret nz		;if any characters in buffer, return true
+
+	push bc
+	ld	c,cstat	;else interrogate console status
+	call	bdos
+	pop bc
+
+	or	a	;0 returned by BDOS if no character ready
+	ld hl,0
+	ret z		;return 0 in HL if no character ready
+	inc	l	;otherwise return 1 in HL
+	ret
+	ENDFUNC kbhitsz,0
+        ;dw 0 ;no reloc pars
+
+	FUNCTION "UNGETCH"
+        FUNCHEAD ungetchsz
+	lda	ungetl
+	ld	l,a
+	push hl
+	call	ma2toh
+	sta	ungetl
+	pop hl
+	ld	h,0
+	ret
+	ENDFUNC ungetchsz,0
+        ;dw 0 ;no reloc pars
+
+	FUNCTION "PUTCHAR"
+        FUNCHEAD putcharsz
+	call	ma1toh	;get character in A
+	push bc
+	;ld	c,conout
+       ds 2
+	cp	newlin	;newline?
+_1=$+1
+	jp nz,put1	;if not, just go put out the character
+	;ld	e,cr	;else...put out CR-LF
+       ld a,cr
+	;call	bdos
+       PRCHAR
+       ds 2
+	;ld	c,conout
+       ds 2
+	ld	a,lf
+
+put1:	;ld	e,a
+       nop
+	;call	bdos
+       PRCHAR
+       ds 2
+
+put2:	;lda	iobrf	;checking for BREAK characters on keyboard?
+       xor a
+       ds 2
+	or	a
+_2=$+1
+	jp z,put4	;if not, all done
+	
+	 ld	c,cstat	;now, is input present at the console?
+	 call	bdos
+	 or	a
+_3=$+1
+	 jp nz,put3
+	 pop bc	;no...all done.
+	 ret
+
+put3:	 ld	c,conin	;yes. sample it (this will always echo the
+	 call	bdos	;	character to the screen, alas)
+	 cp	cntrlc	;is it control-C?
+	 jp z,exit	;if so, abort and reboot
+
+put4:	pop bc	;else ignore it.
+	ret
+	ENDFUNC putcharsz,3
+
+	FUNCTION "GETS"
+        FUNCHEAD getssz
+	call	ma1toh	;get destination address
+	push bc	;save BC
+	push hl
+	push hl
+	ld hl,-150	;use space below stack for reading line
+	add hl,sp
+	push hl	;save buffer address
+	ld	(hl),88h	;Allow a max of about 135 characters
+	ld	c,getlin
+	ex de,hl		;put buffer addr in DE
+	call	bdos	;get the input line
+	ld	c,conout
+	ld	e,lf	;put out a LF
+	call	bdos
+	pop hl	;get back buffer address
+	inc hl	;point to returned char count
+	ld	b,(hl)	;set B equal to char count
+	inc hl	;HL points to first char of line
+	pop de	;DE points to start destination area
+copyls:	ld	a,b	;copy line to start of buffer
+	or	a
+_1=$+1
+	jp z,gets2s
+	ld	a,(hl)
+	ld (de),a
+	inc hl
+	inc de
+	dec	b
+_2=$+1
+	jp	copyls
+	
+gets2s:	xor	a	;store terminating null
+	ld (de),a
+	pop hl	;return buffer address in HL
+	pop bc
+	ret
+	ENDFUNC getssz,2
+
+;
+; Getline(str,lim)
+; char *str;
+;
+; Gets a line of text from the console, up to 'lim' characters.
+;
+
+	FUNCTION "GETLINE"
+        FUNCHEAD getlinesz
+	push bc	;save BC
+	call	ma3toh	;get max no. of chars
+	ld	c,a	;save max length in C
+	dec	c	;allow room for final terminating null
+	ld de,10	;allow a bit extra stack for good measure
+	add hl,de
+	call	cmh	;save amount of space to allocate on stack
+	push hl
+	call	ma3toh	;get destination address
+	ex (sp),hl		;push dest addr, get back stack offset
+	add hl,sp	;allocate space on stack
+	push hl	;save buffer address
+	ld	(hl),c	;Set max # of characters
+	ld	c,getlin
+	ex de,hl		;put buffer addr in DE
+	call	bdos	;get the input line
+	ld	c,conout
+	ld	e,lf	;put out a LF
+	call	bdos
+	pop hl	;get back buffer address
+	inc hl	;point to returned char count
+	ld	b,(hl)	;set B equal to char count
+	inc hl	;HL points to first char of line
+	pop de	;DE points to start destination area
+	ld	c,b	;save char count in C
+copylln:	ld	a,b	;copy line to start of buffer
+	or	a
+_1=$+1
+	jp z,gets2ln
+	ld	a,(hl)
+	ld (de),a
+	inc hl
+	inc de
+	dec	b
+_2=$+1
+	jp	copylln
+	
+gets2ln:	xor	a	;store terminating null
+	ld (de),a
+	ld	l,c	;return char count in HL
+	ld	h,0
+	pop bc
+	ret
+	ENDFUNC getlinesz,2
+
+	FUNCTION "RAND"
+        FUNCHEAD randsz
+	lhld	rseed
+	ex de,hl
+	ld	a,48h
+	and	e
+_1=$+1
+	jp z,rand1
+_2=$+1
+	jp pe,rand1
+	scf
+rand1:	lhld	rseed+2
+	ld	a,h
+	rla
+	ld	h,a
+	ld	a,l
+	rla
+	ld	l,a
+	shld	rseed+2
+	ld	a,d
+	rla
+	ld	h,a
+	ld	a,e
+	rla
+	ld	l,a
+	shld	rseed
+	ld	a,h
+	and	7fh
+	ld	h,a
+	ret
+	ENDFUNC randsz,2
+
+	FUNCTION "SRAND"
+        FUNCHEAD srandsz
+	call	ma1toh
+	ld	a,h
+	or	l
+_1=$+1
+	jp z,srand2
+	shld	rseed
+	shld	rseed+2
+	ret
+
+srand2:
+_2=$+1
+	ld de,stg1
+	push bc
+	ld	c,9
+	call	bdos
+	ld hl,0bdbdh
+srand3:	push hl
+	ld	c,11
+	call	bdos
+	pop hl
+	inc hl
+	inc hl
+	inc hl
+	and	1
+_3=$+1
+	jp z,srand3
+	shld	rseed
+	shld	rseed+2
+	ld	c,conout
+	ld	e,cr
+	call	bdos
+	ld	c,conout
+	ld	e,lf
+	call	bdos
+	ld	c,conin	;clear the character
+	call	bdos
+	pop bc
+	ret
+stg1:	db 'Wait a few seconds, and type a CR: $'
+	ENDFUNC srandsz,3
+
+
+
+	FUNCTION "SRAND1"
+	EXTERNAL "PUTS"
+        FUNCHEAD srand1sz
+_1=$+1
+        jp (1 +1)*3
+_puts=$
+        jp 0
+	call	ma1toh
+	push hl
+_2=$+1
+	call	_puts	;print prompt string
+	pop hl
+	push bc
+	ld hl,5678h
+sr1a:	push hl
+	ld	c,cstat
+	call	bdos
+	pop hl
+	inc hl
+	inc hl
+	inc hl
+	or	a
+_3=$+1
+	jp z,sr1a
+	shld	rseed
+	shld	rseed+2
+	pop bc
+	ret
+	ENDFUNC srand1sz,3
+
+	FUNCTION "NRAND"
+	EXTERNAL "PUTS"
+        FUNCHEAD nrandsz
+_1=$+1
+        jp (1 +1)*3
+_puts=$
+        jp 0
+	call	arghak
+	lhld	arg1	;get n (1st arg)
+	ld	a,h
+	and	l
+	cp	255	;was it -1 (set seed) ?
+_2=$+1
+	jp nz,nrand1
+	lhld	arg2	;copy seed
+_3=$+1
+	shld	seed
+	lhld	arg3
+_4=$+1
+	shld	seed+2
+	lhld	arg4
+_5=$+1
+	shld	seed+4	
+	ret		;all done
+
+nrand1:	push bc
+	ld	a,h	;look at first arg again
+	or	l
+_6=$+1
+	jp nz,nrand3	;is it 0 (randomize)?
+	lhld	arg2
+	push hl	;yes. print out string
+_7=$+1
+	call	_puts	;call	puts
+	pop de
+	ld hl,5a97h	;yes. start w/something odd
+nrand2:	push hl
+	ld	c,cstat	;interrogate console status
+	call	bdos
+	pop hl
+	inc hl	;and keep it odd
+	inc hl	;and growing
+	or	a
+_8=$+1
+	jp z,nrand2	;until user types something.
+_9=$+1
+	shld	seed	;then plaster the value all over the
+_10=$+1
+	shld	seed+2	;seed.
+_11=$+1
+	shld	seed+4
+	pop bc
+	ret
+
+nrand3:
+_12=$+1
+	lda	seed	;now compute next random number. from this
+	or	1	; point on, the code is that of Prof. Paul Gans
+_13=$+1
+	sta	seed	;lsb of SEED must be 1
+	
+	ld	b,6	;clear 6 PROD bytes to 0
+_14=$+1
+	ld hl,prod
+randm1:	ld	(hl),0
+	inc hl
+	dec	b
+_15=$+1
+	jp nz,randm1
+
+	ld bc,6	;set byte counter
+randm2:
+_16=$+1
+	ld hl,plier-1
+	add hl,bc	;make addr of lsb of PLIER
+	ld	a,(hl)	;PLIER byte
+	push bc	;save byte counter
+	ld	b,8	;set bit counter
+
+randm3:	ld	d,a	;save PLIER byte
+_17=$+1
+	ld hl,prod	;shift whole PROD left one bit
+	ld	c,6
+	xor	a
+randm4:	ld	a,(hl)	;get byte	
+	rla		;shift left
+	ld	(hl),a	;put byte
+	inc hl
+	dec	c
+_18=$+1
+	jp nz,randm4
+
+	ld	a,d	;recover PLIER byte
+	rla		;look at current high bit
+_19=$+1
+	jp nc,randm6	;0 means no add cycle
+
+	push	af	;add SEED to PROD
+	xor	a
+	ld	c,6
+_20=$+1
+	ld hl,prod
+_21=$+1
+	ld de,seed
+randm5:	ld a,(de)
+	adc	(hl)
+	ld	(hl),a
+	inc hl
+	inc de
+	dec	c
+_22=$+1
+	jp nz,randm5
+	pop	af
+
+randm6:	dec	b	;test bit counter
+_23=$+1
+	jp nz,randm3	;go cycle more bits
+	pop bc	;recover byte counter
+	dec	c	;test it
+_24=$+1
+	jp nz,randm2	;go process more bytes
+
+	ld	b,6	;complement PROD, add 1 to it,
+_25=$+1
+	ld hl,seed	;and transfer it to SEED.
+_26=$+1
+	ld de,prod
+	xor	a
+	ccf
+randm7:	ld a,(de)
+	cpl
+	adc a,0
+	ld	(hl),a
+	inc hl
+	inc de
+	dec	b
+_27=$+1
+	jp nz,randm7
+
+	dec hl	;put the two high order bytes
+	ld	a,(hl)	;into HL for return to C, not
+	and	7fh	;neglecting to zero the high
+	ld	h,a	;order bit so a positive int
+_28=$+1
+	lda	seed+4	;is returned
+	ld	l,a
+	pop bc
+	ret
+
+plier:	db	0c5h,87h,1
+	db	0eh,9ah,0e0h	
+
+seed:	db	1,0,0,0,0,0
+
+prod:	db	0,0,0,0,0,0
+	ENDFUNC nrandsz,28
+
+        if 1==1
+	FUNCTION "CSW"
+        FUNCHEAD cswsz
+	in a,(255) ;???
+	ld	l,a
+	ld	h,0
+	ret
+	ENDFUNC cswsz,0
+        endif
+
+	FUNCTION "SETMEM"
+        FUNCHEAD setmemsz
+	call	arghak
+	push bc
+	lhld	arg2
+	ex de,hl
+	lhld	arg1
+	lda	arg3
+	ld	c,a
+	inc de
+setm2:	dec de
+	ld	a,d
+	or	e
+_1=$+1
+	jp nz,setm3
+	pop bc
+	ret
+
+setm3:	ld	(hl),c
+	inc hl
+_2=$+1
+	jp	setm2
+	ENDFUNC setmemsz,2
+
+	FUNCTION "MOVMEM"
+        FUNCHEAD movmemsz
+	call	arghak
+	lhld	arg3	;get block length
+	ld	a,h
+	or	l
+	ret z		;do nothing if zero length
+	push bc
+	ld	b,h
+	ld	c,l	;set BC to length
+	lhld	arg2	;get dest addr
+	ex de,hl		;put in DE
+	lhld	arg1	;get source addr in HL
+	call	cmphd;movmcmphd	;if source < dest, do tail-first
+_1=$+1
+	jp c,tailf	;else do head-first
+
+headf:	ld	a,2	;test for Z-80
+	inc	a
+_2=$+1
+	jp pe,m8080h	;Z80?
+	db	0edh,0b0h	;yes. do block move.
+	pop bc
+	ret		;and done.
+
+m8080h:	ld	a,(hl)
+	ld (de),a
+	inc hl
+	inc de
+	dec bc
+	ld	a,b
+	or	c
+_3=$+1
+	jp nz,m8080h
+	pop bc
+	ret
+
+tailf:	dec bc	;tail first. Compute new source
+	add hl,bc	;and destination addresses
+	ex de,hl
+	add hl,bc
+	ex de,hl
+	inc bc
+	ld	a,2	;test for Z80
+	inc	a
+_4=$+1
+	jp pe,m8080t	;Z80?
+	db	0edh,0b8h	;yes. do block move.
+	pop bc
+	ret
+
+m8080t:	ld	a,(hl)
+	ld (de),a
+	dec hl
+	dec de
+	dec bc
+	ld	a,b
+	or	c
+_5=$+1
+	jp nz,m8080t
+	pop bc
+	ret
+;NU
+movmcmphd:	ld	a,h
+	cp	d
+	ret nz
+	ld	a,l
+	cp	e
+	ret
+	ENDFUNC movmemsz,5
+
+	FUNCTION "MEMCMP"
+        FUNCHEAD memcmpsz
+	call	ma3toh	;get length in HL
+	push bc	;save BC
+	ld	b,h
+	ld	c,l	;move length to BC
+	call	ma3toh	;get block2 address in HL
+	ex de,hl		;move to DE
+	call	ma2toh	;get block1 address in HL
+loop:	ld	a,b	;all done?
+	or	c
+_1=$+1
+	jp nz,loop1
+	ld hl,1	;if so, return TRUE, for perfect match
+	pop bc
+	ret
+
+loop1:	dec bc	;decrement count
+	ld a,(de)	;get block2 byte
+	cp	(hl)	;compare to block1 byte
+	inc de	;bump pointers
+	inc hl
+_2=$+1
+	jp z,loop	;if so far so good, go on comparing
+	ld hl,0	;else a mismatch
+	pop bc
+	ret
+	ENDFUNC memcmpsz,2
+
+	FUNCTION "CALL"
+        FUNCHEAD callsz
+	call	arghak
+	push bc
+	lhld	arg5
+	ex de,hl
+	lhld	arg4
+	ld	b,h
+	ld	c,l
+	lda	arg2
+_1=$+1
+	ld hl,call2
+	push hl
+	lhld	arg1
+	push hl
+	lhld	arg3
+	ret
+
+call2:	pop bc
+	ret
+	ENDFUNC callsz,1
+
+	FUNCTION "CALLA"
+        FUNCHEAD callasz
+	call	arghak
+	push bc
+	lhld	arg5	;get de value
+	ex de,hl
+	lhld	arg4	;get bc value
+	ld	b,h
+	ld	c,l
+	lda	arg2	;get a value
+_1=$+1
+	ld hl,calla2  ;get return address
+	push hl	;push	it
+	lhld	arg1	;get address of routine
+	push hl
+	lhld	arg3	;get hl value	
+	ret		;call	routine
+	
+calla2:	ld	l,a	;put A value in HL
+	ld	h,0	;clear high byte
+	pop bc
+	ret
+	ENDFUNC callasz,1
+
+	FUNCTION "INP"
+        FUNCHEAD inpsz
+	call	ma1toh
+	sta	iohack+1	;store as arg to ram area input subroutine
+	call	iohack		;call the subroutine to get value
+	ld	l,a		;and put into HL
+	ld	h,0
+	ret
+	ENDFUNC inpsz,0
+
+	FUNCTION "OUTP"
+        FUNCHEAD outpsz
+	call	ma1toh		;get port number
+	sta	iohack+4	;store as arg to ram area output subroutine
+	call	ma2toh		;get data byte
+	call	iohack+3	;output it
+	ret
+	ENDFUNC outpsz,0
+
+	FUNCTION "PEEK"
+        FUNCHEAD peeksz
+        call	ma1toh
+	ld	l,(hl)
+	ld	h,0
+	ret
+	ENDFUNC peeksz,0
+
+
+	FUNCTION "POKE"
+        FUNCHEAD pokesz
+	call	arghak
+	lhld	arg1
+	lda	arg2
+	ld	(hl),a
+	ret
+	ENDFUNC pokesz,0
+
+	FUNCTION "SLEEP"
+        FUNCHEAD sleepsz
+	call	ma1toh
+	push bc
+	inc hl
+sl1:	dec hl
+	ld	a,h
+	or	l
+_1=$+1
+	jp nz,sl1a
+	pop bc
+	ret
+
+sl1a:	ld de,10000
+sl2:	dec de
+	ld	a,d
+	or	e
+_2=$+1
+	jp nz,sl2
+	push hl
+	ld	c,cstat
+	call	bdos
+	or	a
+	pop hl
+_3=$+1
+	jp z,sl1
+	push hl
+	ld	c,conin
+	call	bdos
+	cp	cntrlc
+	jp z,exit
+	pop hl
+_4=$+1
+	jp	sl1
+	ENDFUNC sleepsz,4
+
+	FUNCTION "PAUSE"
+        FUNCHEAD pausesz
+	push bc
+paus1:	ld	c,cstat
+	call	bdos
+	or	a
+_1=$+1
+	jp z,paus1
+	pop bc
+	ret
+	ENDFUNC pausesz,1
+
+
+	FUNCTION "EXIT"
+        FUNCHEAD exitsz
+	jp	exit
+	ENDFUNC exitsz,0
+
+	FUNCTION "BDOS"
+        FUNCHEAD bdossz
+	call	arghak	
+	push bc
+	lda	arg1	;get C value
+	ld	c,a
+	lhld	arg2	;get DE value
+	ex de,hl		;put in DE
+	call	bdos	;make the bdos call
+	pop bc
+	ret		;and return to caller
+	ENDFUNC bdossz,0
+
+	FUNCTION "BIOS"
+        FUNCHEAD biossz
+	call	arghak	
+	push bc
+	lhld	base+1	;get addr of jump table + 3
+	dec hl	;set to addr of first jump
+	dec hl
+	dec hl
+	lda	arg1	;get function number (1-85)
+	ld	b,a	;multiply by 3
+	add	a
+	add	b
+	ld	e,a	;put in DE
+	ld	d,0
+	add hl,de	;add to base of jump table
+	push hl	;and save for later
+	lhld	arg2	;get value to be put in BC
+	ld	b,h	;and put it there
+	ld	c,l
+_1=$+1
+	ld hl,biosretadd	;where call to bios will return to
+	ex (sp),hl		;get address of vector in HL
+	jp (hl)		;and go to it...
+biosretadd:	ld	l,a	;all done. now put return value in HL
+	ld	h,0
+	pop bc
+	ret		;and return to caller
+	ENDFUNC biossz,1
+
+	FUNCTION "BIOSH"
+        FUNCHEAD bioshsz
+	call	arghak	
+	push bc
+	lhld	base+1	;get addr of jump table + 3
+	dec hl	;set to addr of first jump
+	dec hl
+	dec hl
+	lda	arg1	;get function number (1-85)
+	ld	b,a	;multiply by 3
+	add	a
+	add	b
+	ld	e,a	;put in DE
+	ld	d,0
+	add hl,de	;add to base of jump table
+	push hl	;and save for later
+
+	lhld	arg2	;get value to be put in BC
+	ld	b,h	;and put it there
+	ld	c,l
+
+	lhld	arg3	;get value to be put in DE
+	ld	d,h	;adn put it there
+	ld	e,l
+
+_1=$+1
+	ld hl,bioshretadd	;where call to bios will return to
+	ex (sp),hl		;get address of vector in HL
+	jp (hl)		;and go to it...
+bioshretadd:	pop bc	;all done. Leave return value in HL
+	ret		;and return to caller
+	ENDFUNC bioshsz,1
+
+	FUNCTION "CODEND"
+        FUNCHEAD codendsz
+	lhld	codend
+	ret
+	ENDFUNC codendsz,0
+
+        if 1==1
+	FUNCTION "EXTERNS"
+        FUNCHEAD externssz
+	lhld	extrns
+	ret
+	ENDFUNC externssz,0
+        endif
+
+	FUNCTION "ENDEXT"
+        FUNCHEAD endextsz
+	lhld	freram
+	ret
+	ENDFUNC endextsz,0
+
+	FUNCTION "TOPOFMEM"
+        FUNCHEAD topofmemsz
+	lhld	base+6
+	lda	tpa	;check for "NOBOOT" hackery
+	cp	0c3h	; "jp" at start of C.CCC (as inserted by "-n")?
+	dec hl	;if CCC doesn't begin with "ld hl," then top of
+	ret nz		;memory is just below the base of the bdos
+	ld de,-2100	;else subtract CCP size (plus little more for good
+	add hl,de	;measure) and return that as top of memory.
+	ret
+	ENDFUNC topofmemsz,0
+
+	FUNCTION "EXEC"
+	EXTERNAL "EXECL"
+        FUNCHEAD execsz
+_1=$+1
+        jp (1 +1)*3
+_execl=$
+        jp 0
+	call ma1toh	;get filename
+	ld de,0		;load null parameter in DE
+	push de		;push null parameter
+	push hl		;push filename
+_2=$+1
+	call _execl	;do an execl
+	pop de		;clean up stack
+	pop de
+	ret
+	ENDFUNC execsz,2
+
+
+	FUNCTION "EXECV"
+	EXTERNAL "EXECL"
+        FUNCHEAD execvsz
+_1=$+1
+        jp (1 +1)*3
+_execl=$
+        jp 0
+	call	arghak
+	push bc	;save BC
+	lhld	arg2	;get -> arg list
+	ld	b,0	;clear arg count
+execv1:	inc	b	;bump arg count
+	ld	e,(hl)
+	inc hl
+	ld	d,(hl)
+	inc hl
+	ld	a,d
+	or	e	;last arg?
+_2=$+1
+	jp nz,execv1	;if not, keep looking for last one
+
+	ld	a,b	;save arg count in case of error
+_3=$+1
+	sta	savcnt
+
+	dec hl	;HL -> next to last arg
+execv2:	ld	d,(hl)	;now push args on stack
+	dec hl
+	ld	e,(hl)
+	dec hl
+	dec 	b
+	push de
+_4=$+1
+	jp nz,execv2
+
+execv3:	lhld	arg1	;get program name
+	push hl	;save as first arg to execl
+_5=$+1
+	call	_execl	;go do it; shouldn't come back.
+_6=$+1
+	lda	savcnt	;woops, we're back. Must've been an error...
+	inc 	a	;bump to take prog name into consideration
+	add 	a
+	ld	l,a	;put size of passed parameter list
+	ld	h,0	;into HL, and adjust stack
+	add hl,sp
+	ld sp,hl
+	pop bc	;restore BC
+	ld hl,-1	;return error value
+	ret
+
+savcnt:	ds 	1	;save arg count here
+	ENDFUNC execvsz,6
+
+
+	FUNCTION "RBRK"
+        FUNCHEAD rbrksz
+	lhld	freram
+	shld	allocp
+	ENDFUNC rbrksz,0
+	
+
+	FUNCTION "SBRK"
+        FUNCHEAD sbrksz
+	call	ma1toh	;get # of bytes needed in HL
+	ld	a,h	;check for -1
+	and	l
+	inc	a
+_1=$+1
+	jp nz,sbrk2	;go to sbrk2 if HL wasn't FFFF
+
+	lhld	freram	;it WAS ffff: reset sbrk to base of free ram
+	shld	allocp
+	ret
+
+sbrk2:	ex de,hl		;put into DE
+	lhld	allocp	;get current allocation pointer
+	push hl	;save it
+	add hl,de	;get tentative last address of new segment
+_2=$+1
+	jp c,brkerr	;better not allow it to go over the top!
+	dec hl
+	ex de,hl		; now last addr is in DE
+	lhld	alocmx	;get safety factor
+	ld	a,h	;negate
+	cpl
+	ld	h,a
+	ld	a,l
+	cpl 
+	ld	l,a		
+	inc hl
+	add hl,sp	;get HL = (SP - alocmx)
+
+_3=$+1
+	call	cmpdh	;is DE less than HL?
+_4=$+1
+	jp nc,brkerr	;if not, can't provide the needed memory.
+	ex de,hl		;else OK.
+	inc hl
+	shld	allocp	;save start of next area to be allocated
+	pop hl	;get pointer to this area
+	ret		;and return with it.
+
+brkerr:	pop hl	;clean up stack
+	jp	error	;and return with -1 to indicate can't allocate.
+
+cmpdh:	ld	a,d
+	cp	h
+	ret c
+	ret nz
+	ld	a,e
+	cp	l
+	ret
+	ENDFUNC sbrksz,4
+
+	FUNCTION "RSVSTK"
+        FUNCHEAD rsvstksz
+	call	ma1toh	;get the value to reserve
+	shld	alocmx	;and set new safety factor
+	ret
+	ENDFUNC rsvstksz,0
+
+;
+; Index(str,substr)
+; char *str, *substr;
+;
+; Returns index of substr in str, or -1 if not found.
+;
+
+	FUNCTION "INDEX"
+        FUNCHEAD indexsz
+	call	arghak
+	lhld	arg1
+	ex de,hl		;main str ptr in DE
+	lhld	arg2	;substr ptr in HL
+	dec de
+index1:	inc de
+	ld a,(de)	;end of str?
+	or	a
+_1=$+1
+	jp nz,index2
+	ld hl,-1	;yes. not found.
+	ret
+index2:	cp	(hl)	;quick check for dissimilarity
+_2=$+1
+	jp nz,index1	;loop if not same right here
+	push de	;else do long compare
+	push hl
+index3:	inc hl
+	inc de
+	ld	a,(hl)	;end of substr?
+	or	a
+_3=$+1
+	jp nz,index4	;if not, go on testing
+	pop de	;else matches
+	pop de	;get starting address of substr in DE
+	lhld	arg1	;subtract beginning of str
+	call	cmh
+	add hl,de	;and return the result
+	ret
+
+index4:	ld a,(de)	;current char match?
+	cp	(hl)
+_4=$+1
+	jp z,index3	;if so, keep testing
+	pop hl	;else go on to next char in str
+	pop de
+_5=$+1
+	jp	index1
+	ENDFUNC indexsz,5
+
+
+        include "deff2b.csm"
+        include "deff2c.csm"
+
+       	FUNCTION "PUTS"
+	EXTERNAL "PUTCHAR"
+        FUNCHEAD putssz
+_1=$+1
+        jp (1 +1)*3
+_putchar=$
+        jp 0
+        push bc
+        ld hl,0
+        add hl,sp
+        ld b,h
+        ld c,l
+puts0:
+        call sdli ;short-displacement, double-byte local indirection
+        db 4 ;shift from bc
+        ld l,(hl)
+        ld a,l
+        or a
+_2=$+1
+        jp z,putsq
+        ld hl,4
+        add hl,bc
+        ld e,(hl)
+        inc hl
+        ld d,(hl)
+        inc de
+        ld (hl),d
+        dec hl
+        ld (hl),e
+        dec de
+        ex de,hl
+        ld l,(hl)
+        ld h,0
+        push hl
+_3=$+1
+        call _putchar
+        pop de
+_4=$+1
+        jp puts0
+putsq:
+        pop bc
+	ret
+	ENDFUNC putssz,4
+
+
+;
+; Read:
+;
+;	i = read(fd, buf, n);
+;
+; Read a number of sectors using random-record I/O.
+;
+; The return value is either the number of sectors successfully
+; read, 0 for EOF, or -1 on error with errno() returning the error
+; code (or errmsg(errno()) returning a pointer to an error message).
+; 
+; The Random Record Field is incremented following each successful
+; sector is read, just as if the normal (sequential) read function
+; were being used. "seek" must be used to go back to a previous 
+; sector.
+;
+;NOW RETURNS NUMBER OF BYTES, NOT SECTORS!!!
+
+        if NEDOOS
+	FUNCTION "READ"
+        FUNCHEAD readsz
+	call arghak
+	lda	arg1
+	call	fgfd ;compute fd address for fd in A: ;return hl=fd addr
+        push bc
+        ld b,(hl)
+	ld de,(arg2)
+	ld hl,(arg3)
+        OS_READHANDLE
+        pop bc
+        or a
+        ret z
+        ld hl,-1
+        ret
+	ENDFUNC readsz,0
+        
+        else
+
+	FUNCTION "READ"
+        FUNCHEAD readsz
+	call	arghak
+	lda	arg1
+	call	fgfd
+	ld	d,(hl)	;save fdt entry in D
+	ld	a,7	;prepare for possible "bad fd"
+         or a
+_1=$+1
+	jp c,rerror
+
+	;ld	a,d
+	;and	2 ;4wr
+	ld	a,8 ;9wr	;prepare for possible "no read permission"
+         or a
+_2=$+1
+	jp z,rerror
+
+	push bc
+	;ld	a,d	;get fd table entry
+	;call	setusr	;set user area to that of the file
+
+	lda	arg1	;get fd
+	call	fgfcb
+	shld	tmp2	;save fcb address
+	ld hl,0
+	shld	tmp2a
+         lhld	arg3
+         add hl,hl
+         ld l,h
+         ld h,0
+         shld arg3 ;size/128
+r2:	lhld	arg3	;get countdown
+	ld	a,h
+	or	l	;done?
+
+r2aa:	lhld	tmp2a
+_3=$+1
+	jp nz,r2a
+r2done128:
+         xor a
+         srl h
+         rr l
+         rra
+         ld h,l
+         ld l,a ;count*128
+r2done:	;call	rstusr	;reset user number
+	pop bc	;yes. return with success count in HL
+	ret
+
+r2a:	lhld	arg2	;get transfer addr in DE
+	ex de,hl
+	ld	c,sdma	;set DMA there
+	call	bdos
+
+	lhld	tmp2
+	ex de,hl
+	;ld	c,readr	;code for BDOS random read
+	push de	;save DE so we can fudge nr field if
+	;call	bdos	;we stop reading on extent boundary...
+         OS_FREAD
+	pop de
+	or	a
+_4=$+1
+	jp z,r4	;go to r4 if no problem
+
+	cp 128 ;0 bytes read in NedoOS ;cp	1	;ok, we have SOME kind of hangup...
+_5=$+1
+	jp nz,r2b ;jp z,r2b	;check for EOF condition:
+	cp	4	;  error codes 1 and 4 both indicate reading
+_6=$+1
+	jp z,r2b	;  unwritten data..treat as EOF
+
+	ld	b,a	;have we successfully read anything yet?
+	lda	tmp2a
+	or 	a
+	ld	b,a	;get error code back in A	
+_7=$+1
+	jp nz,r2c	;if we have read something in, don't set errnum
+	sta	errnum	;otherwise nothing read, so set error code.
+
+r2c:	ld hl,-1	;put ERROR value in HL
+_8=$+1
+	jp	r2done
+
+r2b:	lhld	tmp2a	;return count
+         inc hl ;for NedoOS: we have read at least 1 byte in the last sector
+_9=$+1
+	jp	r2done128
+
+r4:	lhld	arg3	;decrement countdown
+	dec hl
+	shld	arg3
+	lhld	arg2	;bump DMA address
+	ld de,128
+	add hl,de
+	shld	arg2
+	lhld	tmp2a	;bump success count
+	inc hl
+	shld	tmp2a
+        
+	lhld	tmp2	;get address of fcb
+	ld bc,33	;get addr of random record field
+	add hl,bc
+	ld	c,(hl)	;bump
+	inc hl	;    value
+	ld	b,(hl)	;	  of 
+	inc bc	;	    random
+	ld	(hl),b	;		  field
+	dec hl	;			by one
+	ld	(hl),c
+	ld	a,b	;overflow past 16-bit record count?
+	or	c
+_10=$+1
+	jp nz,r2	; go for next sector if no overflow
+	inc hl	;else set 3rd byte of random sector count
+	inc hl
+	ld	(hl),1
+	ld	a,14	;"seek past 65536th record of file"
+	sta	errnum
+_11=$+1
+	jp	r2aa	;and don't read any more.
+
+rerror:	sta	errnum
+	jp	error
+	ENDFUNC readsz,11
+        endif
+
+;zzz
+        if 1==1
+	FUNCTION "SETJMP"
+        FUNCHEAD setjmpsz
+	call	ma1toh
+	ld	(hl),c	;save BC
+	inc hl
+	ld	(hl),b
+	inc hl
+	ex de,hl
+	ld hl,0
+	add hl,sp
+	ex de,hl
+	ld	(hl),e	;save SP
+	inc hl
+	ld	(hl),d
+	inc hl
+	pop de	;save return address
+	push de
+	ld	(hl),e
+	inc hl
+	ld	(hl),d
+	ld hl,0	;and return 0
+	ret
+	ENDFUNC setjmpsz,0
+        endif
+
+        if 1==1
+	FUNCTION "LONGJMP"
+        FUNCHEAD longjmpsz
+	call	ma1toh	;get buffer address
+	ld	c,(hl)	;restore BC
+	inc hl
+	ld	b,(hl)
+	inc hl
+	ld	e,(hl)	;restore SP...first put it in DE
+	inc hl
+	ld	d,(hl)
+	inc hl
+	shld	tmp2	;save pointer to return address
+	call	ma2toh	;get return value
+	ex de,hl		;put return val in DE, old SP in HL
+	ld sp,hl		;restore SP with old value
+	pop hl	;pop return address off stack
+	lhld	tmp2	;get back ptr to return address
+	ld	a,(hl)
+	inc hl
+	ld	h,(hl)
+	ld	l,a	;HL holds return address
+	ex de,hl		;put ret addr in DE, get return value in HL
+	push de	;push return address on stack
+	ret		;and return...
+	ENDFUNC longjmpsz,0
+        endif
+        ;display $-zzz
+        ;ds 0;66
+
+        ;include "deffgfx.csm"
+        ;align 128 ;doesn't help
+
+end
+	savebin "deff2.crl",begin,end-begin
+	
+	LABELSLIST "../../us/user.l"

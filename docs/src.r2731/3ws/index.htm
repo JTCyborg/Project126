@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Cache-Control" content="no-cache">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>ZX-filemanager</title>
+<!-- Packed UI. Sources: src/3ws/  Rebuild: python src/3ws/pack.py -->
+<style>
+body{margin:0;background:#f4f6f8;color:#1f2933;font:15px/1.45 "Segoe UI",system-ui,sans-serif}
+a{color:#e8742a}
+#boot,#alt{margin:0;padding:16px}
+#alt{padding-top:0;font-size:13px}
+</style>
+</head>
+<body>
+<p id="boot">Загрузка… <b id="pct"></b></p>
+<p id="alt"><a id="old" href="legacy/index.htm">Старая версия</a></p>
+<script>
+(function () {
+	function legacyUrl() {
+		var path = location.pathname || '/';
+		var base = path.replace(/\/index\.htm?$/i, '/').replace(/\/legacy(\/[^/]*)?\/?$/i, '/');
+		if (base.charAt(base.length - 1) !== '/') {
+			base += '/';
+		}
+		return base + 'legacy/index.htm';
+	}
+	var oldLink = document.getElementById('old');
+	if (oldLink) {
+		oldLink.href = legacyUrl();
+	}
+	try {
+		if (localStorage.getItem('3ws-ui-version') === 'legacy') {
+			location.replace(legacyUrl());
+			return;
+		}
+	} catch (e) {}
+	var boot = document.getElementById('boot');
+	var pct = document.getElementById('pct');
+	function fail(msg) {
+		boot.innerHTML = msg + ' <a href="' + legacyUrl() + '">Старая версия</a>';
+	}
+	if (typeof DecompressionStream === 'undefined') {
+		fail('Этот браузер не умеет распаковать страницу.');
+		return;
+	}
+	var x = new XMLHttpRequest();
+	x.open('GET', 'ui.bin', true);
+	x.responseType = 'arraybuffer';
+	try {
+		x.setRequestHeader('Cache-Control', 'no-cache');
+	} catch (e1) {}
+	x.onprogress = function (ev) {
+		if (!pct) {
+			return;
+		}
+		if (ev.lengthComputable && ev.total) {
+			pct.textContent = Math.floor(ev.loaded * 100 / ev.total) + '%';
+		} else if (ev.loaded) {
+			pct.textContent = Math.floor(ev.loaded / 1024) + ' KB';
+		}
+	};
+	x.onload = function () {
+		var ok = (x.status >= 200 && x.status < 300) || (x.status === 0 && x.response && x.response.byteLength);
+		if (!ok) {
+			fail('Ошибка загрузки.');
+			return;
+		}
+		if (pct) {
+			pct.textContent = '…';
+		}
+		var blob = new Blob([x.response]);
+		new Response(blob.stream().pipeThrough(new DecompressionStream('gzip'))).text().then(function (html) {
+			document.open();
+			document.write(html);
+			document.close();
+		}).catch(function () {
+			fail('Ошибка распаковки.');
+		});
+	};
+	x.onerror = function () {
+		fail('Ошибка загрузки.');
+	};
+	x.send(null);
+})();
+</script>
+</body>
+</html>

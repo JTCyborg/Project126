@@ -1,0 +1,556 @@
+;
+; LONG function for long integer package:
+;
+
+	;INCLUDE "bds.lib"
+
+
+ 	FUNCTION "LONG"
+        FUNCHEAD longsz
+
+; temporary storage is allocated in the
+; "args" area of the run-time environment
+
+u	equ  args	;temporary quad storage (4 bytes)
+uh	equ  u		;high word of u
+ul	equ  u+2	;low word of u
+mq	equ  u+4	;temporary quad storage used by
+			;multiplication and division routines
+temp	equ  mq+4	;temporary storage byte used by div'n routine
+
+
+; long is main routine which dispatches to the various functions
+; of the package according to the value of its first argument
+;long:
+	push bc		;save for benefit of caller
+	call ma2toh	;get 1st arg (function code) into HL and A
+	ld  d,h
+	ld  e,l
+	add hl,hl
+	add hl,de		;HL now has triple the function code
+_1=$+1
+	ld de,jtab	;base of jump table
+	add hl,de
+	jp (hl)		;dispatch to appropriate function
+
+jtab:
+_2=$+1
+	jp  lmake	;jump table for quad functions
+_3=$+1
+	jp  lcomp
+_4=$+1
+	jp  ladd
+_5=$+1
+	jp  lsub
+_6=$+1
+	jp  lmul
+_7=$+1
+	jp  ldiv
+_8=$+1
+	jp  lmod
+
+
+; lmake converts integer (arg3) to a long (arg2)
+
+lmake:	call ma4toh	;get arg3 into HL
+	ld  a,h	;look at sign first
+	or  a
+	push af	;save it
+	call m,cmh	;take abs value
+	ex de,hl		;into (DE)
+	ld bc,0	;zero out high word
+	pop  af
+_9=$+1
+	call m,qneg	;complement if necessary
+_10=$+1
+	jp  putarg	;copy result into arg2 and return
+
+;all other routines copy their arguments into the quad register (BCDE)
+;and the temporary quad storage location u  (note that temporary storage
+;must be used to keep the routines from clobbering the user's arguments)
+
+
+;lcomp compares arg2 with arg3, returns -1, 0, 1 for <, =, >, resp
+
+lcomp:  call ma3toh	;get pointer to arg2
+_11=$+1
+	call qld	
+	ld hl,u
+_12=$+1
+	call qst	;arg2 now in u
+	call ma4toh	;get pointer to arg3
+_13=$+1
+	call qld	;arg3 now in (BCDE)
+	ld hl,-1	;presume <
+_14=$+1
+	call qsub
+_15=$+1
+	call qtst
+	pop bc		;restore bc for caller
+	ret m
+	inc hl
+	ret z
+	inc hl
+	ret
+
+; long addition
+
+ladd:
+_16=$+1
+	call getargs	;get args into (BCDE) and u
+_17=$+1
+	call qadd	;do the addition
+_18=$+1
+	jp  putarg	;copy result into arg2 and return
+
+lsub:
+_19=$+1
+	call getargs
+_20=$+1
+	call qsub
+_21=$+1
+	jp  putarg
+
+lmul:
+_22=$+1
+	call getargs
+_23=$+1
+	call qmul
+_24=$+1
+	jp  putarg
+
+ldiv:
+_25=$+1
+	call getargs
+_26=$+1
+	call qdiv
+_27=$+1
+	jp  putarg
+
+lmod:
+_28=$+1
+	call getargs
+_29=$+1
+	call qmod
+_30=$+1
+	jp  putarg
+
+;getargs gets arg3 into u, arg4 into (BCDE)
+
+getargs:
+	call ma5toh		;get ptr to arg3 (note use ma5 cause of 
+				;return addr on stack)
+_31=$+1
+	call qld		;arg3 now in (BCDE)
+	ld hl,u
+_32=$+1
+	call qst		;now in u
+	call ma6toh		;get ptr to arg4
+_33=$+1
+	jp  qld		;arg4 now in (BCDE)
+
+
+; putarg copies (BCDE) into result arg (arg2) and cleans up
+
+putarg:	call ma3toh		;get pointer to arg2
+_34=$+1
+	call qst		;copy (BCDE) into it
+	pop bc			;restore BC for caller
+	ret
+
+
+
+; quad subtraction  u - (BCDE) -> (BCDE)
+
+qsub:
+_35=$+1
+	call qneg  	;complement (BCDE) and fall thru to add
+
+; quad addition     u + (BCDE) -> (BCDE)
+
+qadd:   push hl
+	ld hl,u+3	;tenSHUN
+	ld  a,(hl)	;hup
+	add  e		;two
+	ld  e,a	;three
+	dec hl		;four
+	ld  a,(hl)	;hup
+	adc  d		;two
+	ld  d,a	;three
+	dec hl		;four
+	ld  a,(hl)	;hup
+	adc  c		;two
+	ld  c,a	;three
+	dec hl		;four
+	ld  a,(hl)	;hup
+	adc  b		;two
+	ld  b,a	;three
+	pop hl		;four
+	ret		;at ease	
+	
+
+; two's complement (BCDE)
+
+qneg:	push hl
+	xor  a
+	ld  l,a
+	sbc  e
+	ld  e,a
+	ld  a,l
+	sbc  d
+	ld  d,a
+	ld  a,l
+	sbc  c
+	ld  c,a
+	ld  a,l
+	sbc  b
+	ld  b,a
+	pop hl
+	ret
+
+
+qneghl: push bc
+	push de
+_36=$+1
+	call qld
+_37=$+1
+	call qneg
+_38=$+1
+	call qst
+	pop de
+	pop bc
+	ret
+
+; signed quad multiplication
+; u * (BCDE) --> (BCDE)
+
+qmul:
+_39=$+1
+	call csign			;take abs values and compute signs
+	push af			;save result sign
+_40=$+1
+	call uqmul			;compute product
+qmul1:	pop  af
+_41=$+1
+	jp m,qneg			;complement product if needed
+	ret
+
+; csign takes abs vals of u, (BCDE), and computes product of their signs
+
+csign:	ld  a,b			;look at (BCDE) first
+	or  a
+	push af			;save flags
+_42=$+1
+	call m,qneg			;complement if needed
+	ld hl,u			;now look at u
+	ld  a,(hl)
+	or  a
+_43=$+1
+	jp p,csign1
+_44=$+1
+	call qneghl
+	pop  af
+	xor  80h			;flip sign
+	ret
+csign1:	pop af
+	ret
+
+; unsigned quad multiplication 
+; u * (BCDE) --> (BCDE)	    (expects ptr. to u in (HL)
+
+uqmul:	ld hl,u
+	push hl				;put pointer to u on stack
+	ld hl,mq
+_45=$+1
+	call qst			;(BCDE) -> mq
+	ld bc,0			;init product to 0
+	ld de,0
+uqmul1:
+_46=$+1
+	call qtsthl			;test if mq is 0
+_47=$+1
+	jp z,uqmul2			;if so, done
+	xor  a				;clear carry
+_48=$+1
+	call qrarhl			;shift mq over
+_49=$+1
+	call c,qadd			;add u to (BCDE) if lsb=1
+	ex (sp),hl				;get pointer to u
+	xor  a				;clear carry
+_50=$+1
+	call qralhl			;double u
+	ex (sp),hl				;get back pointer to mq
+_51=$+1
+	jp  uqmul1
+uqmul2:	pop hl				;restore stack
+	ret
+
+; signed division  u / (BCDE) --> (BCDE)
+
+qdiv:
+_52=$+1
+	call qtst			;first test for zero divisor
+	ret z
+_53=$+1
+	call csign			;take care of signs
+	push af			;save quotient sign
+_54=$+1
+	call uqdiv
+_55=$+1
+	call qld			;get quotient in (BCDE)
+_56=$+1
+	jp  qmul1			;adjust sign of result
+
+;  signed remainder  u mod (BCDE) --> (BCDE)
+
+qmod:
+_57=$+1
+	call qtst			;test for zero modulus
+	ret z
+	lda u				;sign of u is that of result
+	or  a
+	push af			;save flags
+_58=$+1
+	call csign			;get abs val of args
+_59=$+1
+	call uqdiv			;remainder in (BCDE)
+_60=$+1
+	jp  qmul1
+
+
+;  unsigned division  u / (BCDE) --> mq, remainder in (BCDE)
+
+
+
+uqdiv:	ld hl,mq			;mq will contain quotient
+_61=$+1
+	call qclrhl			;clear it
+	push hl				;save it on the stack
+
+	ld  l,1			;now normalize divisor
+uqdiv1:	ld  a,b			;look at most signif non-sign bit
+	and  40h
+_62=$+1
+	jp nz,uqdiv2
+_63=$+1
+	call qral			;if not 1, shift left
+	inc  l
+_64=$+1
+	jp  uqdiv1
+uqdiv2:	ld  a,l
+	sta  temp			;save normalization count
+	ld hl,u			
+_65=$+1
+	call qxchg			;want divid in (BCDE), divisor in u
+	ex (sp),hl				;pointer to mq in (HL), u on stack
+
+;main loop
+
+uqdiv3:
+_66=$+1
+        call trial			;trial subtraction of divisor
+_67=$+1
+	call qralhl			;shift in the carry
+	lda  temp			;get the count
+	dec  a
+_68=$+1
+	jp z,uqdiv4			;done
+	sta  temp			;save count again
+	ex (sp),hl				;divisor in (HL)
+	xor  a
+_69=$+1
+	call qrarhl			;shift it right one
+	ex (sp),hl				;quotient in (HL)
+_70=$+1
+	jp  uqdiv3
+
+uqdiv4: inc sp
+	inc sp				;clean off top of stack
+	ret
+
+
+trial:
+_71=$+1
+	call qsub			;subtract divid from divisor
+_72=$+1
+	call qneg			;actually want divisor from divid
+	scf				;assume was positive
+	ret p
+_73=$+1
+	call qadd			;else must restore dividend
+	xor  a				;clear carry
+	ret
+
+
+;
+; routines to manipulate quads
+;
+; qld loads the quad pointed to by (HL) into (BCDE)
+
+qld:	push hl
+	ld b,(hl)
+	inc hl
+	ld c,(hl)
+	inc hl
+	ld d,(hl)
+	inc hl
+	ld e,(hl)
+	pop hl
+	ret
+
+; qst is inverse of qld
+
+qst:	push hl
+	ld (hl),b
+	inc hl
+	ld (hl),c
+	inc hl
+	ld (hl),d
+	inc hl
+	ld (hl),e
+	pop hl
+	ret
+
+
+
+; rotate  (BCDE) right thru carry
+
+qrar:	ld a,b
+	rra
+	ld b,a
+	ld a,c
+	rra
+	ld c,a
+	ld a,d
+	rra
+	ld d,a
+	ld a,e
+	rra
+	ld e,a
+	ret
+
+; same for quad pointed to by (HL)
+
+qrarhl:	push hl
+	ld a,(hl)
+	rra
+	ld (hl),a
+	inc hl
+	ld a,(hl)
+	rra
+	ld (hl),a
+	inc hl
+	ld a,(hl)
+	rra
+	ld (hl),a
+	inc hl
+	ld a,(hl)
+	rra
+	ld (hl),a
+	pop hl
+	ret
+
+
+; rotate (BCDE) left thru carry
+
+qral:	ld a,e
+	rla
+	ld e,a
+	ld a,d
+	rla
+	ld d,a
+	ld a,c
+	rla
+	ld c,a
+	ld a,b
+	rla
+	ld b,a
+	ret
+
+; qralhl does it for quad pointed to by (HL)
+
+qralhl:	inc hl
+	inc hl
+	inc hl				;get to rightmost byte
+	ld a,(hl)
+	rla
+	ld (hl),a
+	dec hl
+	ld a,(hl)
+	rla
+	ld (hl),a
+	dec hl
+	ld a,(hl)
+	rla
+	ld (hl),a
+	dec hl
+	ld a,(hl)
+	rla
+	ld (hl),a
+	ret
+	
+
+;qclrhl clears quad pointed to by (HL)
+
+qclrhl:	push hl
+	xor a
+	ld (hl),a
+	inc hl
+	ld (hl),a
+	inc hl
+	ld (hl),a
+	inc hl
+	ld (hl),a
+	pop hl
+	ret
+
+
+; qtst tests sign of (BCDE), setting the usual flags
+
+qtst:	ld  a,b			;look at most signif byte
+	or  a
+	ret nz
+	or  c				;test for zero
+	or  d
+	or  e
+qtst1:	ret p
+	ld  a,1
+	or  a  
+	ret
+	
+qtsthl:	ld  a,(hl)
+	or  a
+	ret nz
+	push hl
+	inc hl
+	or  (hl)
+	inc hl
+	or  (hl)
+	inc hl
+	or  (hl)
+	pop hl
+_74=$+1
+	jp  qtst1
+
+; swap (BCDE) with thing pointed to by HL
+
+qxchg:	push hl
+	ld  a,(hl)
+	ld  (hl),b
+	ld  b,a
+	inc hl
+	ld  a,(hl)
+	ld  (hl),c
+	ld  c,a
+	inc hl
+	ld  a,(hl)
+	ld  (hl),d
+	ld  d,a
+	inc hl
+	ld  a,(hl)
+	ld  (hl),e
+	ld  e,a
+	pop hl
+	ret
+
+	ENDFUNC longsz,74

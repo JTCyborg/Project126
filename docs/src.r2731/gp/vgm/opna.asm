@@ -1,0 +1,263 @@
+opnawritemusiconlyfm1
+;e = register
+;d = value
+	ld a,e
+	cp 0x30
+	jp nc,opnawritefm1
+	cp 0x0e
+	jp c,opnawritefm1
+	cp 0x22
+	jr c,.rhythm
+	jp z,opnawritefm1
+;block timers but no need to block the prescaler since OPNA PC-98 sound cards
+;behave the same as the RE2-2608 so VGMs can adjust it as they like
+	cp 0x28
+	jp nc,opnawritefm1
+	ret
+.rhythm	cp 0x1e
+	ret nc
+	cp 0x12
+	ret z
+	cp 0x10
+	jp nz,opnawritefm1
+	call opnawritefm1
+	dec a
+	jr nz,$-1
+	ret
+
+opnawritemusiconlyfm2
+;e = register
+;d = value
+	ld a,e
+	cp 0x0c
+	ret z
+	cp 0x0d
+	ret z
+	cp 0x06
+	jp nc,opnawritefm2
+	add a,a
+	add a,e
+	ld (opnafm2commandtable+1),a
+opnafm2commandtable
+	jr $
+	jp opnawritectrl1 ; control 1       (00)
+	jp opnawritectrl2 ; control 2       (01)
+	jp opnawritefm2   ; start addr low  (02)
+	jp opnawritefm2   ; start addr high (03)
+	jp opnawritefm2   ; stop addr low   (04)
+	jp opnawritefm2   ; stop addr high  (05)
+
+opnawritectrl1
+	ld a,d
+	and %10110001
+	ld d,a
+	jp opnawritefm2
+
+opnawritectrl2
+	ld a,d
+	and 0x03
+	call z,opnasetnoconversionhandlers
+	call nz,opnasetconversionhandlers
+	ld a,d
+	and %11000100
+	ld d,a
+	jp opnawritefm2
+
+opnaconvertstartlo
+	ld a,d
+	ld (opnastartaddr),a
+opnawriteconvertedstartaddr
+opnastartaddr=$+1
+	ld hl,0
+	add hl,hl
+	add hl,hl
+	add hl,hl
+	ld d,l
+	ld e,0x02
+	call opnawritefm2
+	ld d,h
+	inc e
+	jp opnawritefm2
+
+opnaconvertstarthi
+	ld a,d
+	ld (opnastartaddr+1),a
+	jr opnawriteconvertedstartaddr
+
+opnaconvertstoplo
+	ld a,d
+	ld (opnastopaddr),a
+opnawriteconvertedstopaddr
+opnastopaddr=$+1
+	ld hl,0
+	add hl,hl
+	add hl,hl
+	add hl,hl
+	ld d,l
+	ld e,0x04
+	call opnawritefm2
+	ld d,h
+	inc e
+	jp opnawritefm2
+
+opnaconvertstophi
+	ld a,d
+	ld (opnastopaddr+1),a
+	jr opnawriteconvertedstopaddr
+
+vgmopnainit
+	call opnainit
+	jr opnasetnoconversionhandlers
+
+	macro opna_set_adpcm_register_handler reg,handler
+	ld hl,handler
+	ld (opnafm2commandtable+3+reg*3),hl
+	endm
+
+opnasetnoconversionhandlers
+	opna_set_adpcm_register_handler 2,opnawritefm2
+	opna_set_adpcm_register_handler 3,opnawritefm2
+	opna_set_adpcm_register_handler 4,opnawritefm2
+	opna_set_adpcm_register_handler 5,opnawritefm2
+	ret
+
+opnasetconversionhandlers
+	opna_set_adpcm_register_handler 2,opnaconvertstartlo
+	opna_set_adpcm_register_handler 3,opnaconvertstarthi
+	opna_set_adpcm_register_handler 4,opnaconvertstoplo
+	opna_set_adpcm_register_handler 5,opnaconvertstophi
+	ret
+
+opnaloaddatablock
+;dhl = data+header size
+	push de
+	push hl
+	call turnturbooff
+	pop hl
+	pop de
+;continue uploading at 3.5Mhz
+	exx
+	call memorystreamread4 ;adbc = total ram size
+	call memorystreamread4 ;adbc = start address
+	exx
+	ld bc,8
+	call sub24x16
+	jp z,turnturboon
+	call setup24bitscounterloop
+	ex de,hl
+	ld e,b
+	exx
+;address in 4-byte blocks for 1-bit RAM mode
+	srl d : rr bc
+	srl d : rr bc
+	push bc
+	ld de,0x0100
+	call opnawritefm2
+	ld de,0x6000
+	call opnawritefm2
+	ld de,0x0001
+	call opnawritefm2
+	pop hl
+	ld d,l : ld e,0x02
+	call opnawritefm2
+	ld d,h : ld e,0x03
+	call opnawritefm2
+	ld de,0xff04
+	call opnawritefm2
+	ld de,0xff05
+	call opnawritefm2
+	ld de,0xff0c
+	call opnawritefm2
+	ld de,0xff0d
+	call opnawritefm2
+;start uploading the data
+	ld bc,OPNA2_DAT
+	ld hl,(memorystreamcurrentaddr)
+	exx
+	ld bc,OPNA2_REG
+	in f,(c)
+	jp m,$-2
+	ld a,0x08
+	out (c),a
+.uploadloop
+	in f,(c)
+	jp m,$-2
+	exx
+	memory_stream_read_byte a
+	out (c),a
+	exx
+	dec e
+	jr nz,.uploadloop
+	dec hl
+	ld a,h
+	or l
+	jr nz,.uploadloop
+	exx
+	ld (memorystreamcurrentaddr),hl
+	ld de,0x0100
+	call opnawritefm2
+	jp turnturboon
+
+opnasettimer
+;a = rate in hz
+;output: zf=1 if timer is set, zf=0 otherwise
+;TODO: why the timers are behaving as if master clock is 4Mhz?
+	cp 14
+	ret c
+	push af
+	call settimerstep
+	ld hl,opnawaittimer
+	ld (waittimercallback),hl
+	pop af
+	ld de,0x000f
+	ld hl,0x4240
+	exx
+	ld c,a
+	ld b,0
+	cp 56
+	jr c,.usetimerb
+	ld de,18
+	call uintmul16
+	exx
+	call uintdiv32
+	xor a
+	sub l
+	ld l,a
+	sbc a,h
+	sub l
+;high 8 bits
+	ld d,l
+	rrca : rr d
+	rrca : rr d
+	ld e,0x24
+	call opnawritefm1
+;low 2 bits
+	ld d,l
+	inc e
+	call opnawritefm1
+	ld de,0x1527
+	call opnawritefm1
+	xor a
+	ret
+.usetimerb
+	ld de,288
+	call uintmul16
+	exx
+	call uintdiv32
+	xor a
+	sub l
+	ld d,a
+	ld e,0x26
+	call opnawritefm1
+	ld de,0x2a27
+	call opnawritefm1
+	xor a
+	ret
+
+opnawaittimer
+	ld bc,OPNA1_REG
+	in a,(c)
+	and 3
+	jr z,$-4
+	ld de,0x8010
+	jp opnawritefm2

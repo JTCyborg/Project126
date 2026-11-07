@@ -1,0 +1,73 @@
+
+tnvcmds
+        db key_redraw
+        db key_enter
+        db key_backspace
+        db key_del
+        db key_left
+        db key_right
+        db key_down
+        db key_up
+        db key_esc
+        db key_tab
+	db ss1;'!'
+	db ss2;'@'
+	db ss3;'#'
+	db ss4;'$'
+        db '0'
+        db '1'
+        db '2'
+        db '3'
+        db '4'
+        db '5'
+        db '6'
+        db '7'
+        db '8'
+        db '9'
+        db key_csenter
+        db ' '
+        db key_pgup
+        db key_pgdown
+        db ss5;'%'
+        db extA;'*'
+        db key_home
+        db key_end
+	db key_F10,key_F1,key_F2,key_F3,key_F4,key_F5,key_F6,key_F7,key_F8,key_F9,key_ins
+nnvcmds=$-tnvcmds
+	dw editcmd_space,editcmd_menu,editcmd_F8,editcmd_F7,editcmd_F6,editcmd_F5,editcmd_F4,editcmd_F3,editcmd_F2,editcmd_F1,editcmd_quit
+        dw editcmd_End
+        dw editcmd_Home
+        dw editcmd_invfiles
+        dw editcmd_ss5
+        dw editcmd_pageDown
+        dw editcmd_pageUp
+	dw editcmd_space
+	dw editcmd_typeword
+        dw editcmd_9
+        dw editcmd_8
+        dw editcmd_7
+        dw editcmd_6
+        dw editcmd_5
+        dw editcmd_4
+        dw editcmd_3
+        dw editcmd_2
+        dw editcmd_1
+	dw editcmd_0
+        dw editcmd_ss4
+        dw editcmd_ss3
+        dw editcmd_ss2
+        dw editcmd_ss1
+        dw editcmd_tab
+       if PRSTDIO
+        dw reter;editcmd_quit
+       else
+        dw editcmd_showscr
+       endif
+        dw editcmd_up
+        dw editcmd_down
+        dw editcmd_right
+        dw editcmd_left
+        dw editcmd_del
+        dw editcmd_backspace
+        dw editcmd_enter
+        dw editcmd_reprintall_keepcursor
