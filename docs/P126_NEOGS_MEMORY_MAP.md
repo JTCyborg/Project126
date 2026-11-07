@@ -146,7 +146,7 @@ This is a source implementation. After the page-42 frame passes the complete ABI
 
 The first overlay slice moves `neogs_sub/x86_io.asm` out of the 16 KiB resident image:
 
-- Resident `X86CORE.C`: 15,750 bytes (limit 16,384; 634 bytes remain).
+- Resident `X86CORE.C`: 15,756 bytes (limit 16,384; 634 bytes remain).
 - Overlay `X86IO.C`: 796 bytes, assembled at logical origin `8000h` (`8000h–831Bh`).
 - ATM opens `X86IO.C` after the resident A2h handshake, reads the first sector into C000h, copies it backwards to C01Ch to preserve the DMA frame header, and reads remaining sectors directly after the first data block.
 - ATM sends IMAGE_BEGIN / one IMAGE_FRAGMENT / IMAGE_FINISH using ABI 1.0 DMA. The image kind is 01h and the profile size limit is 1000h bytes.
@@ -155,4 +155,4 @@ The first overlay slice moves `neogs_sub/x86_io.asm` out of the 16 KiB resident 
 - Resident CPU call sites are statically linked to the X86IO labels in the same SjASMPlus assembly pass. Page 04h is pinned in WIN2; there is not yet a dynamic overlay call gate or allocator.
 - BIOS execution is gated until both `IO_OVERLAY_READY` and `BIOS_IMAGE_READY` are set.
 
-GitHub Actions run [42396251021](https://github.com/JTCyborg/Project126/actions/runs/42396251021), commit `a20da9487991d6fd9589f867fa89445fe30acf16`, passed assembly and TR-DOS packaging. It reported `X86CORE.C=15750` and `X86IO.C=796`. This is BUILD PASS only. Physical ATM/NeoGS transfer, page-04 readback and WIN2 mapping remain to be confirmed from a target log.
+GitHub Actions run [42396251021](https://github.com/JTCyborg/Project126/actions/runs/42396251021), commit `a20da9487991d6fd9589f867fa89445fe30acf16`, passed assembly and TR-DOS packaging. It reported `X86CORE.C=15756` and `X86IO.C=796`. This is BUILD PASS only. Physical ATM/NeoGS transfer, page-04 readback and WIN2 mapping remain to be confirmed from a target log.
