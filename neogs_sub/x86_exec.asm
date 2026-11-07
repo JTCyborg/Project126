@@ -198,6 +198,14 @@ x86_cpu_step_fetch_opcode:
         jp      z,x86_exec_call_far_imm
         cp      #9B
         jp      z,x86_exec_wait
+        cp      #CC
+        jp      z,x86_exec_int3
+        cp      #CD
+        jp      z,x86_exec_int_imm
+        cp      #CE
+        jp      z,x86_exec_into
+        cp      #CF
+        jp      z,x86_exec_iret
         cp      #C4
         jp      z,x86_exec_les_lds
         cp      #C5
@@ -1698,6 +1706,114 @@ x86_exec_lea:
         scf
         ret
 
+; CC INT3, CD INT imm8, CE INTO, CF IRET.
+; Interrupt entry pushes FLAGS|F000, CS, then the post-instruction IP.
+x86_exec_int3:
+        ld      a,3
+        jp      x86_exec_interrupt
+
+x86_exec_int_imm:
+        call    x86_cpu_fetch8
+        ret     c
+        jp      x86_exec_interrupt
+
+x86_exec_into:
+        ld      hl,(x86_reg_flags)
+        bit     3,h
+        ret     z
+        ld      a,4
+        jp      x86_exec_interrupt
+
+x86_exec_interrupt:
+        ld      (x86_exec_interrupt_vector),a
+        ld      hl,(x86_reg_flags)
+        ld      a,h
+        or      #F0
+        ld      h,a
+        call    x86_exec_push_word
+        ret     c
+        ld      hl,(x86_reg_cs)
+        call    x86_exec_push_word
+        ret     c
+        ld      hl,(x86_reg_ip)
+        call    x86_exec_push_word
+        ret     c
+
+        ; Clear IF and TF after the original FLAGS image has been stacked.
+        ld      hl,(x86_reg_flags)
+        ld      a,h
+        and     #FC
+        ld      h,a
+        ld      (x86_reg_flags),hl
+
+        ; IVT entry is vector*4 at physical segment 0000.
+        ld      a,(x86_exec_interrupt_vector)
+        ld      l,a
+        ld      h,0
+        add     hl,hl
+        add     hl,hl
+        ld      (x86_exec_ivt_offset),hl
+        ld      de,(x86_exec_ivt_offset)
+        call    x86_exec_read_ivt_word
+        ret     c
+        ld      (x86_exec_target_ip),hl
+        ld      hl,(x86_exec_ivt_offset)
+        inc     hl
+        inc     hl
+        ld      (x86_exec_ivt_offset),hl
+        ld      de,(x86_exec_ivt_offset)
+        call    x86_exec_read_ivt_word
+        ret     c
+        ld      (x86_reg_cs),hl
+        ld      hl,(x86_exec_target_ip)
+        ld      (x86_reg_ip),hl
+        or      a
+        ret
+
+; DE=IVT byte offset, returns little-endian word in HL.
+x86_exec_read_ivt_word:
+        ld      (x86_exec_ivt_offset),de
+        ld      hl,0
+        ld      de,(x86_exec_ivt_offset)
+        call    x86_cpu_calc_phys
+        call    x86_guest_mem_read8
+        ret     c
+        ld      (x86_exec_ivt_value),a
+        ld      hl,(x86_exec_ivt_offset)
+        inc     hl
+        ld      (x86_exec_ivt_offset),hl
+        ld      de,(x86_exec_ivt_offset)
+        ld      hl,0
+        call    x86_cpu_calc_phys
+        call    x86_guest_mem_read8
+        ret     c
+        ld      (x86_exec_ivt_value+1),a
+        ld      hl,(x86_exec_ivt_value)
+        or      a
+        ret
+
+; IRET restores IP, CS and the low 12 FLAGS bits from SS:SP.
+x86_exec_iret:
+        call    x86_exec_pop_word
+        ret     c
+        ld      (x86_exec_target_ip),hl
+        call    x86_exec_pop_word
+        ret     c
+        ld      (x86_exec_target_cs),hl
+        call    x86_exec_pop_word
+        ret     c
+        ld      a,h
+        and     #0F
+        ld      h,a
+        set     1,l
+        ld      (x86_reg_flags),hl
+        ld      hl,(x86_exec_target_cs)
+        ld      (x86_reg_cs),hl
+        ld      hl,(x86_exec_target_ip)
+        ld      (x86_reg_ip),hl
+        or      a
+        ret
+
 ; C4 LES r16,m16:16; C5 LDS r16,m16:16.
 ; ModR/M must select memory. The first word is the offset, followed by
 ; the segment word at EA+2 (16-bit offset wrap).
@@ -3086,6 +3202,9 @@ x86_exec_alu_result16: dw 0
 x86_exec_alu_is_cmp: db 0
 x86_exec_alu_operation: db 0
 x86_exec_alu_is_sbb: db 0
+x86_exec_interrupt_vector: db 0
+x86_exec_ivt_offset: dw 0
+x86_exec_ivt_value: dw 0
 x86_exec_segment_pop_opcode: db 0
 x86_exec_string_opcode: db 0
 x86_exec_string_width: db 0
