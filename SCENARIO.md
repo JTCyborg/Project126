@@ -842,3 +842,16 @@ DMA mapping, DMA registers, направления, Project125 handshake и ABI 
 Причина найдена при буквальной сверке с Project125: WIN3 (C000h–FFFFh) выбирается через MPAGEX port #10, а физический номер страницы перед OUT кодируется RRCA. Project126 использовал PG3 port #23 и передавал сырое значение 42h. Это приводило к тому, что CPU-окно и физический DMA-адрес указывали на разные страницы. Исправлены оба page-42 endpoint и общий x86 memory backend: MPAGEX=#10, selector=`RRCA(page)`, page 42h → selector 21h. Общие memory-map constants/assertion также исправлены с #23 на #10.
 
 DMA module/address registers, physical DMA base 108000h, host aperture 0000h, dummy-read правило обратного направления и E0/FF handshake не менялись. Исправленные исходники собраны успешно: GitHub Actions [42357023766](https://github.com/JTCyborg/Project126/actions/runs/42357023766), code commit `a2fa006fdd8ce5023b7949f92393934cbbd224c5`, artifact `project126-trdos-disk-and-build`. Проверка page 42h после исправления требует нового аппаратного запуска: ATM→NeoGS должен показать заголовок `50313236` и `DMA FRAME VALID`; NeoGS→ATM должен показать CRC D867 и `PATTERN PASS`. До этого production page-42 HARDWARE PASS не заявляется.
+
+
+
+## 2026-11-07 — Production page 42h bidirectional DMA: HARDWARE PASS
+
+User-provided physical ATM/NeoGS target log at 09:52:27 confirms the corrected Project125-compatible MPAGEX mapping and both production DMA directions.
+
+- Boot/resident startup, ABI CRC16 and ATM video/catalog initialization completed.
+- ATM → NeoGS: ATM request CRC16/CCITT-FALSE 7C1C matches its stored frame CRC; E0/READY handshake succeeds; 274 bytes are transferred to physical page 42h at 108000h; address readback is 108112h; logical C000h contains header 50313236010001050000010000010000; NeoGS reports DMA FRAME VALID.
+- NeoGS → ATM: reverse DMA completes from physical page 42h; readback is 108113h, consistent with one discarded ROM-aperture read plus 274 frame bytes; ATM calculates CRC D867 matching the stored frame CRC and reports DMA RX FRAME CRC VALID and DMA RX PATTERN PASS for payload 00h..FFh.
+- HARDWARE PASS: production page 42h mapping through MPAGEX port #10 with RRCA selector encoding, ATM→NeoGS transfer, NeoGS frame-header/CRC validation, NeoGS→ATM transfer, reverse CRC and deterministic payload comparison.
+- This supersedes the prior page-42 hardware-pending/failure entries. The original Project125-parity page-03 diagnostic path remains separately validated and is not promoted to production allocation.
+- Scope remains limited to the 274-byte smoke frame and the deterministic 256-byte payload. Maximum-size frames, fragmentation/reassembly, sustained streaming, error recovery and application service dispatch remain unverified.
