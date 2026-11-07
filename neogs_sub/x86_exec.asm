@@ -227,7 +227,8 @@ x86_exec_xchg_rm_reg:
 x86_exec_xchg_commit8:
         ld      a,(x86_exec_xchg_reg_byte)
         call    x86_modrm_write_rm8
-        ld      c,(x86_exec_xchg_rm_byte)
+        ld      a,(x86_exec_xchg_rm_byte)
+        ld      c,a
         ld      a,(x86_modrm_reg)
         jp      x86_modrm_write_reg8
 
