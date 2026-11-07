@@ -12,7 +12,7 @@
 ; Memory addressing follows the original 8086 BX/BP/SI/DI combinations.
 ; Default segment is SS for BP-based forms, DS otherwise.
 ; mod=00,r/m=110 is direct [disp16] and defaults to DS.
-; Segment override prefixes are applied by the later prefix execution layer.
+; Segment override prefixes are applied by the x86_exec prefix layer.
 ; All guest instruction bytes are fetched via x86_cpu_fetch8/fetch16.
 
 x86_decode_modrm16:
