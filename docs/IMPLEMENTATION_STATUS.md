@@ -822,3 +822,12 @@ Source commit: `aac9d7e60c391510150016d3b29906a7b2f90e3d`.
 - The coverage ledger was reconciled with the implemented REP iteration scheduler and the CPU-side interrupt-inhibit consumer; earlier statements that these pieces were wholly pending were stale.
 - **Readiness: NOT READY for CPU functional tests.** Remaining blockers include the host/IPC IRQ/NMI producer and vector source, interrupt servicing between REP iterations, form-by-form PCem semantic review, and TF/NMI/IRQ/HLT plus address-wrap/fault corner-case verification.
 - At the time of this checkpoint, only assembly/package validation was permitted and reset-vector execution was disabled. This checkpoint is superseded by the bounded BIOS bring-up section below; the full CPU functional suite and full BIOS POST remain blocked.
+
+
+## 2026-11-07 — 8086 BIOS stop reason on ATM on-screen debug console
+
+- The first target BIOS trace executed the reset-vector far jump and all 16 instructions in the bounded slice, but the reason for returning to the resident loop was visible only on the independent NeoGS #EF log.
+- Added a reverse NeoGS-to-ATM debug text path over the existing GSDAT/DBIT handshake. NeoGS publishes the stop message and current guest CS:IP; the ATM host polls DBIT in its idle loop, reads GSDAT, and renders each byte through the existing `BIOS_DebugConsole_PrintChar` screen console.
+- Screen messages now distinguish: reset-vector failure, normal pause at the 16-instruction slice limit, guest HLT, and unsupported opcode/guest-memory fault. The existing #EF trace remains intact.
+- No DMA frame format, image installation, CPU instruction semantics, memory map, or keyboard handling was intentionally changed.
+- **STATUS:** source committed; assembler/package CI and physical target verification are pending. The screen path depends on the ATM host returning to its idle loop and servicing the reverse DBIT byte stream; the next hardware log should confirm the stop message appears in the lower on-screen debug console.
