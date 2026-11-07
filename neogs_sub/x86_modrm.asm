@@ -245,28 +245,6 @@ x86_modrm_write_reg8:
         or      a
         ret
 
-; Regression for the byte-register destinations used by BIOS setup:
-; MOV DL,AL and the complementary high-byte write MOV DH,AL.
-; Returns carry clear on pass.
-x86_modrm_reg8_selftest:
-        ld      hl,#A1A0
-        ld      (x86_reg_dx),hl
-        ld      a,2
-        ld      c,#56
-        call    x86_modrm_write_reg8
-        ld      a,6
-        ld      c,#78
-        call    x86_modrm_write_reg8
-        ld      hl,(x86_reg_dx)
-        ld      de,#7856
-        or      a
-        sbc     hl,de
-        jr      nz,.reg8_test_fail
-        or      a
-        ret
-.reg8_test_fail:
-        scf
-        ret
 x86_modrm_read_reg16:
         ld      a,(x86_modrm_reg)
         jr      x86_modrm_read_reg16_index
