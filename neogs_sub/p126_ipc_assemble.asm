@@ -10,6 +10,16 @@ p126_ngs_ipc_module_start:
         INCLUDE "neogs_sub/p126_ipc.asm"
 p126_ngs_ipc_module_end:
 
+; Standalone IPC audit unit: the production image links these symbols from
+; x86_cpu_state.asm. Keep local audit-only storage and a no-op trace entry so
+; this translation unit can be assembled independently without duplicating
+; or replacing the production CPU implementation.
+x86_bios_trace_event_status: db 0
+x86_bios_trace_event_cs:     dw 0
+x86_bios_trace_event_ip:     dw 0
+x86_bios_startup_trace:
+        ret
+
     DISPLAY "P126_NGS_IPC_START=", /H, p126_ngs_ipc_module_start
     DISPLAY "P126_NGS_IPC_END=", /H, p126_ngs_ipc_module_end
     DISPLAY "P126_NGS_IPC_SIZE=", /D, p126_ngs_ipc_module_end-p126_ngs_ipc_module_start
