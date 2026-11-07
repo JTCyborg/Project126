@@ -947,3 +947,19 @@ User-provided physical ATM/NeoGS target log at 09:52:27 confirms the corrected P
 - Реализованы ENTER, TR-DOS file open/read, построение ABI IMAGE кадров, DMA передача и NeoGS установка образа в page 10h.
 - Это не запуск BIOS и не аппаратное подтверждение содержимого слота. Требуется target log с `SYSBIOS IMAGE BEGIN`, `SYSBIOS IMAGE FRAGMENT`, `SYSBIOS IMAGE INSTALLED AT PAGE 10`.
 - 8086 reset-vector execution ещё не подключён. VGA инициализируется только последующим исполнением BIOS; регистровая модель VGA, scanout и NeoGS→ATM framebuffer transport остаются отдельными этапами.
+
+
+## 2026-11-07 — исправление клавиатуры каталога
+
+Аппаратный лог после BIOS-loader build показал, что ATM и NeoGS стартуют, каталог рисуется, а оба 16 KiB DMA smoke test проходят. Пользователь сообщил о задержке реакции курсорных клавиш и исчезновении строк каталога после перемещения.
+
+Проверка ZX Spectrum keyboard matrix выявила неверные номера битов в Project126 scanner:
+- Row `#EFFE` соответствует клавишам `0,9,8,7,6` в битах 0..4. Следовательно CAPS SHIFT+7 (UP) — bit 1, CAPS SHIFT+6 (DOWN) — bit 0, CAPS SHIFT+8 (RIGHT) — bit 2.
+- Row `#F7FE` соответствует клавишам `1..5`; CAPS SHIFT+5 (LEFT) — bit 4.
+- ENTER remains `#BFFE`, bit 0.
+
+Исправлено сканирование UP/DOWN; LEFT/RIGHT сохранены на соответствующих матричных позициях. Удалён timestamped serial diagnostic на каждое нажатие курсора, чтобы не добавлять RTC/#EF overhead в интерактивный цикл. Ожидание отпускания клавиши сохранено: одно физическое нажатие даёт одно перемещение.
+
+Source commit: `1bd610d119d8c121bb3093fb6562e98864085f63`.
+Build PASS: [GitHub Actions 42360694869](https://github.com/JTCyborg/Project126/actions/runs/42360694869).
+Аппаратная проверка исправления и исчезновения каталога ещё не выполнена.
