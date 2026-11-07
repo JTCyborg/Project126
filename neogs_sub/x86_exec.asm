@@ -49,6 +49,18 @@ x86_cpu_step:
         ret     c
         ld      (x86_exec_opcode),a
 
+        cp      #98
+        jp      z,x86_exec_cbw
+        cp      #99
+        jp      z,x86_exec_cwd
+        cp      #9C
+        jp      z,x86_exec_pushf
+        cp      #9D
+        jp      z,x86_exec_popf
+        cp      #9E
+        jp      z,x86_exec_sahf
+        cp      #9F
+        jp      z,x86_exec_lahf
         cp      #EA
         jp      z,x86_exec_jmp_far_imm
         cp      #E9
@@ -97,6 +109,102 @@ x86_cpu_step:
         jp      x86_exec_mov_imm_reg
 .not_mov_imm_reg:
         scf
+        ret
+
+; 98 CBW: sign-extend AL into AH. 99 CWD: sign-extend AX into DX.
+x86_exec_cbw:
+        ld      a,(x86_reg_ax)
+        rlca
+        sbc     a,a
+        ld      (x86_reg_ax+1),a
+        or      a
+        ret
+
+x86_exec_cwd:
+        ld      hl,(x86_reg_ax)
+        bit     7,h
+        jr      z,.cwd_zero
+        ld      hl,#FFFF
+        jr      .cwd_store
+.cwd_zero:
+        ld      hl,0
+.cwd_store:
+        ld      (x86_reg_dx),hl
+        or      a
+        ret
+
+; PUSHF / POPF follow the PCem 8086 implementation:
+; PUSHF stores FLAGS|F000 at SS:(SP-2); POPF loads word&0FFF from SS:SP.
+x86_exec_pushf:
+        ld      hl,(x86_reg_sp)
+        dec     hl
+        dec     hl
+        ld      (x86_reg_sp),hl
+        ld      (x86_exec_stack_offset),hl
+        ld      hl,(x86_reg_flags)
+        ld      de,#F000
+        or      a
+        sbc     hl,de
+        add     hl,de
+        ; Set the high reserved bits without changing the guest flags.
+        ld      hl,(x86_reg_flags)
+        ld      a,h
+        or      #F0
+        ld      h,a
+        ld      (x86_exec_stack_value),hl
+        call    x86_exec_stack_make_address
+        ld      a,(x86_exec_stack_value)
+        call    x86_guest_mem_write8
+        ret     c
+        ld      hl,(x86_exec_stack_offset)
+        inc     hl
+        ld      (x86_exec_stack_offset),hl
+        call    x86_exec_stack_make_address
+        ld      a,(x86_exec_stack_value+1)
+        call    x86_guest_mem_write8
+        ret
+
+x86_exec_popf:
+        ld      hl,(x86_reg_sp)
+        ld      (x86_exec_stack_offset),hl
+        inc     hl
+        inc     hl
+        ld      (x86_reg_sp),hl
+        call    x86_exec_stack_make_address
+        call    x86_guest_mem_read8
+        ret     c
+        ld      (x86_exec_stack_value),a
+        ld      hl,(x86_exec_stack_offset)
+        inc     hl
+        ld      (x86_exec_stack_offset),hl
+        call    x86_exec_stack_make_address
+        call    x86_guest_mem_read8
+        ret     c
+        ld      (x86_exec_stack_value+1),a
+        ld      hl,(x86_exec_stack_value)
+        ld      a,h
+        and     #0F
+        ld      h,a
+        ld      (x86_reg_flags),hl
+        or      a
+        ret
+
+; SAHF copies AH into FLAGS[7:0]; LAHF copies FLAGS[7:0] into AH.
+x86_exec_sahf:
+        ld      a,(x86_reg_ax+1)
+        ld      l,a
+        ld      hl,(x86_reg_flags)
+        ld      a,(x86_reg_ax+1)
+        ld      l,a
+        ld      (x86_reg_flags),hl
+        or      a
+        ret
+
+x86_exec_lahf:
+        ld      hl,(x86_reg_flags)
+        ld      a,l
+        ld      (x86_reg_ax+1),a
+        or      a
         ret
 
 ; 60-6F are the undocumented conditional-branch aliases used by PCem's
