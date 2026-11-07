@@ -438,7 +438,7 @@ x86_io_dma_write8:
         ret     c
         ld      a,(x86_io_dma_page_select)
         or      a
-        jr      nz,.dma_write_page
+        jp      nz,.dma_write_page
         ld      a,(x86_io_dma_port_offset)
         cp      8
         jr      c,.dma_write_channel
@@ -625,87 +625,87 @@ x86_io_dma_selftest_impl:
         ld      (x86_io_port),hl
         xor     a
         call    x86_io_dma_write8
-        jr      c,.dma_selftest_fail
+        jp      c,.dma_selftest_fail
         ld      hl,#0000
         ld      (x86_io_port),hl
         ld      a,#34
         call    x86_io_dma_write8
-        jr      c,.dma_selftest_fail
+        jp      c,.dma_selftest_fail
         ld      a,#12
         call    x86_io_dma_write8
-        jr      c,.dma_selftest_fail
+        jp      c,.dma_selftest_fail
         ld      a,(x86_io_dma_address)
         cp      #34
-        jr      nz,.dma_selftest_fail
+        jp      nz,.dma_selftest_fail
         ld      a,(x86_io_dma_address+1)
         cp      #12
-        jr      nz,.dma_selftest_fail
+        jp      nz,.dma_selftest_fail
         ; Read back the same low/high sequence.
         ld      a,(x86_io_dma_flipflop)
         or      a
-        jr      nz,.dma_selftest_fail
+        jp      nz,.dma_selftest_fail
         call    x86_io_dma_read8
         cp      #34
-        jr      nz,.dma_selftest_fail
+        jp      nz,.dma_selftest_fail
         call    x86_io_dma_read8
         cp      #12
-        jr      nz,.dma_selftest_fail
+        jp      nz,.dma_selftest_fail
         ; Channel 0 count=5678h.
         ld      hl,#0001
         ld      (x86_io_port),hl
         ld      a,#78
         call    x86_io_dma_write8
-        jr      c,.dma_selftest_fail
+        jp      c,.dma_selftest_fail
         ld      a,#56
         call    x86_io_dma_write8
-        jr      c,.dma_selftest_fail
+        jp      c,.dma_selftest_fail
         ld      a,(x86_io_dma_count)
         cp      #78
-        jr      nz,.dma_selftest_fail
+        jp      nz,.dma_selftest_fail
         ld      a,(x86_io_dma_count+1)
         cp      #56
-        jr      nz,.dma_selftest_fail
+        jp      nz,.dma_selftest_fail
         ; DMA page register for channel 1 is port 81h.
         ld      hl,#0081
         ld      (x86_io_port),hl
         ld      a,#A5
         call    x86_io_dma_write8
-        jr      c,.dma_selftest_fail
+        jp      c,.dma_selftest_fail
         call    x86_io_dma_read8
         cp      #A5
-        jr      nz,.dma_selftest_fail
+        jp      nz,.dma_selftest_fail
         ; Clear all masks, mask channel 2, then unmask channel 2.
         ld      hl,#000E
         ld      (x86_io_port),hl
         xor     a
         call    x86_io_dma_write8
-        jr      c,.dma_selftest_fail
+        jp      c,.dma_selftest_fail
         ld      hl,#000A
         ld      (x86_io_port),hl
         ld      a,#06
         call    x86_io_dma_write8
-        jr      c,.dma_selftest_fail
+        jp      c,.dma_selftest_fail
         ld      a,(x86_io_dma_mask)
         cp      4
-        jr      nz,.dma_selftest_fail
+        jp      nz,.dma_selftest_fail
         ld      a,#02
         call    x86_io_dma_write8
-        jr      c,.dma_selftest_fail
+        jp      c,.dma_selftest_fail
         ld      a,(x86_io_dma_mask)
         or      a
-        jr      nz,.dma_selftest_fail
+        jp      nz,.dma_selftest_fail
         ; Master clear restores mask=0Fh and byte pointer=0.
         ld      hl,#000D
         ld      (x86_io_port),hl
         xor     a
         call    x86_io_dma_write8
-        jr      c,.dma_selftest_fail
+        jp      c,.dma_selftest_fail
         ld      a,(x86_io_dma_mask)
         cp      #0F
-        jr      nz,.dma_selftest_fail
+        jp      nz,.dma_selftest_fail
         ld      a,(x86_io_dma_flipflop)
         or      a
-        jr      nz,.dma_selftest_fail
+        jp      nz,.dma_selftest_fail
         ld      hl,x86_io_dma_selftest_pass
         jr      .dma_selftest_restore
 .dma_selftest_fail:
