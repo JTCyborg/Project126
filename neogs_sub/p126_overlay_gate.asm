@@ -411,19 +411,6 @@ x86_dev_write8:
         pop     ix
         ret
 
-x86_dev_overlay_probe:
-        push    af
-        push    ix
-        ld      a,P126_NGS_X86DEV_OVERLAY_SELECTOR
-        ld      (p126_overlay_request_selector),a
-        pop     ix
-        pop     af
-        push    ix
-        ld      ix,x86_dev_overlay_probe_impl
-        call    p126_overlay_call
-        pop     ix
-        ret
-
 ; X86ALU public entry points; implementations live on physical page 05h.
 x86_alu_add8:
         push    af
