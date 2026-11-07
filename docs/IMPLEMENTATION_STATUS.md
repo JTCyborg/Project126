@@ -374,3 +374,13 @@ The ATM log `DMA SMOKE FRAME SENT` means the transport handshake completed; it i
 - After the previous CRC pointer correction, the target still reports `DMA FAIL STAGE=1`. This proves only that local ATM validation is failing; no E0h or DMA transfer has been attempted.
 - Added capture of the ATM validator's A/status return and a hexadecimal ATM #EF line `[BOOT] DMA VALIDATOR ERROR=xx` after the stage report. This distinguishes BAD_MAGIC, BAD_VERSION, BAD_FRAME and CRC_ERROR without attributing the error to NeoGS.
 - **Verification:** diagnostic instrumentation committed; assembly and hardware rerun are pending. The next log must include the validator status before the underlying rejection can be corrected conclusively.
+
+
+## DMA/IPC end-to-end trace instrumentation (2026-11-07)
+
+- Added ATM-local #EF markers around DMA sender entry, local frame validation, E0 issue/acknowledgement, DMA-window copy, FF issue, and final acknowledgement. E0 and FF timeout paths now emit distinct ATM diagnostics.
+- Added independent NeoGS #EF markers around E0 dispatch, DMA register setup/arming, READY/CBIT release, host-end detection, DMA stop, page-42 mapping, frame validation, and timeout/length-error paths. NeoGS frame rejection includes the ABI status byte in hexadecimal.
+- The two streams remain physically independent; ATM messages are not forwarded or re-labelled as NeoGS messages.
+- Fixed the NeoGS CRC validator's frame-pointer clobber (the same class of defect previously fixed in ATM) and corrected both validators to start payload CRC at frame offset 18 rather than offset 16.
+- Logging is at transaction boundaries, not inside polling loops. It still adds latency around DMA copy; timing-sensitive behavior must be checked on target hardware.
+- **Verification:** source changes committed; CI/assembly and target hardware trace correlation pending. Do not infer DMA PASS until ATM reports final completion and NeoGS independently reports FRAME VALID.
