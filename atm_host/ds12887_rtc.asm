@@ -211,6 +211,11 @@ DS12887_CLOSE:
         ld      bc, #EFF7
         xor     a
         out     (c), a
+        ; #EFF7 has A9=1 and therefore closes the permanent DOSEN/shadow
+        ; path established by p126_atm_video_init. RTC access is performed
+        ; after video initialization in Project126, so restore the documented
+        ; #0177 state and RG=6 text mode before returning to the host.
+        call    p126_atm_restore_dosen
 ds12887_close_done:
         pop     bc
         pop     af
