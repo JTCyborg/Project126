@@ -672,7 +672,7 @@
 556+  0344 28 07                jr      z,.ngs_frame_trace_ready
 557+  0346 AF                   xor     a
 558+  0347 32 E6 04             ld      (p126_ngs_bios_image_ready),a
-559+  034A CD 13 08             call    x86_bios_startup_trace
+559+  034A CD 14 08             call    x86_bios_startup_trace
 560+  034D              .ngs_frame_trace_ready:
 561+  034D 21 20 07             ld      hl,p126_ngs_ipc_log_dma_rx_request
 562+  0350 CD FD 07             call    p126_ngs_ipc_log
@@ -828,8 +828,7 @@
 712+  046B B1                   or      c
 713+  046C 20 DC                jr      nz,.image_verify_loop
 714+  046E
-p126_ipc.asm(715): error: Label not found: x86_bios_image_diag
-715+  046E CD 00 00             call    x86_bios_image_diag
+715+  046E CD 13 08             call    x86_bios_image_diag
 716+  0471
 717+  0471                      ; Restore the production DMA page mapping for subsequent IPC frames.
 718+  0471 3E 21                ld      a,#21
@@ -1210,16 +1209,19 @@ p126_ipc.asm(715): error: Label not found: x86_bios_image_diag
  17   080E 00           x86_bios_trace_event_status: db 0
  18   080F 00 00        x86_bios_trace_event_cs:     dw 0
  19   0811 00 00        x86_bios_trace_event_ip:     dw 0
- 20   0813              x86_bios_startup_trace:
+ 20   0813              x86_bios_image_diag:
  21   0813 C9                   ret
  22   0814
- 23   0814                  DISPLAY "P126_NGS_IPC_START=", /H, p126_ngs_ipc_module_start
- 24   0814                  DISPLAY "P126_NGS_IPC_END=", /H, p126_ngs_ipc_module_end
- 25   0814                  DISPLAY "P126_NGS_IPC_SIZE=", /D, p126_ngs_ipc_module_end-p126_ngs_ipc_module_start
- 26   0814
- 27   0814                  ASSERT p126_ngs_ipc_module_end > p126_ngs_ipc_module_start
- 28   0814                  ASSERT p126_ngs_ipc_module_end <= #10000
- 29   0814
+ 23   0814              x86_bios_startup_trace:
+ 24   0814 C9                   ret
+ 25   0815
+ 26   0815                  DISPLAY "P126_NGS_IPC_START=", /H, p126_ngs_ipc_module_start
+ 27   0815                  DISPLAY "P126_NGS_IPC_END=", /H, p126_ngs_ipc_module_end
+ 28   0815                  DISPLAY "P126_NGS_IPC_SIZE=", /D, p126_ngs_ipc_module_end-p126_ngs_ipc_module_start
+ 29   0815
+ 30   0815                  ASSERT p126_ngs_ipc_module_end > p126_ngs_ipc_module_start
+ 31   0815                  ASSERT p126_ngs_ipc_module_end <= #10000
+ 32   0815
 # file closed: p126_ipc_assemble.asm
 
 Value    Label
@@ -1409,7 +1411,8 @@ Value    Label
 0x000E X P126_STATUS_RESET_REQUIRED
 0x0005 X P126_STATUS_SEQUENCE
 0x000A   P126_STATUS_TIMEOUT
-0x0813   x86_bios_startup_trace
+0x0813   x86_bios_image_diag
+0x0814   x86_bios_startup_trace
 0x080F   x86_bios_trace_event_cs
 0x0811   x86_bios_trace_event_ip
 0x080E   x86_bios_trace_event_status
