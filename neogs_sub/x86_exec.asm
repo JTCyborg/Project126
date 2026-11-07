@@ -1999,6 +1999,9 @@ x86_exec_group1_immediate:
         ld      a,(x86_exec_group1_is_cmp)
         or      a
         ret     nz
+        ; The CMP selector test above uses A; restore the ALU result before
+        ; committing the r/m8 destination (otherwise every 80h result is 00h).
+        ld      a,(x86_group1_diag_result)
         call    x86_modrm_write_rm8
         ld      hl,(x86_reg_dx)
         ld      (x86_group1_diag_dx_after),hl
