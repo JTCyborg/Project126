@@ -564,10 +564,9 @@ p126_ngs_ipc_dispatch_once::
         ret
 
 ; -------------------------------------------------------------------------
-; IMAGE service — initial 8 KiB system BIOS installation.
-; The standard 10-byte ABI fragment extension is used even for one fragment.
-; WIN3 maps the DMA staging page 42h and the destination SYSBIOS page 10h.
-; Resident code/stack remain outside WIN3.
+; IMAGE service — fixed SYSBIOS and first resident-overlay profiles.
+; Every image is one CRC-validated fragment. SYSBIOS installs at page 10h;
+; X86IO installs at kernel page 04h and is then pinned into WIN2.
 ; -------------------------------------------------------------------------
 p126_ngs_image_begin:
         ld      hl,p126_ngs_image_begin_log
@@ -575,33 +574,70 @@ p126_ngs_image_begin:
         ld      a,(#C00C)
         cp      6
         jr      nz,.image_begin_bad
-        ld      a,(#C012)
-        cp      1
-        jr      nz,.image_begin_bad
-        ld      a,(#C013)
-        or      a
-        jr      nz,.image_begin_bad
-        ld      a,(#C014)
-        cp      P126_IMAGE_KIND_SYSBIOS
-        jr      nz,.image_begin_bad
         ld      a,(#C015)
         or      a
         jr      nz,.image_begin_bad
-        ld      a,(#C016)
+
+        ; Message ID is currently 0001h for each serialized image transaction.
+        ld      hl,(#C012)
+        ld      de,1
         or      a
+        sbc     hl,de
         jr      nz,.image_begin_bad
-        ld      a,(#C017)
-        cp      #20
+
+        ld      a,(#C014)
+        cp      P126_IMAGE_KIND_SYSBIOS
+        jr      z,.image_begin_sysbios
+        cp      P126_IMAGE_KIND_X86IO
+        jr      z,.image_begin_x86io
+        jr      .image_begin_bad
+
+.image_begin_sysbios:
+        ld      hl,(#C016)
+        ld      de,P126_IMAGE_SYSBIOS_SIZE
+        or      a
+        sbc     hl,de
         jr      nz,.image_begin_bad
+        ld      a,#08                  ; WIN3 selector for physical page 10h
+        ld      (p126_ngs_image_dest_selector),a
+        jr      .image_begin_common
+
+.image_begin_x86io:
+        ld      hl,(#C016)
+        ld      a,h
+        or      l
+        jr      z,.image_begin_bad
+        ld      de,P126_IMAGE_X86IO_MAX_SIZE
+        or      a
+        sbc     hl,de
+        jr      c,.image_x86io_size_ok
+        jr      z,.image_x86io_size_ok
+        jr      .image_begin_bad
+.image_x86io_size_ok:
+        ld      a,#02                  ; WIN3 selector for physical page 04h
+        ld      (p126_ngs_image_dest_selector),a
+
+.image_begin_common:
+        ld      hl,(#C012)
+        ld      (p126_ngs_image_id),hl
+        ld      hl,(#C016)
+        ld      (p126_ngs_image_size),hl
+        ld      a,(#C014)
+        ld      (p126_ngs_image_kind),a
         ld      a,1
         ld      (p126_ngs_image_active),a
         xor     a
         ld      (p126_ngs_image_received),a
+        ld      a,(p126_ngs_image_kind)
+        cp      P126_IMAGE_KIND_SYSBIOS
+        jr      nz,.image_begin_not_bios
+        xor     a
         ld      (p126_ngs_bios_image_ready),a
-        ld      hl,p126_ngs_image_id
-        ld      (hl),1
-        inc     hl
-        ld      (hl),0
+        jr      .image_begin_ack
+.image_begin_not_bios:
+        xor     a
+        ld      (p126_ngs_io_overlay_ready),a
+.image_begin_ack:
         xor     a
         out     (P126_NGS_CLRCBIT),a
         ld      a,1
@@ -625,23 +661,17 @@ p126_ngs_image_fragment:
         ld      a,(#C009)
         bit     1,a
         jp      z,.image_fragment_bad
-        ld      a,(#C00C)
-        cp      #0A
-        jp      nz,.image_fragment_bad
-        ld      a,(#C00D)
-        cp      #20
-        jp      nz,.image_fragment_bad
-        ld      a,(#C012)
-        cp      1
-        jp      nz,.image_fragment_bad
-        ld      a,(#C013)
+
+        ; Exactly one fragment: index 0, count 1, matching message ID.
+        ld      hl,(#C012)
+        ld      de,(p126_ngs_image_id)
         or      a
+        sbc     hl,de
         jp      nz,.image_fragment_bad
-        ld      a,(#C014)
+        ld      hl,(#C014)
+        ld      de,0
         or      a
-        jp      nz,.image_fragment_bad
-        ld      a,(#C015)
-        or      a
+        sbc     hl,de
         jp      nz,.image_fragment_bad
         ld      a,(#C016)
         cp      1
@@ -649,11 +679,12 @@ p126_ngs_image_fragment:
         ld      a,(#C017)
         or      a
         jp      nz,.image_fragment_bad
-        ld      a,(#C018)
+
+        ; The u32 total logical length must equal the IMAGE_BEGIN size.
+        ld      hl,(#C018)
+        ld      de,(p126_ngs_image_size)
         or      a
-        jp      nz,.image_fragment_bad
-        ld      a,(#C019)
-        cp      #20
+        sbc     hl,de
         jp      nz,.image_fragment_bad
         ld      a,(#C01A)
         or      a
@@ -662,18 +693,26 @@ p126_ngs_image_fragment:
         or      a
         jp      nz,.image_fragment_bad
 
-        ; Copy 8192 bytes from the validated page-42 frame payload to
-        ; physical SYSBIOS page 10h, offset 0000h. Alternate WIN3 mapping
-        ; per byte; resident code and stack are never mapped out.
+        ; Frame payload length must be exactly extension(10)+image bytes.
+        ld      hl,(p126_ngs_image_size)
+        ld      de,P126_IMAGE_FRAGMENT_EXT_SIZE
+        add     hl,de
+        ld      de,(#C00C)
+        or      a
+        sbc     hl,de
+        jp      nz,.image_fragment_bad
+
+        ; Copy the validated page-42 fragment into the selected physical page.
+        ; Code/stack stay in WIN0/WIN1; WIN3 is used only as the copy aperture.
         ld      hl,#C01C
         ld      de,#C000
-        ld      bc,P126_IMAGE_SYSBIOS_SIZE
+        ld      bc,(p126_ngs_image_size)
 .image_copy_loop:
         ld      a,#21                  ; page 42h RRCA selector
         out     (P126_NGS_MPAGEX_PORT),a
         ld      a,(hl)
         push    af
-        ld      a,#08                  ; page 10h RRCA selector
+        ld      a,(p126_ngs_image_dest_selector)
         out     (P126_NGS_MPAGEX_PORT),a
         pop     af
         ld      (de),a
@@ -684,19 +723,17 @@ p126_ngs_image_fragment:
         or      c
         jr      nz,.image_copy_loop
 
-        ; Verify every installed byte against the still-preserved DMA frame.
-        ; The receive-frame CRC proves the staging data; this second pass proves
-        ; that the physical SYSBIOS page-10 copy is byte-for-byte identical.
+        ; Verify every installed byte against the validated staging frame.
         ld      hl,#C01C
         ld      de,#C000
-        ld      bc,P126_IMAGE_SYSBIOS_SIZE
+        ld      bc,(p126_ngs_image_size)
         ld      (p126_ngs_image_verify_count),bc
 .image_verify_loop:
-        ld      a,#21                  ; page 42h RRCA selector
+        ld      a,#21
         out     (P126_NGS_MPAGEX_PORT),a
         ld      a,(hl)
         ld      (p126_ngs_image_verify_byte),a
-        ld      a,#08                  ; page 10h RRCA selector
+        ld      a,(p126_ngs_image_dest_selector)
         out     (P126_NGS_MPAGEX_PORT),a
         ld      a,(de)
         ld      b,a
@@ -712,25 +749,29 @@ p126_ngs_image_fragment:
         or      c
         jr      nz,.image_verify_loop
 
-        ; OBSOLETE: BIOS source/install/readback comparison passed; keep the
-        ; legacy routine commented out to avoid repeating its startup dump.
-
-        ; Restore the production DMA page mapping for subsequent IPC frames.
+        ; Restore production DMA staging mapping before acknowledging.
         ld      a,#21
         out     (P126_NGS_MPAGEX_PORT),a
-        ld      hl,p126_ngs_image_verify_ok_log
-        call    p126_ngs_ipc_log
         ld      a,1
         ld      (p126_ngs_image_received),a
+        ld      a,(p126_ngs_image_kind)
+        cp      P126_IMAGE_KIND_SYSBIOS
+        jr      nz,.image_io_verify_log
+        ld      hl,p126_ngs_image_verify_ok_log
+        jr      .image_verify_log
+.image_io_verify_log:
+        ld      hl,p126_ngs_io_overlay_verify_ok_log
+.image_verify_log:
+        call    p126_ngs_ipc_log
         xor     a
         out     (P126_NGS_CLRCBIT),a
         ld      a,1
         or      a
         ret
+
 .image_verify_bad:
-        ld      a,#21                  ; leave WIN3 on the production DMA page
+        ld      a,#21                  ; leave WIN3 on production DMA page
         out     (P126_NGS_MPAGEX_PORT),a
-        jp      .image_fragment_bad
 .image_fragment_bad:
         ld      hl,p126_ngs_image_fragment_rejected_log
         call    p126_ngs_ipc_log
@@ -752,17 +793,30 @@ p126_ngs_image_finish:
         ld      a,(#C00C)
         cp      2
         jr      nz,.image_finish_bad
-        ld      a,(#C012)
-        cp      1
-        jr      nz,.image_finish_bad
-        ld      a,(#C013)
+        ld      hl,(#C012)
+        ld      de,(p126_ngs_image_id)
         or      a
+        sbc     hl,de
         jr      nz,.image_finish_bad
+
         xor     a
         ld      (p126_ngs_image_active),a
+        ld      a,(p126_ngs_image_kind)
+        cp      P126_IMAGE_KIND_SYSBIOS
+        jr      nz,.image_finish_x86io
         ld      a,1
         ld      (p126_ngs_bios_image_ready),a
         ld      hl,p126_ngs_image_installed_log
+        jr      .image_finish_log
+.image_finish_x86io:
+        ; Page 04h is pinned in WIN2 (8000h-BFFFh). Resident code is in WIN0,
+        ; stack is in WIN1, and WIN3 remains exclusively owned by guest RAM.
+        ld      a,#02                  ; ROR8(physical page 04h)
+        out     (#00),a                ; MPAG selects WIN2
+        ld      a,1
+        ld      (p126_ngs_io_overlay_ready),a
+        ld      hl,p126_ngs_io_overlay_installed_log
+.image_finish_log:
         call    p126_ngs_ipc_log
         xor     a
         out     (P126_NGS_CLRCBIT),a
@@ -781,14 +835,20 @@ p126_ngs_image_finish:
 p126_ngs_image_active:       db 0
 p126_ngs_image_received:     db 0
 p126_ngs_bios_image_ready:   db 0
+p126_ngs_io_overlay_ready:   db 0
 p126_ngs_image_id:           dw 0
+p126_ngs_image_size:         dw 0
+p126_ngs_image_kind:         db 0
+p126_ngs_image_dest_selector: db 0
 p126_ngs_image_verify_count: dw 0
 p126_ngs_image_verify_byte:  db 0
 p126_ngs_image_begin_log:    db "[NGS] IMG BEGIN",13,10,0
 p126_ngs_image_fragment_log: db "[NGS] IMG FRAG",13,10,0
 p126_ngs_image_finish_log:   db "[NGS] IMG FINISH",13,10,0
-p126_ngs_image_installed_log: db "[NGS] IMG PAGE10 OK",13,10,0
-p126_ngs_image_verify_ok_log: db "[NGS] PAGE10 READ OK",13,10,0
+p126_ngs_image_installed_log: db "[NGS] SYSBIOS PAGE10 OK",13,10,0
+p126_ngs_image_verify_ok_log: db "[NGS] SYSBIOS READBACK OK",13,10,0
+p126_ngs_io_overlay_installed_log: db "[NGS] X86IO PAGE04 WIN2 OK",13,10,0
+p126_ngs_io_overlay_verify_ok_log: db "[NGS] X86IO PAGE04 READBACK OK",13,10,0
 p126_ngs_image_begin_rejected_log: db "[NGS] IMG BEGIN BAD",13,10,0
 p126_ngs_image_fragment_rejected_log: db "[NGS] IMG FRAG BAD",13,10,0
 p126_ngs_image_finish_rejected_log: db "[NGS] IMG FINISH BAD",13,10,0
