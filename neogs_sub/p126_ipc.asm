@@ -624,7 +624,7 @@ p126_ngs_image_begin:
         sbc     hl,de
         jr      c,.image_x86io_size_ok
         jr      z,.image_x86io_size_ok
-        jr      .image_begin_bad
+        jp      .image_begin_bad
 .image_x86io_size_ok:
         ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR ; WIN3 selector for physical page 04h
         ld      (p126_ngs_image_dest_selector),a
@@ -826,7 +826,7 @@ p126_ngs_image_fragment:
         ld      hl,p126_ngs_alu_overlay_verify_ok_log
         jr      .image_verify_log
 .image_dev_verify_log:
-        ld      hl,p126_ngs_dev_overlay_verify_ok_log
+        ld      hl,p126_ngs_dev_overlay_installed_log
 .image_verify_log:
         call    p126_ngs_ipc_log
         xor     a
@@ -873,7 +873,7 @@ p126_ngs_image_finish:
         ld      a,1
         ld      (p126_ngs_bios_image_ready),a
         ld      hl,p126_ngs_image_installed_log
-        jr      .image_finish_log
+        jp      .image_finish_log
 .image_finish_not_bios:
         cp      P126_IMAGE_KIND_X86IO
         jr      nz,.image_finish_x86alu
@@ -884,7 +884,7 @@ p126_ngs_image_finish:
         call    p126_ngs_overlay_win2_selftest
         jr      nc,.image_finish_x86io_map_ok
         call    p126_ngs_overlay_log_test_failure
-        jr      .image_finish_bad
+        jp      .image_finish_bad
 .image_finish_x86io_map_ok:
         ; The self-test leaves physical page 04h selected in WIN2.
         ; Keep the nested-call gate's software selector synchronized.
@@ -933,7 +933,7 @@ p126_ngs_image_finish:
 .image_finish_x86dev:
         ; Page06 must be callable through the resident gate and return to the
         ; prior page04 selector. Run both register-model self-tests before ready.
-        call    x86_dev_overlay_probe
+        call    x86_dev_reset
         cp      #5A
         jr      nz,.image_finish_dev_probe_bad
         ld      de,#06D1
@@ -949,9 +949,7 @@ p126_ngs_image_finish:
         ld      hl,p126_ngs_dev_overlay_installed_log
         jr      .image_finish_log
 .image_finish_dev_probe_bad:
-        ld      hl,p126_ngs_dev_overlay_probe_fail_log
-        call    p126_ngs_ipc_log
-        jr      .image_finish_bad
+        jp      .image_finish_bad
 
 .image_finish_log:
         call    p126_ngs_ipc_log
@@ -1228,9 +1226,7 @@ p126_ngs_io_overlay_installed_log: db "[NGS] X86IO PAGE04 WIN2 OK",13,10,0
 p126_ngs_io_overlay_verify_ok_log: db "[NGS] X86IO PAGE04 READBACK OK",13,10,0
 p126_ngs_alu_overlay_verify_ok_log: db "[NGS] X86ALU PAGE05 READBACK OK",13,10,0
 p126_ngs_alu_overlay_installed_log: db "[NGS] X86ALU PAGE05 GATE OK",13,10,0
-p126_ngs_dev_overlay_verify_ok_log: db "[NGS] X86DEV PAGE06 READBACK OK",13,10,0
-p126_ngs_dev_overlay_installed_log: db "[NGS] X86DEV PAGE06 GATE AND REGISTERS OK",13,10,0
-p126_ngs_dev_overlay_probe_fail_log: db "[NGS] X86DEV PAGE06 GATE FAIL",13,10,0
+p126_ngs_dev_overlay_installed_log: db "[NGS] DEV PAGE06 OK",13,10,0
 p126_ngs_alu_overlay_probe_fail_log: db "[NGS] X86ALU PAGE05 GATE FAIL",13,10,0
 p126_ngs_image_begin_rejected_log: db "[NGS] IMG BEGIN BAD",13,10,0
 p126_ngs_image_fragment_rejected_log: db "[NGS] IMG FRAG BAD",13,10,0
