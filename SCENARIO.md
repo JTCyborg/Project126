@@ -821,3 +821,9 @@ DMA mapping, DMA registers, направления, Project125 handshake и ABI 
 - Это source implementation. BUILD PASS и page-42 HARDWARE PASS не заявляются до CI и нового аппаратного лога. Page-03 parity PASS остаётся отдельным доказанным результатом.
 
 **После page-42 аппаратного PASS:** увеличить тестовые кадры до максимального ABI 1.0 кадра, затем реализовать/проверить fragment/reassembly по 10-byte extension из раздела 5 протокола; каждый фрагмент валидируется по длине и CRC до помещения в общий logical message. После этого — многокадровый потоковый стресс-тест с проверкой sequence, message ID, fragment index/count, total length, полного содержимого и recovery на ошибках. Не считать передачу успешной только по счётчику байтов.
+
+
+### Build verification for the page-42 diagnostic
+
+- **BUILD PASS:** GitHub Actions run [42356251101](https://github.com/JTCyborg/Project126/actions/runs/42356251101), built commit `a91fc6a86873e4a5208067b55782cb0085ae930e`. NeoGS, ATM IPC and standalone NeoGS IPC assembled with 0 errors and 0 warnings; TR-DOS disk image packaging completed. The disk assembly still emits its pre-existing generated-path backslash warning.
+- **HARDWARE:** pending. The CI result proves assembly and packaging only; it does not prove page-42 physical DMA access or WIN3 mapping on ATM/NeoGS hardware.
