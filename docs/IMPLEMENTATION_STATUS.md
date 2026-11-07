@@ -476,3 +476,14 @@ Verification boundary: source correction is committed. CI assembly/package resul
 - Reverse response is contiguous in WIN1 and its header declares the generated 256-byte payload (`0100h`), correcting the previous erroneous `1260h` length.
 - ATM DMA aperture operations follow Project125: no dummy write for forward transfer; DI plus one discarded read before reverse data collection.
 - Build and hardware verification pending. No hardware DMA PASS is claimed.
+
+
+## 2026-11-07 — DMA frame-validator and reverse-response corrections
+
+- Hardware trace after the Project125 DMA port: ATM→NeoGS transfers the expected ABI header and NeoGS rejects it with status 04h (CRC_ERROR). NeoGS→ATM is rejected by the ATM validator with status 03h (BAD_FRAME); the previous ATM log label incorrectly called every validation failure a CRC failure.
+- Fixed the NeoGS validator's payload-pointer restore so it no longer overwrites the live CRC accumulator in HL.
+- Fixed the reverse diagnostic response header: sequence is 0000h and payload length is 0100h at offsets 12–13.
+- Confirmed the reverse CRC loop's `B=0 / DJNZ` is the intended 256-iteration loop; it was not changed.
+- Renamed the ATM diagnostic to FRAME VALIDATION FAILED with status code, avoiding the false CRC-only diagnosis.
+- DMA registers, page mapping, handshake, and Project125 transport sequence are unchanged.
+- Verification: source correction only; CI/build and a new hardware run are pending. No hardware DMA PASS is claimed.
