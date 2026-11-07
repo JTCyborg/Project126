@@ -1111,7 +1111,7 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 - [ ] PPI 8255 / XT system board: 60h–63h, reset state, mode control, bit set/reset, направления портов, системный port B и входы port C.
 - [ ] XT keyboard: FIFO scan-code make/break, reset/BAT response, acknowledge/clear, overflow; ATM→NeoGS события через общий DMA/IPC ABI.
 - [ ] PIC 8259: command/data, ICW/OCW, masks, priority, IRR/ISR, acknowledge/vector, EOI и связь с x86 IRQ delivery.
-- [ ] PIT 8253: три канала, latch/read semantics, режимы/счётчики, gate/out, виртуальное время и IRQ0.
+- [x] PIT 8253: регистры трёх каналов, latch/read semantics и статическая линия OUT2 по семантике PCem при записи control word/загрузке счётчика; динамический отсчёт, полная GATE timing, виртуальное время и IRQ0 остаются отдельной задачей.
 - [ ] DMA 8237: address/count, command/status/request/mask/mode, flip-flop, page registers и программные DMA-транзакции.
 - [ ] VGA I/O: Attribute Controller flip-flop, Sequencer, Graphics Controller, CRTC mono/color, Misc Output, Status 1, DAC.
 - [ ] RTC/CMOS: 70h–71h, BCD/binary, 12/24h, UIP/update semantics, источник времени через ATM IPC.
@@ -1525,3 +1525,11 @@ The temporary diagnostic is therefore moved back to the first terminator and now
 
 
 - Follow-up from hardware log 2026-11-08: port `62h` returned `26h` because the initial model incorrectly synthesized speaker-status bit 5 from PB0/PB1. PCem source inspection confirmed `ppispeakon` is assigned from PIT channel-2 output in `PCem/pit.c:617-629`. The static PIT implementation has no channel-2 output transition yet, so the XT status bit must remain low. Corrected in commit `76fa5867be77e29ce5a32a5e271cde9a616f47ac`; BIOS retest pending.
+
+
+### 2026-11-08 — XT speaker status / PIT channel-2 OUT
+
+- В PCem `keyboard_xt_read(62h)` bit 5 берётся из `ppispeakon`, а `pit_speaker_timer()` обновляет его из OUT канала 2. Это не комбинация PB0/PB1.
+- `x86_dev_pit_out2` хранит программное статическое состояние OUT2. Control word повторяет `pit_write()`: mode 0 устанавливает OUT=0, остальные режимы — OUT=1. Полная загрузка счётчика повторяет `pit_load()`: mode 0/4 → OUT=0, mode 2/3 → OUT=1; режимы 1/5 сохраняют состояние до аппаратного триггера.
+- Чтение порта 62h добавляет bit 5 из OUT2. Полный временной отсчёт, обработка динамических фронтов GATE, генерация speaker waveform и IRQ0 не реализованы этим изменением.
+- Reset-time PIT self-test проверяет channel 2 mode 3 и mode 0, включая загрузку LSB/MSB.
