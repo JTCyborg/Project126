@@ -708,6 +708,14 @@ x86_alu_overlay_probe_impl:
         call    x86_io_overlay_nested_gate_probe
         cp      #08
         jr      nz,.overlay_probe_nested_failed
+        ; The inner page05 call must have returned to the still-active
+        ; outer page05 frame: depth=1 and WIN2 selector=82h.
+        ld      a,(p126_overlay_call_depth)
+        cp      1
+        jr      nz,.overlay_probe_nested_failed
+        ld      a,(p126_overlay_current_selector)
+        cp      P126_NGS_ALU_OVERLAY_SELECTOR
+        jr      nz,.overlay_probe_nested_failed
         pop     hl
         pop     af
         ld      hl,#5AA5
