@@ -27,6 +27,16 @@ p126_overlay_call:
         jr      nc,p126_overlay_depth_rejected
         inc     a
         ld      (p126_overlay_call_depth),a
+        ; Record the requested page for active-page release protection.
+        push    de
+        ld      ix,p126_overlay_call_pages
+        dec     a
+        ld      e,a
+        ld      d,0
+        add     ix,de
+        ld      a,(p126_overlay_request_selector)
+        ld      (ix+0),a
+        pop     de
         ld      a,(p126_overlay_current_selector)
         push    af                       ; per-call previous-selector frame
         ld      a,(p126_overlay_request_selector)
@@ -44,6 +54,17 @@ p126_overlay_gate_return:
         pop     af                       ; restore previous WIN2 selector
         ld      (p126_overlay_current_selector),a
         out     (P126_NGS_OVERLAY_WINDOW_PORT),a
+        ; Clear this active-page slot before decrementing the frame depth.
+        push    de
+        ld      a,(p126_overlay_call_depth)
+        dec     a
+        ld      e,a
+        ld      d,0
+        ld      ix,p126_overlay_call_pages
+        add     ix,de
+        xor     a
+        ld      (ix+0),a
+        pop     de
         ld      a,(p126_overlay_call_depth)
         dec     a
         ld      (p126_overlay_call_depth),a
@@ -55,6 +76,88 @@ p126_overlay_depth_rejected:
         ld      hl,(p126_overlay_gate_saved_hl)
         ex      af,af'                   ; restore the caller's alternate AF
         ld      a,P126_STATUS_BUSY
+        scf
+        ret
+
+; -------------------------------------------------------------------------
+; Physical overlay-page allocator.
+; Pool: physical pages 06h..0Fh. Pages 04h/05h remain pinned to X86IO/X86ALU;
+; pages 00h..03h are never allocator-owned. WIN3 is not used here.
+;
+; p126_overlay_allocate_page:
+;   OUT A=physical page 06h..0Fh, carry clear; A=0/carry set if exhausted.
+;   Clobbers BC, IX.
+;
+; p126_overlay_release_page:
+;   IN A=physical page. Carry clear on release; carry set with A=status on
+;   invalid, already-free, currently mapped, or actively executing page.
+;   Clobbers BC, DE, HL, IX.
+; -------------------------------------------------------------------------
+p126_overlay_allocate_page:
+        ld      ix,p126_overlay_alloc_state
+        ld      b,10
+        ld      c,6
+.allocate_scan:
+        ld      a,(ix+0)
+        or      a
+        jr      z,.allocate_found
+        inc     ix
+        inc     c
+        djnz    .allocate_scan
+        xor     a
+        scf
+        ret
+.allocate_found:
+        ld      a,1
+        ld      (ix+0),a
+        ld      a,c
+        or      a
+        ret
+
+p126_overlay_release_page:
+        cp      6
+        jr      c,.release_range_error
+        cp      16
+        jr      nc,.release_range_error
+        push    af
+        rrca
+        ld      c,a                       ; physical page -> WIN2 selector
+        ld      a,(p126_overlay_current_selector)
+        cp      c
+        jr      z,.release_busy
+        ld      a,(p126_overlay_call_depth)
+        ld      b,a
+        ld      ix,p126_overlay_call_pages
+.release_active_scan:
+        ld      a,b
+        or      a
+        jr      z,.release_not_active
+        ld      a,(ix+0)
+        cp      c
+        jr      z,.release_busy
+        inc     ix
+        djnz    .release_active_scan
+.release_not_active:
+        pop     af
+        sub     6
+        ld      e,a
+        ld      d,0
+        ld      hl,p126_overlay_alloc_state
+        add     hl,de
+        ld      a,(hl)
+        or      a
+        jr      z,.release_range_error
+        xor     a
+        ld      (hl),a
+        or      a
+        ret
+.release_busy:
+        pop     af
+        ld      a,P126_STATUS_BUSY
+        scf
+        ret
+.release_range_error:
+        ld      a,P126_STATUS_ADDRESS_RANGE
         scf
         ret
 
@@ -315,3 +418,5 @@ p126_overlay_current_selector: db #80
 p126_overlay_request_selector: db #80
 p126_overlay_gate_entry:       dw 0
 p126_overlay_gate_saved_hl:    dw 0
+p126_overlay_call_pages:       defs P126_OVERLAY_MAX_CALL_DEPTH,0
+p126_overlay_alloc_state:      defs 10,0
