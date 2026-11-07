@@ -883,3 +883,10 @@ All device models execute as software on NeoGS. NeoGS must not issue guest IN/OU
 - PCem references: PCem/ppi.c, PCem/keyboard_xt.c, PCem/io.c.
 - BUILD PASS: commit 68ae8eed9036c7388b11a5f74d746ac8286d7625; GitHub Actions run 42394977284; NeoGS 0 errors / 0 warnings; x86 image end 3FFBh, 5 bytes below the 4000h resident image limit; I/O module 796 bytes; TR-DOS package succeeded.
 - No register self-test, emulator run, hardware run, keyboard IPC, IRQ1, or BIOS POST pass is claimed.
+
+## 2026-11-07 — resident image capacity constraint discovered during I/O work
+
+- The PPI/I/O source slice builds, but X86CORE.C ends at 3FFBh: 16,379 of the 16,384 bytes available in the current single-page resident image. Only 5 bytes remain.
+- The physical memory map reserves kernel pages 00h–0Fh (256 KiB), while the current bootstrap/loader contract still constrains X86CORE.C to one 16 KiB page until an overlay manager exists.
+- Added an explicit scenario dependency: implement a resident overlay/module manager and multi-page module loading before adding PIC/PIT/DMA/VGA/RTC/IDE code. Preserve the fixed resident entry, WIN1/page-03 stack and WIN3 guest-memory aperture; do not silently raise the 16 KiB assertion.
+- This is a capacity/design blocker, not a device runtime failure. The next implementation task is the overlay loader/dispatcher contract; no extra controller is being squeezed into the remaining five bytes.
