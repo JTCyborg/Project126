@@ -640,7 +640,7 @@ p126_ngs_image_begin:
         sbc     hl,de
         jr      c,.image_x86alu_size_ok
         jr      z,.image_x86alu_size_ok
-        jr      .image_begin_bad
+        jp      .image_begin_bad
 .image_x86alu_size_ok:
         ld      a,P126_NGS_ALU_OVERLAY_SELECTOR
         ld      (p126_ngs_image_dest_selector),a
@@ -876,7 +876,7 @@ p126_ngs_image_finish:
         jp      .image_finish_log
 .image_finish_not_bios:
         cp      P126_IMAGE_KIND_X86IO
-        jr      nz,.image_finish_x86alu
+        jp      nz,.image_finish_x86alu
 .image_finish_x86io:
         ; Prove that MPAG selects two distinct physical pages through WIN2.
         ; At this point page05 is still free; X86ALU is loaded only after
@@ -895,7 +895,7 @@ p126_ngs_image_finish:
         call    p126_ngs_overlay_gate_selftest
         jr      nc,.image_finish_gate_ok
         call    p126_ngs_overlay_log_test_failure
-        jr      .image_finish_bad
+        jp      .image_finish_bad
 .image_finish_gate_ok:
         ld      hl,p126_ngs_overlay_win2_test_pass_log
         call    p126_ngs_ipc_log
