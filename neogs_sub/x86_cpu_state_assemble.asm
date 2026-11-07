@@ -184,7 +184,7 @@ x86_modrm_module_end:
 p126_ngs_ipc_module_start:
         INCLUDE "neogs_sub/p126_ipc.asm"
 
-; Resident bank-call gate and compatibility entry points for X86IO.
+; Resident bank-call gate and compatibility entry points for X86IO and X86ALU.
         INCLUDE "neogs_sub/p126_overlay_gate.asm"
 p126_ngs_ipc_module_end:
 
