@@ -90,6 +90,109 @@ x86_bios_reset_vector_probe:
         scf
         ret
 
+; -------------------------------------------------------------------------
+; First BIOS bring-up slice.
+; Runs only after the resident receives and verifies IMAGE_FINISH.
+; Execute the reset vector, then at most 16 further BIOS instructions.
+; Stop at the first unsupported opcode, memory fault or guest HLT so the
+; current core state can be inspected without entering an uncontrolled loop.
+; -------------------------------------------------------------------------
+x86_bios_startup_trace:
+        call    x86_bios_reset_vector_probe
+        ret     c
+        ld      hl,x86_bios_trace_start_log
+        call    p126_ngs_resident_log
+        ld      a,16
+        ld      (x86_bios_trace_remaining),a
+        xor     a
+        ld      (x86_bios_trace_executed),a
+.trace_loop:
+        call    x86_cpu_step
+        jr      c,.trace_fault
+        ld      a,(x86_bios_trace_executed)
+        inc     a
+        ld      (x86_bios_trace_executed),a
+        call    x86_bios_trace_log_cs_ip
+        ld      a,(x86_halted)
+        or      a
+        jr      nz,.trace_halted
+        ld      a,(x86_bios_trace_remaining)
+        dec     a
+        ld      (x86_bios_trace_remaining),a
+        jr      nz,.trace_loop
+        ld      hl,x86_bios_trace_budget_log
+        call    p126_ngs_resident_log
+        or      a
+        ret
+.trace_fault:
+        ld      hl,x86_bios_trace_fault_log
+        call    p126_ngs_resident_log
+        call    x86_bios_trace_log_cs_ip
+        scf
+        ret
+.trace_halted:
+        ld      hl,x86_bios_trace_halted_log
+        call    p126_ngs_resident_log
+        or      a
+        ret
+
+; Emit the post-instruction CS:IP on the independent NeoGS #EF channel.
+x86_bios_trace_log_cs_ip:
+        push    af
+        push    hl
+        ld      hl,x86_bios_trace_cs_ip_prefix
+        call    p126_ngs_resident_log
+        ld      hl,(x86_reg_cs)
+        call    x86_bios_trace_emit_hex16
+        ld      a,':'
+        out     (#EF),a
+        ld      hl,(x86_reg_ip)
+        call    x86_bios_trace_emit_hex16
+        ld      a,13
+        out     (#EF),a
+        ld      a,10
+        out     (#EF),a
+        pop     hl
+        pop     af
+        ret
+
+; IN HL=word. Emits four uppercase hexadecimal digits.
+x86_bios_trace_emit_hex16:
+        ld      a,h
+        call    x86_bios_trace_emit_hex8
+        ld      a,l
+        jp      x86_bios_trace_emit_hex8
+
+; IN A=byte. Preserves AF.
+x86_bios_trace_emit_hex8:
+        push    af
+        rrca
+        rrca
+        rrca
+        rrca
+        call    x86_bios_trace_emit_nibble
+        pop     af
+        and     #0F
+        jp      x86_bios_trace_emit_nibble
+
+x86_bios_trace_emit_nibble:
+        and     #0F
+        add     a,'0'
+        cp      '9'+1
+        jr      c,.hex_digit
+        add     a,7
+.hex_digit:
+        out     (#EF),a
+        ret
+
+x86_bios_trace_remaining: db 0
+x86_bios_trace_executed:  db 0
+x86_bios_trace_start_log: db "[NGS] X86 BIOS INSTRUCTION TRACE START (16-STEP SLICE)",13,10,0
+x86_bios_trace_cs_ip_prefix: db "[X86] CS:IP=",0
+x86_bios_trace_fault_log: db "[NGS] X86 BIOS TRACE STOP: OPCODE OR MEMORY FAULT",13,10,0
+x86_bios_trace_halted_log: db "[NGS] X86 BIOS EXECUTION HALTED BY GUEST",13,10,0
+x86_bios_trace_budget_log: db "[NGS] X86 BIOS TRACE SLICE COMPLETE (16 INSTRUCTIONS)",13,10,0
+
 ; physical = ((segment << 4) + offset) & 0FFFFFh
 x86_cpu_calc_phys:
         push    bc
