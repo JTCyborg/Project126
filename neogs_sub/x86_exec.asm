@@ -55,6 +55,22 @@ x86_cpu_step:
         jp      z,x86_exec_cwd
         cp      #9A
         jp      z,x86_exec_call_far_imm
+        cp      #9B
+        jp      z,x86_exec_wait
+        cp      #C1
+        jp      z,x86_exec_ret_near
+        cp      #C2
+        jp      z,x86_exec_ret_near
+        cp      #C3
+        jp      z,x86_exec_ret_near
+        cp      #C8
+        jp      z,x86_exec_ret_far
+        cp      #C9
+        jp      z,x86_exec_ret_far
+        cp      #CA
+        jp      z,x86_exec_ret_far
+        cp      #CB
+        jp      z,x86_exec_ret_far
         cp      #9C
         jp      z,x86_exec_pushf
         cp      #9D
@@ -169,6 +185,106 @@ x86_exec_call_far_imm:
         ld      (x86_reg_cs),hl
         ld      hl,(x86_exec_target_ip)
         ld      (x86_reg_ip),hl
+        or      a
+        ret
+
+; 9B WAIT is a no-op on the PCem 8086 path (no external 8087 device).
+x86_exec_wait:
+        or      a
+        ret
+
+; C1/C3 RET near aliases; C2 RET near imm16.
+; Return IP is read from SS:SP, then SP advances by 2 plus optional cleanup.
+x86_exec_ret_near:
+        ld      a,(x86_exec_opcode)
+        cp      #C2
+        jr      nz,.ret_near_no_adjust
+        call    x86_cpu_fetch16
+        ret     c
+        ld      (x86_exec_ret_adjust),hl
+        jr      .ret_near_read
+.ret_near_no_adjust:
+        ld      hl,0
+        ld      (x86_exec_ret_adjust),hl
+.ret_near_read:
+        ld      hl,(x86_reg_sp)
+        ld      (x86_exec_stack_offset),hl
+        call    x86_exec_stack_make_address
+        call    x86_guest_mem_read8
+        ret     c
+        ld      (x86_exec_stack_value),a
+        ld      hl,(x86_exec_stack_offset)
+        inc     hl
+        ld      (x86_exec_stack_offset),hl
+        call    x86_exec_stack_make_address
+        call    x86_guest_mem_read8
+        ret     c
+        ld      (x86_exec_stack_value+1),a
+        ld      hl,(x86_exec_stack_value)
+        ld      (x86_reg_ip),hl
+        ld      hl,(x86_reg_sp)
+        inc     hl
+        inc     hl
+        ld      de,(x86_exec_ret_adjust)
+        add     hl,de
+        ld      (x86_reg_sp),hl
+        or      a
+        ret
+
+; C8/C9 RETF aliases; CA RETF imm16; CB RETF.
+; Stack contains return IP followed by return CS.
+x86_exec_ret_far:
+        ld      a,(x86_exec_opcode)
+        cp      #CA
+        jr      nz,.ret_far_no_adjust
+        call    x86_cpu_fetch16
+        ret     c
+        ld      (x86_exec_ret_adjust),hl
+        jr      .ret_far_read
+.ret_far_no_adjust:
+        ld      hl,0
+        ld      (x86_exec_ret_adjust),hl
+.ret_far_read:
+        ld      hl,(x86_reg_sp)
+        ld      (x86_exec_stack_offset),hl
+        call    x86_exec_stack_make_address
+        call    x86_guest_mem_read8
+        ret     c
+        ld      (x86_exec_stack_value),a
+        ld      hl,(x86_exec_stack_offset)
+        inc     hl
+        ld      (x86_exec_stack_offset),hl
+        call    x86_exec_stack_make_address
+        call    x86_guest_mem_read8
+        ret     c
+        ld      (x86_exec_stack_value+1),a
+
+        ld      hl,(x86_reg_sp)
+        inc     hl
+        inc     hl
+        ld      (x86_exec_stack_offset),hl
+        call    x86_exec_stack_make_address
+        call    x86_guest_mem_read8
+        ret     c
+        ld      (x86_exec_target_cs),a
+        ld      hl,(x86_exec_stack_offset)
+        inc     hl
+        ld      (x86_exec_stack_offset),hl
+        call    x86_exec_stack_make_address
+        call    x86_guest_mem_read8
+        ret     c
+        ld      (x86_exec_target_cs+1),a
+
+        ld      hl,(x86_exec_stack_value)
+        ld      (x86_reg_ip),hl
+        ld      hl,(x86_exec_target_cs)
+        ld      (x86_reg_cs),hl
+        ld      hl,(x86_reg_sp)
+        ld      de,4
+        add     hl,de
+        ld      de,(x86_exec_ret_adjust)
+        add     hl,de
+        ld      (x86_reg_sp),hl
         or      a
         ret
 
@@ -800,6 +916,7 @@ x86_exec_stack_offset: dw 0
 x86_exec_stack_value: dw 0
 x86_exec_stack_new_sp: dw 0
 x86_exec_target_cs: dw 0
+x86_exec_ret_adjust: dw 0
 x86_exec_jcc_condition: db 0
 x86_exec_jcc_displacement: db 0
 x86_exec_moffs_opcode: db 0
