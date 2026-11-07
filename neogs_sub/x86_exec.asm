@@ -49,6 +49,15 @@ x86_cpu_step:
         ret     c
         ld      (x86_exec_opcode),a
 
+        cp      #D7
+        jp      z,x86_exec_xlat
+        cp      #F5
+        jp      z,x86_exec_cmc
+        cp      #F8
+        jp      c,.not_flag_control
+        cp      #FE
+        jp      c,x86_exec_flag_control
+.not_flag_control:
         cp      #98
         jp      z,x86_exec_cbw
         cp      #99
@@ -385,6 +394,67 @@ x86_exec_lahf:
         ld      hl,(x86_reg_flags)
         ld      a,l
         ld      (x86_reg_ax+1),a
+        or      a
+        ret
+
+; D7 XLAT: AL = byte at DS:(BX+AL), with 16-bit offset wrap.
+x86_exec_xlat:
+        ld      hl,(x86_reg_bx)
+        ld      a,(x86_reg_ax)
+        ld      e,a
+        ld      d,0
+        add     hl,de
+        ld      (x86_exec_moffs_offset),hl
+        call    x86_exec_moffs_make_address
+        call    x86_guest_mem_read8
+        ret     c
+        ld      (x86_reg_ax),a
+        or      a
+        ret
+
+; F5 CMC and F8-FD CLC/STC/CLI/STI/CLD/STD.
+; CF=FLAGS bit 0, IF=bit 9, DF=bit 10.
+x86_exec_cmc:
+        ld      hl,(x86_reg_flags)
+        ld      a,l
+        xor     1
+        ld      l,a
+        ld      (x86_reg_flags),hl
+        or      a
+        ret
+
+x86_exec_flag_control:
+        ld      a,(x86_exec_opcode)
+        ld      hl,(x86_reg_flags)
+        cp      #F8
+        jr      z,.flag_clc
+        cp      #F9
+        jr      z,.flag_stc
+        cp      #FA
+        jr      z,.flag_cli
+        cp      #FB
+        jr      z,.flag_sti
+        cp      #FC
+        jr      z,.flag_cld
+        ; FD STD
+        set     2,h
+        jr      .flag_store
+.flag_clc:
+        res     0,l
+        jr      .flag_store
+.flag_stc:
+        set     0,l
+        jr      .flag_store
+.flag_cli:
+        res     1,h
+        jr      .flag_store
+.flag_sti:
+        set     1,h
+        jr      .flag_store
+.flag_cld:
+        res     2,h
+.flag_store:
+        ld      (x86_reg_flags),hl
         or      a
         ret
 
