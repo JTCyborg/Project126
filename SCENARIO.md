@@ -765,3 +765,22 @@ The test is diagnostic only. BUILD PASS and hardware PASS are tracked separately
 - Reverse frame is contiguous in WIN1: header `#6000`, payload `#6012`, CRC `#6010`. Corrected the response header's payload length to little-endian `0100h` (256 bytes); it previously declared `1260h` while only 256 bytes were generated.
 - ATM DMA primitives match Project125: forward `DI` + `LDIR` to `#0000` with no dummy write; reverse `DI`, one discarded read from `#0000`, then `LDIR` from `#0000` into the host buffer, followed by `#FF` and CBIT acknowledgement.
 - Source/build change only. No hardware DMA PASS is claimed until a new target log confirms both directions.
+
+
+## 2026-11-07 — DMA frame validation and reverse-test header corrections
+
+Аппаратный лог после переноса DMA-механизма Project125 показывает:
+
+- ATM→NeoGS: заголовок принят по WIN1/page 03h и декодируется как корректный ABI 1.0 REQUEST, service DIAGNOSTICS, payload length 0100h. NeoGS возвращает status 04h = CRC_ERROR. Handshake E0/READY/FF и остановка DMA завершились.
+- NeoGS→ATM: ATM возвращает status 03h = BAD_FRAME. Старый текст ATM `CRC FAILED` был неверным обобщением: обработчик печатал его для любого отказа frame validator.
+
+Исправления исходников:
+
+1. В NeoGS `p126_ngs_ipc_validate_frame` восстановление payload pointer после чтения CRC заголовка больше не затирает аккумулятор CRC в HL. Pointer восстанавливается непосредственно в IX через `pop ix`, по аналогии с исправленным ATM validator.
+2. Reverse diagnostic response header теперь объявляет payload length `0100h` в offset 12–13. Sequence в offset 10–11 установлен в `0000h`; ранее `0100h` ошибочно находился в sequence, а payload length был нулевым.
+3. Reverse CRC payload loop оставлен без изменения: `B=0` + `DJNZ` намеренно обрабатывает 256 байт. DE является указателем на данные, а не счётчиком. Предыдущая гипотеза о цикле до переполнения адреса была неверной.
+4. ATM диагностическая строка переименована в `DMA RX FRAME VALIDATION FAILED STATUS=`, поскольку статус 03h означает BAD_FRAME, а не CRC_ERROR.
+
+DMA mapping, DMA registers, направления, Project125 handshake и ABI layout не менялись.
+
+Проверка: source correction. Требуется BUILD/CI и новый аппаратный запуск. Критерий прямого направления — NeoGS принимает кадр с status 00h; обратного — ATM сообщает FRAME CRC VALID и PATTERN PASS. До этого DMA hardware PASS не заявляется.
