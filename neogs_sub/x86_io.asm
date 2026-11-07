@@ -716,6 +716,12 @@ x86_io_ppi_write8:
 .ppi_pb_store:
         ld      a,c
         ld      (x86_io_ppi_pb),a
+        ; PB0 is PIT channel-2 GATE, matching PCem keyboard_xt_write().
+        push    bc
+        and     1
+        call    x86_dev_pit_gate2_write
+        pop     bc
+        ld      a,c
         bit     7,a
         jr      z,.ppi_pb_ack_released
         ; PB7 acknowledges the current data latch/IRQ but does not discard
