@@ -4,6 +4,8 @@
 ;
 ; Implemented:
 ;   00E0h: retained 16-bit diagnostic test latch.
+;   0020h-0021h: 8259A master PIC register programming/readback (no IRQ source
+;                or CPU INTA/acknowledge path yet).
 ;   0060h-0063h: initial XT-compatible 8255 PPI / keyboard interface.
 ;   x86_io_keyboard_push_impl: host/IPC producer API for XT scan-code bytes.
 ;
@@ -252,7 +254,7 @@ x86_io_pic_write8:
         call    x86_io_pic_decode
         ret     c
         or      a
-        jr      nz,.pic_write_data
+        jp      nz,.pic_write_data
         ld      a,(x86_io_pic_write_value)
         bit     4,a
         jr      z,.pic_write_command
