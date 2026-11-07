@@ -232,8 +232,9 @@ p126_ipc_validate_frame::
         ld      ix,(p126_ipc_frame_ptr)
         ld      e,(ix+12)
         ld      d,(ix+13)
-        pop     hl
-        push    hl
+        ; Restore the saved payload pointer directly into IX.
+        ; Do not pop it into HL: HL is the live CRC accumulator and must
+        ; survive the transition from header processing to payload processing.
         pop     ix
 .p126_frame_crc_data:
         ld      a,d
