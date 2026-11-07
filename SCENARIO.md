@@ -1510,3 +1510,15 @@ The temporary diagnostic is therefore moved back to the first terminator and now
 - Build and package validation are pending. BIOS POST is not yet considered passed.
 
 - Build follow-up: the first diagnostic version exceeded the 16 KiB X86CORE image by 15 bytes. The extra label call and separate `LAST PORT/AL` string were folded into the existing I/O-count label (`OUT= P=`), retaining both values while reducing code/data size. Corrected source commit: `a9250d84bac6b15690fa440dfc48440e52a0bd36`; assembly/package validation is pending.
+
+
+## 2026-11-08 — PCem-compatible XT keyboard/PPI behavior
+
+- Replaced the generic 8255 port-C nibble composition with the observable XT keyboard/PPI behavior from `PCem/keyboard_xt.c`. PCem's `ppi.c` only supplies reset defaults; it does not implement a generic mode-set 8255 for this XT path.
+- Port `60h` reads the keyboard data latch/FIFO. After reset, the FIFO is empty and the data latch is `00h`; no scan codes are synthesized while no keys are pressed.
+- Port `61h` reads/writes the XT keyboard system-control latch. The keyboard-side PB latch starts at `00h`, matching PCem's zero-initialized `keyboard_xt.pb` even though `ppi_reset()` initializes the separate PPI PB field to `40h`. A low-to-high transition on PB6 queues the XT BAT completion byte `AAh` and requests master-PIC IRQ1. PB7 acknowledges the current keyboard data/IRQ1 state.
+- Port `62h` reports the generic XT/no-FPU board profile: `0Dh` with PB3 clear; `06h` (CGA identification) with PB3 set; bit 5 is set when both speaker control bits PB0/PB1 are enabled. This prevents the BIOS status poll from seeing the former incorrect `00h` caused by generic 8255 direction composition.
+- Port `63h` reads open bus (`FFh`) and writes are ignored, matching the PCem XT keyboard handler's registered `60h..63h` range. Writes to `62h` are ignored.
+- ATM keyboard event delivery is deliberately not connected yet. The existing FIFO push API remains the future IPC producer; no physical NeoGS I/O is used.
+- Acceptance checks for the next target run: BIOS polling of `IN AL,62h` must observe `0Dh` for the default profile and leave the polling loop; a PB6 rising edge must make `AAh` available at `60h` with IRQ1 pending; with no keyboard input, repeated reads of `60h` must remain `00h` and must not create IRQ1.
+- Source commit: `9fb851a4953d3cf8e836888b6e076c1991a9c39a`. GitHub Actions build run [42424381769](https://github.com/JTCyborg/Project126/actions/runs/42424381769) was queued; build result pending at the time of this entry. Physical BIOS validation is pending.
