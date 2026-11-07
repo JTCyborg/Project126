@@ -1395,3 +1395,13 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 - Ошибки DMA/IPC, тайм-ауты, некорректные кадры и провалы self-test должны оставаться видимыми в обычном логе; успешные промежуточные этапы DMA могут быть сокращены отдельно после проверки, что итоговая строка сохраняет идентификатор образа/операции и результат.
 - Результаты PASS не следует печатать повторно из каждого внутреннего подэтапа: предпочтителен один итог на компонент и подробности только при FAIL.
 - Три уровня диагностики: NORMAL (по умолчанию), DEBUG (временная трассировка по compile-time флагам), CRASH (автоматический аварийный снимок). ATM #EF и NeoGS #EF остаются независимыми каналами.
+
+
+## 7.14. PC Speaker / ATM beeper
+
+- Investigation confirmed that the current PIT model is register-latch-only: it does not generate a channel-2 output waveform or PIT clock, and the PPI 61h speaker gate/data path is not connected to audio output.
+- PCem reference behavior is `PCem/sound_speaker.c` and `PCem/pit.c`. Guest speaker enable requires PPI port 61h bits 0 (PIT channel-2 gate) and 1 (speaker data enable), plus a running PIT channel 2.
+- NeoGS must calculate guest speaker state and send only state-change events over DMA/IPC. It must never issue physical device I/O. ATM must generate the waveform locally.
+- A Spectrum/ATM port-FE bit-4 beeper output is a candidate, but the exact ATM Turbo 2+ output path and a non-blocking high-rate timer/interrupt source must be confirmed before implementing a host driver. A 50 Hz frame interrupt is insufficient; a busy-wait in the host main loop is prohibited.
+- Detailed interface, proposed AUDIO event payload, fail-silent rules and acceptance tests: `docs/PC_SPEAKER_ATM.md`.
+- Status: DESIGN DOCUMENTED; guest PIT/PPI audio behavior, IPC event delivery, ATM waveform generation and real-hardware sound test are NOT IMPLEMENTED.
