@@ -1135,9 +1135,9 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 ## 2026-11-07 — Overlay Manager: source audit and design baseline
 
 - [x] Прослежен текущий stage-0 путь: X86CORE.C передаётся одним DBIT-потоком, копируется в logical 0000h и запускается; действующий предел — 4000h байт.
-- [x] Прослежен resident build: CPU state, execution, ModR/M, ALU, I/O и IPC включены в одну flat translation unit с ORG 0.
+- [x] Прослежен resident build: CPU state, execution, ModR/M, I/O wrappers, WIN2 gate и IPC находятся в resident ORG 0; X86IO и X86ALU implementations собраны отдельными ORG 8000h overlays.
 - [x] Проверена текущая стартовая раскладка: WIN0→page 00h, WIN1→page 03h, WIN2→page 01h, WIN3→page 02h; stack=7FFEh. WIN3 остаётся исключительно guest-memory aperture.
-- [x] Выполнен первичный source scan CPU/IPC units: прямых memory operands в logical 8000h–BFFFh не обнаружено; WIN2 определён как кандидат overlay aperture, но полное отсутствие использования WIN2 ещё требует runtime/source audit.
+- [x] Выполнен source scan CPU/IPC units: прямых fixed data operands в logical 8000h–BFFFh не обнаружено; WIN2 используется как overlay aperture, page04/page05 доступны через resident gate.
 - [x] Зафиксирован проектный вариант: WIN2 (8000h–BFFFh) как 16-KiB overlay execution/data window; candidate physical pool pages 04h–0Fh. Страницы 00h–03h не выдаются allocator'у.
 - [x] Определены требования к fixed-origin module linking, manifest, DMA/IPC streaming, page-42 staging, WIN3 destination copy/readback, resident call/return gate и bounded nested calls.
 - [x] Подтвердить WIN2 page-selector register/encoding по Project125 reference: MPAG #00, selector ROR8(physical_page). Project126 hardware validation остаётся отдельной задачей.
