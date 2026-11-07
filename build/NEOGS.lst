@@ -224,7 +224,7 @@
  57   0029
  58   0029 21 A8 00             ld      hl,p126_ngs_resident_banner
  59   002C CD 6D 00             call    p126_ngs_resident_log
- 60   002F CD 28 09             call    p126_ngs_ipc_crc16_selftest
+ 60   002F CD 64 09             call    p126_ngs_ipc_crc16_selftest
  61   0032 38 27                jr      c,p126_ngs_resident_crc_fail
  62   0034 21 C5 00             ld      hl,p126_ngs_resident_crc_ok
  63   0037 CD 6D 00             call    p126_ngs_resident_log
@@ -233,7 +233,7 @@
  66   003F 38 22                jr      c,p126_ngs_resident_ack_fail
  67   0041
  68   0041              p126_ngs_resident_main_loop:
- 69   0041 CD 05 09             call    p126_ngs_ipc_dispatch_once
+ 69   0041 CD 41 09             call    p126_ngs_ipc_dispatch_once
  70   0044 38 0B                jr      c,p126_ngs_resident_frame_error
  71   0046 B7                   or      a
  72   0047 28 F8                jr      z,p126_ngs_resident_main_loop
@@ -1483,35 +1483,35 @@
  33+  07AA              ; Clobbers AF,BC,DE,HL,IX. Scratch is non-reentrant.
  34+  07AA              p126_ngs_ipc_validate_frame:
  34+  07AA
- 35+  07AA 22 76 08             ld      (p126_ngs_ipc_frame_ptr),hl
- 36+  07AD ED 43 78 08          ld      (p126_ngs_ipc_frame_size),bc
+ 35+  07AA 22 77 08             ld      (p126_ngs_ipc_frame_ptr),hl
+ 36+  07AD ED 43 79 08          ld      (p126_ngs_ipc_frame_size),bc
  37+  07B1 78                   ld      a,b
  38+  07B2 B7                   or      a
  39+  07B3 20 06                jr      nz,.p126_ngs_frame_min_ok
  40+  07B5 79                   ld      a,c
  41+  07B6 FE 12                cp      P126_IPC_HEADER_SIZE
- 42+  07B8 DA 72 08             jp      c,.p126_ngs_frame_bad
+ 42+  07B8 DA 73 08             jp      c,.p126_ngs_frame_bad
  43+  07BB              .p126_ngs_frame_min_ok:
  44+  07BB E5                   push    hl
  45+  07BC DD E1                pop     ix
  46+  07BE DD 7E 00             ld      a,(ix+0)
  47+  07C1 FE 50                cp      'P'
- 48+  07C3 C2 66 08             jp      nz,.p126_ngs_frame_magic
+ 48+  07C3 C2 67 08             jp      nz,.p126_ngs_frame_magic
  49+  07C6 DD 7E 01             ld      a,(ix+1)
  50+  07C9 FE 31                cp      '1'
- 51+  07CB C2 66 08             jp      nz,.p126_ngs_frame_magic
+ 51+  07CB C2 67 08             jp      nz,.p126_ngs_frame_magic
  52+  07CE DD 7E 02             ld      a,(ix+2)
  53+  07D1 FE 32                cp      '2'
- 54+  07D3 C2 66 08             jp      nz,.p126_ngs_frame_magic
+ 54+  07D3 C2 67 08             jp      nz,.p126_ngs_frame_magic
  55+  07D6 DD 7E 03             ld      a,(ix+3)
  56+  07D9 FE 36                cp      '6'
- 57+  07DB C2 66 08             jp      nz,.p126_ngs_frame_magic
+ 57+  07DB C2 67 08             jp      nz,.p126_ngs_frame_magic
  58+  07DE DD 7E 04             ld      a,(ix+4)
  59+  07E1 FE 01                cp      P126_IPC_MAJOR
- 60+  07E3 C2 6A 08             jp      nz,.p126_ngs_frame_version
+ 60+  07E3 C2 6B 08             jp      nz,.p126_ngs_frame_version
  61+  07E6 DD 7E 05             ld      a,(ix+5)
  62+  07E9 FE 00                cp      P126_IPC_MINOR
- 63+  07EB C2 6A 08             jp      nz,.p126_ngs_frame_version
+ 63+  07EB C2 6B 08             jp      nz,.p126_ngs_frame_version
  64+  07EE DD 7E 06             ld      a,(ix+6)
  65+  07F1 FE 01                cp      P126_MSG_REQUEST
  66+  07F3 28 0D                jr      z,.p126_ngs_frame_type
@@ -1520,338 +1520,466 @@
  69+  07F9 FE 03                cp      P126_MSG_EVENT
  70+  07FB 28 05                jr      z,.p126_ngs_frame_type
  71+  07FD FE 04                cp      P126_MSG_CANCEL
- 72+  07FF C2 72 08             jp      nz,.p126_ngs_frame_bad
+ 72+  07FF C2 73 08             jp      nz,.p126_ngs_frame_bad
  73+  0802              .p126_ngs_frame_type:
  74+  0802 DD 7E 09             ld      a,(ix+9)
  75+  0805 E6 F8                and     #F8
- 76+  0807 C2 72 08             jp      nz,.p126_ngs_frame_bad
+ 76+  0807 C2 73 08             jp      nz,.p126_ngs_frame_bad
  77+  080A DD 6E 0C             ld      l,(ix+12)
  78+  080D DD 66 0D             ld      h,(ix+13)
  79+  0810 11 12 00             ld      de,P126_IPC_HEADER_SIZE
  80+  0813 19                   add     hl,de
- 81+  0814 ED 5B 78 08          ld      de,(p126_ngs_ipc_frame_size)
+ 81+  0814 ED 5B 79 08          ld      de,(p126_ngs_ipc_frame_size)
  82+  0818 B7                   or      a
  83+  0819 ED 52                sbc     hl,de
- 84+  081B C2 72 08             jp      nz,.p126_ngs_frame_bad
+ 84+  081B C2 73 08             jp      nz,.p126_ngs_frame_bad
  85+  081E                      ; CRC header and payload in one pass.
- 86+  081E DD E5                push    ix
- 87+  0820 D1                   pop     de
- 88+  0821 EB                   ex      de,hl
- 89+  0822 21 FF FF             ld      hl,#FFFF
- 90+  0825 06 10                ld      b,16
- 91+  0827              .p126_ngs_frame_crc_head:
- 92+  0827 1A                   ld      a,(de)
- 93+  0828 13                   inc     de
- 94+  0829 CD 96 07             call    p126_ngs_ipc_crc16_update
- 95+  082C 10 F9                djnz    .p126_ngs_frame_crc_head
- 96+  082E D5                   push    de
- 97+  082F DD 2A 76 08          ld      ix,(p126_ngs_ipc_frame_ptr)
- 98+  0833 DD 5E 0C             ld      e,(ix+12)
- 99+  0836 DD 56 0D             ld      d,(ix+13)
-100+  0839 E1                   pop     hl
-101+  083A E5                   push    hl
-102+  083B DD E1                pop     ix
-103+  083D              .p126_ngs_frame_crc_data:
-104+  083D 7A                   ld      a,d
-105+  083E B3                   or      e
-106+  083F 28 0B                jr      z,.p126_ngs_frame_crc_compare
-107+  0841 DD 7E 00             ld      a,(ix+0)
-108+  0844 DD 23                inc     ix
-109+  0846 CD 96 07             call    p126_ngs_ipc_crc16_update
-110+  0849 1B                   dec     de
-111+  084A 18 F1                jr      .p126_ngs_frame_crc_data
-112+  084C              .p126_ngs_frame_crc_compare:
-113+  084C 22 7A 08             ld      (p126_ngs_ipc_crc_work),hl
-114+  084F DD 2A 76 08          ld      ix,(p126_ngs_ipc_frame_ptr)
-115+  0853 DD 7E 10             ld      a,(ix+16)
-116+  0856 5F                   ld      e,a
-117+  0857 DD 7E 11             ld      a,(ix+17)
-118+  085A 57                   ld      d,a
-119+  085B 2A 7A 08             ld      hl,(p126_ngs_ipc_crc_work)
-120+  085E B7                   or      a
-121+  085F ED 52                sbc     hl,de
-122+  0861 C2 6E 08             jp      nz,.p126_ngs_frame_crc_bad
-123+  0864 AF                   xor     a
-124+  0865 C9                   ret
-125+  0866              .p126_ngs_frame_magic:
-126+  0866 3E 01                ld      a,P126_STATUS_BAD_MAGIC
-127+  0868 37                   scf
-128+  0869 C9                   ret
-129+  086A              .p126_ngs_frame_version:
-130+  086A 3E 02                ld      a,P126_STATUS_BAD_VERSION
-131+  086C 37                   scf
-132+  086D C9                   ret
-133+  086E              .p126_ngs_frame_crc_bad:
-134+  086E 3E 04                ld      a,P126_STATUS_CRC_ERROR
-135+  0870 37                   scf
-136+  0871 C9                   ret
-137+  0872              .p126_ngs_frame_bad:
-138+  0872 3E 03                ld      a,P126_STATUS_BAD_FRAME
-139+  0874 37                   scf
-140+  0875 C9                   ret
-141+  0876 00 00        p126_ngs_ipc_frame_ptr: dw 0
-142+  0878 00 00        p126_ngs_ipc_frame_size: dw 0
-143+  087A 00 00        p126_ngs_ipc_crc_work: dw 0
-144+  087C
-145+  087C
-146+  087C              ; -------------------------------------------------------------------------
-147+  087C              ; Receive one ATM -> NeoGS ABI 1.0 frame through ZX DMA.
-148+  087C              ; Entry: resident dispatcher consumed E0h from ZXCMD; CBIT remains asserted.
-149+  087C              ; Resident code, stack and interrupt handlers must stay in WIN0-WIN2.
-150+  087C              ; OUT: carry clear/A=0, HL=#C000 and BC=derived frame size; otherwise
-151+  087C              ; carry set/A=status. Uses physical DMA page 42h (108000h), then maps it
-152+  087C              ; into WIN3. The callable dispatcher below routes E0h to this endpoint.
-153+  087C              ; -------------------------------------------------------------------------
-154+  087C              P126_NGS_DMA_MOD      EQU #1B
-155+  087C              P126_NGS_DMA_HAD      EQU #1C
-156+  087C              P126_NGS_DMA_MAD      EQU #1D
-157+  087C              P126_NGS_DMA_LAD      EQU #1E
-158+  087C              P126_NGS_DMA_CST      EQU #1F
-159+  087C              P126_NGS_ZXSTAT       EQU #04
-160+  087C              P126_NGS_CLRCBIT      EQU #05
-161+  087C              P126_NGS_WIN3_PORT    EQU #23
-162+  087C              P126_NGS_DMA_TARGET_PAGE     EQU #42
-163+  087C              P126_NGS_DMA_TIMEOUT  EQU #FFFF
-164+  087C
-165+  087C              p126_ngs_ipc_dma_receive_frame:
-165+  087C
-166+  087C 3E 01                ld      a,1
-167+  087E D3 1B                out     (P126_NGS_DMA_MOD),a
-168+  0880 3E 10                ld      a,#10
-169+  0882 D3 1C                out     (P126_NGS_DMA_HAD),a
-170+  0884 3E 80                ld      a,#80
-171+  0886 D3 1D                out     (P126_NGS_DMA_MAD),a
-172+  0888 AF                   xor     a
-173+  0889 D3 1E                out     (P126_NGS_DMA_LAD),a
-174+  088B 3E 80                ld      a,#80
-175+  088D D3 1F                out     (P126_NGS_DMA_CST),a
-176+  088F 21 6D 09             ld      hl,p126_ngs_ipc_log_dma_ready
-177+  0892 CD 98 09             call    p126_ngs_ipc_log
-178+  0895 AF                   xor     a
-179+  0896 D3 05                out     (P126_NGS_CLRCBIT),a
-180+  0898
-181+  0898 01 FF FF             ld      bc,P126_NGS_DMA_TIMEOUT
-182+  089B              .p126_ngs_dma_wait_end:
-183+  089B DB 04                in      a,(P126_NGS_ZXSTAT)
-184+  089D CB 47                bit     0,a
-185+  089F 20 0E                jr      nz,.p126_ngs_dma_host_end
-186+  08A1 0B                   dec     bc
-187+  08A2 78                   ld      a,b
-188+  08A3 B1                   or      c
-189+  08A4 20 F5                jr      nz,.p126_ngs_dma_wait_end
-190+  08A6                      ; Always stop DMA before releasing the command on timeout.
-191+  08A6 AF                   xor     a
-192+  08A7 D3 1F                out     (P126_NGS_DMA_CST),a
-193+  08A9 D3 05                out     (P126_NGS_CLRCBIT),a
-194+  08AB 3E 0A                ld      a,P126_STATUS_TIMEOUT
-195+  08AD 37                   scf
-196+  08AE C9                   ret
-197+  08AF
-198+  08AF              .p126_ngs_dma_host_end:
-199+  08AF                      ; FFh/CBIT marks the end of the host write. Stop DMA and map the
-200+  08AF                      ; staging page, but keep CBIT asserted until validation is complete.
-201+  08AF AF                   xor     a
-202+  08B0 D3 1F                out     (P126_NGS_DMA_CST),a
-203+  08B2 3E 42                ld      a,P126_NGS_DMA_TARGET_PAGE
-204+  08B4 D3 23                out     (P126_NGS_WIN3_PORT),a
-205+  08B6 21 7F 09             ld      hl,p126_ngs_ipc_log_dma_end
-206+  08B9 CD 98 09             call    p126_ngs_ipc_log
-207+  08BC
-208+  08BC                      ; Derive exact frame size from the fixed header's payload length.
-209+  08BC 3A 0C C0             ld      a,(#C00C)
-210+  08BF 5F                   ld      e,a
-211+  08C0 3A 0D C0             ld      a,(#C00D)
-212+  08C3 57                   ld      d,a
-213+  08C4 21 12 00             ld      hl,P126_IPC_HEADER_SIZE
-214+  08C7 19                   add     hl,de
-215+  08C8                      ; Reject any declared frame larger than the 16 KiB DMA page.
-216+  08C8 7C                   ld      a,h
-217+  08C9 FE 40                cp      #40
-218+  08CB 38 0A                jr      c,.p126_ngs_dma_size_ok
-219+  08CD C2 F9 08             jp      nz,.p126_ngs_dma_bad_length
-220+  08D0 7D                   ld      a,l
-221+  08D1 B7                   or      a
-222+  08D2 28 03                jr      z,.p126_ngs_dma_size_ok
-223+  08D4 C3 F9 08             jp      .p126_ngs_dma_bad_length
-224+  08D7              .p126_ngs_dma_size_ok:
-225+  08D7 22 03 09             ld      (p126_ngs_ipc_rx_size),hl
-226+  08DA ED 4B 03 09          ld      bc,(p126_ngs_ipc_rx_size)
-227+  08DE 21 00 C0             ld      hl,#C000
-228+  08E1 CD AA 07             call    p126_ngs_ipc_validate_frame
-229+  08E4 38 0C                jr      c,.p126_ngs_dma_validation_failed
-230+  08E6
-231+  08E6                      ; Validation succeeded: only now acknowledge completion to ATM.
-232+  08E6 AF                   xor     a
-233+  08E7 D3 05                out     (P126_NGS_CLRCBIT),a
-234+  08E9 21 00 C0             ld      hl,#C000
-235+  08EC ED 4B 03 09          ld      bc,(p126_ngs_ipc_rx_size)
-236+  08F0 AF                   xor     a
-237+  08F1 C9                   ret
-238+  08F2
-239+  08F2              .p126_ngs_dma_validation_failed:
-240+  08F2                      ; Preserve the ABI status and carry while releasing the host.
-241+  08F2 F5                   push    af
-242+  08F3 AF                   xor     a
-243+  08F4 D3 05                out     (P126_NGS_CLRCBIT),a
-244+  08F6 F1                   pop     af
-245+  08F7 37                   scf
-246+  08F8 C9                   ret
-247+  08F9
-248+  08F9              .p126_ngs_dma_bad_length:
-249+  08F9 3E 03                ld      a,P126_STATUS_BAD_FRAME
-250+  08FB 37                   scf
-251+  08FC F5                   push    af
-252+  08FD AF                   xor     a
-253+  08FE D3 05                out     (P126_NGS_CLRCBIT),a
-254+  0900 F1                   pop     af
-255+  0901 37                   scf
-256+  0902 C9                   ret
-257+  0903
-258+  0903 00 00        p126_ngs_ipc_rx_size: dw 0
-259+  0905
-260+  0905
-261+  0905              ; -------------------------------------------------------------------------
-262+  0905              ; Resident command-dispatch entry, one bounded unit of work.
-263+  0905              ; OUT: carry clear/Z=1/A=0 when no command is pending;
-264+  0905              ;      carry clear/Z=0 with HL=#C000, BC=size on a valid E0h frame;
-265+  0905              ;      carry set/A=status for a rejected command or receive failure.
-266+  0905              ; The caller owns the resident main loop and must keep its stack/code outside
-267+  0905              ; WIN3. E0h is consumed from ZXCMD while CBIT stays asserted until DMA is armed.
-268+  0905              ; -------------------------------------------------------------------------
-269+  0905              P126_NGS_ZXCMD       EQU #01
-270+  0905
-271+  0905              p126_ngs_ipc_dispatch_once:
-271+  0905
-272+  0905 DB 04                in      a,(P126_NGS_ZXSTAT)
-273+  0907 CB 47                bit     0,a
-274+  0909 20 02                jr      nz,.p126_ngs_dispatch_command
-275+  090B AF                   xor     a
-276+  090C C9                   ret
-277+  090D
-278+  090D              .p126_ngs_dispatch_command:
-279+  090D DB 01                in      a,(P126_NGS_ZXCMD)
-280+  090F FE E0                cp      P126_CMD_HOST_FRAME
-281+  0911 28 07                jr      z,.p126_ngs_dispatch_host_frame
-282+  0913
-283+  0913                      ; Unknown/unimplemented command: release the doorbell so the host
-284+  0913                      ; cannot remain blocked, and report a defined ABI error.
-285+  0913 AF                   xor     a
-286+  0914 D3 05                out     (P126_NGS_CLRCBIT),a
-287+  0916 3E 07                ld      a,P126_STATUS_NO_OPERATION
-288+  0918 37                   scf
-289+  0919 C9                   ret
-290+  091A
-291+  091A              .p126_ngs_dispatch_host_frame:
-292+  091A 21 55 09             ld      hl,p126_ngs_ipc_log_dma_e0
-293+  091D CD 98 09             call    p126_ngs_ipc_log
-294+  0920 CD 7C 08             call    p126_ngs_ipc_dma_receive_frame
-295+  0923 D8                   ret     c
-296+  0924 3E 01                ld      a,1
-297+  0926 B7                   or      a
-298+  0927 C9                   ret
-299+  0928
-300+  0928
-301+  0928              ; Standard CRC-16/CCITT-FALSE regression vector.
-302+  0928              ; OUT: Carry clear and HL=#29B1 on pass; Carry set on failure.
-303+  0928              p126_ngs_ipc_crc16_selftest:
-303+  0928
-304+  0928 C5                   push    bc
-305+  0929 D5                   push    de
-306+  092A 21 FF FF             ld      hl, #FFFF
-307+  092D 11 4C 09             ld      de, p126_ngs_ipc_crc16_test_vector
-308+  0930 06 09                ld      b, 9
-309+  0932              .p126_ngs_crc_test_loop:
-310+  0932 1A                   ld      a, (de)
-311+  0933 13                   inc     de
-312+  0934 CD 96 07             call    p126_ngs_ipc_crc16_update
-313+  0937 10 F9                djnz    .p126_ngs_crc_test_loop
-314+  0939 11 B1 29             ld      de, #29B1
-315+  093C B7                   or      a
-316+  093D ED 52                sbc     hl, de
-317+  093F 20 07                jr      nz, .p126_ngs_crc_test_failed
-318+  0941 D1                   pop     de
-319+  0942 C1                   pop     bc
-320+  0943 21 B1 29             ld      hl, #29B1
-321+  0946 B7                   or      a
-322+  0947 C9                   ret
-323+  0948              .p126_ngs_crc_test_failed:
-324+  0948 D1                   pop     de
-325+  0949 C1                   pop     bc
-326+  094A 37                   scf
-327+  094B C9                   ret
-328+  094C
-329+  094C              p126_ngs_ipc_crc16_test_vector:
-330+  094C 31 32 33 34          db "123456789"
-330+  0950 35 36 37 38
-330+  0954 39
-331+  0955
-332+  0955              ; Independent NeoGS #EF diagnostics for the DMA transaction lifecycle.
-333+  0955 5B 4E 47 53  p126_ngs_ipc_log_dma_e0:    db "[NGS] DMA E0 RECEIVED",13,10,0
-333+  0959 5D 20 44 4D
-333+  095D 41 20 45 30
-333+  0961 20 52 45 43
-333+  0965 45 49 56 45
-333+  0969 44 0D 0A 00
-334+  096D 5B 4E 47 53  p126_ngs_ipc_log_dma_ready: db "[NGS] DMA READY",13,10,0
-334+  0971 5D 20 44 4D
-334+  0975 41 20 52 45
-334+  0979 41 44 59 0D
-334+  097D 0A 00
-335+  097F 5B 4E 47 53  p126_ngs_ipc_log_dma_end:   db "[NGS] DMA END RECEIVED",13,10,0
-335+  0983 5D 20 44 4D
-335+  0987 41 20 45 4E
-335+  098B 44 20 52 45
-335+  098F 43 45 49 56
-335+  0993 45 44 0D 0A
-335+  0997 00
-336+  0998
-337+  0998              ; This IPC module is assembled both standalone and into the resident image.
-338+  0998              ; Keep its diagnostics self-contained instead of importing the resident logger.
-339+  0998              ; IN: HL = zero-terminated message. OUT: AF/BC preserved; HL advanced to NUL.
-340+  0998              p126_ngs_ipc_log:
-341+  0998 F5                   push    af
-342+  0999 C5                   push    bc
-343+  099A 01 EF 00             ld      bc,#00EF
-344+  099D              .p126_ngs_ipc_log_loop:
-345+  099D 7E                   ld      a,(hl)
-346+  099E 23                   inc     hl
-347+  099F B7                   or      a
-348+  09A0 28 04                jr      z,.p126_ngs_ipc_log_done
-349+  09A2 ED 79                out     (c),a
-350+  09A4 18 F7                jr      .p126_ngs_ipc_log_loop
-351+  09A6              .p126_ngs_ipc_log_done:
-352+  09A6 C1                   pop     bc
-353+  09A7 F1                   pop     af
-354+  09A8 C9                   ret
-355+  09A9
+ 86+  081E                      ; Keep DE as the frame pointer while HL is the CRC accumulator.
+ 87+  081E DD E5                push    ix
+ 88+  0820 D1                   pop     de
+ 89+  0821 21 FF FF             ld      hl,#FFFF
+ 90+  0824 06 10                ld      b,16
+ 91+  0826              .p126_ngs_frame_crc_head:
+ 92+  0826 1A                   ld      a,(de)
+ 93+  0827 13                   inc     de
+ 94+  0828 CD 96 07             call    p126_ngs_ipc_crc16_update
+ 95+  082B 10 F9                djnz    .p126_ngs_frame_crc_head
+ 96+  082D                      ; DE currently points at frame+16; skip the two stored CRC bytes.
+ 97+  082D 13                   inc     de
+ 98+  082E 13                   inc     de
+ 99+  082F D5                   push    de
+100+  0830 DD 2A 77 08          ld      ix,(p126_ngs_ipc_frame_ptr)
+101+  0834 DD 5E 0C             ld      e,(ix+12)
+102+  0837 DD 56 0D             ld      d,(ix+13)
+103+  083A E1                   pop     hl
+104+  083B E5                   push    hl
+105+  083C DD E1                pop     ix
+106+  083E              .p126_ngs_frame_crc_data:
+107+  083E 7A                   ld      a,d
+108+  083F B3                   or      e
+109+  0840 28 0B                jr      z,.p126_ngs_frame_crc_compare
+110+  0842 DD 7E 00             ld      a,(ix+0)
+111+  0845 DD 23                inc     ix
+112+  0847 CD 96 07             call    p126_ngs_ipc_crc16_update
+113+  084A 1B                   dec     de
+114+  084B 18 F1                jr      .p126_ngs_frame_crc_data
+115+  084D              .p126_ngs_frame_crc_compare:
+116+  084D 22 7B 08             ld      (p126_ngs_ipc_crc_work),hl
+117+  0850 DD 2A 77 08          ld      ix,(p126_ngs_ipc_frame_ptr)
+118+  0854 DD 7E 10             ld      a,(ix+16)
+119+  0857 5F                   ld      e,a
+120+  0858 DD 7E 11             ld      a,(ix+17)
+121+  085B 57                   ld      d,a
+122+  085C 2A 7B 08             ld      hl,(p126_ngs_ipc_crc_work)
+123+  085F B7                   or      a
+124+  0860 ED 52                sbc     hl,de
+125+  0862 C2 6F 08             jp      nz,.p126_ngs_frame_crc_bad
+126+  0865 AF                   xor     a
+127+  0866 C9                   ret
+128+  0867              .p126_ngs_frame_magic:
+129+  0867 3E 01                ld      a,P126_STATUS_BAD_MAGIC
+130+  0869 37                   scf
+131+  086A C9                   ret
+132+  086B              .p126_ngs_frame_version:
+133+  086B 3E 02                ld      a,P126_STATUS_BAD_VERSION
+134+  086D 37                   scf
+135+  086E C9                   ret
+136+  086F              .p126_ngs_frame_crc_bad:
+137+  086F 3E 04                ld      a,P126_STATUS_CRC_ERROR
+138+  0871 37                   scf
+139+  0872 C9                   ret
+140+  0873              .p126_ngs_frame_bad:
+141+  0873 3E 03                ld      a,P126_STATUS_BAD_FRAME
+142+  0875 37                   scf
+143+  0876 C9                   ret
+144+  0877 00 00        p126_ngs_ipc_frame_ptr: dw 0
+145+  0879 00 00        p126_ngs_ipc_frame_size: dw 0
+146+  087B 00 00        p126_ngs_ipc_crc_work: dw 0
+147+  087D
+148+  087D
+149+  087D              ; -------------------------------------------------------------------------
+150+  087D              ; Receive one ATM -> NeoGS ABI 1.0 frame through ZX DMA.
+151+  087D              ; Entry: resident dispatcher consumed E0h from ZXCMD; CBIT remains asserted.
+152+  087D              ; Resident code, stack and interrupt handlers must stay in WIN0-WIN2.
+153+  087D              ; OUT: carry clear/A=0, HL=#C000 and BC=derived frame size; otherwise
+154+  087D              ; carry set/A=status. Uses physical DMA page 42h (108000h), then maps it
+155+  087D              ; into WIN3. The callable dispatcher below routes E0h to this endpoint.
+156+  087D              ; -------------------------------------------------------------------------
+157+  087D              P126_NGS_DMA_MOD      EQU #1B
+158+  087D              P126_NGS_DMA_HAD      EQU #1C
+159+  087D              P126_NGS_DMA_MAD      EQU #1D
+160+  087D              P126_NGS_DMA_LAD      EQU #1E
+161+  087D              P126_NGS_DMA_CST      EQU #1F
+162+  087D              P126_NGS_ZXSTAT       EQU #04
+163+  087D              P126_NGS_CLRCBIT      EQU #05
+164+  087D              P126_NGS_WIN3_PORT    EQU #23
+165+  087D              P126_NGS_DMA_TARGET_PAGE     EQU #42
+166+  087D              P126_NGS_DMA_TIMEOUT  EQU #FFFF
+167+  087D
+168+  087D              p126_ngs_ipc_dma_receive_frame:
+168+  087D
+169+  087D 21 A9 09             ld      hl,p126_ngs_ipc_log_dma_cfg_begin
+170+  0880 CD 01 0B             call    p126_ngs_ipc_log
+171+  0883 3E 01                ld      a,1
+172+  0885 D3 1B                out     (P126_NGS_DMA_MOD),a
+173+  0887 3E 10                ld      a,#10
+174+  0889 D3 1C                out     (P126_NGS_DMA_HAD),a
+175+  088B 3E 80                ld      a,#80
+176+  088D D3 1D                out     (P126_NGS_DMA_MAD),a
+177+  088F AF                   xor     a
+178+  0890 D3 1E                out     (P126_NGS_DMA_LAD),a
+179+  0892 3E 80                ld      a,#80
+180+  0894 D3 1F                out     (P126_NGS_DMA_CST),a
+181+  0896 21 C2 09             ld      hl,p126_ngs_ipc_log_dma_armed
+182+  0899 CD 01 0B             call    p126_ngs_ipc_log
+183+  089C AF                   xor     a
+184+  089D D3 05                out     (P126_NGS_CLRCBIT),a
+185+  089F 21 D4 09             ld      hl,p126_ngs_ipc_log_dma_ready
+186+  08A2 CD 01 0B             call    p126_ngs_ipc_log
+187+  08A5
+188+  08A5 01 FF FF             ld      bc,P126_NGS_DMA_TIMEOUT
+189+  08A8              .p126_ngs_dma_wait_end:
+190+  08A8 DB 04                in      a,(P126_NGS_ZXSTAT)
+191+  08AA CB 47                bit     0,a
+192+  08AC 20 14                jr      nz,.p126_ngs_dma_host_end
+193+  08AE 0B                   dec     bc
+194+  08AF 78                   ld      a,b
+195+  08B0 B1                   or      c
+196+  08B1 20 F5                jr      nz,.p126_ngs_dma_wait_end
+197+  08B3                      ; Always stop DMA before releasing the command on timeout.
+198+  08B3 21 14 0A             ld      hl,p126_ngs_ipc_log_dma_timeout
+199+  08B6 CD 01 0B             call    p126_ngs_ipc_log
+200+  08B9 AF                   xor     a
+201+  08BA D3 1F                out     (P126_NGS_DMA_CST),a
+202+  08BC D3 05                out     (P126_NGS_CLRCBIT),a
+203+  08BE 3E 0A                ld      a,P126_STATUS_TIMEOUT
+204+  08C0 37                   scf
+205+  08C1 C9                   ret
+206+  08C2
+207+  08C2              .p126_ngs_dma_host_end:
+208+  08C2                      ; FFh/CBIT marks the end of the host write. Stop DMA and map the
+209+  08C2                      ; staging page, but keep CBIT asserted until validation is complete.
+210+  08C2 21 F6 09             ld      hl,p126_ngs_ipc_log_dma_host_end
+211+  08C5 CD 01 0B             call    p126_ngs_ipc_log
+212+  08C8 AF                   xor     a
+213+  08C9 D3 1F                out     (P126_NGS_DMA_CST),a
+214+  08CB 21 4E 0A             ld      hl,p126_ngs_ipc_log_dma_stopped
+215+  08CE CD 01 0B             call    p126_ngs_ipc_log
+216+  08D1 3E 42                ld      a,P126_NGS_DMA_TARGET_PAGE
+217+  08D3 D3 23                out     (P126_NGS_WIN3_PORT),a
+218+  08D5 21 62 0A             ld      hl,p126_ngs_ipc_log_dma_page_mapped
+219+  08D8 CD 01 0B             call    p126_ngs_ipc_log
+220+  08DB 21 7D 0A             ld      hl,p126_ngs_ipc_log_dma_end
+221+  08DE CD 01 0B             call    p126_ngs_ipc_log
+222+  08E1
+223+  08E1                      ; Derive exact frame size from the fixed header's payload length.
+224+  08E1 3A 0C C0             ld      a,(#C00C)
+225+  08E4 5F                   ld      e,a
+226+  08E5 3A 0D C0             ld      a,(#C00D)
+227+  08E8 57                   ld      d,a
+228+  08E9 21 12 00             ld      hl,P126_IPC_HEADER_SIZE
+229+  08EC 19                   add     hl,de
+230+  08ED                      ; Reject any declared frame larger than the 16 KiB DMA page.
+231+  08ED 7C                   ld      a,h
+232+  08EE FE 40                cp      #40
+233+  08F0 38 0A                jr      c,.p126_ngs_dma_size_ok
+234+  08F2 C2 2F 09             jp      nz,.p126_ngs_dma_bad_length
+235+  08F5 7D                   ld      a,l
+236+  08F6 B7                   or      a
+237+  08F7 28 03                jr      z,.p126_ngs_dma_size_ok
+238+  08F9 C3 2F 09             jp      .p126_ngs_dma_bad_length
+239+  08FC              .p126_ngs_dma_size_ok:
+240+  08FC 22 3F 09             ld      (p126_ngs_ipc_rx_size),hl
+241+  08FF ED 4B 3F 09          ld      bc,(p126_ngs_ipc_rx_size)
+242+  0903 21 00 C0             ld      hl,#C000
+243+  0906 CD AA 07             call    p126_ngs_ipc_validate_frame
+244+  0909 38 12                jr      c,.p126_ngs_dma_validation_failed
+245+  090B 21 96 0A             ld      hl,p126_ngs_ipc_log_frame_valid
+246+  090E CD 01 0B             call    p126_ngs_ipc_log
+247+  0911
+248+  0911                      ; Validation succeeded: only now acknowledge completion to ATM.
+249+  0911 AF                   xor     a
+250+  0912 D3 05                out     (P126_NGS_CLRCBIT),a
+251+  0914 21 00 C0             ld      hl,#C000
+252+  0917 ED 4B 3F 09          ld      bc,(p126_ngs_ipc_rx_size)
+253+  091B AF                   xor     a
+254+  091C C9                   ret
+255+  091D
+256+  091D              .p126_ngs_dma_validation_failed:
+257+  091D                      ; Preserve the ABI status and carry while releasing the host.
+258+  091D F5                   push    af
+259+  091E 21 AE 0A             ld      hl,p126_ngs_ipc_log_frame_rejected
+260+  0921 CD 01 0B             call    p126_ngs_ipc_log
+261+  0924 F1                   pop     af
+262+  0925 CD CF 0A             call    p126_ngs_ipc_log_hex_byte
+263+  0928 F5                   push    af
+264+  0929 AF                   xor     a
+265+  092A D3 05                out     (P126_NGS_CLRCBIT),a
+266+  092C F1                   pop     af
+267+  092D 37                   scf
+268+  092E C9                   ret
+269+  092F
+270+  092F              .p126_ngs_dma_bad_length:
+271+  092F 21 2D 0A             ld      hl,p126_ngs_ipc_log_bad_length
+272+  0932 CD 01 0B             call    p126_ngs_ipc_log
+273+  0935 3E 03                ld      a,P126_STATUS_BAD_FRAME
+274+  0937 37                   scf
+275+  0938 F5                   push    af
+276+  0939 AF                   xor     a
+277+  093A D3 05                out     (P126_NGS_CLRCBIT),a
+278+  093C F1                   pop     af
+279+  093D 37                   scf
+280+  093E C9                   ret
+281+  093F
+282+  093F 00 00        p126_ngs_ipc_rx_size: dw 0
+283+  0941
+284+  0941
+285+  0941              ; -------------------------------------------------------------------------
+286+  0941              ; Resident command-dispatch entry, one bounded unit of work.
+287+  0941              ; OUT: carry clear/Z=1/A=0 when no command is pending;
+288+  0941              ;      carry clear/Z=0 with HL=#C000, BC=size on a valid E0h frame;
+289+  0941              ;      carry set/A=status for a rejected command or receive failure.
+290+  0941              ; The caller owns the resident main loop and must keep its stack/code outside
+291+  0941              ; WIN3. E0h is consumed from ZXCMD while CBIT stays asserted until DMA is armed.
+292+  0941              ; -------------------------------------------------------------------------
+293+  0941              P126_NGS_ZXCMD       EQU #01
+294+  0941
+295+  0941              p126_ngs_ipc_dispatch_once:
+295+  0941
+296+  0941 DB 04                in      a,(P126_NGS_ZXSTAT)
+297+  0943 CB 47                bit     0,a
+298+  0945 20 02                jr      nz,.p126_ngs_dispatch_command
+299+  0947 AF                   xor     a
+300+  0948 C9                   ret
+301+  0949
+302+  0949              .p126_ngs_dispatch_command:
+303+  0949 DB 01                in      a,(P126_NGS_ZXCMD)
+304+  094B FE E0                cp      P126_CMD_HOST_FRAME
+305+  094D 28 07                jr      z,.p126_ngs_dispatch_host_frame
+306+  094F
+307+  094F                      ; Unknown/unimplemented command: release the doorbell so the host
+308+  094F                      ; cannot remain blocked, and report a defined ABI error.
+309+  094F AF                   xor     a
+310+  0950 D3 05                out     (P126_NGS_CLRCBIT),a
+311+  0952 3E 07                ld      a,P126_STATUS_NO_OPERATION
+312+  0954 37                   scf
+313+  0955 C9                   ret
+314+  0956
+315+  0956              .p126_ngs_dispatch_host_frame:
+316+  0956 21 91 09             ld      hl,p126_ngs_ipc_log_dma_e0
+317+  0959 CD 01 0B             call    p126_ngs_ipc_log
+318+  095C CD 7D 08             call    p126_ngs_ipc_dma_receive_frame
+319+  095F D8                   ret     c
+320+  0960 3E 01                ld      a,1
+321+  0962 B7                   or      a
+322+  0963 C9                   ret
+323+  0964
+324+  0964
+325+  0964              ; Standard CRC-16/CCITT-FALSE regression vector.
+326+  0964              ; OUT: Carry clear and HL=#29B1 on pass; Carry set on failure.
+327+  0964              p126_ngs_ipc_crc16_selftest:
+327+  0964
+328+  0964 C5                   push    bc
+329+  0965 D5                   push    de
+330+  0966 21 FF FF             ld      hl, #FFFF
+331+  0969 11 88 09             ld      de, p126_ngs_ipc_crc16_test_vector
+332+  096C 06 09                ld      b, 9
+333+  096E              .p126_ngs_crc_test_loop:
+334+  096E 1A                   ld      a, (de)
+335+  096F 13                   inc     de
+336+  0970 CD 96 07             call    p126_ngs_ipc_crc16_update
+337+  0973 10 F9                djnz    .p126_ngs_crc_test_loop
+338+  0975 11 B1 29             ld      de, #29B1
+339+  0978 B7                   or      a
+340+  0979 ED 52                sbc     hl, de
+341+  097B 20 07                jr      nz, .p126_ngs_crc_test_failed
+342+  097D D1                   pop     de
+343+  097E C1                   pop     bc
+344+  097F 21 B1 29             ld      hl, #29B1
+345+  0982 B7                   or      a
+346+  0983 C9                   ret
+347+  0984              .p126_ngs_crc_test_failed:
+348+  0984 D1                   pop     de
+349+  0985 C1                   pop     bc
+350+  0986 37                   scf
+351+  0987 C9                   ret
+352+  0988
+353+  0988              p126_ngs_ipc_crc16_test_vector:
+354+  0988 31 32 33 34          db "123456789"
+354+  098C 35 36 37 38
+354+  0990 39
+355+  0991
+356+  0991              ; Independent NeoGS #EF diagnostics for the DMA transaction lifecycle.
+357+  0991 5B 4E 47 53  p126_ngs_ipc_log_dma_e0:          db "[NGS] DMA E0 RECEIVED",13,10,0
+357+  0995 5D 20 44 4D
+357+  0999 41 20 45 30
+357+  099D 20 52 45 43
+357+  09A1 45 49 56 45
+357+  09A5 44 0D 0A 00
+358+  09A9 5B 4E 47 53  p126_ngs_ipc_log_dma_cfg_begin:   db "[NGS] DMA CONFIG BEGIN",13,10,0
+358+  09AD 5D 20 44 4D
+358+  09B1 41 20 43 4F
+358+  09B5 4E 46 49 47
+358+  09B9 20 42 45 47
+358+  09BD 49 4E 0D 0A
+358+  09C1 00
+359+  09C2 5B 4E 47 53  p126_ngs_ipc_log_dma_armed:       db "[NGS] DMA ARMED",13,10,0
+359+  09C6 5D 20 44 4D
+359+  09CA 41 20 41 52
+359+  09CE 4D 45 44 0D
+359+  09D2 0A 00
+360+  09D4 5B 4E 47 53  p126_ngs_ipc_log_dma_ready:       db "[NGS] DMA READY / CBIT RELEASED",13,10,0
+360+  09D8 5D 20 44 4D
+360+  09DC 41 20 52 45
+360+  09E0 41 44 59 20
+360+  09E4 2F 20 43 42
+360+  09E8 49 54 20 52
+360+  09EC 45 4C 45 41
+360+  09F0 53 45 44 0D
+360+  09F4 0A 00
+361+  09F6 5B 4E 47 53  p126_ngs_ipc_log_dma_host_end:    db "[NGS] DMA HOST END DETECTED",13,10,0
+361+  09FA 5D 20 44 4D
+361+  09FE 41 20 48 4F
+361+  0A02 53 54 20 45
+361+  0A06 4E 44 20 44
+361+  0A0A 45 54 45 43
+361+  0A0E 54 45 44 0D
+361+  0A12 0A 00
+362+  0A14 5B 4E 47 53  p126_ngs_ipc_log_dma_timeout:     db "[NGS] DMA WAIT TIMEOUT",13,10,0
+362+  0A18 5D 20 44 4D
+362+  0A1C 41 20 57 41
+362+  0A20 49 54 20 54
+362+  0A24 49 4D 45 4F
+362+  0A28 55 54 0D 0A
+362+  0A2C 00
+363+  0A2D 5B 4E 47 53  p126_ngs_ipc_log_bad_length:      db "[NGS] DMA FRAME LENGTH INVALID",13,10,0
+363+  0A31 5D 20 44 4D
+363+  0A35 41 20 46 52
+363+  0A39 41 4D 45 20
+363+  0A3D 4C 45 4E 47
+363+  0A41 54 48 20 49
+363+  0A45 4E 56 41 4C
+363+  0A49 49 44 0D 0A
+363+  0A4D 00
+364+  0A4E 5B 4E 47 53  p126_ngs_ipc_log_dma_stopped:     db "[NGS] DMA STOPPED",13,10,0
+364+  0A52 5D 20 44 4D
+364+  0A56 41 20 53 54
+364+  0A5A 4F 50 50 45
+364+  0A5E 44 0D 0A 00
+365+  0A62 5B 4E 47 53  p126_ngs_ipc_log_dma_page_mapped: db "[NGS] DMA PAGE 42 MAPPED",13,10,0
+365+  0A66 5D 20 44 4D
+365+  0A6A 41 20 50 41
+365+  0A6E 47 45 20 34
+365+  0A72 32 20 4D 41
+365+  0A76 50 50 45 44
+365+  0A7A 0D 0A 00
+366+  0A7D 5B 4E 47 53  p126_ngs_ipc_log_dma_end:         db "[NGS] DMA END RECEIVED",13,10,0
+366+  0A81 5D 20 44 4D
+366+  0A85 41 20 45 4E
+366+  0A89 44 20 52 45
+366+  0A8D 43 45 49 56
+366+  0A91 45 44 0D 0A
+366+  0A95 00
+367+  0A96 5B 4E 47 53  p126_ngs_ipc_log_frame_valid:     db "[NGS] DMA FRAME VALID",13,10,0
+367+  0A9A 5D 20 44 4D
+367+  0A9E 41 20 46 52
+367+  0AA2 41 4D 45 20
+367+  0AA6 56 41 4C 49
+367+  0AAA 44 0D 0A 00
+368+  0AAE 5B 4E 47 53  p126_ngs_ipc_log_frame_rejected:  db "[NGS] DMA FRAME REJECTED STATUS=",0
+368+  0AB2 5D 20 44 4D
+368+  0AB6 41 20 46 52
+368+  0ABA 41 4D 45 20
+368+  0ABE 52 45 4A 45
+368+  0AC2 43 54 45 44
+368+  0AC6 20 53 54 41
+368+  0ACA 54 55 53 3D
+368+  0ACE 00
+369+  0ACF
+370+  0ACF              ; Print a status byte as two hex digits followed by CR/LF. Preserves AF/BC.
+371+  0ACF              p126_ngs_ipc_log_hex_byte:
+372+  0ACF F5                   push    af
+373+  0AD0 C5                   push    bc
+374+  0AD1 0F                   rrca
+375+  0AD2 0F                   rrca
+376+  0AD3 0F                   rrca
+377+  0AD4 0F                   rrca
+378+  0AD5 CD EF 0A             call    p126_ngs_ipc_log_hex_nibble
+379+  0AD8 C1                   pop     bc
+380+  0AD9 F1                   pop     af
+381+  0ADA F5                   push    af
+382+  0ADB E6 0F                and     #0F
+383+  0ADD CD EF 0A             call    p126_ngs_ipc_log_hex_nibble
+384+  0AE0 F1                   pop     af
+385+  0AE1 C5                   push    bc
+386+  0AE2 01 EF 00             ld      bc,#00EF
+387+  0AE5 3E 0D                ld      a,13
+388+  0AE7 ED 79                out     (c),a
+389+  0AE9 3E 0A                ld      a,10
+390+  0AEB ED 79                out     (c),a
+391+  0AED C1                   pop     bc
+392+  0AEE C9                   ret
+393+  0AEF
+394+  0AEF              p126_ngs_ipc_log_hex_nibble:
+395+  0AEF E6 0F                and     #0F
+396+  0AF1 C6 30                add     a,'0'
+397+  0AF3 FE 3A                cp      '9'+1
+398+  0AF5 38 02                jr      c,.p126_ngs_hex_emit
+399+  0AF7 C6 07                add     a,7
+400+  0AF9              .p126_ngs_hex_emit:
+401+  0AF9 C5                   push    bc
+402+  0AFA 01 EF 00             ld      bc,#00EF
+403+  0AFD ED 79                out     (c),a
+404+  0AFF C1                   pop     bc
+405+  0B00 C9                   ret
+406+  0B01
+407+  0B01              ; This IPC module is assembled both standalone and into the resident image.
+408+  0B01              ; Keep its diagnostics self-contained instead of importing the resident logger.
+409+  0B01              ; IN: HL = zero-terminated message. OUT: AF/BC preserved; HL advanced to NUL.
+410+  0B01              p126_ngs_ipc_log:
+411+  0B01 F5                   push    af
+412+  0B02 C5                   push    bc
+413+  0B03 01 EF 00             ld      bc,#00EF
+414+  0B06              .p126_ngs_ipc_log_loop:
+415+  0B06 7E                   ld      a,(hl)
+416+  0B07 23                   inc     hl
+417+  0B08 B7                   or      a
+418+  0B09 28 04                jr      z,.p126_ngs_ipc_log_done
+419+  0B0B ED 79                out     (c),a
+420+  0B0D 18 F7                jr      .p126_ngs_ipc_log_loop
+421+  0B0F              .p126_ngs_ipc_log_done:
+422+  0B0F C1                   pop     bc
+423+  0B10 F1                   pop     af
+424+  0B11 C9                   ret
+425+  0B12
 # file closed: p126_ipc.asm
-162   09A9              p126_ngs_ipc_module_end:
-163   09A9
-164   09A9              ; Export explicit boundaries for build/map inspection.
-165   09A9                  DISPLAY "P126_NGS_RESIDENT_START=", /H, p126_ngs_resident_entry_vector
-166   09A9                  DISPLAY "P126_NGS_RESIDENT_END=", /H, x86_cpu_state_module_start
-167   09A9                  DISPLAY "P126_NGS_RESIDENT_SIZE=", /D, x86_cpu_state_module_start-p126_ngs_resident_entry_vector
-168   09A9                  DISPLAY "P126_X86_STATE_START=", /H, x86_cpu_state_module_start
-169   09A9                  DISPLAY "P126_X86_STATE_END=", /H, x86_cpu_state_module_end
-170   09A9                  DISPLAY "P126_X86_STATE_SIZE=", /D, x86_cpu_state_module_end-x86_cpu_state_module_start
-171   09A9                  DISPLAY "P126_X86_ALU_START=", /H, x86_alu_module_start
-172   09A9                  DISPLAY "P126_X86_ALU_END=", /H, x86_alu_module_end
-173   09A9                  DISPLAY "P126_X86_ALU_SIZE=", /D, x86_alu_module_end-x86_alu_module_start
-174   09A9                  DISPLAY "P126_NGS_IPC_START=", /H, p126_ngs_ipc_module_start
-175   09A9                  DISPLAY "P126_NGS_IPC_END=", /H, p126_ngs_ipc_module_end
-176   09A9                  DISPLAY "P126_NGS_IPC_SIZE=", /D, p126_ngs_ipc_module_end-p126_ngs_ipc_module_start
-177   09A9                  DISPLAY "P126_X86_IMAGE_END=", /H, p126_ngs_ipc_module_end
-178   09A9                  DISPLAY "P126_X86_IMAGE_SIZE=", /D, p126_ngs_ipc_module_end
-179   09A9
-180   09A9                  ASSERT p126_ngs_resident_entry_vector = 0
-181   09A9                  ASSERT x86_cpu_state_module_start > p126_ngs_resident_entry_vector
-182   09A9                  ASSERT x86_cpu_state_module_end > x86_cpu_state_module_start
-183   09A9                  ASSERT x86_alu_module_end > x86_alu_module_start
-184   09A9                  ASSERT x86_alu_module_start = x86_cpu_state_module_end
-185   09A9                  ASSERT p126_ngs_ipc_module_end > p126_ngs_ipc_module_start
-186   09A9                  ASSERT p126_ngs_ipc_module_start = x86_alu_module_end
-187   09A9                  ASSERT p126_ngs_ipc_module_end <= #4000
-188   09A9
+162   0B12              p126_ngs_ipc_module_end:
+163   0B12
+164   0B12              ; Export explicit boundaries for build/map inspection.
+165   0B12                  DISPLAY "P126_NGS_RESIDENT_START=", /H, p126_ngs_resident_entry_vector
+166   0B12                  DISPLAY "P126_NGS_RESIDENT_END=", /H, x86_cpu_state_module_start
+167   0B12                  DISPLAY "P126_NGS_RESIDENT_SIZE=", /D, x86_cpu_state_module_start-p126_ngs_resident_entry_vector
+168   0B12                  DISPLAY "P126_X86_STATE_START=", /H, x86_cpu_state_module_start
+169   0B12                  DISPLAY "P126_X86_STATE_END=", /H, x86_cpu_state_module_end
+170   0B12                  DISPLAY "P126_X86_STATE_SIZE=", /D, x86_cpu_state_module_end-x86_cpu_state_module_start
+171   0B12                  DISPLAY "P126_X86_ALU_START=", /H, x86_alu_module_start
+172   0B12                  DISPLAY "P126_X86_ALU_END=", /H, x86_alu_module_end
+173   0B12                  DISPLAY "P126_X86_ALU_SIZE=", /D, x86_alu_module_end-x86_alu_module_start
+174   0B12                  DISPLAY "P126_NGS_IPC_START=", /H, p126_ngs_ipc_module_start
+175   0B12                  DISPLAY "P126_NGS_IPC_END=", /H, p126_ngs_ipc_module_end
+176   0B12                  DISPLAY "P126_NGS_IPC_SIZE=", /D, p126_ngs_ipc_module_end-p126_ngs_ipc_module_start
+177   0B12                  DISPLAY "P126_X86_IMAGE_END=", /H, p126_ngs_ipc_module_end
+178   0B12                  DISPLAY "P126_X86_IMAGE_SIZE=", /D, p126_ngs_ipc_module_end
+179   0B12
+180   0B12                  ASSERT p126_ngs_resident_entry_vector = 0
+181   0B12                  ASSERT x86_cpu_state_module_start > p126_ngs_resident_entry_vector
+182   0B12                  ASSERT x86_cpu_state_module_end > x86_cpu_state_module_start
+183   0B12                  ASSERT x86_alu_module_end > x86_alu_module_start
+184   0B12                  ASSERT x86_alu_module_start = x86_cpu_state_module_end
+185   0B12                  ASSERT p126_ngs_ipc_module_end > p126_ngs_ipc_module_start
+186   0B12                  ASSERT p126_ngs_ipc_module_start = x86_alu_module_end
+187   0B12                  ASSERT p126_ngs_ipc_module_end <= #4000
+188   0B12
 # file closed: x86_cpu_state_assemble.asm
 
 Value    Label
@@ -1920,47 +2048,59 @@ Value    Label
 0x00F0   P126_NGS_GUEST_VGABIOS_PAGE_BIAS
 0x0008   P126_NGS_GUEST_VRAM_PAGE_BIAS
 0x10C000   P126_NGS_IPC_BASE
-0x0928   p126_ngs_ipc_crc16_selftest
-0x0948   p126_ngs_ipc_crc16_selftest.p126_ngs_crc_test_failed
-0x0932   p126_ngs_ipc_crc16_selftest.p126_ngs_crc_test_loop
-0x094C   p126_ngs_ipc_crc16_test_vector
+0x0964   p126_ngs_ipc_crc16_selftest
+0x0984   p126_ngs_ipc_crc16_selftest.p126_ngs_crc_test_failed
+0x096E   p126_ngs_ipc_crc16_selftest.p126_ngs_crc_test_loop
+0x0988   p126_ngs_ipc_crc16_test_vector
 0x0796   p126_ngs_ipc_crc16_update
 0x079B   p126_ngs_ipc_crc16_update.p126_ngs_crc_bit
 0x07A6   p126_ngs_ipc_crc16_update.p126_ngs_crc_no_xor
-0x087A   p126_ngs_ipc_crc_work
-0x0905   p126_ngs_ipc_dispatch_once
-0x090D   p126_ngs_ipc_dispatch_once.p126_ngs_dispatch_command
-0x091A   p126_ngs_ipc_dispatch_once.p126_ngs_dispatch_host_frame
-0x087C   p126_ngs_ipc_dma_receive_frame
-0x08F9   p126_ngs_ipc_dma_receive_frame.p126_ngs_dma_bad_length
-0x08AF   p126_ngs_ipc_dma_receive_frame.p126_ngs_dma_host_end
-0x08D7   p126_ngs_ipc_dma_receive_frame.p126_ngs_dma_size_ok
-0x08F2   p126_ngs_ipc_dma_receive_frame.p126_ngs_dma_validation_failed
-0x089B   p126_ngs_ipc_dma_receive_frame.p126_ngs_dma_wait_end
-0x0876   p126_ngs_ipc_frame_ptr
-0x0878   p126_ngs_ipc_frame_size
+0x087B   p126_ngs_ipc_crc_work
+0x0941   p126_ngs_ipc_dispatch_once
+0x0949   p126_ngs_ipc_dispatch_once.p126_ngs_dispatch_command
+0x0956   p126_ngs_ipc_dispatch_once.p126_ngs_dispatch_host_frame
+0x087D   p126_ngs_ipc_dma_receive_frame
+0x092F   p126_ngs_ipc_dma_receive_frame.p126_ngs_dma_bad_length
+0x08C2   p126_ngs_ipc_dma_receive_frame.p126_ngs_dma_host_end
+0x08FC   p126_ngs_ipc_dma_receive_frame.p126_ngs_dma_size_ok
+0x091D   p126_ngs_ipc_dma_receive_frame.p126_ngs_dma_validation_failed
+0x08A8   p126_ngs_ipc_dma_receive_frame.p126_ngs_dma_wait_end
+0x0877   p126_ngs_ipc_frame_ptr
+0x0879   p126_ngs_ipc_frame_size
 0x110000 X P126_NGS_IPC_LIMIT
-0x0998   p126_ngs_ipc_log
-0x09A6   p126_ngs_ipc_log.p126_ngs_ipc_log_done
-0x099D   p126_ngs_ipc_log.p126_ngs_ipc_log_loop
-0x0955   p126_ngs_ipc_log_dma_e0
-0x097F   p126_ngs_ipc_log_dma_end
-0x096D   p126_ngs_ipc_log_dma_ready
-0x09A9   p126_ngs_ipc_module_end
+0x0B01   p126_ngs_ipc_log
+0x0B0F   p126_ngs_ipc_log.p126_ngs_ipc_log_done
+0x0B06   p126_ngs_ipc_log.p126_ngs_ipc_log_loop
+0x0A2D   p126_ngs_ipc_log_bad_length
+0x09C2   p126_ngs_ipc_log_dma_armed
+0x09A9   p126_ngs_ipc_log_dma_cfg_begin
+0x0991   p126_ngs_ipc_log_dma_e0
+0x0A7D   p126_ngs_ipc_log_dma_end
+0x09F6   p126_ngs_ipc_log_dma_host_end
+0x0A62   p126_ngs_ipc_log_dma_page_mapped
+0x09D4   p126_ngs_ipc_log_dma_ready
+0x0A4E   p126_ngs_ipc_log_dma_stopped
+0x0A14   p126_ngs_ipc_log_dma_timeout
+0x0AAE   p126_ngs_ipc_log_frame_rejected
+0x0A96   p126_ngs_ipc_log_frame_valid
+0x0ACF   p126_ngs_ipc_log_hex_byte
+0x0AEF   p126_ngs_ipc_log_hex_nibble
+0x0AF9   p126_ngs_ipc_log_hex_nibble.p126_ngs_hex_emit
+0x0B12   p126_ngs_ipc_module_end
 0x0796   p126_ngs_ipc_module_start
 0x0043   P126_NGS_IPC_PAGE
 0x0001   P126_NGS_IPC_PAGES
-0x0903   p126_ngs_ipc_rx_size
+0x093F   p126_ngs_ipc_rx_size
 0x07AA   p126_ngs_ipc_validate_frame
-0x0872   p126_ngs_ipc_validate_frame.p126_ngs_frame_bad
-0x086E   p126_ngs_ipc_validate_frame.p126_ngs_frame_crc_bad
-0x084C   p126_ngs_ipc_validate_frame.p126_ngs_frame_crc_compare
-0x083D   p126_ngs_ipc_validate_frame.p126_ngs_frame_crc_data
-0x0827   p126_ngs_ipc_validate_frame.p126_ngs_frame_crc_head
-0x0866   p126_ngs_ipc_validate_frame.p126_ngs_frame_magic
+0x0873   p126_ngs_ipc_validate_frame.p126_ngs_frame_bad
+0x086F   p126_ngs_ipc_validate_frame.p126_ngs_frame_crc_bad
+0x084D   p126_ngs_ipc_validate_frame.p126_ngs_frame_crc_compare
+0x083E   p126_ngs_ipc_validate_frame.p126_ngs_frame_crc_data
+0x0826   p126_ngs_ipc_validate_frame.p126_ngs_frame_crc_head
+0x0867   p126_ngs_ipc_validate_frame.p126_ngs_frame_magic
 0x07BB   p126_ngs_ipc_validate_frame.p126_ngs_frame_min_ok
 0x0802   p126_ngs_ipc_validate_frame.p126_ngs_frame_type
-0x086A   p126_ngs_ipc_validate_frame.p126_ngs_frame_version
+0x086B   p126_ngs_ipc_validate_frame.p126_ngs_frame_version
 0x0000   P126_NGS_KERNEL_BASE
 0x40000 X P126_NGS_KERNEL_LIMIT
 0x0000   P126_NGS_KERNEL_PAGE

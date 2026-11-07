@@ -172,7 +172,7 @@
  19+  0000              p126_ipc_read_status:
  19+  0000
  20+  0000 DB BB                in      a, (P126_GSSTAT)
- 21+  0002 32 AB 01             ld      (p126_ipc_last_status), a
+ 21+  0002 32 AD 01             ld      (p126_ipc_last_status), a
  22+  0005 C9                   ret
  23+  0006
  24+  0006              ; -------------------------------------------------------------------------
@@ -191,11 +191,11 @@
  36+  0011 78                   ld      a, b
  37+  0012 B1                   or      c
  38+  0013 20 F4                jr      nz, .p126_cbit_loop
- 39+  0015 3A AB 01             ld      a, (p126_ipc_last_status)
+ 39+  0015 3A AD 01             ld      a, (p126_ipc_last_status)
  40+  0018 37                   scf
  41+  0019 C9                   ret
  42+  001A              .p126_cbit_ready:
- 43+  001A 3A AB 01             ld      a, (p126_ipc_last_status)
+ 43+  001A 3A AD 01             ld      a, (p126_ipc_last_status)
  44+  001D B7                   or      a
  45+  001E C9                   ret
  46+  001F
@@ -210,11 +210,11 @@
  54+  002A 78                   ld      a, b
  55+  002B B1                   or      c
  56+  002C 20 F4                jr      nz, .p126_dbit_clear_loop
- 57+  002E 3A AB 01             ld      a, (p126_ipc_last_status)
+ 57+  002E 3A AD 01             ld      a, (p126_ipc_last_status)
  58+  0031 37                   scf
  59+  0032 C9                   ret
  60+  0033              .p126_dbit_clear_ready:
- 61+  0033 3A AB 01             ld      a, (p126_ipc_last_status)
+ 61+  0033 3A AD 01             ld      a, (p126_ipc_last_status)
  62+  0036 B7                   or      a
  63+  0037 C9                   ret
  64+  0038
@@ -229,11 +229,11 @@
  72+  0043 78                   ld      a, b
  73+  0044 B1                   or      c
  74+  0045 20 F4                jr      nz, .p126_dbit_set_loop
- 75+  0047 3A AB 01             ld      a, (p126_ipc_last_status)
+ 75+  0047 3A AD 01             ld      a, (p126_ipc_last_status)
  76+  004A 37                   scf
  77+  004B C9                   ret
  78+  004C              .p126_dbit_set_ready:
- 79+  004C 3A AB 01             ld      a, (p126_ipc_last_status)
+ 79+  004C 3A AD 01             ld      a, (p126_ipc_last_status)
  80+  004F B7                   or      a
  81+  0050 C9                   ret
  82+  0051
@@ -244,8 +244,8 @@
  87+  0051              ; -------------------------------------------------------------------------
  88+  0051              p126_ipc_send_command:
  88+  0051
- 89+  0051 32 AC 01             ld      (p126_ipc_tx_byte), a
- 90+  0054 3A AC 01             ld      a, (p126_ipc_tx_byte)
+ 89+  0051 32 AE 01             ld      (p126_ipc_tx_byte), a
+ 90+  0054 3A AE 01             ld      a, (p126_ipc_tx_byte)
  91+  0057 D3 BB                out     (P126_GSCOM), a
  92+  0059 C3 06 00             jp      p126_ipc_wait_cbit_clear
  93+  005C
@@ -257,10 +257,10 @@
  99+  005C              ; -------------------------------------------------------------------------
 100+  005C              p126_ipc_send_argument:
 100+  005C
-101+  005C 32 AC 01             ld      (p126_ipc_tx_byte), a
+101+  005C 32 AE 01             ld      (p126_ipc_tx_byte), a
 102+  005F CD 1F 00             call    p126_ipc_wait_dbit_clear
 103+  0062 D8                   ret     c
-104+  0063 3A AC 01             ld      a, (p126_ipc_tx_byte)
+104+  0063 3A AE 01             ld      a, (p126_ipc_tx_byte)
 105+  0066 D3 B3                out     (P126_GSDAT), a
 106+  0068 B7                   or      a
 107+  0069 C9                   ret
@@ -272,10 +272,10 @@
 113+  006A              ; -------------------------------------------------------------------------
 114+  006A              p126_ipc_send_byte:
 114+  006A
-115+  006A 32 AC 01             ld      (p126_ipc_tx_byte), a
+115+  006A 32 AE 01             ld      (p126_ipc_tx_byte), a
 116+  006D CD 1F 00             call    p126_ipc_wait_dbit_clear
 117+  0070 D8                   ret     c
-118+  0071 3A AC 01             ld      a, (p126_ipc_tx_byte)
+118+  0071 3A AE 01             ld      a, (p126_ipc_tx_byte)
 119+  0074 D3 B3                out     (P126_GSDAT), a
 120+  0076 C3 1F 00             jp      p126_ipc_wait_dbit_clear
 121+  0079
@@ -289,7 +289,7 @@
 128+  0079 CD 38 00             call    p126_ipc_wait_dbit_set
 129+  007C D8                   ret     c
 130+  007D DB B3                in      a, (P126_GSDAT)
-131+  007F 32 AD 01             ld      (p126_ipc_rx_byte), a
+131+  007F 32 AF 01             ld      (p126_ipc_rx_byte), a
 132+  0082 B7                   or      a
 133+  0083 C9                   ret
 134+  0084
@@ -326,35 +326,35 @@
 164+  0098              ; Clobbers AF,BC,DE,HL,IX. Scratch is non-reentrant.
 165+  0098              p126_ipc_validate_frame:
 165+  0098
-166+  0098 22 62 01             ld      (p126_ipc_frame_ptr),hl
-167+  009B ED 43 64 01          ld      (p126_ipc_frame_size),bc
+166+  0098 22 64 01             ld      (p126_ipc_frame_ptr),hl
+167+  009B ED 43 66 01          ld      (p126_ipc_frame_size),bc
 168+  009F 78                   ld      a,b
 169+  00A0 B7                   or      a
 170+  00A1 20 06                jr      nz,.p126_frame_min_ok
 171+  00A3 79                   ld      a,c
 172+  00A4 FE 12                cp      P126_IPC_HEADER_SIZE
-173+  00A6 DA 5E 01             jp      c,.p126_frame_bad
+173+  00A6 DA 60 01             jp      c,.p126_frame_bad
 174+  00A9              .p126_frame_min_ok:
 175+  00A9 E5                   push    hl
 176+  00AA DD E1                pop     ix
 177+  00AC DD 7E 00             ld      a,(ix+0)
 178+  00AF FE 50                cp      'P'
-179+  00B1 C2 52 01             jp      nz,.p126_frame_magic
+179+  00B1 C2 54 01             jp      nz,.p126_frame_magic
 180+  00B4 DD 7E 01             ld      a,(ix+1)
 181+  00B7 FE 31                cp      '1'
-182+  00B9 C2 52 01             jp      nz,.p126_frame_magic
+182+  00B9 C2 54 01             jp      nz,.p126_frame_magic
 183+  00BC DD 7E 02             ld      a,(ix+2)
 184+  00BF FE 32                cp      '2'
-185+  00C1 C2 52 01             jp      nz,.p126_frame_magic
+185+  00C1 C2 54 01             jp      nz,.p126_frame_magic
 186+  00C4 DD 7E 03             ld      a,(ix+3)
 187+  00C7 FE 36                cp      '6'
-188+  00C9 C2 52 01             jp      nz,.p126_frame_magic
+188+  00C9 C2 54 01             jp      nz,.p126_frame_magic
 189+  00CC DD 7E 04             ld      a,(ix+4)
 190+  00CF FE 01                cp      P126_IPC_MAJOR
-191+  00D1 C2 56 01             jp      nz,.p126_frame_version
+191+  00D1 C2 58 01             jp      nz,.p126_frame_version
 192+  00D4 DD 7E 05             ld      a,(ix+5)
 193+  00D7 FE 00                cp      P126_IPC_MINOR
-194+  00D9 C2 56 01             jp      nz,.p126_frame_version
+194+  00D9 C2 58 01             jp      nz,.p126_frame_version
 195+  00DC DD 7E 06             ld      a,(ix+6)
 196+  00DF FE 01                cp      P126_MSG_REQUEST
 197+  00E1 28 0D                jr      z,.p126_frame_type
@@ -363,19 +363,19 @@
 200+  00E7 FE 03                cp      P126_MSG_EVENT
 201+  00E9 28 05                jr      z,.p126_frame_type
 202+  00EB FE 04                cp      P126_MSG_CANCEL
-203+  00ED C2 5E 01             jp      nz,.p126_frame_bad
+203+  00ED C2 60 01             jp      nz,.p126_frame_bad
 204+  00F0              .p126_frame_type:
 205+  00F0 DD 7E 09             ld      a,(ix+9)
 206+  00F3 E6 F8                and     #F8
-207+  00F5 C2 5E 01             jp      nz,.p126_frame_bad
+207+  00F5 C2 60 01             jp      nz,.p126_frame_bad
 208+  00F8 DD 6E 0C             ld      l,(ix+12)
 209+  00FB DD 66 0D             ld      h,(ix+13)
 210+  00FE 11 12 00             ld      de,P126_IPC_HEADER_SIZE
 211+  0101 19                   add     hl,de
-212+  0102 ED 5B 64 01          ld      de,(p126_ipc_frame_size)
+212+  0102 ED 5B 66 01          ld      de,(p126_ipc_frame_size)
 213+  0106 B7                   or      a
 214+  0107 ED 52                sbc     hl,de
-215+  0109 C2 5E 01             jp      nz,.p126_frame_bad
+215+  0109 C2 60 01             jp      nz,.p126_frame_bad
 216+  010C                      ; CRC header and payload in one pass.
 217+  010C                      ; Keep DE pointing at the frame while HL holds the CRC accumulator.
 218+  010C                      ; EX DE,HL here would move the frame pointer into HL and then lose it
@@ -389,208 +389,349 @@
 226+  0115 13                   inc     de
 227+  0116 CD 84 00             call    p126_ipc_crc16_update
 228+  0119 10 F9                djnz    .p126_frame_crc_head
-229+  011B D5                   push    de
-230+  011C DD 2A 62 01          ld      ix,(p126_ipc_frame_ptr)
-231+  0120 DD 5E 0C             ld      e,(ix+12)
-232+  0123 DD 56 0D             ld      d,(ix+13)
-233+  0126 E1                   pop     hl
-234+  0127 E5                   push    hl
-235+  0128 DD E1                pop     ix
-236+  012A              .p126_frame_crc_data:
-237+  012A 7A                   ld      a,d
-238+  012B B3                   or      e
-239+  012C 28 0B                jr      z,.p126_frame_crc_compare
-240+  012E DD 7E 00             ld      a,(ix+0)
-241+  0131 DD 23                inc     ix
-242+  0133 CD 84 00             call    p126_ipc_crc16_update
-243+  0136 1B                   dec     de
-244+  0137 18 F1                jr      .p126_frame_crc_data
-245+  0139              .p126_frame_crc_compare:
-246+  0139 22 66 01             ld      (p126_ipc_crc_work),hl
-247+  013C DD 2A 62 01          ld      ix,(p126_ipc_frame_ptr)
-248+  0140 DD 7E 10             ld      a,(ix+16)
-249+  0143 5F                   ld      e,a
-250+  0144 DD 7E 11             ld      a,(ix+17)
-251+  0147 57                   ld      d,a
-252+  0148 2A 66 01             ld      hl,(p126_ipc_crc_work)
-253+  014B B7                   or      a
-254+  014C ED 52                sbc     hl,de
-255+  014E 20 0A                jr      nz,.p126_frame_crc_bad
-256+  0150 AF                   xor     a
-257+  0151 C9                   ret
-258+  0152              .p126_frame_magic:
-259+  0152 3E 01                ld      a,P126_STATUS_BAD_MAGIC
-260+  0154 37                   scf
-261+  0155 C9                   ret
-262+  0156              .p126_frame_version:
-263+  0156 3E 02                ld      a,P126_STATUS_BAD_VERSION
-264+  0158 37                   scf
-265+  0159 C9                   ret
-266+  015A              .p126_frame_crc_bad:
-267+  015A 3E 04                ld      a,P126_STATUS_CRC_ERROR
-268+  015C 37                   scf
-269+  015D C9                   ret
-270+  015E              .p126_frame_bad:
-271+  015E 3E 03                ld      a,P126_STATUS_BAD_FRAME
-272+  0160 37                   scf
-273+  0161 C9                   ret
-274+  0162 00 00        p126_ipc_frame_ptr: dw 0
-275+  0164 00 00        p126_ipc_frame_size: dw 0
-276+  0166 00 00        p126_ipc_crc_work: dw 0
-277+  0168
-278+  0168              ; Standard CRC-16/CCITT-FALSE regression vector.
-279+  0168              ; OUT: Carry clear and HL=#29B1 on pass; Carry set on failure.
-280+  0168              p126_ipc_crc16_selftest:
-280+  0168
-281+  0168 C5                   push    bc
-282+  0169 D5                   push    de
-283+  016A 21 FF FF             ld      hl, #FFFF
-284+  016D 11 8C 01             ld      de, p126_ipc_crc16_test_vector
-285+  0170 06 09                ld      b, 9
-286+  0172              .p126_crc_test_loop:
-287+  0172 1A                   ld      a, (de)
-288+  0173 13                   inc     de
-289+  0174 CD 84 00             call    p126_ipc_crc16_update
-290+  0177 10 F9                djnz    .p126_crc_test_loop
-291+  0179 11 B1 29             ld      de, #29B1
-292+  017C B7                   or      a
-293+  017D ED 52                sbc     hl, de
-294+  017F 20 07                jr      nz, .p126_crc_test_failed
-295+  0181 D1                   pop     de
-296+  0182 C1                   pop     bc
-297+  0183 21 B1 29             ld      hl, #29B1
-298+  0186 B7                   or      a
-299+  0187 C9                   ret
-300+  0188              .p126_crc_test_failed:
-301+  0188 D1                   pop     de
-302+  0189 C1                   pop     bc
-303+  018A 37                   scf
-304+  018B C9                   ret
-305+  018C
-306+  018C              p126_ipc_crc16_test_vector:
-307+  018C 31 32 33 34          db "123456789"
-307+  0190 35 36 37 38
-307+  0194 39
-308+  0195
-309+  0195              ; -------------------------------------------------------------------------
-310+  0195              ; Emit a build/runtime identity to ATM's independent debug port #EF.
-311+  0195              ; Preserves AF, BC and HL.
-312+  0195              ; -------------------------------------------------------------------------
-313+  0195              p126_ipc_emit_version:
-313+  0195
-314+  0195 F5                   push    af
-315+  0196 C5                   push    bc
-316+  0197 E5                   push    hl
-317+  0198 21 AE 01             ld      hl, p126_ipc_version_text
-318+  019B 01 EF 00             ld      bc, #00EF
-319+  019E              .p126_version_loop:
-320+  019E 7E                   ld      a, (hl)
-321+  019F 23                   inc     hl
-322+  01A0 B7                   or      a
-323+  01A1 28 04                jr      z, .p126_version_done
-324+  01A3 ED 79                out     (c), a
-325+  01A5 18 F7                jr      .p126_version_loop
-326+  01A7              .p126_version_done:
-327+  01A7 E1                   pop     hl
-328+  01A8 C1                   pop     bc
-329+  01A9 F1                   pop     af
-330+  01AA C9                   ret
-331+  01AB
-332+  01AB              ; Driver state is private to this module. Callers must not modify it.
-333+  01AB 00           p126_ipc_last_status: db 0
-334+  01AC 00           p126_ipc_tx_byte:     db 0
-335+  01AD 00           p126_ipc_rx_byte:     db 0
-336+  01AE
-337+  01AE              p126_ipc_version_text:
-338+  01AE 5B 50 31 32          db "[P126 ATM_IPC v0.2.0]", 13, 10, 0
-338+  01B2 36 20 41 54
-338+  01B6 4D 5F 49 50
-338+  01BA 43 20 76 30
-338+  01BE 2E 32 2E 30
-338+  01C2 5D 0D 0A 00
-339+  01C6
-340+  01C6              ; -------------------------------------------------------------------------
-341+  01C6              ; Send one complete ATM -> NeoGS ABI 1.0 frame through the ZX DMA aperture.
-342+  01C6              ; IN: HL=frame, BC=exact frame size (18..16384).
-343+  01C6              ; OUT: carry clear/A=0 only after NeoGS closes DMA and acknowledges #FF.
-344+  01C6              ; Clobbers AF,BC,DE,HL. Leaves interrupts disabled during/after transfer.
-345+  01C6              ; Source buffer remains caller-owned and must remain stable until return.
-346+  01C6              ; -------------------------------------------------------------------------
-347+  01C6              P126_IPC_DMA_WINDOW EQU #0000
-348+  01C6              P126_IPC_DMA_END    EQU #FF
-349+  01C6
-350+  01C6              p126_ipc_dma_send_frame:
-350+  01C6
-351+  01C6 3E 01                ld      a,1
-352+  01C8 32 25 02             ld      (p126_ipc_dma_stage),a
-353+  01CB 22 21 02             ld      (p126_ipc_dma_source),hl
-354+  01CE ED 43 23 02          ld      (p126_ipc_dma_size),bc
-355+  01D2 CD 98 00             call    p126_ipc_validate_frame
-356+  01D5 D8                   ret     c
-357+  01D6
-358+  01D6 3E 02                ld      a,2
-359+  01D8 32 25 02             ld      (p126_ipc_dma_stage),a
-360+  01DB ED 4B 23 02          ld      bc,(p126_ipc_dma_size)
-361+  01DF 78                   ld      a,b
-362+  01E0 FE 40                cp      #40
-363+  01E2 38 0A                jr      c,.p126_dma_size_valid
-364+  01E4 C2 1D 02             jp      nz,.p126_dma_bad_size
-365+  01E7 79                   ld      a,c
-366+  01E8 B7                   or      a
-367+  01E9 28 03                jr      z,.p126_dma_size_valid
-368+  01EB C3 1D 02             jp      .p126_dma_bad_size
-369+  01EE
-370+  01EE              .p126_dma_size_valid:
-371+  01EE 3E 03                ld      a,3
-372+  01F0 32 25 02             ld      (p126_ipc_dma_stage),a
-373+  01F3 3E E0                ld      a,P126_CMD_HOST_FRAME
-374+  01F5 CD 51 00             call    p126_ipc_send_command
-375+  01F8 D8                   ret     c
-376+  01F9
-377+  01F9 3E 04                ld      a,4
-378+  01FB 32 25 02             ld      (p126_ipc_dma_stage),a
-379+  01FE 2A 21 02             ld      hl,(p126_ipc_dma_source)
-380+  0201 ED 4B 23 02          ld      bc,(p126_ipc_dma_size)
-381+  0205 11 00 00             ld      de,P126_IPC_DMA_WINDOW
-382+  0208 F3                   di
-383+  0209 ED B0                ldir
-384+  020B
-385+  020B 3E 05                ld      a,5
-386+  020D 32 25 02             ld      (p126_ipc_dma_stage),a
-387+  0210 3E FF                ld      a,P126_IPC_DMA_END
-388+  0212 D3 BB                out     (P126_GSCOM),a
-389+  0214 CD 06 00             call    p126_ipc_wait_cbit_clear
-390+  0217 D8                   ret     c
-391+  0218 AF                   xor     a
-392+  0219 32 25 02             ld      (p126_ipc_dma_stage),a
-393+  021C C9                   ret
-394+  021D
-395+  021D              .p126_dma_bad_size:
-396+  021D 3E 03                ld      a,P126_STATUS_BAD_FRAME
-397+  021F 37                   scf
-398+  0220 C9                   ret
-399+  0221
-400+  0221 00 00        p126_ipc_dma_source: dw 0
-401+  0223 00 00        p126_ipc_dma_size:   dw 0
-402+  0225              ; 0=success/not started, 1=local frame validation, 2=DMA size,
-403+  0225              ; 3=E0/READY handshake, 4=payload copy, 5=FF/completion acknowledgement.
-404+  0225 00           p126_ipc_dma_stage:  db 0
-405+  0226
+229+  011B 13                   inc     de
+230+  011C 13                   inc     de
+231+  011D D5                   push    de
+232+  011E DD 2A 64 01          ld      ix,(p126_ipc_frame_ptr)
+233+  0122 DD 5E 0C             ld      e,(ix+12)
+234+  0125 DD 56 0D             ld      d,(ix+13)
+235+  0128 E1                   pop     hl
+236+  0129 E5                   push    hl
+237+  012A DD E1                pop     ix
+238+  012C              .p126_frame_crc_data:
+239+  012C 7A                   ld      a,d
+240+  012D B3                   or      e
+241+  012E 28 0B                jr      z,.p126_frame_crc_compare
+242+  0130 DD 7E 00             ld      a,(ix+0)
+243+  0133 DD 23                inc     ix
+244+  0135 CD 84 00             call    p126_ipc_crc16_update
+245+  0138 1B                   dec     de
+246+  0139 18 F1                jr      .p126_frame_crc_data
+247+  013B              .p126_frame_crc_compare:
+248+  013B 22 68 01             ld      (p126_ipc_crc_work),hl
+249+  013E DD 2A 64 01          ld      ix,(p126_ipc_frame_ptr)
+250+  0142 DD 7E 10             ld      a,(ix+16)
+251+  0145 5F                   ld      e,a
+252+  0146 DD 7E 11             ld      a,(ix+17)
+253+  0149 57                   ld      d,a
+254+  014A 2A 68 01             ld      hl,(p126_ipc_crc_work)
+255+  014D B7                   or      a
+256+  014E ED 52                sbc     hl,de
+257+  0150 20 0A                jr      nz,.p126_frame_crc_bad
+258+  0152 AF                   xor     a
+259+  0153 C9                   ret
+260+  0154              .p126_frame_magic:
+261+  0154 3E 01                ld      a,P126_STATUS_BAD_MAGIC
+262+  0156 37                   scf
+263+  0157 C9                   ret
+264+  0158              .p126_frame_version:
+265+  0158 3E 02                ld      a,P126_STATUS_BAD_VERSION
+266+  015A 37                   scf
+267+  015B C9                   ret
+268+  015C              .p126_frame_crc_bad:
+269+  015C 3E 04                ld      a,P126_STATUS_CRC_ERROR
+270+  015E 37                   scf
+271+  015F C9                   ret
+272+  0160              .p126_frame_bad:
+273+  0160 3E 03                ld      a,P126_STATUS_BAD_FRAME
+274+  0162 37                   scf
+275+  0163 C9                   ret
+276+  0164 00 00        p126_ipc_frame_ptr: dw 0
+277+  0166 00 00        p126_ipc_frame_size: dw 0
+278+  0168 00 00        p126_ipc_crc_work: dw 0
+279+  016A
+280+  016A              ; Standard CRC-16/CCITT-FALSE regression vector.
+281+  016A              ; OUT: Carry clear and HL=#29B1 on pass; Carry set on failure.
+282+  016A              p126_ipc_crc16_selftest:
+282+  016A
+283+  016A C5                   push    bc
+284+  016B D5                   push    de
+285+  016C 21 FF FF             ld      hl, #FFFF
+286+  016F 11 8E 01             ld      de, p126_ipc_crc16_test_vector
+287+  0172 06 09                ld      b, 9
+288+  0174              .p126_crc_test_loop:
+289+  0174 1A                   ld      a, (de)
+290+  0175 13                   inc     de
+291+  0176 CD 84 00             call    p126_ipc_crc16_update
+292+  0179 10 F9                djnz    .p126_crc_test_loop
+293+  017B 11 B1 29             ld      de, #29B1
+294+  017E B7                   or      a
+295+  017F ED 52                sbc     hl, de
+296+  0181 20 07                jr      nz, .p126_crc_test_failed
+297+  0183 D1                   pop     de
+298+  0184 C1                   pop     bc
+299+  0185 21 B1 29             ld      hl, #29B1
+300+  0188 B7                   or      a
+301+  0189 C9                   ret
+302+  018A              .p126_crc_test_failed:
+303+  018A D1                   pop     de
+304+  018B C1                   pop     bc
+305+  018C 37                   scf
+306+  018D C9                   ret
+307+  018E
+308+  018E              p126_ipc_crc16_test_vector:
+309+  018E 31 32 33 34          db "123456789"
+309+  0192 35 36 37 38
+309+  0196 39
+310+  0197
+311+  0197              ; -------------------------------------------------------------------------
+312+  0197              ; Emit a build/runtime identity to ATM's independent debug port #EF.
+313+  0197              ; Preserves AF, BC and HL.
+314+  0197              ; -------------------------------------------------------------------------
+315+  0197              p126_ipc_emit_version:
+315+  0197
+316+  0197 F5                   push    af
+317+  0198 C5                   push    bc
+318+  0199 E5                   push    hl
+319+  019A 21 B0 01             ld      hl, p126_ipc_version_text
+320+  019D 01 EF 00             ld      bc, #00EF
+321+  01A0              .p126_version_loop:
+322+  01A0 7E                   ld      a, (hl)
+323+  01A1 23                   inc     hl
+324+  01A2 B7                   or      a
+325+  01A3 28 04                jr      z, .p126_version_done
+326+  01A5 ED 79                out     (c), a
+327+  01A7 18 F7                jr      .p126_version_loop
+328+  01A9              .p126_version_done:
+329+  01A9 E1                   pop     hl
+330+  01AA C1                   pop     bc
+331+  01AB F1                   pop     af
+332+  01AC C9                   ret
+333+  01AD
+334+  01AD              ; Driver state is private to this module. Callers must not modify it.
+335+  01AD 00           p126_ipc_last_status: db 0
+336+  01AE 00           p126_ipc_tx_byte:     db 0
+337+  01AF 00           p126_ipc_rx_byte:     db 0
+338+  01B0
+339+  01B0              p126_ipc_version_text:
+340+  01B0 5B 50 31 32          db "[P126 ATM_IPC v0.2.0]", 13, 10, 0
+340+  01B4 36 20 41 54
+340+  01B8 4D 5F 49 50
+340+  01BC 43 20 76 30
+340+  01C0 2E 32 2E 30
+340+  01C4 5D 0D 0A 00
+341+  01C8
+342+  01C8              ; -------------------------------------------------------------------------
+343+  01C8              ; Send one complete ATM -> NeoGS ABI 1.0 frame through the ZX DMA aperture.
+344+  01C8              ; IN: HL=frame, BC=exact frame size (18..16384).
+345+  01C8              ; OUT: carry clear/A=0 only after NeoGS closes DMA and acknowledges #FF.
+346+  01C8              ; Clobbers AF,BC,DE,HL. Leaves interrupts disabled during/after transfer.
+347+  01C8              ; Source buffer remains caller-owned and must remain stable until return.
+348+  01C8              ; -------------------------------------------------------------------------
+349+  01C8              P126_IPC_DMA_WINDOW EQU #0000
+350+  01C8              P126_IPC_DMA_END    EQU #FF
+351+  01C8
+352+  01C8              p126_ipc_dma_send_frame:
+352+  01C8
+353+  01C8                      ; Preserve the caller's frame pointer and length before any logger
+354+  01C8                      ; call, because the string writer advances HL.
+355+  01C8 3E 01                ld      a,1
+356+  01CA 32 86 02             ld      (p126_ipc_dma_stage),a
+357+  01CD 22 82 02             ld      (p126_ipc_dma_source),hl
+358+  01D0 ED 43 84 02          ld      (p126_ipc_dma_size),bc
+359+  01D4 21 99 02             ld      hl,p126_ipc_log_dma_tx_begin
+360+  01D7 CD 88 02             call    p126_ipc_debug_string
+361+  01DA 2A 82 02             ld      hl,(p126_ipc_dma_source)
+362+  01DD ED 4B 84 02          ld      bc,(p126_ipc_dma_size)
+363+  01E1 CD 98 00             call    p126_ipc_validate_frame
+364+  01E4 30 0D                jr      nc,.p126_dma_frame_valid
+365+  01E6 32 87 02             ld      (p126_ipc_dma_error),a
+366+  01E9 F5                   push    af
+367+  01EA 21 CA 02             ld      hl,p126_ipc_log_dma_tx_validate_bad
+368+  01ED CD 88 02             call    p126_ipc_debug_string
+369+  01F0 F1                   pop     af
+370+  01F1 37                   scf
+371+  01F2 C9                   ret
+372+  01F3              .p126_dma_frame_valid:
+373+  01F3 21 B2 02             ld      hl,p126_ipc_log_dma_tx_validate_ok
+374+  01F6 CD 88 02             call    p126_ipc_debug_string
+375+  01F9 AF                   xor     a
+376+  01FA 32 87 02             ld      (p126_ipc_dma_error),a
+377+  01FD
+378+  01FD 3E 02                ld      a,2
+379+  01FF 32 86 02             ld      (p126_ipc_dma_stage),a
+380+  0202 ED 4B 84 02          ld      bc,(p126_ipc_dma_size)
+381+  0206 78                   ld      a,b
+382+  0207 FE 40                cp      #40
+383+  0209 38 0A                jr      c,.p126_dma_size_valid
+384+  020B C2 7E 02             jp      nz,.p126_dma_bad_size
+385+  020E 79                   ld      a,c
+386+  020F B7                   or      a
+387+  0210 28 03                jr      z,.p126_dma_size_valid
+388+  0212 C3 7E 02             jp      .p126_dma_bad_size
+389+  0215
+390+  0215              .p126_dma_size_valid:
+391+  0215 3E 03                ld      a,3
+392+  0217 32 86 02             ld      (p126_ipc_dma_stage),a
+393+  021A 21 EE 02             ld      hl,p126_ipc_log_dma_tx_e0
+394+  021D CD 88 02             call    p126_ipc_debug_string
+395+  0220 3E E0                ld      a,P126_CMD_HOST_FRAME
+396+  0222 CD 51 00             call    p126_ipc_send_command
+397+  0225 30 0A                jr      nc,.p126_dma_e0_ack
+398+  0227 F5                   push    af
+399+  0228 21 02 03             ld      hl,p126_ipc_log_dma_tx_e0_timeout
+400+  022B CD 88 02             call    p126_ipc_debug_string
+401+  022E F1                   pop     af
+402+  022F 37                   scf
+403+  0230 C9                   ret
+404+  0231              .p126_dma_e0_ack:
+405+  0231 21 1D 03             ld      hl,p126_ipc_log_dma_tx_ready
+406+  0234 CD 88 02             call    p126_ipc_debug_string
+407+  0237
+408+  0237 3E 04                ld      a,4
+409+  0239 32 86 02             ld      (p126_ipc_dma_stage),a
+410+  023C F3                   di
+411+  023D 21 38 03             ld      hl,p126_ipc_log_dma_tx_copy_begin
+412+  0240 CD 88 02             call    p126_ipc_debug_string
+413+  0243 2A 82 02             ld      hl,(p126_ipc_dma_source)
+414+  0246 ED 4B 84 02          ld      bc,(p126_ipc_dma_size)
+415+  024A 11 00 00             ld      de,P126_IPC_DMA_WINDOW
+416+  024D ED B0                ldir
+417+  024F 21 53 03             ld      hl,p126_ipc_log_dma_tx_copy_done
+418+  0252 CD 88 02             call    p126_ipc_debug_string
+419+  0255
+420+  0255 3E 05                ld      a,5
+421+  0257 32 86 02             ld      (p126_ipc_dma_stage),a
+422+  025A 21 6D 03             ld      hl,p126_ipc_log_dma_tx_ff
+423+  025D CD 88 02             call    p126_ipc_debug_string
+424+  0260 3E FF                ld      a,P126_IPC_DMA_END
+425+  0262 D3 BB                out     (P126_GSCOM),a
+426+  0264 CD 06 00             call    p126_ipc_wait_cbit_clear
+427+  0267 30 0A                jr      nc,.p126_dma_ff_ack
+428+  0269 F5                   push    af
+429+  026A 21 81 03             ld      hl,p126_ipc_log_dma_tx_ff_timeout
+430+  026D CD 88 02             call    p126_ipc_debug_string
+431+  0270 F1                   pop     af
+432+  0271 37                   scf
+433+  0272 C9                   ret
+434+  0273              .p126_dma_ff_ack:
+435+  0273 21 9C 03             ld      hl,p126_ipc_log_dma_tx_done
+436+  0276 CD 88 02             call    p126_ipc_debug_string
+437+  0279 AF                   xor     a
+438+  027A 32 86 02             ld      (p126_ipc_dma_stage),a
+439+  027D C9                   ret
+440+  027E
+441+  027E              .p126_dma_bad_size:
+442+  027E 3E 03                ld      a,P126_STATUS_BAD_FRAME
+443+  0280 37                   scf
+444+  0281 C9                   ret
+445+  0282
+446+  0282 00 00        p126_ipc_dma_source: dw 0
+447+  0284 00 00        p126_ipc_dma_size:   dw 0
+448+  0286              ; 0=success/not started, 1=local frame validation, 2=DMA size,
+449+  0286              ; 3=E0/READY handshake, 4=payload copy, 5=FF/completion acknowledgement.
+450+  0286 00           p126_ipc_dma_stage:  db 0
+451+  0287
+452+  0287 00           p126_ipc_dma_error: db 0
+453+  0288
+454+  0288              ; ATM-local trace output, on ATM's own physical #EF stream.
+455+  0288              ; IN: HL=zero-terminated string. Preserves AF/BC; clobbers HL.
+456+  0288              p126_ipc_debug_string:
+457+  0288 F5                   push    af
+458+  0289 C5                   push    bc
+459+  028A 01 EF 00             ld      bc,#00EF
+460+  028D              .p126_ipc_debug_loop:
+461+  028D 7E                   ld      a,(hl)
+462+  028E 23                   inc     hl
+463+  028F B7                   or      a
+464+  0290 28 04                jr      z,.p126_ipc_debug_done
+465+  0292 ED 79                out     (c),a
+466+  0294 18 F7                jr      .p126_ipc_debug_loop
+467+  0296              .p126_ipc_debug_done:
+468+  0296 C1                   pop     bc
+469+  0297 F1                   pop     af
+470+  0298 C9                   ret
+471+  0299
+472+  0299 5B 41 54 4D  p126_ipc_log_dma_tx_begin:        db "[ATM IPC] DMA TX BEGIN",13,10,0
+472+  029D 20 49 50 43
+472+  02A1 5D 20 44 4D
+472+  02A5 41 20 54 58
+472+  02A9 20 42 45 47
+472+  02AD 49 4E 0D 0A
+472+  02B1 00
+473+  02B2 5B 41 54 4D  p126_ipc_log_dma_tx_validate_ok:  db "[ATM IPC] FRAME VALID",13,10,0
+473+  02B6 20 49 50 43
+473+  02BA 5D 20 46 52
+473+  02BE 41 4D 45 20
+473+  02C2 56 41 4C 49
+473+  02C6 44 0D 0A 00
+474+  02CA 5B 41 54 4D  p126_ipc_log_dma_tx_validate_bad: db "[ATM IPC] FRAME VALIDATION FAILED",13,10,0
+474+  02CE 20 49 50 43
+474+  02D2 5D 20 46 52
+474+  02D6 41 4D 45 20
+474+  02DA 56 41 4C 49
+474+  02DE 44 41 54 49
+474+  02E2 4F 4E 20 46
+474+  02E6 41 49 4C 45
+474+  02EA 44 0D 0A 00
+475+  02EE 5B 41 54 4D  p126_ipc_log_dma_tx_e0:           db "[ATM IPC] SEND E0",13,10,0
+475+  02F2 20 49 50 43
+475+  02F6 5D 20 53 45
+475+  02FA 4E 44 20 45
+475+  02FE 30 0D 0A 00
+476+  0302 5B 41 54 4D  p126_ipc_log_dma_tx_e0_timeout:   db "[ATM IPC] E0 ACK TIMEOUT",13,10,0
+476+  0306 20 49 50 43
+476+  030A 5D 20 45 30
+476+  030E 20 41 43 4B
+476+  0312 20 54 49 4D
+476+  0316 45 4F 55 54
+476+  031A 0D 0A 00
+477+  031D 5B 41 54 4D  p126_ipc_log_dma_tx_ready:        db "[ATM IPC] E0 ACK / READY",13,10,0
+477+  0321 20 49 50 43
+477+  0325 5D 20 45 30
+477+  0329 20 41 43 4B
+477+  032D 20 2F 20 52
+477+  0331 45 41 44 59
+477+  0335 0D 0A 00
+478+  0338 5B 41 54 4D  p126_ipc_log_dma_tx_copy_begin:   db "[ATM IPC] DMA COPY BEGIN",13,10,0
+478+  033C 20 49 50 43
+478+  0340 5D 20 44 4D
+478+  0344 41 20 43 4F
+478+  0348 50 59 20 42
+478+  034C 45 47 49 4E
+478+  0350 0D 0A 00
+479+  0353 5B 41 54 4D  p126_ipc_log_dma_tx_copy_done:    db "[ATM IPC] DMA COPY DONE",13,10,0
+479+  0357 20 49 50 43
+479+  035B 5D 20 44 4D
+479+  035F 41 20 43 4F
+479+  0363 50 59 20 44
+479+  0367 4F 4E 45 0D
+479+  036B 0A 00
+480+  036D 5B 41 54 4D  p126_ipc_log_dma_tx_ff:           db "[ATM IPC] SEND FF",13,10,0
+480+  0371 20 49 50 43
+480+  0375 5D 20 53 45
+480+  0379 4E 44 20 46
+480+  037D 46 0D 0A 00
+481+  0381 5B 41 54 4D  p126_ipc_log_dma_tx_ff_timeout:   db "[ATM IPC] FF ACK TIMEOUT",13,10,0
+481+  0385 20 49 50 43
+481+  0389 5D 20 46 46
+481+  038D 20 41 43 4B
+481+  0391 20 54 49 4D
+481+  0395 45 4F 55 54
+481+  0399 0D 0A 00
+482+  039C 5B 41 54 4D  p126_ipc_log_dma_tx_done:         db "[ATM IPC] DMA TX COMPLETE",13,10,0
+482+  03A0 20 49 50 43
+482+  03A4 5D 20 44 4D
+482+  03A8 41 20 54 58
+482+  03AC 20 43 4F 4D
+482+  03B0 50 4C 45 54
+482+  03B4 45 0D 0A 00
+483+  03B8
 # file closed: neogs_ipc.asm
- 11   0226              p126_atm_ipc_module_end:
- 12   0226
- 13   0226                  DISPLAY "P126_ATM_IPC_START=", /H, p126_atm_ipc_module_start
- 14   0226                  DISPLAY "P126_ATM_IPC_END=", /H, p126_atm_ipc_module_end
- 15   0226                  DISPLAY "P126_ATM_IPC_SIZE=", /D, p126_atm_ipc_module_end-p126_atm_ipc_module_start
- 16   0226
- 17   0226                  ASSERT p126_atm_ipc_module_end > p126_atm_ipc_module_start
- 18   0226                  ASSERT p126_atm_ipc_module_end <= #10000
- 19   0226
+ 11   03B8              p126_atm_ipc_module_end:
+ 12   03B8
+ 13   03B8                  DISPLAY "P126_ATM_IPC_START=", /H, p126_atm_ipc_module_start
+ 14   03B8                  DISPLAY "P126_ATM_IPC_END=", /H, p126_atm_ipc_module_end
+ 15   03B8                  DISPLAY "P126_ATM_IPC_SIZE=", /D, p126_atm_ipc_module_end-p126_atm_ipc_module_start
+ 16   03B8
+ 17   03B8                  ASSERT p126_atm_ipc_module_end > p126_atm_ipc_module_start
+ 18   03B8                  ASSERT p126_atm_ipc_module_end <= #10000
+ 19   03B8
 # file closed: neogs_ipc_assemble.asm
 
 Value    Label
 ------ - -----------------------------------------------------------
-0x0226   p126_atm_ipc_module_end
+0x03B8   p126_atm_ipc_module_end
 0x0000   p126_atm_ipc_module_start
 0x0000   P126_CBIT
 0x00E3 X P126_CMD_CAPABILITIES
@@ -615,30 +756,48 @@ Value    Label
 0x0033 X P126_GSCTR
 0x00B3   P126_GSDAT
 0x00BB   P126_GSSTAT
-0x0168 X p126_ipc_crc16_selftest
-0x0188   p126_ipc_crc16_selftest.p126_crc_test_failed
-0x0172   p126_ipc_crc16_selftest.p126_crc_test_loop
-0x018C   p126_ipc_crc16_test_vector
+0x016A X p126_ipc_crc16_selftest
+0x018A   p126_ipc_crc16_selftest.p126_crc_test_failed
+0x0174   p126_ipc_crc16_selftest.p126_crc_test_loop
+0x018E   p126_ipc_crc16_test_vector
 0x0084   p126_ipc_crc16_update
 0x0089   p126_ipc_crc16_update.p126_crc_bit
 0x0094   p126_ipc_crc16_update.p126_crc_no_xor
-0x0166   p126_ipc_crc_work
+0x0168   p126_ipc_crc_work
+0x0288   p126_ipc_debug_string
+0x0296   p126_ipc_debug_string.p126_ipc_debug_done
+0x028D   p126_ipc_debug_string.p126_ipc_debug_loop
 0x00FF   P126_IPC_DMA_END
-0x01C6 X p126_ipc_dma_send_frame
-0x021D   p126_ipc_dma_send_frame.p126_dma_bad_size
-0x01EE   p126_ipc_dma_send_frame.p126_dma_size_valid
-0x0223   p126_ipc_dma_size
-0x0221   p126_ipc_dma_source
-0x0225   p126_ipc_dma_stage
+0x0287   p126_ipc_dma_error
+0x01C8 X p126_ipc_dma_send_frame
+0x027E   p126_ipc_dma_send_frame.p126_dma_bad_size
+0x0231   p126_ipc_dma_send_frame.p126_dma_e0_ack
+0x0273   p126_ipc_dma_send_frame.p126_dma_ff_ack
+0x01F3   p126_ipc_dma_send_frame.p126_dma_frame_valid
+0x0215   p126_ipc_dma_send_frame.p126_dma_size_valid
+0x0284   p126_ipc_dma_size
+0x0282   p126_ipc_dma_source
+0x0286   p126_ipc_dma_stage
 0x0000   P126_IPC_DMA_WINDOW
-0x0195 X p126_ipc_emit_version
-0x01A7   p126_ipc_emit_version.p126_version_done
-0x019E   p126_ipc_emit_version.p126_version_loop
+0x0197 X p126_ipc_emit_version
+0x01A9   p126_ipc_emit_version.p126_version_done
+0x01A0   p126_ipc_emit_version.p126_version_loop
 0x000A   P126_IPC_FRAGMENT_HEADER
-0x0162   p126_ipc_frame_ptr
-0x0164   p126_ipc_frame_size
+0x0164   p126_ipc_frame_ptr
+0x0166   p126_ipc_frame_size
 0x0012   P126_IPC_HEADER_SIZE
-0x01AB   p126_ipc_last_status
+0x01AD   p126_ipc_last_status
+0x0299   p126_ipc_log_dma_tx_begin
+0x0338   p126_ipc_log_dma_tx_copy_begin
+0x0353   p126_ipc_log_dma_tx_copy_done
+0x039C   p126_ipc_log_dma_tx_done
+0x02EE   p126_ipc_log_dma_tx_e0
+0x0302   p126_ipc_log_dma_tx_e0_timeout
+0x036D   p126_ipc_log_dma_tx_ff
+0x0381   p126_ipc_log_dma_tx_ff_timeout
+0x031D   p126_ipc_log_dma_tx_ready
+0x02CA   p126_ipc_log_dma_tx_validate_bad
+0x02B2   p126_ipc_log_dma_tx_validate_ok
 0x0001   P126_IPC_MAJOR
 0x3FE4 X P126_IPC_MAX_FRAGMENT_DATA
 0x4000   P126_IPC_MAX_FRAME_SIZE
@@ -657,23 +816,23 @@ Value    Label
 0x0006 X P126_IPC_OFF_TYPE
 0x0000   p126_ipc_read_status
 0x0079 X p126_ipc_receive_byte
-0x01AD   p126_ipc_rx_byte
+0x01AF   p126_ipc_rx_byte
 0x005C X p126_ipc_send_argument
 0x006A X p126_ipc_send_byte
 0x0051   p126_ipc_send_command
 0xFFFF   P126_IPC_TIMEOUT
-0x01AC   p126_ipc_tx_byte
+0x01AE   p126_ipc_tx_byte
 0x0098   p126_ipc_validate_frame
-0x015E   p126_ipc_validate_frame.p126_frame_bad
-0x015A   p126_ipc_validate_frame.p126_frame_crc_bad
-0x0139   p126_ipc_validate_frame.p126_frame_crc_compare
-0x012A   p126_ipc_validate_frame.p126_frame_crc_data
+0x0160   p126_ipc_validate_frame.p126_frame_bad
+0x015C   p126_ipc_validate_frame.p126_frame_crc_bad
+0x013B   p126_ipc_validate_frame.p126_frame_crc_compare
+0x012C   p126_ipc_validate_frame.p126_frame_crc_data
 0x0114   p126_ipc_validate_frame.p126_frame_crc_head
-0x0152   p126_ipc_validate_frame.p126_frame_magic
+0x0154   p126_ipc_validate_frame.p126_frame_magic
 0x00A9   p126_ipc_validate_frame.p126_frame_min_ok
 0x00F0   p126_ipc_validate_frame.p126_frame_type
-0x0156   p126_ipc_validate_frame.p126_frame_version
-0x01AE   p126_ipc_version_text
+0x0158   p126_ipc_validate_frame.p126_frame_version
+0x01B0   p126_ipc_version_text
 0x0006   p126_ipc_wait_cbit_clear
 0x0009   p126_ipc_wait_cbit_clear.p126_cbit_loop
 0x001A   p126_ipc_wait_cbit_clear.p126_cbit_ready
