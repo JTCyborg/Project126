@@ -721,3 +721,13 @@ This is diagnostic instrumentation; the next ATM log must report the letter afte
 - Добавлена следующая диагностическая ступень на NeoGS: чтение обратно HAD/MAD/LAD после остановки DMA; обратимый write/read тест WIN3 в C100h (с сохранением/восстановлением исходного байта); полный дамп 16 байт заголовка из C000h.
 - Интерпретация: WIN3 RW TEST=FAIL указывает на проблему отображения/доступности выбранного окна; PASS при нулевом заголовке указывает, что окно доступно, но DMA не записал данные по ожидаемому адресу/направлению. DMA address readback рассматривается как диагностическое значение, пока поведение регистров после завершения не подтверждено аппаратно.
 - Следующая проверка остаётся аппаратной. До получения лога нельзя заявлять DMA data-plane PASS или менять физический адрес назначения.
+
+
+## 2026-11-07 — DMA address advances, destination data remains zero
+
+- Latest target log: ATM local CRC validation PASS (FF5B), E0/READY PASS, 18-byte host copy and FF/end handshake complete. NeoGS reads back DMA address 108012 after programming 108000, exactly 18 bytes advanced.
+- The reversible WIN3 write/read test reports PASS, proving that logical C000h window can access writable RAM while page 42 is selected. Nevertheless, all 16 header bytes read as zero.
+- This narrows the failure: the DMA engine observes 18 host-side aperture accesses and advances its destination pointer, but the expected payload is not visible in physical page 42. The address increment alone is not proof that the data values were stored.
+- Re-inspection of Project125's proven command_load_x86 sequence found that it maps the destination page into a Z80 CPU window before selecting/arming DMA; it then keeps that mapping stable through the transfer. Project126 previously mapped page 42 only after DMA stopped.
+- Diagnostic alignment change: Project126 now maps page 42 into WIN3 before programming/arming DMA and leaves WIN3 unchanged until after the header dump/validation. Resident code, data and stack remain in WIN0-WIN2. DMA physical address 108000h, module 1, host aperture 0000h..3FFFh, and ABI/handshake are unchanged.
+- Next target log should include [NGS] DMA PAGE 42 PRE-MAPPED, followed by DMA ADDR READBACK=108012, WIN3 RW TEST=PASS, and the 16-byte header. If it remains zero, the next investigation is the actual host aperture write path and NeoGS DMA data capture—not the WIN3 bank selector.
