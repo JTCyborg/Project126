@@ -549,8 +549,11 @@ p126_ngs_ipc_dispatch_once::
 
 .p126_ngs_dispatch_ngs_frame:
         ; The host may request the stop record immediately after IMAGE_FINISH.
-        ; If the resident loop has not consumed BIOS_IMAGE_READY yet, execute
-        ; the bounded startup slice now so the DMA response contains its result.
+        ; Keep the same two-image readiness gate as the resident main loop:
+        ; BIOS code may call the fixed-origin X86IO overlay at 8000h.
+        ld      a,(p126_ngs_io_overlay_ready)
+        or      a
+        jr      z,.ngs_frame_trace_ready
         ld      a,(p126_ngs_bios_image_ready)
         or      a
         jr      z,.ngs_frame_trace_ready
