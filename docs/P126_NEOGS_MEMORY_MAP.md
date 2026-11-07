@@ -155,4 +155,4 @@ The first overlay slice moves `neogs_sub/x86_io.asm` out of the 16 KiB resident 
 - Resident CPU call sites are statically linked to the X86IO labels in the same SjASMPlus assembly pass. Page 04h is pinned in WIN2; there is not yet a dynamic overlay call gate or allocator.
 - BIOS execution is gated until both `IO_OVERLAY_READY` and `BIOS_IMAGE_READY` are set.
 
-GitHub Actions run [42396608945](https://github.com/JTCyborg/Project126/actions/runs/42396608945), commit `079c53a136dc043428ffba92ef328e99ac96e70f`, passed assembly and TR-DOS packaging with the split images. It reported `X86CORE.C=15756` and `X86IO.C=796`. This is BUILD PASS only. Physical ATM/NeoGS transfer, page-04 readback and WIN2 mapping remain to be confirmed from a target log.
+GitHub Actions run [42396918560](https://github.com/JTCyborg/Project126/actions/runs/42396918560), commit `477bd340759c185395a340675a247c59d9cd6031`, passed assembly and TR-DOS packaging with the split images. It reported `X86CORE.C=15756` and `X86IO.C=796`. This is BUILD PASS only. Physical ATM/NeoGS transfer, page-04 readback and WIN2 mapping remain to be confirmed from a target log.
