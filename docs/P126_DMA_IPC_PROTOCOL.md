@@ -199,7 +199,7 @@ The first implemented image profile is an 8 KiB system BIOS:
 
 This is the initial fixed-size SYSBIOS profile, not a general image reassembly implementation. IMAGE_RESULT (03h), multi-fragment images, VGA BIOS image installation, and service-level response frames remain unimplemented. Source build success does not prove physical page-10 installation; that requires a target log.
 
-### Initial X86IO overlay transfer profile
+### Fixed-origin overlay transfer profiles
 
 The first overlay is the fixed-origin XT I/O model, with image kind `01h` (`P126_IMAGE_KIND_X86IO`):
 
@@ -243,7 +243,7 @@ The receiver restores the validated frame pointer and exact byte count after the
 
 The IPC module is linked into `X86CORE.C` after the x86 state, execution, ModR/M and ALU modules. The resident startup maps WIN0/page 00 and WIN1/page 03, establishes the stack at 7FFEh, and repeatedly calls `p126_ngs_ipc_dispatch_once`. WIN2 is initialized to page 01 until the X86IO overlay is installed; WIN3 remains the guest-memory aperture.
 
-After the resident A2h acknowledgement, the ATM host reads `X86IO.C` from TR-DOS and sends its IMAGE transaction through ABI 1.0 DMA. NeoGS validates the frame, installs the image at physical page 04 through WIN3, verifies the complete copy, then maps page 04 into WIN2. BIOS execution is gated until the overlay and SYSBIOS are both ready.
+After the resident A2h acknowledgement, the ATM host reads `X86IO.C` from TR-DOS and sends its IMAGE transaction through ABI 1.0 DMA. NeoGS validates the frame, installs the image at physical page 04 through WIN3, verifies the complete copy, then maps page 04 into WIN2. BIOS execution is gated until X86IO, X86ALU and SYSBIOS are all ready.
 
 Verification boundary: CI verifies assembly, split-image sizes, and TR-DOS packaging. Only target testing can verify the X86IO DMA transfer, page-04 readback, WIN2 mapping, ZXCMD/CBIT timing, DMA page-42 behavior, and subsequent BIOS I/O calls.
 
@@ -256,8 +256,8 @@ Project126 now has a concrete startup chain:
 3. ATM resets NeoGS through GSCTR, probes the stock GS105a ROM with command 20h, and uses ROM commands 14h/13h to load and enter stage-0 at logical 4000h.
 4. Stage-0 switches to writable RAM-over-ROM, establishes temporary WIN2/WIN3 mappings and a temporary stack, receives a bounded 1..4000h resident image over the legacy DBIT bootstrap byte channel, then jumps to address 0000h.
 5. The resident entry maps WIN0 to physical page 00, WIN1 to physical page 03, initializes WIN2 to page 01, places the operational stack at 7FFEh, runs the CRC self-test and publishes A2h as the resident-ready acknowledgement.
-6. The resident main loop continuously calls `p126_ngs_ipc_dispatch_once`. After A2h, ATM loads `X86IO.C` and sends its IMAGE transaction; NeoGS installs it at physical page 04, performs byte-for-byte readback, then maps it into WIN2 using MPAG #00 selector 02h.
-7. Subsequent SYSBIOS IMAGE traffic uses the same ABI 1.0 DMA path. BIOS execution starts only when both the X86IO overlay and SYSBIOS image are ready.
+6. The resident main loop continuously calls `p126_ngs_ipc_dispatch_once`. After A2h, ATM loads `X86IO.C` and `X86ALU.C` and sends their IMAGE transactions; NeoGS installs them at physical pages 04 and 05, performs byte-for-byte readback, and uses the resident gate to map either into WIN2.
+7. Subsequent SYSBIOS IMAGE traffic uses the same ABI 1.0 DMA path. BIOS execution starts only when X86IO, X86ALU and SYSBIOS images are ready.
 
 DBIT/GSDAT is used only for stock-ROM bootstrap compatibility. After A2h, application payloads use ABI 1.0 DMA; NeoGS does not perform direct physical host I/O. ATM startup file reads occur before ATM video initialization to preserve the established TR-DOS paging constraints.
 
