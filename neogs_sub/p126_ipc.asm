@@ -601,46 +601,46 @@ p126_ngs_image_fragment:
         call    p126_ngs_ipc_log
         ld      a,(p126_ngs_image_active)
         or      a
-        jr      z,.image_fragment_bad
+        jp      z,.image_fragment_bad
         ld      a,(#C009)
         bit     1,a
-        jr      z,.image_fragment_bad
+        jp      z,.image_fragment_bad
         ld      a,(#C00C)
         cp      #0A
-        jr      nz,.image_fragment_bad
+        jp      nz,.image_fragment_bad
         ld      a,(#C00D)
         cp      #20
-        jr      nz,.image_fragment_bad
+        jp      nz,.image_fragment_bad
         ld      a,(#C012)
         cp      1
-        jr      nz,.image_fragment_bad
+        jp      nz,.image_fragment_bad
         ld      a,(#C013)
         or      a
-        jr      nz,.image_fragment_bad
+        jp      nz,.image_fragment_bad
         ld      a,(#C014)
         or      a
-        jr      nz,.image_fragment_bad
+        jp      nz,.image_fragment_bad
         ld      a,(#C015)
         or      a
-        jr      nz,.image_fragment_bad
+        jp      nz,.image_fragment_bad
         ld      a,(#C016)
         cp      1
-        jr      nz,.image_fragment_bad
+        jp      nz,.image_fragment_bad
         ld      a,(#C017)
         or      a
-        jr      nz,.image_fragment_bad
+        jp      nz,.image_fragment_bad
         ld      a,(#C018)
         or      a
-        jr      nz,.image_fragment_bad
+        jp      nz,.image_fragment_bad
         ld      a,(#C019)
         cp      #20
-        jr      nz,.image_fragment_bad
+        jp      nz,.image_fragment_bad
         ld      a,(#C01A)
         or      a
-        jr      nz,.image_fragment_bad
+        jp      nz,.image_fragment_bad
         ld      a,(#C01B)
         or      a
-        jr      nz,.image_fragment_bad
+        jp      nz,.image_fragment_bad
 
         ; Copy 8192 bytes from the validated page-42 frame payload to
         ; physical SYSBIOS page 10h, offset 0000h. Alternate WIN3 mapping
