@@ -166,7 +166,8 @@ P126_NGS_MPAGEX_PORT  EQU #10
 ; remain outside WIN3. Map the page before arming DMA and keep it mapped
 ; until frame validation or reverse-transfer completion.
 P126_NGS_DMA_PROD_PAGE EQU #42
-P126_NGS_DMA_TIMEOUT   EQU #FFFF
+P126_NGS_DMA_WAIT_LIMIT EQU #FFFF
+P126_NGS_DMA_WAIT_OUTER EQU 8
 
 p126_ngs_ipc_dma_receive_frame::
         ; Production page-42 validation. WIN3 is selected through MPAGEX (#10),
@@ -199,7 +200,12 @@ p126_ngs_ipc_dma_receive_frame::
         ld      hl,p126_ngs_ipc_log_dma_ready
         call    p126_ngs_ipc_log
 
-        ld      bc,P126_NGS_DMA_TIMEOUT
+        ; Match Project125's proven DMA completion watchdog: eight full
+        ; 16-bit polling windows. A single #FFFF window expires before the
+        ; ATM can finish a 16 KiB LDIR at its host clock.
+        ld      d,P126_NGS_DMA_WAIT_OUTER
+.p126_ngs_dma_wait_outer:
+        ld      bc,P126_NGS_DMA_WAIT_LIMIT
 .p126_ngs_dma_wait_end:
         in      a,(P126_NGS_ZXSTAT)
         bit     0,a
@@ -208,6 +214,8 @@ p126_ngs_ipc_dma_receive_frame::
         ld      a,b
         or      c
         jr      nz,.p126_ngs_dma_wait_end
+        dec     d
+        jr      nz,.p126_ngs_dma_wait_outer
         ld      hl,p126_ngs_ipc_log_dma_timeout
         call    p126_ngs_ipc_log
         xor     a
@@ -403,7 +411,10 @@ p126_ngs_ipc_dma_send_test_frame::
         call    p126_ngs_ipc_log
         xor     a
         out     (P126_NGS_CLRCBIT),a
-        ld      bc,P126_NGS_DMA_TIMEOUT
+        ; Same Project125 eight-window timeout as the receive endpoint.
+        ld      d,P126_NGS_DMA_WAIT_OUTER
+.ngs_wait_outer:
+        ld      bc,P126_NGS_DMA_WAIT_LIMIT
 .ngs_wait_end:
         in      a,(P126_NGS_ZXSTAT)
         bit     0,a
@@ -412,6 +423,8 @@ p126_ngs_ipc_dma_send_test_frame::
         ld      a,b
         or      c
         jr      nz,.ngs_wait_end
+        dec     d
+        jr      nz,.ngs_wait_outer
         xor     a
         out     (P126_NGS_DMA_CST),a
         out     (P126_NGS_CLRCBIT),a
