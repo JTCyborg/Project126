@@ -208,11 +208,11 @@ The first overlay is the fixed-origin XT I/O model, with image kind `01h` (`P126
 - IMAGE_FRAGMENT is exactly one fragment: index 0, count 1, total logical length u32 LE equal to the IMAGE_BEGIN size, followed by the complete X86IO image. The frame carries the normal ABI FRAGMENT flag and CRC.
 - ATM loads the TR-DOS file after the resident A2h acknowledgement. The first 256-byte sector is copied backwards from C000h to C01Ch so that the frame header remains intact despite overlap; subsequent sectors are read directly into the following data area.
 - NeoGS copies the validated fragment from DMA staging page 42h to physical kernel page 04h through WIN3 and compares every installed byte against the source still in page 42h.
-- IMAGE_FINISH maps page 04h into WIN2 (logical 8000h-BFFFh) through MPAG port 00h with selector 02h (ROR8(04h)), then publishes IO_OVERLAY_READY.
+- IMAGE_FINISH runs a reversible WIN2 mapping/read-write test at logical BFFFh using physical pages 04h and 05h (saving/restoring both bytes), leaves page 04h mapped through MPAG port 00h selector 02h (ROR8(04h)), then publishes IO_OVERLAY_READY. The target log must show `[NGS] WIN2 PAGE04/05 TEST PASS`.
 - The resident CPU's I/O call sites are statically linked to the X86IO symbols in the same SjASMPlus translation unit. Page 04h is pinned in WIN2; no dynamic module call gate, allocator, unload, or nested overlay switching is implemented yet.
 - BIOS execution is gated until both IO_OVERLAY_READY and BIOS_IMAGE_READY are set.
 
-The current X86IO profile is a single-fragment pinned overlay, not a generic image manifest/reassembly service. Its build has passed CI, but the ATM/NeoGS transfer and WIN2 mapping still require physical target verification.
+The current X86IO profile is a single-fragment pinned overlay, not a generic image manifest/reassembly service. Its build and resident WIN2 mapping self-test code have passed CI, but the ATM/NeoGS transfer and physical WIN2 test result still require target verification.
 
 ## 9. Compatibility and migration
 
