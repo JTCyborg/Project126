@@ -1124,7 +1124,7 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 
 ### Обязательная инфраструктурная задача перед расширением набора устройств
 
-- [ ] Разработать и реализовать resident overlay/module manager для использования выделенного kernel pool pages 00h–0Fh (256 KiB), сохранив bootstrap entry и resident dispatcher, фиксированный стек WIN1/page 03h и эксклюзивное владение WIN3 memory backend. Текущий X86CORE.C ограничен одной 16 KiB страницей; в текущей сборке занимает 15610 байт, свободно 774 байта.
+- [ ] Разработать и реализовать resident overlay/module manager для использования выделенного kernel pool pages 00h–0Fh (256 KiB), сохранив bootstrap entry и resident dispatcher, фиксированный стек WIN1/page 03h и эксклюзивное владение WIN3 memory backend. Текущий X86CORE.C ограничен одной 16 KiB страницей; в текущей сборке занимает 15632 байт, свободно 752 байта.
 - [ ] Определить формат/манифест overlay-модулей, загрузку дополнительных 16 KiB страниц через TR-DOS/ATM DMA/IPC, адресацию символов и ABI вызовов между resident core и overlay.
 - [ ] Добавить проверки размера/пересечений, page-switch restore, запрет вызова функции после выгрузки overlay, и тесты вложенных/повторных вызовов.
 - [ ] Перенести расширяемые device models (PIC/PIT/DMA/VGA/RTC/IDE) в отдельные overlay-модули после проверки менеджера. Не увеличивать лимит X86CORE.C и не менять физическую карту страниц без отдельного решения.
@@ -1205,7 +1205,7 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 
 ## 2026-11-07 — X86ALU вынесен в отдельный overlay
 
-- Реализация 8086 ALU/flags (1,175 байт) вынесена из resident image в отдельный fixed-origin файл X86ALU.C, logical origin 8000h, physical page05 / MPAG selector82h. X86IO остаётся на page04 / selector02h.
+- Реализация 8086 ALU/flags (1,187 байт) вынесена из resident image в отдельный fixed-origin файл X86ALU.C, logical origin 8000h, physical page05 / MPAG selector82h. X86IO остаётся на page04 / selector02h.
 - Все 10 ALU entry points, используемых x86_exec (ADD/SUB/ADC/SBB/LOGIC 8/16), теперь resident wrappers через общий WIN2 gate. Внутренние вызовы и helpers внутри ALU overlay остаются прямыми.
 - Добавлен IMAGE kind02 для X86ALU. ATM использует общий fixed-profile loader: открывает X86IO.C и X86ALU.C, передаёт оба через ABI1.0 DMA. NeoGS копирует в page04/page05 и выполняет побайтный readback.
 - IMAGE_FINISH для X86ALU вызывает x86_alu_overlay_probe через resident gate, проверяет input A=#3C/C=1/HL=#1234, output A=#A5/HL=#5AA5 и восстановление WIN2 selector #02; только затем выставляет X86ALU_READY. BIOS теперь ждёт X86IO_READY, X86ALU_READY и BIOS_IMAGE_READY.
