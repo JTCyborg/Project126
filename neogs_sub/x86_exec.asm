@@ -1763,9 +1763,9 @@ x86_exec_into:
         jp      x86_exec_interrupt
 
 x86_exec_interrupt:
+        ld      (x86_exec_interrupt_vector),a
         xor     a
         ld      (x86_halted),a
-        ld      (x86_exec_interrupt_vector),a
         ld      hl,(x86_reg_flags)
         ld      a,h
         or      #F0
