@@ -151,7 +151,7 @@ The first overlay slice moves `neogs_sub/x86_io.asm` out of the 16 KiB resident 
 - ATM opens `X86IO.C` after the resident A2h handshake, reads the first sector into C000h, copies it backwards to C01Ch to preserve the DMA frame header, and reads remaining sectors directly after the first data block.
 - ATM sends IMAGE_BEGIN / one IMAGE_FRAGMENT / IMAGE_FINISH using ABI 1.0 DMA. The image kind is 01h and the profile size limit is 1000h bytes.
 - NeoGS copies the fragment from DMA page 42h to physical kernel page 04h through WIN3 and verifies every installed byte against the still-preserved DMA source.
-- IMAGE_FINISH maps page 04h into WIN2 through MPAG port 00h, selector 02h, then sets `IO_OVERLAY_READY`.
+- IMAGE_FINISH runs a reversible WIN2 mapping test across physical pages 04h and 05h at logical BFFFh, restores both original bytes, leaves page 04h selected through MPAG port 00h/selector 02h, then sets `IO_OVERLAY_READY` only on test success. The target log must show `[NGS] WIN2 PAGE04/05 TEST PASS`.
 - Resident CPU call sites are statically linked to the X86IO labels in the same SjASMPlus assembly pass. Page 04h is pinned in WIN2; there is not yet a dynamic overlay call gate or allocator.
 - BIOS execution is gated until both `IO_OVERLAY_READY` and `BIOS_IMAGE_READY` are set.
 
