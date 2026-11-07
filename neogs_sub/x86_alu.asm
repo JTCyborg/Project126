@@ -221,13 +221,14 @@ x86_alu_logic8:
         ld      a,b
         ld      (x86_alu_logic_op),a
         ld      a,(x86_alu_logic_lhs)
-        ld      c,(x86_alu_logic_rhs)
+        ld      a,(x86_alu_logic_rhs)
+        ld      c,a
         call    x86_alu_logic_apply8
         ld      (x86_alu_logic_result),a
         or      a
         push    af
         pop     bc
-        ld      a,b
+        ld      a,c
         ld      (x86_alu_logic_z80_flags),a
         call    x86_alu_logic_merge8
         ld      a,(x86_alu_logic_result)
@@ -251,7 +252,7 @@ x86_alu_logic16:
         or      a
         push    af
         pop     bc
-        ld      a,b
+        ld      a,c
         ld      (x86_alu_logic_z80_flags),a
 
         ld      hl,(x86_reg_flags)
@@ -539,6 +540,15 @@ x86_alu_selftest:
         pop     af
         scf
         ret
+
+x86_alu_logic_lhs: db 0
+x86_alu_logic_rhs: db 0
+x86_alu_logic_result: db 0
+x86_alu_logic_op: db 0
+x86_alu_logic_z80_flags: db 0
+x86_alu_logic_word_lhs: dw 0
+x86_alu_logic_word_rhs: dw 0
+x86_alu_logic_word_result: dw 0
 
 x86_alu_lhs:         db 0
 x86_alu_rhs:         db 0
