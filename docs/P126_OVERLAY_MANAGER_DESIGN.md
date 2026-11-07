@@ -112,7 +112,7 @@ The two pinned-overlay source/build/load slices and low-level resident call gate
 - `X86CORE.C` is separately exported at 0000h (15,632 bytes in the current build);
 - resident public X86IO and X86ALU entry points route through the WIN2 gate; implementation symbols remain fixed at the overlay origin;
 - ATM loads `X86IO.C` and `X86ALU.C` from TR-DOS after A2h using the shared fixed-profile loader and ABI 1.0 DMA;
-- NeoGS installs page 04h, verifies the complete image by readback, runs a reversible WIN2 selector test across pages 04h and 05h at offset 3FFFh, then runs a temporary page05→page04 X86IO-wrapper→page05 gate test and restores the page05 scratch bytes;
+- NeoGS installs page04, verifies the complete image by readback, runs a reversible WIN2 selector test across pages04/05 at offset 3FFFh, then runs a temporary page05→page04 X86IO-wrapper→page05 gate test and restores page05 scratch bytes before the X86ALU image is loaded;
 - BIOS execution waits for IO_OVERLAY_READY, X86ALU_READY and BIOS_IMAGE_READY;
 - `00E0h` diagnostic latch and current PPI/keyboard semantics are retained.
 
@@ -132,7 +132,7 @@ The manager is not complete until all of the following are true:
 - [x] Destination page04/page05 readback is byte-for-byte verified before the respective overlay-ready flag is published.
 - [x] Resident call/return gate saves the previous WIN2 selector on the WIN1 stack and restores it at a resident RET trampoline; X86IO and X86ALU wrappers use this gate.
 - [x] X86IO IMAGE_FINISH performs a boot-time page05→page04 X86IO wrapper call and verifies that the page05 test stub resumes after the gate restores WIN2; scratch bytes are restored before X86ALU is loaded.
-- [x] X86ALU IMAGE_FINISH calls the ALU probe through the gate, checks the #A5 signature and confirms WIN2 is restored to page04 before X86ALU_READY.
+- [x] X86ALU IMAGE_FINISH calls the ALU probe through the gate, checks input A=#3C/C=1/HL=#1234 and output A=#A5/HL=#5AA5, then confirms WIN2 is restored to page04 before X86ALU_READY.
 - [ ] Physical target log confirms [NGS] WIN2 MAP/GATE TEST PASS; repeated/deeper nested calls, alternate-register use and stack-limit behavior remain to be tested.
 - [ ] Invalid/unloaded dynamic module calls fail closed.
 - [x] CI build/package passes with the boot-time gate self-test (run 42399458157, commit 705a0d5e; X86CORE 15632/16384 bytes (752 free), X86IO 796/4096 bytes, X86ALU 1187/4096 bytes; NeoGS, ATM, IPC and TR-DOS assembly 0 errors/0 warnings).
