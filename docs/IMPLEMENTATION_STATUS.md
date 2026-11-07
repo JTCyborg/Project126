@@ -799,3 +799,12 @@ Source commit: `aac9d7e60c391510150016d3b29906a7b2f90e3d`.
 - Audited every x86_exec call to x86_modrm_read_rm8/rm16 and added an immediate carry check at all 53 call sites, so guest-memory faults cannot be cleared by later ALU/stack operations. Existing write helpers were also checked: all call sites propagate carry, and direct guest-memory read/write calls in the executor already return on faults. The source change and duplicate-check normalization both passed compile/package CI (runs 42376263313 and 42376288583).
 - Compile/package CI passed for the ModR/M behavior update (run 42375880001), MOV CS support (run 42375777549), BIOS execution gate (run 42375738280), REP iteration scheduling (run 42375954899), and MOV Sreg IRQ-inhibit timing (run 42376049909). The final comment/documentation sync also assembled and packaged successfully in run 42376060530.
 - No CPU functional tests, BIOS POST, or guest programs have been run. Only assembler/linker/package checks are permitted until the complete Intel 8086 core has been ported and reviewed.
+
+
+## 2026-11-07 — 8086 pre-test readiness checkpoint
+
+- PCem comparison corrected STI behavior: STI sets IF but does not arm the `noint` interrupt-inhibit latch; only MOV Sreg (8Eh) and POP SS arm it in the reviewed paths.
+- IRET now restores the FLAGS image exactly as PCem's 8086 path does: the stacked word masked with 0FFFh, without synthesizing reserved bit 1.
+- The coverage ledger was reconciled with the implemented REP iteration scheduler and the CPU-side interrupt-inhibit consumer; earlier statements that these pieces were wholly pending were stale.
+- **Readiness: NOT READY for CPU functional tests.** Remaining blockers include the host/IPC IRQ/NMI producer and vector source, interrupt servicing between REP iterations, form-by-form PCem semantic review, and TF/NMI/IRQ/HLT plus address-wrap/fault corner-case verification.
+- Only assembly/package validation is permitted at this stage. No CPU functional tests, BIOS POST, reset-vector execution or guest programs have been run or enabled.
