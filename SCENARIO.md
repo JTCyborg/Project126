@@ -652,3 +652,11 @@ This is diagnostic instrumentation; the next ATM log must report the letter afte
 - The NeoGS IPC source is assembled twice by the build: once as the standalone `NEOGS_IPC` diagnostic/module image and once included in the resident core image.
 - DMA lifecycle diagnostics now use a small logger implemented inside `p126_ipc.asm`, writing directly to NeoGS's own `#EF` port. The IPC module no longer references `p126_ngs_resident_log`, which is defined only by the resident core assembly unit and therefore cannot resolve in the standalone IPC build.
 - This fixes the three reported undefined-label errors without changing the resident entry point or merging ATM and NeoGS debug streams.
+
+
+## ATM frame-validator CRC pointer correction (2026-11-07)
+
+- The target reports `DMA FAIL STAGE=1`, which is the ATM-local ABI frame validation stage and occurs before E0h, READY, or any DMA transfer.
+- Source inspection found that `p126_ipc_validate_frame` loaded the frame pointer into DE, then executed `EX DE,HL` immediately before initializing HL to `FFFFh`. This discarded the pointer and left DE=0000h, so the CRC loop read from address 0000h rather than from the frame buffer.
+- Removed the unnecessary register exchange. DE now retains the frame pointer while HL is initialized as the CRC accumulator; the CRC update routine preserves DE as specified.
+- The fix addresses the observed local validation failure. It does not establish that the E0h/READY/DMA/FF transaction works; that remains the next hardware test after this stage passes.
