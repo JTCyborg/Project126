@@ -79,9 +79,8 @@ p126_ngs_resident_main_loop:
         ; Consume the installation event before probing: one-shot transition.
         xor     a
         ld      (p126_ngs_bios_image_ready),a
-        ; Begin controlled BIOS bring-up only after IMAGE_FINISH and the
-        ; page-10 readback verification have both succeeded. The trace routine
-        ; executes the reset vector and at most 16 further guest instructions.
+        ; Begin BIOS bring-up only after IMAGE_FINISH and page-10 readback.
+        ; The trace runs continuously until HLT/fault or the 65535-step safety watchdog.
         call    x86_bios_startup_trace
         jr      p126_ngs_resident_main_loop
 
