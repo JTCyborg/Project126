@@ -920,82 +920,122 @@ p126_ngs_image_finish:
 ; WIN2=page04 (X86IO), WIN3=page42 (production DMA staging).
 ; OUT: carry clear on success.
 p126_ngs_overlay_win2_selftest:
-        ; Save the original last byte of physical page 04h via WIN3.
+        ; Reassert the required RAM/extended-window mode instead of relying
+        ; on the configuration value left by stage-0. RAMRO must be clear;
+        ; NOROM and EXPAG must be set for writable independent WIN2/WIN3.
+        in      a,(#0F)
+        and     #CD                    ; clear RAMRO and clock-select bits
+        or      #29                    ; 20 MHz + NOROM + EXPAG
+        out     (#0F),a
+        in      a,(#0F)
+        and     #0B                    ; NOROM, RAMRO, EXPAG
+        cp      #09
+        jp      nz,.overlay_win2_test_config_failed
+
+        ; Save the original last byte of both pinned pages through WIN3.
         ld      a,P126_NGS_X86IO_OVERLAY_PAGE
         rrca
         out     (P126_NGS_MPAGEX_PORT),a
-        ld      a,(#CFFF)
+        ld      a,(#FFFF)
         ld      (p126_ngs_overlay_test_old04),a
-
-        ; Save the original last byte of physical page 05h via WIN3 too,
-        ; so every failure path can restore both pages.
         ld      a,P126_NGS_OVERLAY_TEST_PAGE
         rrca
         out     (P126_NGS_MPAGEX_PORT),a
-        ld      a,(#CFFF)
+        ld      a,(#FFFF)
         ld      (p126_ngs_overlay_test_old05),a
 
-        ; Stage 01: WIN2 page 04h read must match the WIN3 reference.
+        ; Stage 01: prove WIN3 can write/read page04 with a nonzero marker.
         ld      a,1
         ld      (p126_ngs_overlay_test_fail_stage),a
-        ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
-        out     (P126_NGS_OVERLAY_WINDOW_PORT),a
-        ld      a,(#BFFF)
-        ld      b,a
-        ld      a,(p126_ngs_overlay_test_old04)
-        cp      b
-        jr      nz,.overlay_win2_test_failed
+        ld      a,P126_NGS_X86IO_OVERLAY_PAGE
+        rrca
+        out     (P126_NGS_MPAGEX_PORT),a
+        ld      a,#3C
+        ld      (#FFFF),a
+        ld      a,(#FFFF)
+        cp      #3C
+        jp      nz,.overlay_win2_test_failed
 
-        ; Stage 02: WIN2 page 05h read must match the WIN3 reference.
+        ; Stage 02: WIN2 page04 must see the exact marker written via WIN3.
         ld      a,2
         ld      (p126_ngs_overlay_test_fail_stage),a
+        ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
+        out     (P126_NGS_OVERLAY_WINDOW_PORT),a
+        ld      a,(#BFFF)
+        cp      #3C
+        jp      nz,.overlay_win2_test_failed
+
+        ; Stage 03: prove WIN3 can write/read page05 with a distinct marker.
+        ld      a,3
+        ld      (p126_ngs_overlay_test_fail_stage),a
+        ld      a,P126_NGS_OVERLAY_TEST_PAGE
+        rrca
+        out     (P126_NGS_MPAGEX_PORT),a
+        ld      a,#5A
+        ld      (#FFFF),a
+        ld      a,(#FFFF)
+        cp      #5A
+        jp      nz,.overlay_win2_test_failed
+
+        ; Stage 04: WIN2 page05 must see the marker written via WIN3.
+        ld      a,4
+        ld      (p126_ngs_overlay_test_fail_stage),a
         ld      a,P126_NGS_OVERLAY_TEST_PAGE
         rrca
         out     (P126_NGS_OVERLAY_WINDOW_PORT),a
         ld      a,(#BFFF)
-        ld      b,a
-        ld      a,(p126_ngs_overlay_test_old05)
-        cp      b
-        jr      nz,.overlay_win2_test_failed
+        cp      #5A
+        jp      nz,.overlay_win2_test_failed
 
-        ; Stage 03: WIN2 page 05h write must be visible through WIN3.
-        ld      a,3
+        ; Stage 05: write through WIN2 and verify the write locally.
+        ld      a,5
         ld      (p126_ngs_overlay_test_fail_stage),a
-        ld      a,#55
+        ld      a,#A5
         ld      (#BFFF),a
+        ld      a,(#BFFF)
+        cp      #A5
+        jp      nz,.overlay_win2_test_failed
+
+        ; Stage 06: the WIN2 page05 write must be visible through WIN3.
+        ld      a,6
+        ld      (p126_ngs_overlay_test_fail_stage),a
         ld      a,P126_NGS_OVERLAY_TEST_PAGE
         rrca
         out     (P126_NGS_MPAGEX_PORT),a
-        ld      a,(#CFFF)
-        cp      #55
-        jr      nz,.overlay_win2_test_failed
+        ld      a,(#FFFF)
+        cp      #A5
+        jp      nz,.overlay_win2_test_failed
 
-        ; Stage 04: WIN2 page 04h write must be visible through WIN3.
-        ld      a,4
+        ; Stage 07: write through WIN2 page04 and verify through WIN3.
+        ld      a,7
         ld      (p126_ngs_overlay_test_fail_stage),a
         ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
         out     (P126_NGS_OVERLAY_WINDOW_PORT),a
-        ld      a,#AA
+        ld      a,#C3
         ld      (#BFFF),a
         ld      a,P126_NGS_X86IO_OVERLAY_PAGE
         rrca
         out     (P126_NGS_MPAGEX_PORT),a
-        ld      a,(#CFFF)
-        cp      #AA
-        jr      nz,.overlay_win2_test_failed
+        ld      a,(#FFFF)
+        cp      #C3
+        jp      nz,.overlay_win2_test_failed
 
-        ; Restore both original physical bytes through WIN3.
-        ld      a,P126_NGS_X86IO_OVERLAY_PAGE
-        rrca
-        out     (P126_NGS_MPAGEX_PORT),a
+        ; Restore both original bytes through WIN3 after all checks pass.
         ld      a,(p126_ngs_overlay_test_old04)
-        ld      (#CFFF),a
+        ld      (#FFFF),a
         ld      a,P126_NGS_OVERLAY_TEST_PAGE
         rrca
         out     (P126_NGS_MPAGEX_PORT),a
         ld      a,(p126_ngs_overlay_test_old05)
-        ld      (#CFFF),a
+        ld      (#FFFF),a
         jr      .overlay_win2_test_restore_maps
+
+.overlay_win2_test_config_failed:
+        xor     a
+        ld      (p126_ngs_overlay_test_fail_stage),a
+        call    p126_ngs_overlay_test_restore_maps
+        scf
+        ret
 
 .overlay_win2_test_failed:
         ; Best-effort restoration even when one WIN2 selector is incorrect.
@@ -1003,12 +1043,12 @@ p126_ngs_overlay_win2_selftest:
         rrca
         out     (P126_NGS_MPAGEX_PORT),a
         ld      a,(p126_ngs_overlay_test_old04)
-        ld      (#CFFF),a
+        ld      (#FFFF),a
         ld      a,P126_NGS_OVERLAY_TEST_PAGE
         rrca
         out     (P126_NGS_MPAGEX_PORT),a
         ld      a,(p126_ngs_overlay_test_old05)
-        ld      (#CFFF),a
+        ld      (#FFFF),a
         call    p126_ngs_overlay_test_restore_maps
         scf
         ret

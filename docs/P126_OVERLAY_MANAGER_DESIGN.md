@@ -112,7 +112,7 @@ The two pinned-overlay source/build/load slices and low-level resident call gate
 - `X86CORE.C` is separately exported at 0000h (16,041 bytes in the current build);
 - resident public X86IO and X86ALU entry points route through the WIN2 gate; implementation symbols remain fixed at the overlay origin;
 - ATM loads `X86IO.C` and `X86ALU.C` from TR-DOS after A2h using the shared fixed-profile loader and ABI 1.0 DMA;
-- NeoGS installs page04, verifies the complete image by readback, runs a reversible WIN2 selector test across pages04/05 at offset 3FFFh, then runs a temporary page05→page04 X86IO-wrapper→page05 gate test and restores page05 scratch bytes before the X86ALU image is loaded;
+- NeoGS installs page04, verifies the complete image by readback, explicitly enforces GSCFG0 NOROM=1/RAMRO=0/EXPAG=1, then runs a deterministic WIN2/WIN3 alias test across pages04/05 at offset 3FFFh using distinct nonzero markers. The test separates WIN3 write/read, WIN2 read-through, WIN2 local write/read, and WIN2→WIN3 write-through before restoring both saved bytes. It then runs a temporary page05→page04 X86IO-wrapper→page05 gate test and restores page05 scratch bytes before the X86ALU image is loaded;
 - BIOS execution waits for IO_OVERLAY_READY, X86ALU_READY and BIOS_IMAGE_READY;
 - `00E0h` diagnostic latch and current PPI/keyboard semantics are retained.
 
@@ -123,6 +123,8 @@ Not implemented: general module manifest, generic ATM module streaming, unload/r
 The manager is not complete until all of the following are true:
 
 - [x] WIN2 selector register/encoding identified from Project125 reference: MPAG #00, selector ROR8(physical_page); Project126 startup #80 corresponds to page 01h.
+- [x] WIN2 self-test uses nonzero page-specific markers, checks WIN3 write/read and WIN2 read-through independently, verifies WIN2 local write/read before cross-window visibility, and explicitly reasserts NOROM/RAMRO/EXPAG configuration. Failure stages 00–07 distinguish configuration, page04 mapping, page05 mapping, and write-through paths.
+- [x] Correct the physical-byte alias address: WIN2 `BFFFh` and WIN3 `FFFFh` are both offset `3FFFh` within their respective 16 KiB windows. The earlier `CFFFh` reference was offset `0FFFh` and caused a false write-through failure; all WIN2/WIN3 comparisons now use `BFFFh`↔`FFFFh`.
 - [x] Resident runtime self-test exercises WIN2 mapping/read/write on physical pages 04h and 05h at offset 3FFFh, saves/restores both bytes, and leaves page 04h mapped.
 - [ ] Confirm the runtime self-test passes on the physical Project126 target.
 - [x] Resident/overlay link layout and size assertions pass for X86IO and X86ALU fixed-origin modules.
@@ -135,7 +137,7 @@ The manager is not complete until all of the following are true:
 - [x] First-fit page allocator covers only pages06h–0Fh; release rejects invalid/double-free, current-WIN2 and active-call pages. Startup regression allocates all ten pages, verifies exhaustion, releases them in reverse order, and verifies page06 reuse.
 - [x] X86IO IMAGE_FINISH performs a boot-time page05→page04 X86IO wrapper call and verifies that the page05 test stub resumes after the gate restores WIN2; scratch bytes are restored before X86ALU is loaded.
 - [x] X86ALU IMAGE_FINISH calls the ALU probe through the gate, checks input A=#3C/C=1/HL=#1234, runs a nested page05→page04 X86IO→page05 ADD8 call (expects A=#08), verifies the outer frame remains at depth 1 with WIN2=page05, restores `x86_reg_flags` after the nested probe, checks output A=#A5/HL=#5AA5, then confirms WIN2 is restored to page04 before X86ALU_READY.
-- [ ] Physical target log confirms [NGS] WIN2 MAP/GATE TEST PASS and the nested page05→page04→page05 gate regression; deeper nesting beyond three simultaneously active frames, alternate-register use and stack-limit behavior remain to be tested.
+- [ ] Physical target log confirms [NGS] WIN2 MAP/GATE TEST PASS and the nested page05→page04→page05 gate regression; the new deterministic test has not yet been confirmed on a physical target. Failure stages: 00=GSCFG0 mode, 01=WIN3 page04 write/read, 02=WIN2 page04 read-through, 03=WIN3 page05 write/read, 04=WIN2 page05 read-through, 05=WIN2 page05 local write/read, 06=WIN2→WIN3 page05 write-through, 07=WIN2→WIN3 page04 write-through. Deeper nesting beyond three simultaneously active frames, alternate-register use and stack-limit behavior remain to be tested.
 - [ ] Invalid/unloaded dynamic module calls fail closed.
 - [x] CI build/package passes with the boot-time gate self-test (run 42401370061, commit 25dbf092; X86CORE 16041/16384 bytes (343 free), X86IO 814/4096 bytes, X86ALU 1220/4096 bytes; NeoGS, ATM, IPC and TR-DOS assembly 0 errors/0 warnings).
 - [ ] Physical ATM/NeoGS log confirms X86IO and X86ALU transfer/readback, `[NGS] WIN2 MAP/GATE TEST PASS`, `[NGS] X86ALU PAGE05 GATE OK`, and final WIN2 mapping.
