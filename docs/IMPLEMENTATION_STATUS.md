@@ -730,3 +730,14 @@ Source commit: `aac9d7e60c391510150016d3b29906a7b2f90e3d`.
 - Fixed BC to be the arithmetic sum `P126_IPC_HEADER_SIZE + p126_bios_payload_length`, independently of the C000h frame base. Expected exact sizes: IMAGE_BEGIN 24 bytes; IMAGE_FRAGMENT 8220 bytes (18-byte header + 10-byte fragment extension + 8192-byte BIOS); IMAGE_FINISH 20 bytes.
 - No DMA register, page mapping, ABI field, CRC algorithm, handshake or TR-DOS code changed.
 - **STATUS:** source committed; CI and the next physical ATM run are required. Expected next trace: FRAME VALID / SEND E0 / E0 ACK / DMA COPY / SEND FF, then NeoGS frame validation. This correction is not yet hardware-confirmed.
+
+
+
+## 2026-11-07 — BIOS IMAGE frame CRC payload offset correction
+
+- Hardware log confirms all three IMAGE frames now pass ATM structural preflight and complete the physical DMA handshake. NeoGS reports the expected frame headers and DMA end addresses: IMAGE_BEGIN 108018h (24 bytes), IMAGE_FRAGMENT 10A01Ch (8220 bytes), IMAGE_FINISH 108014h (20 bytes).
+- NeoGS rejects each received frame with status 04h (CRC_ERROR), after DMA completion. The staging page mapping, DMA byte counts and header fields are therefore not the cause of this rejection.
+- Root cause found in the BIOS loader's frame builder: after calculating CRC over header bytes 00h..0Fh, it continued reading at frame+10h. That incorrectly included the two CRC storage bytes and omitted the last two payload bytes. The NeoGS validator correctly skips offsets 10h..11h and starts payload CRC at frame+12h.
+- Fixed the ATM BIOS sender to increment DE twice after the 16-byte header loop, so CRC calculation resumes at frame+18 and covers exactly payload_length bytes. CRC storage remains little-endian at offsets 16..17.
+- No DMA registers, page mapping, frame lengths, ABI fields, handshake, NeoGS receiver or TR-DOS logic changed.
+- **STATUS:** source commit dffe64f88b501d485f167a459973bc99cc7fef81. CI run 42368829749 pending at documentation update time. Hardware CRC acceptance and SYSBIOS installation remain unverified; next target log must show NeoGS frame validation PASS for all three frames and the IMAGE service's install result.
