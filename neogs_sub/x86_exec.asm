@@ -1104,8 +1104,14 @@ x86_exec_group3_muldiv:
         jp      z,x86_exec_group3_div8
         jp      x86_exec_group3_idiv8
 .group3_word_pending:
-        scf
-        ret
+        ld      a,(x86_exec_group3_ext)
+        cp      4
+        jp      z,x86_exec_group3_mul16
+        cp      5
+        jp      z,x86_exec_group3_imul16
+        cp      6
+        jp      z,x86_exec_group3_div16
+        jp      x86_exec_group3_idiv16
 
 x86_exec_group3_mul8:
         call    x86_modrm_read_rm8
@@ -1355,6 +1361,319 @@ x86_exec_div16_by8:
 x86_exec_group3_divide_error:
         xor     a
         jp      x86_exec_interrupt
+
+; F7 word Group 3 arithmetic: 16x16 multiply and 32/16 divide.
+x86_exec_group3_mul16:
+        call    x86_modrm_read_rm16
+        ret     c
+        ld      (x86_exec_group3_operand16),hl
+        ld      hl,(x86_reg_ax)
+        ld      (x86_exec_group3_original_ax),hl
+        ld      de,(x86_exec_group3_operand16)
+        call    x86_exec_mul16_unsigned
+        ld      (x86_reg_ax),hl
+        ld      (x86_reg_dx),de
+        jp      x86_exec_group3_mul16_flags
+
+x86_exec_group3_imul16:
+        call    x86_modrm_read_rm16
+        ret     c
+        ld      (x86_exec_group3_operand16),hl
+        ld      hl,(x86_reg_ax)
+        ld      (x86_exec_group3_original_ax),hl
+        xor     a
+        ld      (x86_exec_group3_sign_quotient),a
+        bit     7,h
+        jr      z,.imul16_ax_positive
+        ld      a,1
+        ld      (x86_exec_group3_sign_quotient),a
+        ld      de,0
+        or      a
+        sbc     de,hl
+        ex      de,hl
+.imul16_ax_positive:
+        ld      de,(x86_exec_group3_operand16)
+        bit     7,d
+        jr      z,.imul16_operand_positive
+        ld      hl,0
+        or      a
+        sbc     hl,de
+        ex      de,hl
+        ld      a,(x86_exec_group3_sign_quotient)
+        xor     1
+        ld      (x86_exec_group3_sign_quotient),a
+.imul16_operand_positive:
+        call    x86_exec_mul16_unsigned
+        ld      a,(x86_exec_group3_sign_quotient)
+        or      a
+        jr      z,.imul16_store
+        call    x86_exec_negate_product32
+.imul16_store:
+        ld      (x86_reg_ax),hl
+        ld      (x86_reg_dx),de
+        jp      x86_exec_group3_mul16_flags
+
+; HL=left unsigned word, DE=right unsigned word; returns HL=low, DE=high.
+x86_exec_mul16_unsigned:
+        ld      (x86_exec_mul16_multiplicand_low),hl
+        ld      hl,0
+        ld      (x86_exec_mul16_multiplicand_high),hl
+        ld      (x86_exec_mul16_multiplier),de
+        ld      hl,0
+        ld      (x86_exec_mul16_product_low),hl
+        ld      (x86_exec_mul16_product_high),hl
+        ld      b,16
+.mul16_loop:
+        ld      hl,(x86_exec_mul16_multiplier)
+        bit     0,l
+        jr      z,.mul16_no_add
+        ld      hl,(x86_exec_mul16_product_low)
+        ld      de,(x86_exec_mul16_multiplicand_low)
+        add     hl,de
+        ld      (x86_exec_mul16_product_low),hl
+        ld      hl,(x86_exec_mul16_product_high)
+        ld      de,(x86_exec_mul16_multiplicand_high)
+        adc     hl,de
+        ld      (x86_exec_mul16_product_high),hl
+.mul16_no_add:
+        ld      hl,(x86_exec_mul16_multiplicand_low)
+        add     hl,hl
+        ld      (x86_exec_mul16_multiplicand_low),hl
+        ld      hl,(x86_exec_mul16_multiplicand_high)
+        adc     hl,hl
+        ld      (x86_exec_mul16_multiplicand_high),hl
+        ld      hl,(x86_exec_mul16_multiplier)
+        srl     h
+        rr      l
+        ld      (x86_exec_mul16_multiplier),hl
+        djnz    .mul16_loop
+        ld      hl,(x86_exec_mul16_product_low)
+        ld      de,(x86_exec_mul16_product_high)
+        ret
+
+; Negate the 32-bit product scratch in place; returns HL=low, DE=high.
+x86_exec_negate_product32:
+        ld      hl,0
+        ld      de,(x86_exec_mul16_product_low)
+        or      a
+        sbc     hl,de
+        ld      (x86_exec_mul16_product_low),hl
+        ld      hl,0
+        ld      de,(x86_exec_mul16_product_high)
+        sbc     hl,de
+        ld      (x86_exec_mul16_product_high),hl
+        ld      hl,(x86_exec_mul16_product_low)
+        ld      de,(x86_exec_mul16_product_high)
+        ret
+
+; PCem F7 MUL/IMUL: SF/PF from original AX, ZF from 32-bit product.
+; MUL sets CF/OF iff DX!=0. IMUL sets them iff product doesn't fit int16.
+x86_exec_group3_mul16_flags:
+        ld      hl,(x86_exec_group3_original_ax)
+        call    x86_exec_update_szp16
+        ld      hl,(x86_exec_mul16_product_low)
+        ld      de,(x86_exec_mul16_product_high)
+        ld      a,d
+        or      e
+        or      h
+        or      l
+        jr      nz,.mul16_nonzero
+        ld      hl,(x86_reg_flags)
+        set     6,l
+        ld      (x86_reg_flags),hl
+        jr      .mul16_overflow_test
+.mul16_nonzero:
+        ld      hl,(x86_reg_flags)
+        res     6,l
+        ld      (x86_reg_flags),hl
+.mul16_overflow_test:
+        ld      a,(x86_exec_group3_ext)
+        cp      4
+        jr      z,.mul16_unsigned_overflow
+        ; Signed overflow iff high word is not the sign extension of low.
+        ld      hl,(x86_exec_mul16_product_high)
+        ld      a,h
+        and     l
+        ld      a,h
+        cp      0
+        jr      nz,.mul16_check_negative_extension
+        ld      hl,(x86_exec_mul16_product_low)
+        bit     7,h
+        jr      z,.mul16_no_overflow
+        jr      .mul16_overflow
+.mul16_check_negative_extension:
+        ld      hl,(x86_exec_mul16_product_high)
+        ld      a,h
+        cp      #FF
+        jr      nz,.mul16_overflow
+        ld      hl,(x86_exec_mul16_product_low)
+        bit     7,h
+        jr      nz,.mul16_no_overflow
+        jr      .mul16_overflow
+.mul16_unsigned_overflow:
+        ld      hl,(x86_exec_mul16_product_high)
+        ld      a,h
+        or      l
+        jr      nz,.mul16_overflow
+.mul16_no_overflow:
+        ld      hl,(x86_reg_flags)
+        res     0,l
+        res     3,h
+        ld      (x86_reg_flags),hl
+        or      a
+        ret
+.mul16_overflow:
+        ld      hl,(x86_reg_flags)
+        set     0,l
+        set     3,h
+        ld      (x86_reg_flags),hl
+        or      a
+        ret
+
+x86_exec_group3_div16:
+        call    x86_modrm_read_rm16
+        ret     c
+        ld      (x86_exec_divisor16),hl
+        ld      a,h
+        or      l
+        jp      z,x86_exec_group3_divide_error
+        ld      hl,(x86_reg_ax)
+        ld      (x86_exec_dividend32_low),hl
+        ld      hl,(x86_reg_dx)
+        ld      (x86_exec_dividend32_high),hl
+        call    x86_exec_div32_by16
+        ld      (x86_reg_ax),hl
+        ld      hl,(x86_exec_remainder32_low)
+        ld      (x86_reg_dx),hl
+        or      a
+        ret
+
+x86_exec_group3_idiv16:
+        call    x86_modrm_read_rm16
+        ret     c
+        ld      (x86_exec_divisor16),hl
+        ld      a,h
+        or      l
+        jp      z,x86_exec_group3_divide_error
+        ld      hl,(x86_reg_ax)
+        ld      (x86_exec_dividend32_low),hl
+        ld      hl,(x86_reg_dx)
+        ld      (x86_exec_dividend32_high),hl
+        xor     a
+        ld      (x86_exec_group3_sign_dividend),a
+        ld      (x86_exec_group3_sign_quotient),a
+        ld      hl,(x86_exec_dividend32_high)
+        bit     7,h
+        jr      z,.idiv16_dividend_positive
+        ld      a,1
+        ld      (x86_exec_group3_sign_dividend),a
+        ld      (x86_exec_group3_sign_quotient),a
+        call    x86_exec_negate_dividend32
+.idiv16_dividend_positive:
+        ld      hl,(x86_exec_divisor16)
+        bit     7,h
+        jr      z,.idiv16_divisor_positive
+        ld      de,0
+        or      a
+        sbc     de,hl
+        ex      de,hl
+        ld      (x86_exec_divisor16),hl
+        ld      a,(x86_exec_group3_sign_quotient)
+        xor     1
+        ld      (x86_exec_group3_sign_quotient),a
+.idiv16_divisor_positive:
+        call    x86_exec_div32_by16
+        ld      a,(x86_exec_group3_sign_quotient)
+        or      a
+        jr      z,.idiv16_quotient_sign_done
+        call    x86_exec_negate_dividend32
+.idiv16_quotient_sign_done:
+        ld      a,(x86_exec_group3_sign_dividend)
+        or      a
+        jr      z,.idiv16_remainder_sign_done
+        ld      hl,0
+        ld      de,(x86_exec_remainder32_low)
+        or      a
+        sbc     hl,de
+        ld      (x86_exec_remainder32_low),hl
+.idiv16_remainder_sign_done:
+        ld      hl,(x86_exec_dividend32_low)
+        ld      (x86_reg_ax),hl
+        ld      hl,(x86_exec_remainder32_low)
+        ld      (x86_reg_dx),hl
+        or      a
+        ret
+
+; Restoring unsigned 32/16 divide. Dividend scratch becomes quotient.
+; Returns HL=quotient low, DE=quotient high; remainder remains in scratch.
+x86_exec_div32_by16:
+        ld      hl,0
+        ld      (x86_exec_remainder32_low),hl
+        ld      (x86_exec_remainder32_high),hl
+        ld      b,32
+.div32_by16_loop:
+        ld      hl,(x86_exec_dividend32_low)
+        add     hl,hl
+        ld      (x86_exec_dividend32_low),hl
+        ld      hl,(x86_exec_dividend32_high)
+        adc     hl,hl
+        ld      (x86_exec_dividend32_high),hl
+
+        jr      nc,.div32_remainder_input_zero
+        ld      hl,(x86_exec_remainder32_low)
+        add     hl,hl
+        set     0,l
+        jr      .div32_remainder_low_ready
+.div32_remainder_input_zero:
+        ld      hl,(x86_exec_remainder32_low)
+        add     hl,hl
+        res     0,l
+.div32_remainder_low_ready:
+        ld      (x86_exec_remainder32_low),hl
+        ld      hl,(x86_exec_remainder32_high)
+        adc     hl,hl
+        ld      (x86_exec_remainder32_high),hl
+
+        ld      hl,(x86_exec_remainder32_high)
+        ld      a,h
+        or      l
+        jr      nz,.div32_subtract
+        ld      hl,(x86_exec_remainder32_low)
+        ld      de,(x86_exec_divisor16)
+        or      a
+        sbc     hl,de
+        jr      c,.div32_no_subtract
+.div32_subtract:
+        ld      hl,(x86_exec_remainder32_low)
+        ld      de,(x86_exec_divisor16)
+        or      a
+        sbc     hl,de
+        ld      (x86_exec_remainder32_low),hl
+        ld      hl,(x86_exec_remainder32_high)
+        ld      de,0
+        sbc     hl,de
+        ld      (x86_exec_remainder32_high),hl
+        ld      hl,(x86_exec_dividend32_low)
+        set     0,l
+        ld      (x86_exec_dividend32_low),hl
+.div32_no_subtract:
+        djnz    .div32_by16_loop
+        ld      hl,(x86_exec_dividend32_low)
+        ld      de,(x86_exec_dividend32_high)
+        ret
+
+; Two's complement negate dividend32 scratch in place.
+x86_exec_negate_dividend32:
+        ld      hl,0
+        ld      de,(x86_exec_dividend32_low)
+        or      a
+        sbc     hl,de
+        ld      (x86_exec_dividend32_low),hl
+        ld      hl,0
+        ld      de,(x86_exec_dividend32_high)
+        sbc     hl,de
+        ld      (x86_exec_dividend32_high),hl
+        ret
 
 ; FE Group 4: INC/DEC r/m8.
 ; FF Group 5: INC/DEC, near/far CALL/JMP and PUSH r/m16.
@@ -4232,6 +4551,17 @@ x86_exec_shift_original16: dw 0
 x86_exec_shift_cf: db 0
 x86_exec_shift_of: db 0
 x86_exec_group3_opcode: db 0
+x86_exec_group3_operand16: dw 0
+x86_exec_group3_original_ax: dw 0
+x86_exec_mul16_multiplier: dw 0
+x86_exec_mul16_multiplicand_low: dw 0
+x86_exec_mul16_multiplicand_high: dw 0
+x86_exec_mul16_product_low: dw 0
+x86_exec_mul16_product_high: dw 0
+x86_exec_dividend32_low: dw 0
+x86_exec_dividend32_high: dw 0
+x86_exec_remainder32_low: dw 0
+x86_exec_remainder32_high: dw 0
 x86_exec_group3_operand8: db 0
 x86_exec_group3_original_al: db 0
 x86_exec_group3_abs_al: db 0
