@@ -1053,3 +1053,12 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
   - the exact eight-byte search name at #5CDD.
 - Diagnostic output uses port #EF and preserves AF/BC/DE/HL. It does not write paging ports, TR-DOS system variables, DMA registers or IPC state. The C=0A call itself is unchanged.
 - The next hardware trace will distinguish a wrong ROM mapping/entry signature from a call-state or TR-DOS API problem. No hardware PASS is claimed.
+
+
+## 2026-11-07 — Reassert ATM2+ WIN0 TR-DOS ROM selector before BIOS open
+
+- The latest hardware trace confirms the selected file and the C=0Ah input fields: BANKM=#10, extension=#43 ('C'), name length=#09, and filename BIOS1 followed by spaces. The call at #3D13 still does not return.
+- Rechecked `docs/Hardware/Описание архитектуры и портов ATM2+.txt`: window 0 has its own memory-manager port `#3FF7`; D7 enables coupling to `#7FFD`, and automatic TR-DOS overlay depends on ROM2 plus the DOSEN-controlled ROM select when execution enters `#3Dxx`. Permanent DOSEN is enabled through the documented `#0177` alias of system port `#FF77` (A9=0).
+- Updated `p126_bios_enter_trdos_mode` to reassert `#3FF7=#BF` immediately after restoring `#7FFD=#10` / BANKM. This explicitly restores the WIN0 ROM selector for the subsequent `CALL #3D13` while preserving permanent DOSEN: it does not write `#EFF7` or repeat the `#0177` trampoline.
+- This is a narrowly scoped mapping correction derived from the ATM2+ hardware documentation. It does not change the Project125 C=0Ah/C=08h TR-DOS ABI, filename fields, stack setup, disk reader, catalogue, DMA, IPC or IMAGE transfer.
+- **BUILD/HARDWARE STATUS:** CI assembly/package and a new physical target log are required. The correction is not yet hardware-proven. Required next evidence: `TRDOS OPEN C=0A RETURN`; if it still stops, retain the new log and continue investigating the ROM entry/runtime rather than assuming this selector write fixed it.
