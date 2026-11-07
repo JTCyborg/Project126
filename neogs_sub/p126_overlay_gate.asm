@@ -16,10 +16,17 @@
 ; Host Z80 interrupts remain disabled by the resident execution contract.
 ; =========================================================================
 
+P126_OVERLAY_MAX_CALL_DEPTH EQU 8
+
 p126_overlay_call:
         ld      (p126_overlay_gate_entry),ix
         ld      (p126_overlay_gate_saved_hl),hl
         ex      af,af'                   ; keep caller AF while using A
+        ld      a,(p126_overlay_call_depth)
+        cp      P126_OVERLAY_MAX_CALL_DEPTH
+        jr      nc,.p126_overlay_depth_rejected
+        inc     a
+        ld      (p126_overlay_call_depth),a
         ld      a,(p126_overlay_current_selector)
         push    af                       ; per-call previous-selector frame
         ld      a,(p126_overlay_request_selector)
@@ -37,7 +44,18 @@ p126_overlay_gate_return:
         pop     af                       ; restore previous WIN2 selector
         ld      (p126_overlay_current_selector),a
         out     (P126_NGS_OVERLAY_WINDOW_PORT),a
+        ld      a,(p126_overlay_call_depth)
+        dec     a
+        ld      (p126_overlay_call_depth),a
         ex      af,af'                   ; restore module return AF
+        ret
+
+.p126_overlay_depth_rejected:
+        ; No selector change or stack frame is made on overflow.
+        ld      hl,(p126_overlay_gate_saved_hl)
+        ex      af,af'                   ; restore the caller's alternate AF
+        ld      a,P126_STATUS_BUSY
+        scf
         ret
 
 ; Compatibility entry points for the existing X86IO ABI. All use the same
@@ -292,6 +310,7 @@ x86_alu_overlay_probe:
         pop     ix
         ret
 
+p126_overlay_call_depth:      db 0
 p126_overlay_current_selector: db #80
 p126_overlay_request_selector: db #80
 p126_overlay_gate_entry:       dw 0
