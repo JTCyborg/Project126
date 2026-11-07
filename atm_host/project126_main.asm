@@ -159,6 +159,15 @@ p126_host_ngs_start_done:
         jr      c,p126_host_dma_test_failed
         ld      hl,p126_log_dma_test_sent
         call    p126_host_debug_string
+        ; Verify the ABI 1.0 NeoGS -> ATM DMA direction independently.
+        call    p126_ipc_dma_receive_test
+        jr      c,p126_host_dma_rx_test_failed
+        ld      hl,p126_log_dma_rx_test_pass
+        call    p126_host_debug_string
+        jr      p126_host_idle
+p126_host_dma_rx_test_failed:
+        ld      hl,p126_log_dma_rx_test_failed
+        call    p126_host_debug_string
         jr      p126_host_idle
 p126_host_dma_test_failed:
         ld      hl,p126_log_dma_test_failed
@@ -313,6 +322,8 @@ p126_log_ngs_failed: db "[BOOT] NEOGS RESIDENT START FAILED",13,10,0
 p126_log_dma_test_begin: db "[BOOT] DMA SMOKE TEST BEGIN",13,10,0
 p126_log_dma_test_sent: db "[BOOT] DMA SMOKE FRAME SENT",13,10,0
 p126_log_dma_test_failed: db "[BOOT] DMA SMOKE TEST FAILED",13,10,0
+p126_log_dma_rx_test_pass: db "[BOOT] DMA REVERSE TEST PASS",13,10,0
+p126_log_dma_rx_test_failed: db "[BOOT] DMA REVERSE TEST FAILED",13,10,0
 p126_log_dma_stage_prefix: db "[BOOT] DMA FAIL STAGE=",0
 p126_log_dma_error_prefix: db "[BOOT] DMA VALIDATOR ERROR=",0
 p126_log_trdos_begin:   db "[BOOT] TRDOS DIRECTORY READ BEGIN",13,10,0

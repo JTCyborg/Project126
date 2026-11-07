@@ -40,6 +40,7 @@ P126_GS_LED         EQU #20
 ;   p126_ipc_emit_version
 ;   p126_ipc_validate_frame HL=frame, BC=size; carry/A=status
 ;   p126_ipc_dma_send_frame HL=frame, BC=size; carry/A=status
+;   p126_ipc_dma_receive_test returns carry clear only after reverse-DMA CRC/pattern PASS
 ; ABI 1.0 constants are imported from shared/p126_ipc_protocol.inc.
 
 P126_IPC_TIMEOUT    EQU #FFFF

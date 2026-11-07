@@ -345,6 +345,91 @@ p126_ngs_ipc_saved_probe: db 0
 ; -------------------------------------------------------------------------
 P126_NGS_ZXCMD       EQU #01
 
+; Reverse DMA diagnostic response for ABI command E1h (NGS_FRAME).
+; The 274-byte frame is staged at physical 108000h (page 42h).
+p126_ngs_ipc_dma_send_test_frame::
+        ld      a,P126_NGS_DMA_TARGET_PAGE
+        out     (P126_NGS_WIN3_PORT),a
+        ld      hl,p126_ngs_ipc_dma_test_header
+        ld      de,#C000
+        ld      bc,P126_IPC_HEADER_SIZE
+        ldir
+        ld      hl,#C000+P126_IPC_HEADER_SIZE
+        xor     a
+        ld      b,0
+.ngs_fill:
+        ld      (hl),a
+        inc     hl
+        inc     a
+        djnz    .ngs_fill
+        ; CRC covers header[0..15] followed by payload[18..273].
+        ld      hl,#FFFF
+        ld      de,#C000
+        ld      b,16
+.ngs_crc_header:
+        ld      a,(de)
+        inc     de
+        call    p126_ngs_ipc_crc16_update
+        djnz    .ngs_crc_header
+        inc     de
+        inc     de
+        ld      b,0
+.ngs_crc_payload:
+        ld      a,(de)
+        inc     de
+        call    p126_ngs_ipc_crc16_update
+        djnz    .ngs_crc_payload
+        ld      (#C000+P126_IPC_OFF_CRC),hl
+        ld      a,1
+        out     (P126_NGS_DMA_MOD),a
+        ld      a,#10
+        out     (P126_NGS_DMA_HAD),a
+        ld      a,#80
+        out     (P126_NGS_DMA_MAD),a
+        xor     a
+        out     (P126_NGS_DMA_LAD),a
+        ld      a,#80
+        out     (P126_NGS_DMA_CST),a
+        ld      hl,p126_ngs_ipc_log_dma_rx_armed
+        call    p126_ngs_ipc_log
+        xor     a
+        out     (P126_NGS_CLRCBIT),a
+        ld      bc,P126_NGS_DMA_TIMEOUT
+.ngs_wait_end:
+        in      a,(P126_NGS_ZXSTAT)
+        bit     0,a
+        jr      nz,.ngs_host_end
+        dec     bc
+        ld      a,b
+        or      c
+        jr      nz,.ngs_wait_end
+        xor     a
+        out     (P126_NGS_DMA_CST),a
+        out     (P126_NGS_CLRCBIT),a
+        ld      hl,p126_ngs_ipc_log_dma_rx_timeout
+        call    p126_ngs_ipc_log
+        ld      a,P126_STATUS_TIMEOUT
+        scf
+        ret
+.ngs_host_end:
+        xor     a
+        out     (P126_NGS_DMA_CST),a
+        ld      hl,p126_ngs_ipc_log_dma_rx_end
+        call    p126_ngs_ipc_log
+        xor     a
+        out     (P126_NGS_CLRCBIT),a
+        xor     a
+        ret
+
+p126_ngs_ipc_dma_test_header:
+        db 'P','1','2','6'
+        db P126_IPC_MAJOR,P126_IPC_MINOR
+        db P126_MSG_RESPONSE,P126_SERVICE_DIAGNOSTICS,P126_OP_DIAGNOSTIC,0
+        db #60,#12
+        db #00,#01
+        db #00,#00
+        db #00,#00
+
 p126_ngs_ipc_dispatch_once::
         in      a,(P126_NGS_ZXSTAT)
         bit     0,a
@@ -356,6 +441,9 @@ p126_ngs_ipc_dispatch_once::
         in      a,(P126_NGS_ZXCMD)
         cp      P126_CMD_HOST_FRAME
         jr      z,.p126_ngs_dispatch_host_frame
+
+        cp      P126_CMD_NGS_FRAME
+        jr      z,.p126_ngs_dispatch_ngs_frame
 
         ; Unknown/unimplemented command: release the doorbell so the host
         ; cannot remain blocked, and report a defined ABI error.
@@ -374,6 +462,12 @@ p126_ngs_ipc_dispatch_once::
         or      a
         ret
 
+
+.p126_ngs_dispatch_ngs_frame:
+        ld      hl,p126_ngs_ipc_log_dma_rx_request
+        call    p126_ngs_ipc_log
+        call    p126_ngs_ipc_dma_send_test_frame
+        ret
 
 ; Standard CRC-16/CCITT-FALSE regression vector.
 ; OUT: Carry clear and HL=#29B1 on pass; Carry set on failure.
@@ -424,6 +518,10 @@ p126_ngs_ipc_log_win3_probe_fail: db "[NGS] WIN3 RW TEST=FAIL",13,10,0
 p126_ngs_ipc_log_rx_header:       db "[NGS] DMA RX HEADER=",0
 p126_ngs_ipc_log_frame_valid:     db "[NGS] DMA FRAME VALID",13,10,0
 p126_ngs_ipc_log_frame_rejected:  db "[NGS] DMA FRAME REJECTED STATUS=",0
+p126_ngs_ipc_log_dma_rx_request: db "[NGS] DMA RX TEST REQUESTED",13,10,0
+p126_ngs_ipc_log_dma_rx_armed:   db "[NGS] DMA RX TEST ARMED",13,10,0
+p126_ngs_ipc_log_dma_rx_end:     db "[NGS] DMA RX TEST HOST END",13,10,0
+p126_ngs_ipc_log_dma_rx_timeout: db "[NGS] DMA RX TEST TIMEOUT",13,10,0
 
 ; Emit CR/LF on NeoGS's independent #EF diagnostic channel.
 p126_ngs_ipc_log_crlf:
