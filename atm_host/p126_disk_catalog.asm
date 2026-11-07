@@ -90,9 +90,11 @@ p126_catalog_poll_keyboard::
         ld      (p126_catalog_enabled),a
         ld      a,1
         ld      (p126_catalog_bios_loaded),a
-        ; The catalogue is a one-shot boot UI. Leave the ATM display clear
-        ; for the later guest VGA frame presenter.
+        ; The catalogue is a one-shot boot UI. Clear it, then request the
+        ; bounded BIOS stop record over the established reverse-DMA path.
+        ; The resident executes the pending BIOS slice before answering E1.
         call    BIOS_DebugConsole_Clear
+        call    p126_ipc_dma_receive_debug_frame
         ld      hl,p126_log_bios_loaded
         call    p126_catalog_log
         ret
