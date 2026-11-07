@@ -936,7 +936,7 @@ All device models execute as software on NeoGS. NeoGS must not issue guest IN/OU
 
 ## 2026-11-07 — X86ALU moved to fixed-origin page05 overlay
 
-- Moved the 1,175-byte 8086 ALU/flags implementation out of the 16 KiB resident image into X86ALU.C at logical origin 8000h, physical page05/selector82. X86IO remains page04/selector02 at 796 bytes.
+- Moved the 1,187-byte 8086 ALU/flags implementation out of the 16 KiB resident image into X86ALU.C at logical origin 8000h, physical page05/selector82. X86IO remains page04/selector02 at 796 bytes.
 - Added resident wrappers through the common WIN2 call gate for the ten ALU entry points used by x86_exec: ADD/SUB/ADC/SBB/LOGIC in 8-bit and 16-bit forms. Internal ALU helper calls remain within page05.
 - Added IMAGE kind02, destination selector82, readback verification, and an X86ALU gate probe. IMAGE_FINISH calls x86_alu_overlay_probe, checks input A=3C/C=1/HL=1234 and output A=A5/HL=5AA5, then verifies WIN2 returns to page04 before publishing X86ALU_READY.
 - ATM now uses one shared fixed-profile loader for X86IO.C and X86ALU.C. Both files are packaged into TR-DOS; build script and CI artifact validate/include X86ALU.C. BIOS execution now waits for X86IO_READY, X86ALU_READY and BIOS_IMAGE_READY.
