@@ -660,3 +660,11 @@ This is diagnostic instrumentation; the next ATM log must report the letter afte
 - Source inspection found that `p126_ipc_validate_frame` loaded the frame pointer into DE, then executed `EX DE,HL` immediately before initializing HL to `FFFFh`. This discarded the pointer and left DE=0000h, so the CRC loop read from address 0000h rather than from the frame buffer.
 - Removed the unnecessary register exchange. DE now retains the frame pointer while HL is initialized as the CRC accumulator; the CRC update routine preserves DE as specified.
 - The fix addresses the observed local validation failure. It does not establish that the E0h/READY/DMA/FF transaction works; that remains the next hardware test after this stage passes.
+
+
+## DMA stage-1 validator error reporting (2026-11-07)
+
+- The repeated target log still reports `DMA FAIL STAGE=1`, so the sender returns from local ATM frame validation before issuing E0h.
+- Added an ATM-local validator status capture and hexadecimal diagnostic `[BOOT] DMA VALIDATOR ERROR=xx`. The code is the ABI validator return status (BAD_MAGIC, BAD_VERSION, BAD_FRAME, or CRC_ERROR); it is not a DMA receiver response.
+- This instrumentation identifies which local validation condition rejects the smoke frame before changes are made to the NeoGS DMA endpoint.
+- Build and target verification are pending.
