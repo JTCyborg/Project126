@@ -1147,3 +1147,14 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 - [ ] Выполнить CI и аппаратные тесты загрузки, checksum/readback, вызовов, вложенности и восстановления WIN2 mapping.
 
 Полная спецификация проектного baseline: [docs/P126_OVERLAY_MANAGER_DESIGN.md](docs/P126_OVERLAY_MANAGER_DESIGN.md). Это завершённый source audit/design checkpoint, не реализация и не hardware PASS.
+
+
+## 2026-11-07 — подтверждён WIN2 bank-switch ABI
+
+- [x] По Project125 подтверждён регистр WIN2: MPAG, порт #00.
+- [x] Подтверждено кодирование selector = ROR8(physical_page), то есть одна инструкция RRCA. Текущая Project126 запись #80 соответствует странице 01h.
+- [x] Изучен Project125 bank-call gateway: переключение MPAG выполняется из resident-кода, стек остаётся в WIN1, после возврата вызывающая страница восстанавливается. Используется как эталон механизма, не как источник карты памяти Project126.
+- [ ] Проверить на Project126 hardware отображение и восстановление как минимум двух страниц из пула 04h–0Fh.
+- [ ] Реализовать динамический resident gate с ограниченной вложенностью; не заменять его набором ad-hoc OUT (#00) в разных модулях.
+
+Ссылка: [docs/P126_OVERLAY_MANAGER_DESIGN.md](docs/P126_OVERLAY_MANAGER_DESIGN.md). Кодирование подтверждено исходниками Project125, но физический тест на ATM/NeoGS Project126 ещё не выполнен.
