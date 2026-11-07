@@ -90,6 +90,9 @@ p126_catalog_poll_keyboard::
         ld      (p126_catalog_enabled),a
         ld      a,1
         ld      (p126_catalog_bios_loaded),a
+        ; The catalogue is a one-shot boot UI. Leave the ATM display clear
+        ; for the later guest VGA frame presenter.
+        call    BIOS_DebugConsole_Clear
         ld      hl,p126_log_bios_loaded
         call    p126_catalog_log
         ret
