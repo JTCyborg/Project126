@@ -872,3 +872,14 @@ All device models execute as software on NeoGS. NeoGS must not issue guest IN/OU
 - The generic I/O bus must preserve the full 16-bit guest port address and implement byte/word behavior consistently with PCem/io.c; test latch 00E0h remains during migration.
 - ATM→NeoGS keyboard producer over DMA/IPC, PIC IRQ1 delivery and timer-driven keyboard polling are separate dependent tasks. They are not implied by a PPI register implementation.
 - No BIOS POST or keyboard hardware pass is claimed.
+
+
+## 2026-11-07 — XT PPI / virtual keyboard first source slice
+
+- Implemented the initial 0060h–0063h XT PPI register slice in neogs_sub/x86_io.asm: PB system-control latch, PB6 rising-edge keyboard reset, PB7 data acknowledge, PC input/output nibble composition, mode-set and PC bit-set/reset.
+- Added a 16-byte XT scan-code FIFO and x86_io_keyboard_push API. FIFO-full is returned through carry; ATM IPC producer and PIC IRQ1 delivery are not connected.
+- x86_cpu_reset now invokes x86_io_reset. The 00E0h diagnostic latch remains supported. Word I/O fallback accesses port and port+1, matching PCem/io.c.
+- Known limits: PPI mode 1/2 is not implemented; PA behavior is keyboard-input oriented; PB input-mode electrical behavior is not fully modeled; PC input default 0Dh is provisional.
+- PCem references: PCem/ppi.c, PCem/keyboard_xt.c, PCem/io.c.
+- BUILD PASS: commit 68ae8eed9036c7388b11a5f74d746ac8286d7625; GitHub Actions run 42394977284; NeoGS 0 errors / 0 warnings; x86 image end 3FFBh, 5 bytes below the 4000h resident image limit; I/O module 796 bytes; TR-DOS package succeeded.
+- No register self-test, emulator run, hardware run, keyboard IPC, IRQ1, or BIOS POST pass is claimed.
