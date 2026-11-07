@@ -54,6 +54,10 @@ The 4 direct-offset MOV opcodes A0–A3 were added in commit `f8111740994d26d55c
 The 7 XCHG AX,r16 opcodes were added in commit `1a257238d23d31d897137518f6bfe47c5657ef13`.
 The 16 register INC/DEC opcodes were added in commits `75a3e69da4549ffe2f2346b86cac5d8263a61ca4` and `e4dfd3b34d26c778e4a8029484ad67b76c560e83`. INC/DEC use the existing 16-bit ALU flag engine and explicitly preserve CF.
 
+## Decoder foundation
+
+`neogs_sub/x86_modrm.asm` now contains a standalone 8086 ModR/M decoder foundation, linked into the resident image. It fetches ModR/M and displacement bytes through the Project126 CS:IP fetch path, decodes the 8086 BX/BP/SI/DI effective-address forms, applies signed disp8 or disp16, and selects DS versus SS for BP-based addressing. This is infrastructure only: no instruction families are counted as covered until they use the decoder and all operand forms are implemented.
+
 ## Not yet implemented
 
 All other original 8086 opcode families remain open, including:
