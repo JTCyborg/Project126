@@ -821,19 +821,17 @@ p126_ngs_image_finish:
         call    p126_ngs_ipc_log
         jr      .image_finish_bad
 .image_finish_x86io_map_ok:
-        ld      hl,p126_ngs_overlay_win2_test_pass_log
-        call    p126_ngs_ipc_log
         ; The self-test leaves physical page 04h selected in WIN2.
         ; Keep the nested-call gate's software selector synchronized.
         ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
         ld      (p126_overlay_current_selector),a
         call    p126_ngs_overlay_gate_selftest
         jr      nc,.image_finish_gate_ok
-        ld      hl,p126_ngs_overlay_gate_test_fail_log
+        ld      hl,p126_ngs_overlay_win2_test_fail_log
         call    p126_ngs_ipc_log
         jr      .image_finish_bad
 .image_finish_gate_ok:
-        ld      hl,p126_ngs_overlay_gate_test_pass_log
+        ld      hl,p126_ngs_overlay_win2_test_pass_log
         call    p126_ngs_ipc_log
         ld      a,1
         ld      (p126_ngs_io_overlay_ready),a
@@ -1022,23 +1020,19 @@ p126_ngs_overlay_gate_test_code:
         db      #C9
 p126_ngs_overlay_gate_old_code:
         defs    4,0
-p126_ngs_overlay_gate_test_pass_log:
-        db      "[NGS] WIN2 NESTED GATE TEST PASS",13,10,0
-p126_ngs_overlay_gate_test_fail_log:
-        db      "[NGS] WIN2 NESTED GATE TEST FAIL",13,10,0
-
 p126_ngs_overlay_test_restore_maps:
         ld      a,P126_NGS_DMA_PAGE
         rrca
         out     (P126_NGS_MPAGEX_PORT),a
         ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
+        ld      (p126_overlay_current_selector),a
         out     (P126_NGS_OVERLAY_WINDOW_PORT),a
         ret
 
 p126_ngs_overlay_test_old04: db 0
 p126_ngs_overlay_test_old05: db 0
-p126_ngs_overlay_win2_test_pass_log: db "[NGS] WIN2 PAGE04/05 TEST PASS",13,10,0
-p126_ngs_overlay_win2_test_fail_log: db "[NGS] WIN2 PAGE04/05 TEST FAIL",13,10,0
+p126_ngs_overlay_win2_test_pass_log: db "[NGS] WIN2 MAP/GATE TEST PASS",13,10,0
+p126_ngs_overlay_win2_test_fail_log: db "[NGS] WIN2 MAP/GATE TEST FAIL",13,10,0
 
 p126_ngs_image_active:       db 0
 p126_ngs_image_received:     db 0
