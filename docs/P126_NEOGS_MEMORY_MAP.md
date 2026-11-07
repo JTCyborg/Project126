@@ -125,3 +125,9 @@ The previously observed ROM response 3F:40:00 is diagnostic output from the stoc
 ## WIN3 selector correction — 2026-11-07
 
 The production page-42 DMA test initially wrote the raw physical page number 42h to port 23h. This was incorrect: Project125 selects the independent WIN3 window with MPAGEX at port 10h and rotates the physical page number right once before the OUT. The corrected page-42 selector sequence is `LD A,42h / RRCA / OUT (10h),A` (selector byte 21h). Both ATM→NeoGS receive-buffer access and NeoGS→ATM response construction must use this exact mapping. DMA module/address registers remain module 1, HAD=10h, MAD=80h, LAD=00h (108000h). Hardware verification of the corrected production mapping is pending.
+
+
+
+## Production page-42 DMA hardware validation — 2026-11-07
+
+The corrected WIN3 selector (LD A,42h / RRCA / OUT (#10),A) has now passed a physical ATM/NeoGS test. The ATM→NeoGS frame was visible at logical C000h with signature 50313236 and full header 50313236010001050000010000010000; NeoGS validated it and reported DMA FRAME VALID. The reverse transfer returned CRC D867 and the complete 00h..FFh payload pattern passed at ATM. DMA destination/source physical base remains 108000h. This validates page 42h mapping and the 274-byte bidirectional smoke frame only; it does not validate maximum-size transfers or streaming/fragmentation.
