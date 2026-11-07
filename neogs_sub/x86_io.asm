@@ -3,11 +3,12 @@
 ; ever issued as a physical NeoGS/Z80 I/O operation.
 ;
 ; Implemented:
-;   00E0h: retained 16-bit diagnostic test latch.
+;   0000h-000Fh, 0080h-0083h: 8237 address/count, controller and page registers.
 ;   0020h-0021h: 8259A master PIC register model and CPU acknowledge path.
-;   Keyboard FIFO pushes raise master-PIC IRQ1; ATM input producer remains pending.
 ;   0060h-0063h: initial XT-compatible 8255 PPI / keyboard interface.
-;   x86_io_keyboard_push_impl: host/IPC producer API for XT scan-code bytes.
+;   00E0h: retained 16-bit diagnostic test latch.
+;   Keyboard FIFO pushes raise master-PIC IRQ1; ATM input producer remains pending.
+;   DMA transfer engine and PIT-driven IRQ0 are separate, not-yet-implemented services.
 ;
 ; PPI compatibility slice:
 ;   60h = port A / keyboard data (FIFO consumer when configured input).
