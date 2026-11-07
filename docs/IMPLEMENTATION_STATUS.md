@@ -923,3 +923,12 @@ All device models execute as software on NeoGS. NeoGS must not issue guest IN/OU
 - Shared memory map now states: WIN0/page 00 resident code, WIN1/page 03 stack/fixed data, WIN2 8000h-BFFFh overlay aperture, WIN3 C000h-FFFFh guest-memory aperture. X86IO is currently pinned in page 04h; pages 05h-0Fh remain future overlay pool.
 - CI run [42396958741](https://github.com/JTCyborg/Project126/actions/runs/42396958741), commit `5121b2c03242539927acebb1cd7933d2d27d1e78`, completed successfully. Build log: X86CORE.C 15,994 bytes / 16,384; X86IO.C 796 / 4,096; ATM host 17,538 bytes; TR-DOS image 655,360 bytes. NeoGS assembly had 0 errors and 0 warnings; resident and overlay binaries are exported independently with SAVEBIN.
 - **STATUS:** fixed pinned X86IO overlay source/build/load path is implemented and CI BUILD PASS. No physical ATM/NeoGS log has yet confirmed module transfer, page-04 readback or WIN2 mapping. This is not a generic dynamic overlay manager: no allocator, manifest, call/return trampoline, nested switching or unload/refcounting exists. No BIOS POST, CPU functional suite or guest program PASS is implied.
+
+
+## 2026-11-07 — boot-time WIN2 gate self-test
+
+- The X86IO IMAGE_FINISH path exercises the resident call gate before publishing p126_ngs_io_overlay_ready. It saves the first four bytes of free physical page 05h, writes a temporary CALL x86_io_reset / RET stub, maps page05 to WIN2, and executes the stub.
+- The resident X86IO wrapper switches WIN2 to page04, invokes x86_io_reset_impl, and must restore page05 so the test stub resumes at 8003h. The test checks that the opcode at 8000h is still CDh and the software selector shadow is #82, then restores the original page05 bytes.
+- On completion the map is restored to WIN2/page04 and WIN3/page42. The boot log reports [NGS] WIN2 MAP/GATE TEST PASS or [NGS] WIN2 MAP/GATE TEST FAIL. Failure keeps X86IO_READY clear and blocks BIOS bring-up.
+- BUILD PASS: [GitHub Actions run 42398073825](https://github.com/JTCyborg/Project126/actions/runs/42398073825), commit 99f007da68aacc57dd0ff9d87a568b1d4df10600. X86CORE.C 16,322/16,384 bytes; X86IO.C 796/4,096 bytes; all assembly and TR-DOS packaging 0 errors/0 warnings.
+- Physical execution remains pending. This exercises one page05→page04→page05 nested return; deeper nesting, repeated calls, register/alternate-register preservation and physical stack limits are not yet proven. No BIOS POST or CPU functional-suite pass is implied.
