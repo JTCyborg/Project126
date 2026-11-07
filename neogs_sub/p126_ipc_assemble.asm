@@ -15,6 +15,9 @@ p126_ngs_ipc_module_end:
 ; x86_cpu_state.asm. Keep local audit-only storage and a no-op trace entry so
 ; this translation unit can be assembled independently without duplicating
 ; or replacing the production CPU implementation.
+; The production resident image defines this in p126_overlay_gate.asm.
+p126_overlay_current_selector: db #80
+
 x86_bios_trace_event_status: db 0
 x86_bios_trace_event_cs:     dw 0
 x86_bios_trace_event_ip:     dw 0
