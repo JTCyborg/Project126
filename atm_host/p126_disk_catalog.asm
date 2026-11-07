@@ -124,7 +124,19 @@ p126_catalog_poll_keyboard::
         xor     a
         jr      .catalog_page_down_scroll_store
 .catalog_page_down_scroll:
-        sub     P126_CATALOG_VISIBLE_ROWS-1
+        ; For a complete page jump, put the new selection at the top.
+        ; Only the final partial page is bottom-aligned to keep the last
+        ; directory entries visible without drawing beyond the catalogue.
+        ld      a,(p126_catalog_total)
+        sub     P126_CATALOG_VISIBLE_ROWS
+        ld      b,a
+        ld      a,(p126_catalog_selected)
+        cp      b
+        jr      c,.catalog_page_down_use_selected
+        ld      a,b
+        jr      .catalog_page_down_scroll_store
+.catalog_page_down_use_selected:
+        ld      a,(p126_catalog_selected)
 .catalog_page_down_scroll_store:
         ld      (p126_catalog_scroll),a
         call    p126_catalog_draw
@@ -247,18 +259,17 @@ p126_catalog_scan_keys:
         ld      (p126_catalog_scan_result), a
 
 .catalog_check_other_arrows:
-        ; CAPS SHIFT+5 = page up; CAPS SHIFT+8 = page down.
+        ; CAPS SHIFT+5 = page up (row #F7FE, key bit 4).
         ld      bc,#F7FE
         in      a,(c)
         bit     4,a
-        jr      nz,.catalog_check_page_up
+        jr      nz,.catalog_check_page_down
         ld      a,(p126_catalog_scan_result)
         or      4
         ld      (p126_catalog_scan_result),a
 
-.catalog_check_page_up:
-        ; Reuse the left/right cursor combinations as page navigation.
-.catalog_check_right:
+.catalog_check_page_down:
+        ; CAPS SHIFT+8 = page down (row #EFFE, key bit 2).
         ld      bc,#EFFE
         in      a,(c)
         bit     2,a
@@ -266,14 +277,6 @@ p126_catalog_scan_keys:
         ld      a,(p126_catalog_scan_result)
         or      8
         ld      (p126_catalog_scan_result),a
-
-        ld      bc, #EFFE
-        in      a, (c)
-        bit     2, a
-        jr      nz, .catalog_keys_done
-        ld      a, (p126_catalog_scan_result)
-        or      8
-        ld      (p126_catalog_scan_result), a
 
 .catalog_keys_done:
         ld      a, (p126_catalog_scan_result)
