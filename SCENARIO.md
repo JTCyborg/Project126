@@ -827,3 +827,9 @@ DMA mapping, DMA registers, направления, Project125 handshake и ABI 
 
 - **BUILD PASS:** GitHub Actions run [42356251101](https://github.com/JTCyborg/Project126/actions/runs/42356251101), built commit `a91fc6a86873e4a5208067b55782cb0085ae930e`. NeoGS, ATM IPC and standalone NeoGS IPC assembled with 0 errors and 0 warnings; TR-DOS disk image packaging completed. The disk assembly still emits its pre-existing generated-path backslash warning.
 - **HARDWARE:** pending. The CI result proves assembly and packaging only; it does not prove page-42 physical DMA access or WIN3 mapping on ATM/NeoGS hardware.
+
+
+### Final page-42 diagnostic build
+
+- **BUILD PASS:** commit `cd37fcb1e720b4455a815f9b65b34eaf62c6f4b3`, workflow run [42356391039](https://github.com/JTCyborg/Project126/actions/runs/42356391039). NeoGS, ATM IPC and standalone NeoGS IPC assembled successfully with zero errors; TR-DOS disk packaging completed (655360 bytes). One pre-existing disk-generated-path backslash warning remains.
+- The generated TR-DOS disk and listings/maps are available in the workflow artifact. **Page-42 hardware access is still unverified** pending the next ATM/NeoGS log.
