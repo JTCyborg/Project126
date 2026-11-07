@@ -18,6 +18,7 @@
 
 p126_overlay_call:
         ld      (p126_overlay_gate_entry),ix
+        ld      (p126_overlay_gate_saved_hl),hl
         ex      af,af'                   ; keep caller AF while using A
         ld      a,(p126_overlay_current_selector)
         push    af                       ; per-call previous-selector frame
@@ -27,6 +28,7 @@ p126_overlay_call:
         ld      hl,p126_overlay_gate_return
         push    hl                       ; overlay RET enters resident WIN0
         ld      ix,(p126_overlay_gate_entry)
+        ld      hl,(p126_overlay_gate_saved_hl)
         ex      af,af'                   ; restore caller AF for module
         jp      (ix)
 
@@ -278,3 +280,4 @@ x86_alu_overlay_probe:
 p126_overlay_current_selector: db #80
 p126_overlay_request_selector: db #80
 p126_overlay_gate_entry:       dw 0
+p126_overlay_gate_saved_hl:    dw 0
