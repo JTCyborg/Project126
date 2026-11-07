@@ -44,6 +44,7 @@ x86_cpu_reset:
         ld      (x86_halted),a
         ld      (x86_pending_irq),a
         ld      (x86_pending_nmi),a
+        ld      (x86_irq_inhibit),a
         ret
 
 ; -------------------------------------------------------------------------
@@ -566,6 +567,7 @@ x86_reg_flags: dw X86_FLAGS_RESET
 x86_halted:      db 0
 x86_pending_irq: db 0
 x86_pending_nmi: db 0
+x86_irq_inhibit: db 0
 x86_phys_addr: db 0,0,0
 x86_mem_data:  db 0
 
