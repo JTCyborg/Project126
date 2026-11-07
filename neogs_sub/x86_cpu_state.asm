@@ -185,9 +185,11 @@ x86_bios_trace_capture_instruction:
         ld      (x86_bios_trace_record_region),a
 
         ld      a,(x86_bios_trace_history_index)
+        ld      d,a
         add     a,a
         add     a,a
         add     a,a
+        add     a,d                    ; nine-byte record stride
         ld      l,a
         ld      h,0
         ld      de,x86_bios_trace_history
@@ -263,9 +265,11 @@ x86_bios_trace_log_history:
         ld      b,16
 .history_loop:
         ld      a,(x86_bios_trace_dump_index)
+        ld      d,a
         add     a,a
         add     a,a
         add     a,a
+        add     a,d                    ; nine-byte record stride
         ld      l,a
         ld      h,0
         ld      de,x86_bios_trace_history
@@ -486,7 +490,7 @@ x86_bios_trace_history_prefix: db "[X86 HIST] ",0
 x86_bios_trace_history_phys_text: db " P=",0
 x86_bios_trace_history_region_text: db " R=",0
 x86_bios_trace_history_opcode_text: db " OP=",0
-x86_bios_trace_history: defs 16*9,0
+x86_bios_trace_history: BLOCK 16*9,0
 
 x86_bios_trace_remaining: dw 0
 x86_bios_trace_executed:  dw 0
