@@ -4,8 +4,8 @@
 ;
 ; Implemented:
 ;   00E0h: retained 16-bit diagnostic test latch.
-;   0020h-0021h: 8259A master PIC register programming/readback (no IRQ source
-;                or CPU INTA/acknowledge path yet).
+;   0020h-0021h: 8259A master PIC register model and CPU acknowledge path.
+;   Keyboard FIFO pushes raise master-PIC IRQ1; ATM input producer remains pending.
 ;   0060h-0063h: initial XT-compatible 8255 PPI / keyboard interface.
 ;   x86_io_keyboard_push_impl: host/IPC producer API for XT scan-code bytes.
 ;
@@ -17,8 +17,8 @@
 ;   63h = mode-set and bit-set/reset control register (mode 0 implemented).
 ;   PPI reset defaults follow PCem/ppi.c: PA=00h, PB=40h.
 ;
-; Keyboard bytes are queued here only. ATM input delivery and PIC IRQ1
-; signaling are separate services and are not claimed implemented yet.
+; Keyboard FIFO bytes raise PIC IRQ1 when accepted. ATM keyboard input delivery
+; remains a future DMA/IPC producer; no physical NeoGS I/O is involved.
 
 x86_io_reset_impl:
         ld      hl,0
@@ -40,6 +40,10 @@ x86_io_reset_impl:
         xor     a
         ld      (x86_io_pic_irr),a
         ld      (x86_io_pic_isr),a
+        ld      (x86_io_keyboard_head),a
+        ld      (x86_io_keyboard_tail),a
+        ld      (x86_io_keyboard_count),a
+        ld      (x86_io_keyboard_last),a
         ld      (x86_io_pic_init_state),a
         ld      (x86_io_pic_need_icw4),a
         ld      (x86_io_pic_single),a
@@ -76,9 +80,9 @@ x86_io_pic_selftest_impl:
         jp      c,.pic_selftest_fail
         cp      #A5
         jp      nz,.pic_selftest_fail
-        ; Unmasked IRQ1 must set IRR, pend vector 21h, and move to ISR on ACK.
-        ld      a,1
-        call    x86_io_pic_raise_impl
+        ; A queued XT scan code must raise IRQ1 and select vector 21h.
+        ld      a,#1E
+        call    x86_io_keyboard_push_impl
         jp      c,.pic_selftest_fail
         ld      a,(x86_pending_irq)
         cp      1
@@ -95,6 +99,10 @@ x86_io_pic_selftest_impl:
         jp      nz,.pic_selftest_fail
         ld      a,(x86_io_pic_irr)
         or      a
+        jp      nz,.pic_selftest_fail
+        ; The keyboard handler consumes the queued scan code before EOI.
+        call    x86_io_keyboard_read_impl
+        cp      #1E
         jp      nz,.pic_selftest_fail
         ; Specific EOI for IRQ1 clears the acknowledged request.
         ld      hl,#0020
