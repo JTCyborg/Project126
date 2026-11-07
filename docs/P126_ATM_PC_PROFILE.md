@@ -110,7 +110,8 @@ The first master-PIC register slice is implemented in `neogs_sub/x86_io.asm` for
 - Command port 20h: ICW1 initialization, OCW3 IRR/ISR read selection, non-specific EOI and specific EOI.
 - Data port 21h: ICW2 vector-base programming, ICW3/ICW4 sequence consumption, and IMR read/write.
 - Reset state: vector base 08h, IMR=FFh, IRR=00h, ISR=00h. A reset-time register self-test checks ICW1/2/4 sequencing, IMR readback, OCW3 IRR/ISR selection, and specific/non-specific EOI, then restores this reset state.
-- Still pending: IRQ request producers, priority arbitration/rotation, CPU interrupt-acknowledge integration, IRQ0 timer and IRQ1 keyboard delivery, auto-EOI and full cascade/special-mask behavior. This is a register interface slice, not a complete 8259A or BIOS POST pass.
+- Implemented: fixed-priority IRR/IMR arbitration, keyboard FIFO IRQ1 request, CPU-boundary PIC acknowledge, ISR transition and EOI release. A reset-time self-test exercises ICW1/2/4, IMR readback, OCW3 IRR/ISR selection, IRQ1 vector/acknowledge and specific/non-specific EOI.
+- Still pending: PIT-driven IRQ0, ATM-side keyboard event producer over DMA/IPC, priority rotation, auto-EOI, full cascade and special-mask behavior. This is not a complete 8259A or BIOS POST pass.
 
 ### PPI / XT keyboard implementation status
 
@@ -120,4 +121,4 @@ The initial runtime slice is being added in neogs_sub/x86_io.asm for ports 0060h
 - 62h: PPI port C input/output composition; board configuration input is a deterministic profile value pending explicit ATM-PC switch definition.
 - 63h: PPI mode-set and bit-set/reset control register.
 - Initial BIOS mode-0 control word is 99h. PPI mode 1/2 handshake modes and board-specific port-C switch wiring are outside this first slice.
-- Keyboard scan-code production is exposed as a software API for the future DMA/IPC input service. It does not access NeoGS physical ports and does not claim a working ATM keyboard path or PIC IRQ1 delivery.
+- Keyboard scan-code production is exposed as a software API for the future DMA/IPC input service. Each accepted FIFO byte now raises virtual PIC IRQ1; the CPU interrupt boundary acknowledges it through the PIC and the handler can consume port 60h. The ATM-side keyboard event producer over DMA/IPC remains unimplemented.
