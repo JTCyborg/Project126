@@ -891,71 +891,9 @@ x86_io_dump_bios_table_impl:
 ; Diagnostic output only: guest ports remain software-modeled.
 ; Format: [IO] IN8 P=03DA V=FF @F000:E05B
 x86_io_log_access_impl:
-IF (P126_DEBUG_IO_TRACE != 0)
-        push    af
-        push    bc
-        push    de
-        push    hl
-        ld      hl,x86_io_log_prefix
-        call    x86_io_log_string
-        ld      a,(x86_io_log_direction)
-        or      a
-        jr      nz,.log_out
-        ld      hl,x86_io_log_in
-        call    x86_io_log_string
-        jr      .log_width
-.log_out:
-        ld      hl,x86_io_log_out
-        call    x86_io_log_string
-.log_width:
-        ld      a,(x86_io_log_width)
-        or      a
-        jr      nz,.log_word_width
-        ld      a,'8'
-        call    x86_io_log_char
-        jr      .log_port
-.log_word_width:
-        ld      a,'1'
-        call    x86_io_log_char
-        ld      a,'6'
-        call    x86_io_log_char
-.log_port:
-        ld      hl,x86_io_log_port_text
-        call    x86_io_log_string
-        ld      hl,(x86_io_port)
-        call    x86_io_log_hex16
-        ld      hl,x86_io_log_value_text
-        call    x86_io_log_string
-        ld      a,(x86_io_log_width)
-        or      a
-        jr      z,.log_byte_value
-        ld      hl,(x86_io_log_value)
-        call    x86_io_log_hex16
-        jr      .log_location
-.log_byte_value:
-        ld      a,(x86_io_log_value)
-        call    x86_io_log_hex8
-.log_location:
-        ld      hl,x86_io_log_at_text
-        call    x86_io_log_string
-        ld      hl,(x86_reg_cs)
-        call    x86_io_log_hex16
-        ld      a,':'
-        call    x86_io_log_char
-        ld      hl,(x86_exec_instruction_start_ip)
-        call    x86_io_log_hex16
-        ld      a,13
-        call    x86_io_log_char
-        ld      a,10
-        call    x86_io_log_char
-        pop     hl
-        pop     de
-        pop     bc
-        pop     af
+        ; Per-IN/OUT trace is intentionally compiled out in normal builds.
+        ; Keep this entry point as a no-op so callers need no conditional code.
         ret
-ELSE
-        ret
-ENDIF
 
 ; Emit on the full 00EF diagnostic port, preserving BC and A.
 x86_io_log_char:
