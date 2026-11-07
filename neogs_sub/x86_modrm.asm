@@ -217,10 +217,15 @@ x86_modrm_read_reg8:
         ret
 
 x86_modrm_write_reg8:
-        ld      a,c
-        ld      (x86_modrm_operand_value),a
+        ; PCem's 808x.c keeps the ModR/M register selector separate from the
+        ; byte being written. A is the selector; C is the source byte.
+        ; Preserve the selector before loading C, otherwise AL's value is
+        ; accidentally decoded as the destination register number.
         and     7
         ld      (x86_modrm_operand_index),a
+        ld      a,c
+        ld      (x86_modrm_operand_value),a
+        ld      a,(x86_modrm_operand_index)
         and     3
         add     a,a
         ld      e,a
@@ -238,6 +243,69 @@ x86_modrm_write_reg8:
         ld      a,(x86_modrm_operand_value)
         ld      (de),a
         or      a
+        ret
+
+; Regression for all eight 8086 byte-register encodings:
+; AL,CL,DL,BL,AH,CH,DH,BH. Returns carry clear on pass.
+x86_modrm_reg8_selftest:
+        ld      hl,#A1A0
+        ld      (x86_reg_ax),hl
+        ld      hl,#C1C0
+        ld      (x86_reg_cx),hl
+        ld      hl,#D1D0
+        ld      (x86_reg_dx),hl
+        ld      hl,#B1B0
+        ld      (x86_reg_bx),hl
+
+        ld      a,0
+        ld      c,#10
+        call    x86_modrm_write_reg8
+        ld      a,1
+        ld      c,#21
+        call    x86_modrm_write_reg8
+        ld      a,2
+        ld      c,#32
+        call    x86_modrm_write_reg8
+        ld      a,3
+        ld      c,#43
+        call    x86_modrm_write_reg8
+        ld      a,4
+        ld      c,#54
+        call    x86_modrm_write_reg8
+        ld      a,5
+        ld      c,#65
+        call    x86_modrm_write_reg8
+        ld      a,6
+        ld      c,#76
+        call    x86_modrm_write_reg8
+        ld      a,7
+        ld      c,#87
+        call    x86_modrm_write_reg8
+
+        ld      hl,(x86_reg_ax)
+        ld      de,#5410
+        or      a
+        sbc     hl,de
+        jr      nz,.reg8_test_fail
+        ld      hl,(x86_reg_cx)
+        ld      de,#6521
+        or      a
+        sbc     hl,de
+        jr      nz,.reg8_test_fail
+        ld      hl,(x86_reg_dx)
+        ld      de,#7632
+        or      a
+        sbc     hl,de
+        jr      nz,.reg8_test_fail
+        ld      hl,(x86_reg_bx)
+        ld      de,#8743
+        or      a
+        sbc     hl,de
+        jr      nz,.reg8_test_fail
+        or      a
+        ret
+.reg8_test_fail:
+        scf
         ret
 
 x86_modrm_read_reg16:
