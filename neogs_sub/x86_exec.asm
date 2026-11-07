@@ -66,6 +66,10 @@ x86_cpu_step:
         jp      z,x86_exec_call_far_imm
         cp      #9B
         jp      z,x86_exec_wait
+        cp      #C4
+        jp      z,x86_exec_les_lds
+        cp      #C5
+        jp      z,x86_exec_les_lds
         cp      #C6
         jp      z,x86_exec_mov_imm_rm
         cp      #C7
@@ -347,6 +351,45 @@ x86_exec_lea:
         ld      hl,(x86_ea_offset)
         jp      x86_modrm_write_reg16
 .lea_invalid:
+        scf
+        ret
+
+; C4 LES r16,m16:16; C5 LDS r16,m16:16.
+; ModR/M must select memory. The first word is the offset, followed by
+; the segment word at EA+2 (16-bit offset wrap).
+x86_exec_les_lds:
+        ld      a,(x86_exec_opcode)
+        ld      (x86_exec_les_lds_opcode),a
+        call    x86_decode_modrm16
+        ret     c
+        ld      a,(x86_ea_is_reg)
+        or      a
+        jr      nz,.les_lds_invalid
+
+        call    x86_modrm_read_rm16
+        ld      (x86_exec_les_lds_offset),hl
+        ld      hl,(x86_ea_offset)
+        inc     hl
+        inc     hl
+        ld      (x86_ea_offset),hl
+        call    x86_modrm_read_rm16
+        ld      (x86_exec_les_lds_segment),hl
+
+        ld      hl,(x86_exec_les_lds_offset)
+        call    x86_modrm_write_reg16
+        ld      a,(x86_exec_les_lds_opcode)
+        cp      #C4
+        jr      nz,.les_lds_to_ds
+        ld      hl,(x86_exec_les_lds_segment)
+        ld      (x86_reg_es),hl
+        or      a
+        ret
+.les_lds_to_ds:
+        ld      hl,(x86_exec_les_lds_segment)
+        ld      (x86_reg_ds),hl
+        or      a
+        ret
+.les_lds_invalid:
         scf
         ret
 
@@ -1399,6 +1442,9 @@ x86_exec_sreg_opcode: db 0
 x86_exec_sreg_index: db 0
 x86_exec_sreg_ptr: dw 0
 x86_exec_sreg_value: dw 0
+x86_exec_les_lds_opcode: db 0
+x86_exec_les_lds_offset: dw 0
+x86_exec_les_lds_segment: dw 0
 x86_exec_sreg_table:
         dw x86_reg_es,x86_reg_cs,x86_reg_ss,x86_reg_ds
 x86_exec_xchg_opcode: db 0
