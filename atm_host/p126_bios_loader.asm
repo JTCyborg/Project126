@@ -72,7 +72,7 @@ p126_bios_load_selected::
         ; Keep the Project125 ROM-call boundary exact: no helper, logger,
         ; RTC access, or diagnostic I/O between setting C and CALL #3D13.
         ld      c,10
-        call    #3D13
+        call    p126_bios_trdos_call
         ld      hl,p126_bios_log_open_return
         call    p126_catalog_log
         ld      a,c
@@ -86,7 +86,7 @@ p126_bios_load_selected::
         ld      hl,p126_bios_log_descriptor_call
         call    p126_catalog_log
         ld      c,8
-        call    #3D13
+        call    p126_bios_trdos_call
         ld      hl,p126_bios_log_descriptor_return
         call    p126_catalog_log
         ld      a,(#5D0F)
@@ -425,7 +425,7 @@ p126_bios_read_next_sector:
         xor     a
         ld      (#5D0F),a
         ld      (#5D10),a
-        call    #3D13
+        call    p126_bios_trdos_call
         ld      a,(#5D0F)
         ld      b,a
         ld      a,(#5D10)
@@ -458,30 +458,99 @@ p126_bios_read_next_sector:
         scf
         ret
 
-; Restore the exact pre-video TR-DOS mapping used by initial startup.
+; Keep ROM2 active for the ATM2+ automatic TR-DOS overlay.
+; Preserve BANKM D3: it selects the alternate video pages 7/3.
 p126_bios_enter_trdos_mode:
-        ; ATM video initialization has already enabled permanent DOSEN
-        ; through the #3D2F trampoline and selected auto-TR-DOS ROM mapping
-        ; with #3FF7=#BF. Preserve that state while enabling ROM2 for the
-        ; Project125-compatible TR-DOS calls.
-        ;
-        ; IMPORTANT: keep BANKM D3 unchanged. D3 selects the alternate
-        ; video pages used by the active ATM high-resolution display. Writing
-        ; #10 here would silently switch back to the standard screen pages
-        ; while the console continues using pages 7/3.
-        ; Do not reset #EFF7 or repeat the #0177 trampoline: either can undo
-        ; the DOSEN state established by p126_atm_video_init.
         ld      a,(#5C3B)
         or      #10
         ld      bc,#7FFD
         out     (c),a
         ld      (#5C3B),a
+        ret
 
-        ; Reassert the WIN0 automatic TR-DOS selector without changing the
-        ; current video-page selection or permanent DOSEN state.
-        ld      a,#BF
+; NedoOS ATM2+ sys_SHADOFF / dos3d13_resident call boundary.
+; The active high-resolution display keeps shadow ports open through #0177.
+; Before each TR-DOS ROM call, select the documented switchable BASIC-48
+; ROM page (#83 in WIN0), then write the current Project126 RG=6 mode via
+; #FF77 (A9=1) to close shadow ports. Entering #3D13 with ROM2 set causes
+; the hardware TR-DOS overlay/DOSEN transition.
+;
+; The TR-DOS routine's primary and alternate register results are preserved
+; across the video restoration. This wrapper is used for C=0Ah, C=08h and
+; each C=05h sector read, matching NedoOS' per-call SHADOFF discipline.
+p126_bios_trdos_call:
+        ; Preserve all caller registers while preparing the ROM mapping.
+        push    af
+        push    bc
+        push    de
+        push    hl
+        push    ix
+        push    iy
+        exx
+        push    bc
+        push    de
+        push    hl
+        exx
+        ex      af,af'
+        push    af
+        ex      af,af'
+
+        ld      a,#83
         ld      bc,#3FF7
         out     (c),a
+        ld      a,#C6
+        ld      bc,#FF77
+        out     (c),a
+
+        ex      af,af'
+        pop     af
+        ex      af,af'
+        exx
+        pop     hl
+        pop     de
+        pop     bc
+        exx
+        pop     iy
+        pop     ix
+        pop     hl
+        pop     de
+        pop     bc
+        pop     af
+
+        ; Execute the requested TR-DOS function. Preserve its complete
+        ; register result while restoring the ATM 80x25 host display.
+        call    #3D13
+        push    af
+        push    bc
+        push    de
+        push    hl
+        push    ix
+        push    iy
+        exx
+        push    bc
+        push    de
+        push    hl
+        exx
+        ex      af,af'
+        push    af
+        ex      af,af'
+
+        call    p126_atm_video_init
+
+        ex      af,af'
+        pop     af
+        ex      af,af'
+        exx
+        pop     hl
+        pop     de
+        pop     bc
+        exx
+        pop     iy
+        pop     ix
+        pop     hl
+        pop     de
+        pop     bc
+        pop     af
         ret
 
 ; Rebuild the ATM 80x25 display mapping after TR-DOS I/O is complete.
