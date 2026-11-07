@@ -942,6 +942,7 @@ x86_exec_clear_cf_af:
 
 ; Input A=result. Update only SF/ZF/PF, preserving CF/AF/OF and control flags.
 x86_exec_update_szp8:
+        ld      (x86_exec_szp8_value),a
         or      a
         push    af
         pop     bc
@@ -962,6 +963,7 @@ x86_exec_update_szp8:
         set     7,l
 .szp_no_sf:
         ld      (x86_reg_flags),hl
+        ld      a,(x86_exec_szp8_value)
         or      a
         ret
 
@@ -3783,6 +3785,7 @@ x86_exec_string_remaining: db 0
 x86_exec_string_value: db 0
 x86_exec_string_word: dw 0
 x86_exec_string_temp_offset: dw 0
+x86_exec_szp8_value: db 0
 x86_exec_shift_opcode: db 0
 x86_exec_shift_operation: db 0
 x86_exec_shift_count: db 0
