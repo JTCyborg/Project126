@@ -891,91 +891,106 @@ x86_dev_dma_selftest_impl:
         ld      (x86_dev_port),hl
         xor     a
         call    x86_dev_dma_write8
-        jp      c,.dma_selftest_fail
+        jp      c,.dma_selftest_fail_address_write
         ld      hl,#0000
         ld      (x86_dev_port),hl
         ld      a,#34
         call    x86_dev_dma_write8
-        jp      c,.dma_selftest_fail
+        jp      c,.dma_selftest_fail_address_write
         ld      a,#12
         call    x86_dev_dma_write8
-        jp      c,.dma_selftest_fail
+        jp      c,.dma_selftest_fail_address_write
         ld      a,(x86_dev_dma_address)
         cp      #34
-        jp      nz,.dma_selftest_fail
+        jp      nz,.dma_selftest_fail_address_write
         ld      a,(x86_dev_dma_address+1)
         cp      #12
-        jp      nz,.dma_selftest_fail
+        jp      nz,.dma_selftest_fail_address_write
         ; Read back the same low/high sequence.
         ld      a,(x86_dev_dma_flipflop)
         or      a
-        jp      nz,.dma_selftest_fail
+        jp      nz,.dma_selftest_fail_address_read
         call    x86_dev_dma_read8
         cp      #34
-        jp      nz,.dma_selftest_fail
+        jp      nz,.dma_selftest_fail_address_read
         call    x86_dev_dma_read8
         cp      #12
-        jp      nz,.dma_selftest_fail
+        jp      nz,.dma_selftest_fail_address_read
         ; Channel 0 count=5678h.
         ld      hl,#0001
         ld      (x86_dev_port),hl
         ld      a,#78
         call    x86_dev_dma_write8
-        jp      c,.dma_selftest_fail
+        jp      c,.dma_selftest_fail_count
         ld      a,#56
         call    x86_dev_dma_write8
-        jp      c,.dma_selftest_fail
+        jp      c,.dma_selftest_fail_count
         ld      a,(x86_dev_dma_count)
         cp      #78
-        jp      nz,.dma_selftest_fail
+        jp      nz,.dma_selftest_fail_count
         ld      a,(x86_dev_dma_count+1)
         cp      #56
-        jp      nz,.dma_selftest_fail
+        jp      nz,.dma_selftest_fail_count
         ; DMA page register for channel 1 is port 81h.
         ld      hl,#0081
         ld      (x86_dev_port),hl
         ld      a,#A5
         call    x86_dev_dma_write8
-        jp      c,.dma_selftest_fail
+        jp      c,.dma_selftest_fail_page
         call    x86_dev_dma_read8
         cp      #A5
-        jp      nz,.dma_selftest_fail
+        jp      nz,.dma_selftest_fail_page
         ; Clear all masks, mask channel 2, then unmask channel 2.
         ld      hl,#000E
         ld      (x86_dev_port),hl
         xor     a
         call    x86_dev_dma_write8
-        jp      c,.dma_selftest_fail
+        jp      c,.dma_selftest_fail_mask
         ld      hl,#000A
         ld      (x86_dev_port),hl
         ld      a,#06
         call    x86_dev_dma_write8
-        jp      c,.dma_selftest_fail
+        jp      c,.dma_selftest_fail_mask
         ld      a,(x86_dev_dma_mask)
         cp      4
-        jp      nz,.dma_selftest_fail
+        jp      nz,.dma_selftest_fail_mask
         ld      a,#02
         call    x86_dev_dma_write8
-        jp      c,.dma_selftest_fail
+        jp      c,.dma_selftest_fail_mask
         ld      a,(x86_dev_dma_mask)
         or      a
-        jp      nz,.dma_selftest_fail
+        jp      nz,.dma_selftest_fail_mask
         ; Master clear restores mask=0Fh and byte pointer=0.
         ld      hl,#000D
         ld      (x86_dev_port),hl
         xor     a
         call    x86_dev_dma_write8
-        jp      c,.dma_selftest_fail
+        jp      c,.dma_selftest_fail_master
         ld      a,(x86_dev_dma_mask)
         cp      #0F
-        jp      nz,.dma_selftest_fail
+        jp      nz,.dma_selftest_fail_master
         ld      a,(x86_dev_dma_flipflop)
         or      a
-        jp      nz,.dma_selftest_fail
+        jp      nz,.dma_selftest_fail_master
         ld      hl,x86_dev_dma_selftest_pass
         jr      .dma_selftest_restore
-.dma_selftest_fail:
-        ld      hl,x86_dev_dma_selftest_fail
+.dma_selftest_fail_address_write:
+        ld      hl,x86_dev_dma_fail_address_write
+        jr      .dma_selftest_restore
+.dma_selftest_fail_address_read:
+        ld      hl,x86_dev_dma_fail_address_read
+        jr      .dma_selftest_restore
+.dma_selftest_fail_count:
+        ld      hl,x86_dev_dma_fail_count
+        jr      .dma_selftest_restore
+.dma_selftest_fail_page:
+        ld      hl,x86_dev_dma_fail_page
+        jr      .dma_selftest_restore
+.dma_selftest_fail_mask:
+        ld      hl,x86_dev_dma_fail_mask
+        jr      .dma_selftest_restore
+.dma_selftest_fail_master:
+        ld      hl,x86_dev_dma_fail_master
 .dma_selftest_restore:
         push    hl
         call    x86_dev_dma_reset_impl
@@ -1017,6 +1032,12 @@ x86_dev_pit_write_value: db 0
 x86_dev_pit_selftest_pass: db "[NGS] X86 PIT REGISTER SELFTEST PASS",13,10,0
 x86_dev_pit_selftest_fail: db "[NGS] X86 PIT REGISTER SELFTEST FAIL",13,10,0
 x86_dev_dma_selftest_fail: db "[NGS] X86 DMA REGISTER SELFTEST FAIL",13,10,0
+x86_dev_dma_fail_address_write: db "[NGS] X86 DMA FAIL: ADDRESS WRITE",13,10,0
+x86_dev_dma_fail_address_read: db "[NGS] X86 DMA FAIL: ADDRESS READ/FLIPFLOP",13,10,0
+x86_dev_dma_fail_count: db "[NGS] X86 DMA FAIL: COUNT",13,10,0
+x86_dev_dma_fail_page: db "[NGS] X86 DMA FAIL: PAGE REGISTER",13,10,0
+x86_dev_dma_fail_mask: db "[NGS] X86 DMA FAIL: MASK",13,10,0
+x86_dev_dma_fail_master: db "[NGS] X86 DMA FAIL: MASTER CLEAR",13,10,0
 
 
 x86_dev_port: dw 0
