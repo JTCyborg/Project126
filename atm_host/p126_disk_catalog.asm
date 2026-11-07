@@ -68,8 +68,7 @@ p126_catalog_poll_keyboard::
         or      a
         ret     z
         ld      (p126_catalog_key), a
-        ; Emit one diagnostic per physical key press, not while polling.
-        ld      hl,p126_log_key_seen
+        ld      hl, p126_log_key_seen
         call    p126_catalog_log
         call    p126_catalog_wait_release
 
@@ -178,44 +177,43 @@ p126_catalog_scan_keys:
         bit     0, a
         jr      nz, .catalog_keys_done
 
-        ; Spectrum cursor combinations use CAPS SHIFT + 5/6/7/8.
-        ; Matrix row #EFFE is ordered 0,9,8,7,6 in bits 0..4:
-        ; bit 3 = 7 (UP), bit 4 = 6 (DOWN), bit 2 = 8 (RIGHT).
-        ld      bc,#EFFE
-        in      a,(c)
-        bit     3,a
-        jr      nz,.catalog_check_down
-        ld      a,(p126_catalog_scan_result)
+        ; Row #EF: key 7 (bit 3) = up, key 6 (bit 4) = down.
+        ld      bc, #EFFE
+        in      a, (c)
+        bit     3, a
+        jr      nz, .catalog_check_down
+        ld      a, (p126_catalog_scan_result)
         or      1
-        ld      (p126_catalog_scan_result),a
+        ld      (p126_catalog_scan_result), a
 
 .catalog_check_down:
-        ld      bc,#EFFE
-        in      a,(c)
-        bit     4,a
-        jr      nz,.catalog_check_right
-        ld      a,(p126_catalog_scan_result)
+        ld      bc, #EFFE
+        in      a, (c)
+        bit     4, a
+        jr      nz, .catalog_check_other_arrows
+        ld      a, (p126_catalog_scan_result)
         or      2
-        ld      (p126_catalog_scan_result),a
+        ld      (p126_catalog_scan_result), a
+
+.catalog_check_other_arrows:
+        ; Read the remaining cursor combinations to keep the matrix scan
+        ; compatible with the Project125 ATM/Spectrum keyboard convention.
+        ld      bc, #F7FE
+        in      a, (c)
+        bit     4, a
+        jr      nz, .catalog_check_right
+        ld      a, (p126_catalog_scan_result)
+        or      4
+        ld      (p126_catalog_scan_result), a
 
 .catalog_check_right:
-        ld      bc,#EFFE
-        in      a,(c)
-        bit     2,a
-        jr      nz,.catalog_check_left
-        ld      a,(p126_catalog_scan_result)
+        ld      bc, #EFFE
+        in      a, (c)
+        bit     2, a
+        jr      nz, .catalog_keys_done
+        ld      a, (p126_catalog_scan_result)
         or      8
-        ld      (p126_catalog_scan_result),a
-
-.catalog_check_left:
-        ; Row #F7FE is ordered 1..5; bit 4 is key 5 (LEFT).
-        ld      bc,#F7FE
-        in      a,(c)
-        bit     4,a
-        jr      nz,.catalog_keys_done
-        ld      a,(p126_catalog_scan_result)
-        or      4
-        ld      (p126_catalog_scan_result),a
+        ld      (p126_catalog_scan_result), a
 
 .catalog_keys_done:
         ld      a, (p126_catalog_scan_result)
