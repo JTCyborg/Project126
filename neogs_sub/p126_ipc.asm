@@ -712,7 +712,8 @@ p126_ngs_image_fragment:
         or      c
         jr      nz,.image_verify_loop
 
-        call    x86_bios_image_diag
+        ; OBSOLETE: BIOS source/install/readback comparison passed; keep the
+        ; legacy routine commented out to avoid repeating its startup dump.
 
         ; Restore the production DMA page mapping for subsequent IPC frames.
         ld      a,#21
