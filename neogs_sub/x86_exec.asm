@@ -51,6 +51,14 @@ x86_cpu_step:
 
         cp      #06
         jp      c,x86_exec_add_family
+        cp      #27
+        jp      z,x86_exec_daa
+        cp      #2F
+        jp      z,x86_exec_das
+        cp      #37
+        jp      z,x86_exec_aaa
+        cp      #3F
+        jp      z,x86_exec_aas
         cp      #F6
         jp      z,x86_exec_group3
         cp      #F7
@@ -561,6 +569,176 @@ x86_exec_adc_sbb16:
         ld      hl,(x86_exec_adc_sbb_lhs16)
         jp      nz,x86_alu_sbb16
         jp      x86_alu_adc16
+
+; 27 DAA, 2F DAS, 37 AAA, 3F AAS.
+; Decimal-adjust behavior follows PCem's original 8086 path.
+x86_exec_daa:
+        ld      hl,(x86_reg_flags)
+        bit     4,l
+        jr      nz,.daa_low_adjust
+        ld      a,(x86_reg_ax)
+        and     #0F
+        cp      10
+        jr      c,.daa_high_test
+.daa_low_adjust:
+        ld      a,(x86_reg_ax)
+        add     a,6
+        ld      (x86_reg_ax),a
+        push    af
+        pop     bc
+        bit     0,c
+        jr      z,.daa_low_no_carry
+        call    x86_exec_set_cf
+.daa_low_no_carry:
+        call    x86_exec_set_af
+.daa_high_test:
+        ld      hl,(x86_reg_flags)
+        bit     0,l
+        jr      nz,.daa_high_adjust
+        ld      a,(x86_reg_ax)
+        cp      #A0
+        jr      c,.daa_done
+.daa_high_adjust:
+        ld      a,(x86_reg_ax)
+        add     a,#60
+        ld      (x86_reg_ax),a
+        call    x86_exec_set_cf
+.daa_done:
+        ld      a,(x86_reg_ax)
+        jp      x86_exec_update_szp8
+
+x86_exec_das:
+        ld      hl,(x86_reg_flags)
+        bit     4,l
+        jr      nz,.das_low_adjust
+        ld      a,(x86_reg_ax)
+        and     #0F
+        cp      10
+        jr      c,.das_high_test
+.das_low_adjust:
+        ld      a,(x86_reg_ax)
+        sub     6
+        ld      (x86_reg_ax),a
+        push    af
+        pop     bc
+        bit     0,c
+        jr      z,.das_low_no_borrow
+        call    x86_exec_set_cf
+.das_low_no_borrow:
+        call    x86_exec_set_af
+.das_high_test:
+        ld      hl,(x86_reg_flags)
+        bit     0,l
+        jr      nz,.das_high_adjust
+        ld      a,(x86_reg_ax)
+        cp      #A0
+        jr      c,.das_done
+.das_high_adjust:
+        ld      a,(x86_reg_ax)
+        sub     #60
+        ld      (x86_reg_ax),a
+        call    x86_exec_set_cf
+.das_done:
+        ld      a,(x86_reg_ax)
+        jp      x86_exec_update_szp8
+
+x86_exec_aaa:
+        ld      hl,(x86_reg_flags)
+        bit     4,l
+        jr      nz,.aaa_adjust
+        ld      a,(x86_reg_ax)
+        and     #0F
+        cp      10
+        jr      c,.aaa_no_adjust
+.aaa_adjust:
+        ld      a,(x86_reg_ax)
+        add     a,6
+        ld      (x86_reg_ax),a
+        ld      a,(x86_reg_ax+1)
+        inc     a
+        ld      (x86_reg_ax+1),a
+        call    x86_exec_set_cf
+        call    x86_exec_set_af
+        jr      .aaa_mask_al
+.aaa_no_adjust:
+        call    x86_exec_clear_cf_af
+.aaa_mask_al:
+        ld      a,(x86_reg_ax)
+        and     #0F
+        ld      (x86_reg_ax),a
+        or      a
+        ret
+
+x86_exec_aas:
+        ld      hl,(x86_reg_flags)
+        bit     4,l
+        jr      nz,.aas_adjust
+        ld      a,(x86_reg_ax)
+        and     #0F
+        cp      10
+        jr      c,.aas_no_adjust
+.aas_adjust:
+        ld      a,(x86_reg_ax)
+        sub     6
+        ld      (x86_reg_ax),a
+        ld      a,(x86_reg_ax+1)
+        dec     a
+        ld      (x86_reg_ax+1),a
+        call    x86_exec_set_cf
+        call    x86_exec_set_af
+        jr      .aas_mask_al
+.aas_no_adjust:
+        call    x86_exec_clear_cf_af
+.aas_mask_al:
+        ld      a,(x86_reg_ax)
+        and     #0F
+        ld      (x86_reg_ax),a
+        or      a
+        ret
+
+x86_exec_set_cf:
+        ld      hl,(x86_reg_flags)
+        set     0,l
+        ld      (x86_reg_flags),hl
+        ret
+
+x86_exec_set_af:
+        ld      hl,(x86_reg_flags)
+        set     4,l
+        ld      (x86_reg_flags),hl
+        ret
+
+x86_exec_clear_cf_af:
+        ld      hl,(x86_reg_flags)
+        res     0,l
+        res     4,l
+        ld      (x86_reg_flags),hl
+        ret
+
+; Input A=result. Update only SF/ZF/PF, preserving CF/AF/OF and control flags.
+x86_exec_update_szp8:
+        or      a
+        push    af
+        pop     bc
+        ld      hl,(x86_reg_flags)
+        ld      a,l
+        and     #9B
+        ld      l,a
+        bit     2,c
+        jr      z,.szp_no_pf
+        set     2,l
+.szp_no_pf:
+        bit     6,c
+        jr      z,.szp_no_zf
+        set     6,l
+.szp_no_zf:
+        bit     7,c
+        jr      z,.szp_no_sf
+        set     7,l
+.szp_no_sf:
+        ld      (x86_reg_flags),hl
+        or      a
+        ret
 
 ; F6/F7 Group 3 initial 8086 forms:
 ; /0,/1 TEST r/m,immediate; /2 NOT r/m; /3 NEG r/m.
