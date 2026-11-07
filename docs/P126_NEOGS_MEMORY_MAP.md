@@ -29,7 +29,7 @@ The current smoke test intentionally uses the same NeoGS physical addresses as t
 
 - ATM → NeoGS: destination 00D000h (page 03h, offset 1000h), frame size currently 274 bytes.
 - NeoGS → ATM: source 00E000h (page 03h, offset 2000h), frame size 274 bytes.
-- Project126 maps physical page 03h into WIN3 for CPU-side frame inspection. The active resident stack is at logical 7FFEh in WIN1/page 03h (physical offset 3FFEh), so these two small diagnostic regions are disjoint from the stack.
+- Project126 maps physical page 03h into WIN1 through PG1 port #21, matching Project125. Physical D000h/E000h appear at logical 5000h/6000h. The active resident stack is at logical 7FFEh in WIN1/page 03h (physical offset 3FFEh), so these two small diagnostic regions are disjoint from the stack.
 - These ranges are reserved only for the fixed diagnostic smoke frame. They are not production buffers and must not be used for a frame that extends beyond D111h/E111h. The production ABI staging allocation remains page 42h (108000h), pending independent hardware validation.
 - The current ATM→NeoGS diagnostic receiver rejects frames larger than 3000h bytes so a DMA transaction cannot cross the end of page 03h.
 
