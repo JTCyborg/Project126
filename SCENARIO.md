@@ -1479,3 +1479,15 @@ The temporary diagnostic is therefore moved back to the first terminator and now
 - The temporary expanded diagnostic snapshot was removed because the resident X86CORE image has only four bytes of headroom under its 16 KiB limit. The existing BIOS stop/register trace is sufficient to verify the corrected DX value without increasing resident size.
 - The terminal marker now targets the second table terminator (SI=E0BB), rather than stopping after the first table. Expected corrected state after the second XOR/JNZ: CS:IP=F000:E0C4, DX=00B9, FLAGS with ZF=1. Reaching E0C4 proves both port tables exited and BIOS entered RAM initialization.
 - Build/package and physical ATM/NeoGS validation are pending. This is a CPU semantic fix; no BIOS POST pass is claimed.
+
+
+
+## 2026-11-07 — BIOS proceeds beyond the port-table checkpoint
+
+- Target log confirms the corrected 8086 group-1 immediate byte writeback: the second BIOS port-table terminator is consumed at `F000:E0BA`, the second `XOR DH,03` clears DH, and execution reaches `F000:E0C4` with `DX=00B9` and `FLAGS=0046` (ZF=1).
+- The first and second table loops are both visible in the instruction history. This closes the previous port-table loop failure; it does not establish that BIOS POST or RAM sizing has passed.
+- GitHub Actions run [42422422569](https://github.com/JTCyborg/Project126/actions/runs/42422422569) completed successfully for the prior diagnostic checkpoint.
+- The E0C4 marker had been arming a four-instruction stop immediately after the table loop, so the BIOS could not yet execute its RAM-initialization path during this diagnostic run.
+- Removed the marker-arm call while retaining the existing 512-instruction trace budget and watchdog/fault snapshots. The next target run will execute beyond E0C4 and report either a guest fault/HLT or the state reached after the 512-instruction window.
+- Source commit: `1acd1318fef57530c8c278da10604e67248d4421`. Build and target validation of this follow-up are pending.
+- The repeated PIC/DMA/PIT/board-latch PASS lines and repeated image-stage messages are diagnostic duplication; they are not evidence of repeated BIOS failures. Log cleanup is deferred until the next BIOS stage is identified.
