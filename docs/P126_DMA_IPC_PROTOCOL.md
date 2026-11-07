@@ -283,3 +283,10 @@ The ATM frame validator must preserve the CRC accumulator in `HL` while switchin
 - По следующему логу: 50313236 означает, что magic P126 присутствует; тогда надо проверять путь/содержимое при валидации. 00000000, FFFFFFFF или другие значения покажут, что DMA-буфер не содержит ожидаемые первые байты, и позволят локализовать физический адрес/направление/окно.
 - Пока не менялись DMA-регистры, адрес 108000h, ABI или handshake: сначала снимаем фактические байты, не подменяя диагностику предположением.
 - Проверка: аппаратный лог пользователя подтверждает завершение транзакции, но frame validation пока FAIL. Временная диагностическая сборка должна пройти CI до следующего аппаратного теста.
+
+
+## 2026-11-07 — hardware receive-buffer diagnostics
+
+For the ATM→NeoGS smoke transaction, the configured destination is physical address 108000h (page 42h, offset 0000h). The host writes its frame to the 0000h..3FFFh DMA aperture; NeoGS stops DMA and maps page 42h into WIN3 at C000h.
+
+The latest target log reached the end marker but showed 00000000 at the first four bytes read through WIN3, followed by BAD_MAGIC. This proves command/CBIT lifecycle only; it does not prove payload delivery to NeoGS RAM. The next diagnostic build reports post-stop DMA address-register readback, performs a reversible WIN3 RAM test at C100h outside the 18-byte smoke frame, and dumps all 16 fixed header bytes. Address-register readback is observational until confirmed against the hardware's documented register semantics. No DMA address or ABI change is implied by these diagnostics.
