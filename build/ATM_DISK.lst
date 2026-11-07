@@ -3425,22 +3425,22 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
  18++ 7607
  19++ 7607                      ; Match the Project125 BIOS loader entry contract explicitly.
  20++ 7607 F3                   di
- 21++ 7608 ED 73 0B 7A          ld      (p126_bios_saved_sp),sp
+ 21++ 7608 ED 73 0D 7A          ld      (p126_bios_saved_sp),sp
  22++ 760C 31 FF BF             ld      sp,#BFFF
- 23++ 760F 21 1A 7A             ld      hl,p126_bios_log_load_begin
+ 23++ 760F 21 1C 7A             ld      hl,p126_bios_log_load_begin
  24++ 7612 CD 73 6F             call    p126_catalog_log
  25++ 7615 AF                   xor     a
- 26++ 7616 32 12 7A             ld      (p126_bios_error),a
- 27++ 7619 32 13 7A             ld      (p126_bios_disk_mode_active),a
+ 26++ 7616 32 14 7A             ld      (p126_bios_error),a
+ 27++ 7619 32 15 7A             ld      (p126_bios_disk_mode_active),a
  28++ 761C
  29++ 761C                      ; Resolve the selected visible catalogue index to its TR-DOS entry.
  30++ 761C 3A 6D 71             ld      a,(p126_catalog_selected)
  31++ 761F CD CA 6E             call    p126_catalog_find_index
- 32++ 7622 DA 9F 79             jp      c,p126_bios_bad_selection
+ 32++ 7622 DA A1 79             jp      c,p126_bios_bad_selection
  33++ 7625                      ; Preserve the selected directory-entry pointer across logging.
  34++ 7625                      ; p126_catalog_log uses HL for its message pointer.
  35++ 7625 E5                   push    hl
- 36++ 7626 21 32 7A             ld      hl,p126_bios_log_selection_resolved
+ 36++ 7626 21 34 7A             ld      hl,p126_bios_log_selection_resolved
  37++ 7629 CD 73 6F             call    p126_catalog_log
  38++ 762C E1                   pop     hl
  39++ 762D E5                   push    hl
@@ -3452,21 +3452,21 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
  45++ 763A 19                   add     hl,de
  46++ 763B 7E                   ld      a,(hl)
  47++ 763C FE 43                cp      'C'
- 48++ 763E C2 A4 79             jp      nz,p126_bios_bad_file_type
- 49++ 7641 21 B1 7A             ld      hl,p126_bios_log_file_type_ok
+ 48++ 763E C2 A6 79             jp      nz,p126_bios_bad_file_type
+ 49++ 7641 21 B3 7A             ld      hl,p126_bios_log_file_type_ok
  50++ 7644 CD 73 6F             call    p126_catalog_log
  51++ 7647                      ; Emit the exact selected 8.3 name into the diagnostic stream.
  52++ 7647 CD 36 78             call    p126_bios_log_selected_filename
  53++ 764A
  54++ 764A                      ; Enter the same legacy mapping used before ATM video initialization.
  55++ 764A                      ; Disk reads must not run with the alternate ATM window mapping active.
- 56++ 764A 21 CD 7A             ld      hl,p126_bios_log_trdos_map_begin
+ 56++ 764A 21 CF 7A             ld      hl,p126_bios_log_trdos_map_begin
  57++ 764D CD 73 6F             call    p126_catalog_log
- 58++ 7650 CD 38 79             call    p126_bios_enter_trdos_mode
- 59++ 7653 21 EC 7A             ld      hl,p126_bios_log_trdos_map_done
+ 58++ 7650 CD 3A 79             call    p126_bios_enter_trdos_mode
+ 59++ 7653 21 EE 7A             ld      hl,p126_bios_log_trdos_map_done
  60++ 7656 CD 73 6F             call    p126_catalog_log
  61++ 7659 3E 01                ld      a,1
- 62++ 765B 32 13 7A             ld      (p126_bios_disk_mode_active),a
+ 62++ 765B 32 15 7A             ld      (p126_bios_disk_mode_active),a
  63++ 765E
  64++ 765E                      ; Project125 TR-DOS ROM file-open ABI: C=0Ah finds the exact 8.3 name,
  65++ 765E                      ; C=08h returns the full descriptor in the standard system variables.
@@ -3474,34 +3474,34 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
  67++ 7660 32 E5 5C             ld      (#5CE5),a
  68++ 7663 3E 09                ld      a,9
  69++ 7665 32 06 5D             ld      (#5D06),a
- 70++ 7668 21 0A 7B             ld      hl,p126_bios_log_open_call
+ 70++ 7668 21 0C 7B             ld      hl,p126_bios_log_open_call
  71++ 766B CD 73 6F             call    p126_catalog_log
  72++ 766E                      ; Keep the Project125 ROM-call boundary exact: no helper, logger,
  73++ 766E                      ; RTC access, or diagnostic I/O between setting C and CALL #3D13.
  74++ 766E 0E 0A                ld      c,10
- 75++ 7670 CD 46 79             call    p126_bios_trdos_call
- 76++ 7673 21 27 7B             ld      hl,p126_bios_log_open_return
+ 75++ 7670 CD 48 79             call    p126_bios_trdos_call
+ 76++ 7673 21 29 7B             ld      hl,p126_bios_log_open_return
  77++ 7676 CD 73 6F             call    p126_catalog_log
  78++ 7679 79                   ld      a,c
  79++ 767A FE FF                cp      #FF
- 80++ 767C CA A9 79             jp      z,p126_bios_file_not_found
+ 80++ 767C CA AB 79             jp      z,p126_bios_file_not_found
  81++ 767F F5                   push    af
  82++ 7680 AF                   xor     a
  83++ 7681 32 0F 5D             ld      (#5D0F),a
  84++ 7684 32 10 5D             ld      (#5D10),a
  85++ 7687 F1                   pop     af
- 86++ 7688 21 46 7B             ld      hl,p126_bios_log_descriptor_call
+ 86++ 7688 21 48 7B             ld      hl,p126_bios_log_descriptor_call
  87++ 768B CD 73 6F             call    p126_catalog_log
  88++ 768E 0E 08                ld      c,8
- 89++ 7690 CD 46 79             call    p126_bios_trdos_call
- 90++ 7693 21 69 7B             ld      hl,p126_bios_log_descriptor_return
+ 89++ 7690 CD 48 79             call    p126_bios_trdos_call
+ 90++ 7693 21 6B 7B             ld      hl,p126_bios_log_descriptor_return
  91++ 7696 CD 73 6F             call    p126_catalog_log
  92++ 7699 3A 0F 5D             ld      a,(#5D0F)
  93++ 769C 47                   ld      b,a
  94++ 769D 3A 10 5D             ld      a,(#5D10)
  95++ 76A0 B0                   or      b
- 96++ 76A1 C2 AE 79             jp      nz,p126_bios_bad_descriptor
- 97++ 76A4 21 8E 7B             ld      hl,p126_bios_log_file_open
+ 96++ 76A1 C2 B0 79             jp      nz,p126_bios_bad_descriptor
+ 97++ 76A4 21 90 7B             ld      hl,p126_bios_log_file_open
  98++ 76A7 CD 73 6F             call    p126_catalog_log
  99++ 76AA
 100++ 76AA                      ; All selectable BIOS files must be exactly 8192 bytes / 32 sectors.
@@ -3509,40 +3509,40 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
 102++ 76AD 11 00 20             ld      de,P126_BIOS_FILE_SIZE
 103++ 76B0 B7                   or      a
 104++ 76B1 ED 52                sbc     hl,de
-105++ 76B3 C2 B3 79             jp      nz,p126_bios_bad_size
+105++ 76B3 C2 B5 79             jp      nz,p126_bios_bad_size
 106++ 76B6 3A EA 5C             ld      a,(#5CEA)
 107++ 76B9 FE 20                cp      P126_BIOS_SECTOR_COUNT
-108++ 76BB C2 B3 79             jp      nz,p126_bios_bad_size
-109++ 76BE 32 0F 7A             ld      (p126_bios_sectors_left),a
-110++ 76C1 21 A8 7B             ld      hl,p126_bios_log_size_ok
+108++ 76BB C2 B5 79             jp      nz,p126_bios_bad_size
+109++ 76BE 32 11 7A             ld      (p126_bios_sectors_left),a
+110++ 76C1 21 AA 7B             ld      hl,p126_bios_log_size_ok
 111++ 76C4 CD 73 6F             call    p126_catalog_log
-112++ 76C7 21 C2 7B             ld      hl,p126_bios_log_read_begin
+112++ 76C7 21 C4 7B             ld      hl,p126_bios_log_read_begin
 113++ 76CA CD 73 6F             call    p126_catalog_log
 114++ 76CD 3A EB 5C             ld      a,(#5CEB)
 115++ 76D0 FE 10                cp      16
-116++ 76D2 D2 AE 79             jp      nc,p126_bios_bad_descriptor
-117++ 76D5 32 11 7A             ld      (p126_bios_sector),a
+116++ 76D2 D2 B0 79             jp      nc,p126_bios_bad_descriptor
+117++ 76D5 32 13 7A             ld      (p126_bios_sector),a
 118++ 76D8 3A EC 5C             ld      a,(#5CEC)
-119++ 76DB 32 10 7A             ld      (p126_bios_track),a
+119++ 76DB 32 12 7A             ld      (p126_bios_track),a
 120++ 76DE 21 1C C0             ld      hl,P126_BIOS_FRAGMENT_DATA
-121++ 76E1 22 0D 7A             ld      (p126_bios_buffer_ptr),hl
+121++ 76E1 22 0F 7A             ld      (p126_bios_buffer_ptr),hl
 122++ 76E4
 123++ 76E4              .p126_bios_read_loop:
-124++ 76E4 3A 0F 7A             ld      a,(p126_bios_sectors_left)
+124++ 76E4 3A 11 7A             ld      a,(p126_bios_sectors_left)
 125++ 76E7 B7                   or      a
 126++ 76E8 28 08                jr      z,.p126_bios_read_done
-127++ 76EA CD E8 78             call    p126_bios_read_next_sector
-128++ 76ED DA B8 79             jp      c,p126_bios_sector_error
+127++ 76EA CD EA 78             call    p126_bios_read_next_sector
+128++ 76ED DA BA 79             jp      c,p126_bios_sector_error
 129++ 76F0 18 F2                jr      .p126_bios_read_loop
 130++ 76F2
 131++ 76F2              .p126_bios_read_done:
-132++ 76F2 21 DA 7B             ld      hl,p126_bios_log_read_done
+132++ 76F2 21 DC 7B             ld      hl,p126_bios_log_read_done
 133++ 76F5 CD 73 6F             call    p126_catalog_log
 134++ 76F8                      ; Return to the ATM video mapping before any DMA/IPC transaction.
-135++ 76F8 CD 9B 79             call    p126_bios_restore_atm_video
+135++ 76F8 CD 9D 79             call    p126_bios_restore_atm_video
 136++ 76FB AF                   xor     a
-137++ 76FC 32 13 7A             ld      (p126_bios_disk_mode_active),a
-138++ 76FF 21 F5 7B             ld      hl,p126_bios_log_video_restored
+137++ 76FC 32 15 7A             ld      (p126_bios_disk_mode_active),a
+138++ 76FF 21 F7 7B             ld      hl,p126_bios_log_video_restored
 139++ 7702 CD 73 6F             call    p126_catalog_log
 140++ 7705
 141++ 7705                      ; IMAGE_BEGIN payload:
@@ -3557,15 +3557,15 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
 150++ 7717 3E 20                ld      a,#20
 151++ 7719 32 17 C0             ld      (P126_BIOS_FRAME+23),a
 152++ 771C AF                   xor     a
-153++ 771D 32 15 7A             ld      (p126_bios_frame_flags),a
-154++ 7720 21 15 7C             ld      hl,p126_bios_log_image_begin_tx
+153++ 771D 32 17 7A             ld      (p126_bios_frame_flags),a
+154++ 7720 21 17 7C             ld      hl,p126_bios_log_image_begin_tx
 155++ 7723 CD 73 6F             call    p126_catalog_log
 156++ 7726 01 06 00             ld      bc,6
 157++ 7729 11 01 00             ld      de,1
 158++ 772C AF                   xor     a
 159++ 772D CD 6C 78             call    p126_bios_send_frame
-160++ 7730 DA BD 79             jp      c,p126_bios_transport_error
-161++ 7733 21 2C 7C             ld      hl,p126_bios_log_image_begin_ok
+160++ 7730 DA BF 79             jp      c,p126_bios_transport_error
+161++ 7733 21 2E 7C             ld      hl,p126_bios_log_image_begin_ok
 162++ 7736 CD 73 6F             call    p126_catalog_log
 163++ 7739
 164++ 7739                      ; IMAGE_FRAGMENT payload begins with the ABI 1.0 ten-byte extension:
@@ -3587,15 +3587,15 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
 180++ 775A 32 1A C0             ld      (P126_BIOS_FRAME+26),a
 181++ 775D 32 1B C0             ld      (P126_BIOS_FRAME+27),a
 182++ 7760 3E 02                ld      a,P126_FLAG_FRAGMENT
-183++ 7762 32 15 7A             ld      (p126_bios_frame_flags),a
-184++ 7765 21 51 7C             ld      hl,p126_bios_log_image_fragment_tx
+183++ 7762 32 17 7A             ld      (p126_bios_frame_flags),a
+184++ 7765 21 53 7C             ld      hl,p126_bios_log_image_fragment_tx
 185++ 7768 CD 73 6F             call    p126_catalog_log
 186++ 776B 01 0A 20             ld      bc,#200A
 187++ 776E 11 02 00             ld      de,2
 188++ 7771 3E 01                ld      a,P126_OP_IMAGE_FRAGMENT
 189++ 7773 CD 6C 78             call    p126_bios_send_frame
-190++ 7776 DA BD 79             jp      c,p126_bios_transport_error
-191++ 7779 21 6B 7C             ld      hl,p126_bios_log_image_fragment_ok
+190++ 7776 DA BF 79             jp      c,p126_bios_transport_error
+191++ 7779 21 6D 7C             ld      hl,p126_bios_log_image_fragment_ok
 192++ 777C CD 73 6F             call    p126_catalog_log
 193++ 777F
 194++ 777F                      ; IMAGE_FINISH payload carries the same message ID.
@@ -3604,20 +3604,20 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
 197++ 7784 AF                   xor     a
 198++ 7785 32 13 C0             ld      (P126_BIOS_FRAME+19),a
 199++ 7788 AF                   xor     a
-200++ 7789 32 15 7A             ld      (p126_bios_frame_flags),a
-201++ 778C 21 93 7C             ld      hl,p126_bios_log_image_finish_tx
+200++ 7789 32 17 7A             ld      (p126_bios_frame_flags),a
+201++ 778C 21 95 7C             ld      hl,p126_bios_log_image_finish_tx
 202++ 778F CD 73 6F             call    p126_catalog_log
 203++ 7792 01 02 00             ld      bc,2
 204++ 7795 11 03 00             ld      de,3
 205++ 7798 3E 02                ld      a,P126_OP_IMAGE_FINISH
 206++ 779A CD 6C 78             call    p126_bios_send_frame
-207++ 779D DA BD 79             jp      c,p126_bios_transport_error
-208++ 77A0 21 AB 7C             ld      hl,p126_bios_log_image_finish_ok
+207++ 779D DA BF 79             jp      c,p126_bios_transport_error
+208++ 77A0 21 AD 7C             ld      hl,p126_bios_log_image_finish_ok
 209++ 77A3 CD 73 6F             call    p126_catalog_log
 210++ 77A6
 211++ 77A6 AF                   xor     a
-212++ 77A7 32 12 7A             ld      (p126_bios_error),a
-213++ 77AA 2A 0B 7A             ld      hl,(p126_bios_saved_sp)
+212++ 77A7 32 14 7A             ld      (p126_bios_error),a
+213++ 77AA 2A 0D 7A             ld      hl,(p126_bios_saved_sp)
 214++ 77AD F9                   ld      sp,hl
 215++ 77AE B7                   or      a
 216++ 77AF C9                   ret
@@ -3634,7 +3634,7 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
 227++ 77B3 E5                   push    hl
 228++ 77B4 CD 85 61             call    p126_host_log_prefix
 229++ 77B7 01 EF 00             ld      bc,#00EF
-230++ 77BA 21 6D 7A             ld      hl,p126_bios_trace_state_prefix
+230++ 77BA 21 6F 7A             ld      hl,p126_bios_trace_state_prefix
 231++ 77BD              .p126_bios_trace_state_text:
 232++ 77BD 7E                   ld      a,(hl)
 233++ 77BE 23                   inc     hl
@@ -3679,7 +3679,7 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
 272++ 780C
 273++ 780C CD 85 61             call    p126_host_log_prefix
 274++ 780F 01 EF 00             ld      bc,#00EF
-275++ 7812 21 9A 7A             ld      hl,p126_bios_trace_name_prefix
+275++ 7812 21 9C 7A             ld      hl,p126_bios_trace_name_prefix
 276++ 7815              .p126_bios_trace_name_text:
 277++ 7815 7E                   ld      a,(hl)
 278++ 7816 23                   inc     hl
@@ -3714,7 +3714,7 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
 307++ 7839 E5                   push    hl
 308++ 783A CD 85 61             call    p126_host_log_prefix
 309++ 783D 01 EF 00             ld      bc,#00EF
-310++ 7840 21 52 7A             ld      hl,p126_bios_log_filename_prefix
+310++ 7840 21 54 7A             ld      hl,p126_bios_log_filename_prefix
 311++ 7843              .p126_bios_log_filename_prefix_loop:
 312++ 7843 7E                   ld      a,(hl)
 313++ 7844 23                   inc     hl
@@ -3747,9 +3747,9 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
 340++ 786C              ; Build and send one ABI 1.0 IMAGE request.
 341++ 786C              ; IN: A=operation, BC=payload length, DE=sequence, flags in variable.
 342++ 786C              p126_bios_send_frame:
-343++ 786C 32 14 7A             ld      (p126_bios_operation),a
-344++ 786F ED 43 16 7A          ld      (p126_bios_payload_length),bc
-345++ 7873 ED 53 18 7A          ld      (p126_bios_sequence),de
+343++ 786C 32 16 7A             ld      (p126_bios_operation),a
+344++ 786F ED 43 18 7A          ld      (p126_bios_payload_length),bc
+345++ 7873 ED 53 1A 7A          ld      (p126_bios_sequence),de
 346++ 7877 21 00 C0             ld      hl,P126_BIOS_FRAME
 347++ 787A 3E 50                ld      a,'P'
 348++ 787C 77                   ld      (hl),a
@@ -3775,15 +3775,15 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
 368++ 7896 3E 07                ld      a,P126_SERVICE_IMAGE
 369++ 7898 77                   ld      (hl),a
 370++ 7899 23                   inc     hl
-371++ 789A 3A 14 7A             ld      a,(p126_bios_operation)
+371++ 789A 3A 16 7A             ld      a,(p126_bios_operation)
 372++ 789D 77                   ld      (hl),a
 373++ 789E 23                   inc     hl
-374++ 789F 3A 15 7A             ld      a,(p126_bios_frame_flags)
+374++ 789F 3A 17 7A             ld      a,(p126_bios_frame_flags)
 375++ 78A2 77                   ld      (hl),a
 376++ 78A3 23                   inc     hl
-377++ 78A4 2A 18 7A             ld      hl,(p126_bios_sequence)
+377++ 78A4 2A 1A 7A             ld      hl,(p126_bios_sequence)
 378++ 78A7 22 0A C0             ld      (P126_BIOS_FRAME+10),hl
-379++ 78AA 2A 16 7A             ld      hl,(p126_bios_payload_length)
+379++ 78AA 2A 18 7A             ld      hl,(p126_bios_payload_length)
 380++ 78AD 22 0C C0             ld      (P126_BIOS_FRAME+12),hl
 381++ 78B0 AF                   xor     a
 382++ 78B1 32 0E C0             ld      (P126_BIOS_FRAME+14),a
@@ -3798,490 +3798,494 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
 391++ 78C0 13                   inc     de
 392++ 78C1 CD 48 66             call    p126_ipc_crc16_update
 393++ 78C4 10 F9                djnz    .p126_bios_crc_header
-394++ 78C6 ED 4B 16 7A          ld      bc,(p126_bios_payload_length)
-395++ 78CA              .p126_bios_crc_payload:
-396++ 78CA 78                   ld      a,b
-397++ 78CB B1                   or      c
-398++ 78CC 28 08                jr      z,.p126_bios_crc_done
-399++ 78CE 1A                   ld      a,(de)
-400++ 78CF 13                   inc     de
-401++ 78D0 CD 48 66             call    p126_ipc_crc16_update
-402++ 78D3 0B                   dec     bc
-403++ 78D4 18 F4                jr      .p126_bios_crc_payload
-404++ 78D6              .p126_bios_crc_done:
-405++ 78D6 22 10 C0             ld      (P126_BIOS_FRAME+16),hl
-406++ 78D9                      ; DMA API expects the exact frame byte count, not the absolute
-407++ 78D9                      ; address of the end of the frame. Compute 18-byte header + payload.
-408++ 78D9 2A 16 7A             ld      hl,(p126_bios_payload_length)
-409++ 78DC 11 12 00             ld      de,P126_IPC_HEADER_SIZE
-410++ 78DF 19                   add     hl,de
-411++ 78E0 44                   ld      b,h
-412++ 78E1 4D                   ld      c,l
-413++ 78E2 21 00 C0             ld      hl,P126_BIOS_FRAME
-414++ 78E5 C3 78 68             jp      p126_ipc_dma_send_frame
-415++ 78E8
-416++ 78E8              ; Read one sector using the proven Project125 TR-DOS C=5/B=1 ABI.
-417++ 78E8              ; Cursor advances only after the ROM call reports success.
-418++ 78E8              p126_bios_read_next_sector:
-419++ 78E8 3A 10 7A             ld      a,(p126_bios_track)
-420++ 78EB 57                   ld      d,a
-421++ 78EC 3A 11 7A             ld      a,(p126_bios_sector)
-422++ 78EF 5F                   ld      e,a
-423++ 78F0 2A 0D 7A             ld      hl,(p126_bios_buffer_ptr)
-424++ 78F3 06 01                ld      b,1
-425++ 78F5 0E 05                ld      c,5
-426++ 78F7 AF                   xor     a
-427++ 78F8 32 0F 5D             ld      (#5D0F),a
-428++ 78FB 32 10 5D             ld      (#5D10),a
-429++ 78FE CD 46 79             call    p126_bios_trdos_call
-430++ 7901 3A 0F 5D             ld      a,(#5D0F)
-431++ 7904 47                   ld      b,a
-432++ 7905 3A 10 5D             ld      a,(#5D10)
-433++ 7908 B0                   or      b
-434++ 7909 20 2B                jr      nz,.p126_bios_read_failed
-435++ 790B
-436++ 790B 2A 0D 7A             ld      hl,(p126_bios_buffer_ptr)
-437++ 790E 11 00 01             ld      de,P126_BIOS_SECTOR_SIZE
-438++ 7911 19                   add     hl,de
-439++ 7912 22 0D 7A             ld      (p126_bios_buffer_ptr),hl
-440++ 7915 3A 11 7A             ld      a,(p126_bios_sector)
-441++ 7918 3C                   inc     a
-442++ 7919 FE 10                cp      16
-443++ 791B 38 0D                jr      c,.p126_bios_same_track
-444++ 791D AF                   xor     a
-445++ 791E 32 11 7A             ld      (p126_bios_sector),a
-446++ 7921 3A 10 7A             ld      a,(p126_bios_track)
-447++ 7924 3C                   inc     a
-448++ 7925 32 10 7A             ld      (p126_bios_track),a
-449++ 7928 18 03                jr      .p126_bios_cursor_done
-450++ 792A              .p126_bios_same_track:
-451++ 792A 32 11 7A             ld      (p126_bios_sector),a
-452++ 792D              .p126_bios_cursor_done:
-453++ 792D 3A 0F 7A             ld      a,(p126_bios_sectors_left)
-454++ 7930 3D                   dec     a
-455++ 7931 32 0F 7A             ld      (p126_bios_sectors_left),a
-456++ 7934 B7                   or      a
-457++ 7935 C9                   ret
-458++ 7936              .p126_bios_read_failed:
-459++ 7936 37                   scf
-460++ 7937 C9                   ret
-461++ 7938
-462++ 7938              ; Keep ROM2 active for the ATM2+ automatic TR-DOS overlay.
-463++ 7938              ; Preserve BANKM D3: it selects the alternate video pages 7/3.
-464++ 7938              p126_bios_enter_trdos_mode:
-465++ 7938 3A 3B 5C             ld      a,(#5C3B)
-466++ 793B F6 10                or      #10
-467++ 793D 01 FD 7F             ld      bc,#7FFD
-468++ 7940 ED 79                out     (c),a
-469++ 7942 32 3B 5C             ld      (#5C3B),a
-470++ 7945 C9                   ret
-471++ 7946
-472++ 7946              ; NedoOS ATM2+ sys_SHADOFF / dos3d13_resident call boundary.
-473++ 7946              ; The active high-resolution display keeps shadow ports open through #0177.
-474++ 7946              ; Before each TR-DOS ROM call, select the documented switchable BASIC-48
-475++ 7946              ; ROM page (#83 in WIN0), then write the current Project126 RG=6 mode via
-476++ 7946              ; #FF77 (A9=1) to close shadow ports. Entering #3D13 with ROM2 set causes
-477++ 7946              ; the hardware TR-DOS overlay/DOSEN transition.
-478++ 7946              ;
-479++ 7946              ; The TR-DOS routine's primary and alternate register results are preserved
-480++ 7946              ; across the video restoration. This wrapper is used for C=0Ah, C=08h and
-481++ 7946              ; each C=05h sector read, matching NedoOS' per-call SHADOFF discipline.
-482++ 7946              p126_bios_trdos_call:
-483++ 7946                      ; Preserve all caller registers while preparing the ROM mapping.
-484++ 7946 F5                   push    af
-485++ 7947 C5                   push    bc
-486++ 7948 D5                   push    de
-487++ 7949 E5                   push    hl
-488++ 794A DD E5                push    ix
-489++ 794C FD E5                push    iy
-490++ 794E D9                   exx
-491++ 794F C5                   push    bc
-492++ 7950 D5                   push    de
-493++ 7951 E5                   push    hl
-494++ 7952 D9                   exx
-495++ 7953 08                   ex      af,af'
-496++ 7954 F5                   push    af
-497++ 7955 08                   ex      af,af'
-498++ 7956
-499++ 7956 3E 83                ld      a,#83
-500++ 7958 01 F7 3F             ld      bc,#3FF7
-501++ 795B ED 79                out     (c),a
-502++ 795D 3E C6                ld      a,#C6
-503++ 795F 01 77 FF             ld      bc,#FF77
-504++ 7962 ED 79                out     (c),a
-505++ 7964
-506++ 7964 08                   ex      af,af'
-507++ 7965 F1                   pop     af
-508++ 7966 08                   ex      af,af'
-509++ 7967 D9                   exx
-510++ 7968 E1                   pop     hl
-511++ 7969 D1                   pop     de
-512++ 796A C1                   pop     bc
-513++ 796B D9                   exx
-514++ 796C FD E1                pop     iy
-515++ 796E DD E1                pop     ix
-516++ 7970 E1                   pop     hl
-517++ 7971 D1                   pop     de
-518++ 7972 C1                   pop     bc
-519++ 7973 F1                   pop     af
-520++ 7974
-521++ 7974                      ; Execute the requested TR-DOS function. Preserve its complete
-522++ 7974                      ; register result while restoring the ATM 80x25 host display.
-523++ 7974 CD 13 3D             call    #3D13
-524++ 7977 F5                   push    af
-525++ 7978 C5                   push    bc
-526++ 7979 D5                   push    de
-527++ 797A E5                   push    hl
-528++ 797B DD E5                push    ix
-529++ 797D FD E5                push    iy
-530++ 797F D9                   exx
-531++ 7980 C5                   push    bc
-532++ 7981 D5                   push    de
-533++ 7982 E5                   push    hl
-534++ 7983 D9                   exx
-535++ 7984 08                   ex      af,af'
-536++ 7985 F5                   push    af
-537++ 7986 08                   ex      af,af'
-538++ 7987
-539++ 7987 CD 02 A0             call    p126_atm_video_init
-540++ 798A
-541++ 798A 08                   ex      af,af'
-542++ 798B F1                   pop     af
-543++ 798C 08                   ex      af,af'
-544++ 798D D9                   exx
-545++ 798E E1                   pop     hl
-546++ 798F D1                   pop     de
-547++ 7990 C1                   pop     bc
-548++ 7991 D9                   exx
-549++ 7992 FD E1                pop     iy
-550++ 7994 DD E1                pop     ix
-551++ 7996 E1                   pop     hl
-552++ 7997 D1                   pop     de
-553++ 7998 C1                   pop     bc
-554++ 7999 F1                   pop     af
-555++ 799A C9                   ret
-556++ 799B
-557++ 799B              ; Rebuild the ATM 80x25 display mapping after TR-DOS I/O is complete.
-558++ 799B              p126_bios_restore_atm_video:
-559++ 799B CD 02 A0             call    p126_atm_video_init
-560++ 799E C9                   ret
-561++ 799F
-562++ 799F              p126_bios_bad_selection:
-563++ 799F 3E 01                ld      a,1
-564++ 79A1 C3 BF 79             jp      p126_bios_fail
-565++ 79A4              p126_bios_bad_file_type:
-566++ 79A4 3E 02                ld      a,2
-567++ 79A6 C3 BF 79             jp      p126_bios_fail
-568++ 79A9              p126_bios_file_not_found:
-569++ 79A9 3E 03                ld      a,3
-570++ 79AB C3 BF 79             jp      p126_bios_fail
-571++ 79AE              p126_bios_bad_descriptor:
-572++ 79AE 3E 04                ld      a,4
-573++ 79B0 C3 BF 79             jp      p126_bios_fail
-574++ 79B3              p126_bios_bad_size:
-575++ 79B3 3E 05                ld      a,5
-576++ 79B5 C3 BF 79             jp      p126_bios_fail
-577++ 79B8              p126_bios_sector_error:
-578++ 79B8 3E 06                ld      a,6
-579++ 79BA C3 BF 79             jp      p126_bios_fail
-580++ 79BD              p126_bios_transport_error:
-581++ 79BD 3E 07                ld      a,7
-582++ 79BF              p126_bios_fail:
-583++ 79BF 32 12 7A             ld      (p126_bios_error),a
-584++ 79C2 3A 13 7A             ld      a,(p126_bios_disk_mode_active)
-585++ 79C5 B7                   or      a
-586++ 79C6 28 07                jr      z,.p126_bios_fail_restore_stack
-587++ 79C8 CD 9B 79             call    p126_bios_restore_atm_video
-588++ 79CB AF                   xor     a
-589++ 79CC 32 13 7A             ld      (p126_bios_disk_mode_active),a
-590++ 79CF              .p126_bios_fail_restore_stack:
-591++ 79CF 2A 0B 7A             ld      hl,(p126_bios_saved_sp)
-592++ 79D2 F9                   ld      sp,hl
-593++ 79D3 3A 12 7A             ld      a,(p126_bios_error)
-594++ 79D6 FE 01                cp      1
-595++ 79D8 21 D1 7C             ld      hl,p126_bios_log_bad_selection
-596++ 79DB 28 26                jr      z,.p126_bios_log_failure
-597++ 79DD FE 02                cp      2
-598++ 79DF 21 F3 7C             ld      hl,p126_bios_log_bad_type
-599++ 79E2 28 1F                jr      z,.p126_bios_log_failure
-600++ 79E4 FE 03                cp      3
-601++ 79E6 21 11 7D             ld      hl,p126_bios_log_not_found
-602++ 79E9 28 18                jr      z,.p126_bios_log_failure
-603++ 79EB FE 04                cp      4
-604++ 79ED 21 34 7D             ld      hl,p126_bios_log_bad_descriptor
-605++ 79F0 28 11                jr      z,.p126_bios_log_failure
-606++ 79F2 FE 05                cp      5
-607++ 79F4 21 53 7D             ld      hl,p126_bios_log_bad_size
-608++ 79F7 28 0A                jr      z,.p126_bios_log_failure
-609++ 79F9 FE 06                cp      6
-610++ 79FB 21 74 7D             ld      hl,p126_bios_log_sector_error
-611++ 79FE 28 03                jr      z,.p126_bios_log_failure
-612++ 7A00 21 94 7D             ld      hl,p126_bios_log_transport_error
-613++ 7A03              .p126_bios_log_failure:
-614++ 7A03 CD 73 6F             call    p126_catalog_log
-615++ 7A06 3A 12 7A             ld      a,(p126_bios_error)
-616++ 7A09 37                   scf
-617++ 7A0A C9                   ret
-618++ 7A0B
-619++ 7A0B 00 00        p126_bios_saved_sp:        dw 0
-620++ 7A0D 1C C0        p126_bios_buffer_ptr:      dw P126_BIOS_FRAGMENT_DATA
-621++ 7A0F 00           p126_bios_sectors_left:    db 0
-622++ 7A10 00           p126_bios_track:           db 0
-623++ 7A11 00           p126_bios_sector:          db 0
-624++ 7A12 00           p126_bios_error:           db 0
-625++ 7A13 00           p126_bios_disk_mode_active: db 0
-626++ 7A14 00           p126_bios_operation:       db 0
-627++ 7A15 00           p126_bios_frame_flags:     db 0
-628++ 7A16 00 00        p126_bios_payload_length:  dw 0
-629++ 7A18 00 00        p126_bios_sequence:        dw 0
-630++ 7A1A
-631++ 7A1A              ; ATM-side progress markers for the selected BIOS load transaction.
-632++ 7A1A 5B 43 41 54  p126_bios_log_load_begin:       db "[CAT] BIOS LOAD BEGIN",13,10,0
-632++ 7A1E 5D 20 42 49
-632++ 7A22 4F 53 20 4C
-632++ 7A26 4F 41 44 20
-632++ 7A2A 42 45 47 49
-632++ 7A2E 4E 0D 0A 00
-633++ 7A32 5B 43 41 54  p126_bios_log_selection_resolved: db "[CAT] BIOS SELECTION RESOLVED",13,10,0
-633++ 7A36 5D 20 42 49
-633++ 7A3A 4F 53 20 53
-633++ 7A3E 45 4C 45 43
-633++ 7A42 54 49 4F 4E
-633++ 7A46 20 52 45 53
-633++ 7A4A 4F 4C 56 45
-633++ 7A4E 44 0D 0A 00
-634++ 7A52 5B 43 41 54  p126_bios_log_filename_prefix:   db "[CAT] BIOS FILE SELECTED: ",0
-634++ 7A56 5D 20 42 49
-634++ 7A5A 4F 53 20 46
-634++ 7A5E 49 4C 45 20
-634++ 7A62 53 45 4C 45
-634++ 7A66 43 54 45 44
-634++ 7A6A 3A 20 00
-635++ 7A6D 5B 43 41 54  p126_bios_trace_state_prefix:   db "[CAT] TRDOS C=0A STATE BANKM/EXT/LEN/SP/ROM=",0
-635++ 7A71 5D 20 54 52
-635++ 7A75 44 4F 53 20
-635++ 7A79 43 3D 30 41
-635++ 7A7D 20 53 54 41
-635++ 7A81 54 45 20 42
-635++ 7A85 41 4E 4B 4D
-635++ 7A89 2F 45 58 54
-635++ 7A8D 2F 4C 45 4E
-635++ 7A91 2F 53 50 2F
-635++ 7A95 52 4F 4D 3D
-635++ 7A99 00
-636++ 7A9A 5B 43 41 54  p126_bios_trace_name_prefix:    db "[CAT] TRDOS C=0A NAME=",0
-636++ 7A9E 5D 20 54 52
-636++ 7AA2 44 4F 53 20
-636++ 7AA6 43 3D 30 41
-636++ 7AAA 20 4E 41 4D
-636++ 7AAE 45 3D 00
-637++ 7AB1 5B 43 41 54  p126_bios_log_file_type_ok:      db "[CAT] BIOS FILE TYPE C OK",13,10,0
-637++ 7AB5 5D 20 42 49
-637++ 7AB9 4F 53 20 46
-637++ 7ABD 49 4C 45 20
-637++ 7AC1 54 59 50 45
-637++ 7AC5 20 43 20 4F
-637++ 7AC9 4B 0D 0A 00
-638++ 7ACD 5B 43 41 54  p126_bios_log_trdos_map_begin:   db "[CAT] TRDOS MAP SWITCH BEGIN",13,10,0
-638++ 7AD1 5D 20 54 52
-638++ 7AD5 44 4F 53 20
-638++ 7AD9 4D 41 50 20
-638++ 7ADD 53 57 49 54
-638++ 7AE1 43 48 20 42
-638++ 7AE5 45 47 49 4E
-638++ 7AE9 0D 0A 00
-639++ 7AEC 5B 43 41 54  p126_bios_log_trdos_map_done:    db "[CAT] TRDOS MAP SWITCH DONE",13,10,0
-639++ 7AF0 5D 20 54 52
-639++ 7AF4 44 4F 53 20
-639++ 7AF8 4D 41 50 20
-639++ 7AFC 53 57 49 54
-639++ 7B00 43 48 20 44
-639++ 7B04 4F 4E 45 0D
-639++ 7B08 0A 00
-640++ 7B0A 5B 43 41 54  p126_bios_log_open_call:         db "[CAT] TRDOS OPEN C=0A CALL",13,10,0
-640++ 7B0E 5D 20 54 52
-640++ 7B12 44 4F 53 20
-640++ 7B16 4F 50 45 4E
-640++ 7B1A 20 43 3D 30
-640++ 7B1E 41 20 43 41
-640++ 7B22 4C 4C 0D 0A
-640++ 7B26 00
-641++ 7B27 5B 43 41 54  p126_bios_log_open_return:       db "[CAT] TRDOS OPEN C=0A RETURN",13,10,0
-641++ 7B2B 5D 20 54 52
-641++ 7B2F 44 4F 53 20
-641++ 7B33 4F 50 45 4E
-641++ 7B37 20 43 3D 30
-641++ 7B3B 41 20 52 45
-641++ 7B3F 54 55 52 4E
-641++ 7B43 0D 0A 00
-642++ 7B46 5B 43 41 54  p126_bios_log_descriptor_call:   db "[CAT] TRDOS DESCRIPTOR C=08 CALL",13,10,0
-642++ 7B4A 5D 20 54 52
-642++ 7B4E 44 4F 53 20
-642++ 7B52 44 45 53 43
-642++ 7B56 52 49 50 54
-642++ 7B5A 4F 52 20 43
-642++ 7B5E 3D 30 38 20
-642++ 7B62 43 41 4C 4C
-642++ 7B66 0D 0A 00
-643++ 7B69 5B 43 41 54  p126_bios_log_descriptor_return: db "[CAT] TRDOS DESCRIPTOR C=08 RETURN",13,10,0
-643++ 7B6D 5D 20 54 52
-643++ 7B71 44 4F 53 20
-643++ 7B75 44 45 53 43
-643++ 7B79 52 49 50 54
-643++ 7B7D 4F 52 20 43
-643++ 7B81 3D 30 38 20
-643++ 7B85 52 45 54 55
-643++ 7B89 52 4E 0D 0A
-643++ 7B8D 00
-644++ 7B8E 5B 43 41 54  p126_bios_log_file_open:        db "[CAT] BIOS FILE OPEN OK",13,10,0
-644++ 7B92 5D 20 42 49
-644++ 7B96 4F 53 20 46
-644++ 7B9A 49 4C 45 20
-644++ 7B9E 4F 50 45 4E
-644++ 7BA2 20 4F 4B 0D
-644++ 7BA6 0A 00
-645++ 7BA8 5B 43 41 54  p126_bios_log_size_ok:          db "[CAT] BIOS FILE SIZE OK",13,10,0
-645++ 7BAC 5D 20 42 49
-645++ 7BB0 4F 53 20 46
-645++ 7BB4 49 4C 45 20
-645++ 7BB8 53 49 5A 45
-645++ 7BBC 20 4F 4B 0D
-645++ 7BC0 0A 00
-646++ 7BC2 5B 43 41 54  p126_bios_log_read_begin:       db "[CAT] BIOS READ BEGIN",13,10,0
-646++ 7BC6 5D 20 42 49
-646++ 7BCA 4F 53 20 52
-646++ 7BCE 45 41 44 20
-646++ 7BD2 42 45 47 49
-646++ 7BD6 4E 0D 0A 00
-647++ 7BDA 5B 43 41 54  p126_bios_log_read_done:        db "[CAT] BIOS READ COMPLETE",13,10,0
-647++ 7BDE 5D 20 42 49
-647++ 7BE2 4F 53 20 52
-647++ 7BE6 45 41 44 20
-647++ 7BEA 43 4F 4D 50
-647++ 7BEE 4C 45 54 45
-647++ 7BF2 0D 0A 00
-648++ 7BF5 5B 43 41 54  p126_bios_log_video_restored:   db "[CAT] BIOS ATM VIDEO RESTORED",13,10,0
-648++ 7BF9 5D 20 42 49
-648++ 7BFD 4F 53 20 41
-648++ 7C01 54 4D 20 56
-648++ 7C05 49 44 45 4F
-648++ 7C09 20 52 45 53
-648++ 7C0D 54 4F 52 45
-648++ 7C11 44 0D 0A 00
-649++ 7C15 5B 43 41 54  p126_bios_log_image_begin_tx:   db "[CAT] IMAGE BEGIN TX",13,10,0
-649++ 7C19 5D 20 49 4D
-649++ 7C1D 41 47 45 20
-649++ 7C21 42 45 47 49
-649++ 7C25 4E 20 54 58
-649++ 7C29 0D 0A 00
-650++ 7C2C 5B 43 41 54  p126_bios_log_image_begin_ok:   db "[CAT] IMAGE BEGIN HANDLER COMPLETE",13,10,0
-650++ 7C30 5D 20 49 4D
-650++ 7C34 41 47 45 20
-650++ 7C38 42 45 47 49
-650++ 7C3C 4E 20 48 41
-650++ 7C40 4E 44 4C 45
-650++ 7C44 52 20 43 4F
-650++ 7C48 4D 50 4C 45
-650++ 7C4C 54 45 0D 0A
-650++ 7C50 00
-651++ 7C51 5B 43 41 54  p126_bios_log_image_fragment_tx: db "[CAT] IMAGE FRAGMENT TX",13,10,0
-651++ 7C55 5D 20 49 4D
-651++ 7C59 41 47 45 20
-651++ 7C5D 46 52 41 47
-651++ 7C61 4D 45 4E 54
-651++ 7C65 20 54 58 0D
-651++ 7C69 0A 00
-652++ 7C6B 5B 43 41 54  p126_bios_log_image_fragment_ok: db "[CAT] IMAGE FRAGMENT HANDLER COMPLETE",13,10,0
-652++ 7C6F 5D 20 49 4D
-652++ 7C73 41 47 45 20
-652++ 7C77 46 52 41 47
-652++ 7C7B 4D 45 4E 54
-652++ 7C7F 20 48 41 4E
-652++ 7C83 44 4C 45 52
-652++ 7C87 20 43 4F 4D
-652++ 7C8B 50 4C 45 54
-652++ 7C8F 45 0D 0A 00
-653++ 7C93 5B 43 41 54  p126_bios_log_image_finish_tx:  db "[CAT] IMAGE FINISH TX",13,10,0
-653++ 7C97 5D 20 49 4D
-653++ 7C9B 41 47 45 20
-653++ 7C9F 46 49 4E 49
-653++ 7CA3 53 48 20 54
-653++ 7CA7 58 0D 0A 00
-654++ 7CAB 5B 43 41 54  p126_bios_log_image_finish_ok:  db "[CAT] IMAGE FINISH HANDLER COMPLETE",13,10,0
-654++ 7CAF 5D 20 49 4D
-654++ 7CB3 41 47 45 20
-654++ 7CB7 46 49 4E 49
-654++ 7CBB 53 48 20 48
-654++ 7CBF 41 4E 44 4C
-654++ 7CC3 45 52 20 43
-654++ 7CC7 4F 4D 50 4C
-654++ 7CCB 45 54 45 0D
-654++ 7CCF 0A 00
-655++ 7CD1 5B 43 41 54  p126_bios_log_bad_selection:    db "[CAT] BIOS ERROR: BAD SELECTION",13,10,0
-655++ 7CD5 5D 20 42 49
-655++ 7CD9 4F 53 20 45
-655++ 7CDD 52 52 4F 52
-655++ 7CE1 3A 20 42 41
-655++ 7CE5 44 20 53 45
-655++ 7CE9 4C 45 43 54
-655++ 7CED 49 4F 4E 0D
-655++ 7CF1 0A 00
-656++ 7CF3 5B 43 41 54  p126_bios_log_bad_type:         db "[CAT] BIOS ERROR: FILE TYPE",13,10,0
-656++ 7CF7 5D 20 42 49
-656++ 7CFB 4F 53 20 45
-656++ 7CFF 52 52 4F 52
-656++ 7D03 3A 20 46 49
-656++ 7D07 4C 45 20 54
-656++ 7D0B 59 50 45 0D
-656++ 7D0F 0A 00
-657++ 7D11 5B 43 41 54  p126_bios_log_not_found:        db "[CAT] BIOS ERROR: FILE NOT FOUND",13,10,0
-657++ 7D15 5D 20 42 49
-657++ 7D19 4F 53 20 45
-657++ 7D1D 52 52 4F 52
-657++ 7D21 3A 20 46 49
-657++ 7D25 4C 45 20 4E
-657++ 7D29 4F 54 20 46
-657++ 7D2D 4F 55 4E 44
-657++ 7D31 0D 0A 00
-658++ 7D34 5B 43 41 54  p126_bios_log_bad_descriptor:   db "[CAT] BIOS ERROR: DESCRIPTOR",13,10,0
-658++ 7D38 5D 20 42 49
-658++ 7D3C 4F 53 20 45
-658++ 7D40 52 52 4F 52
-658++ 7D44 3A 20 44 45
-658++ 7D48 53 43 52 49
-658++ 7D4C 50 54 4F 52
-658++ 7D50 0D 0A 00
-659++ 7D53 5B 43 41 54  p126_bios_log_bad_size:         db "[CAT] BIOS ERROR: SIZE/SECTORS",13,10,0
-659++ 7D57 5D 20 42 49
-659++ 7D5B 4F 53 20 45
-659++ 7D5F 52 52 4F 52
-659++ 7D63 3A 20 53 49
-659++ 7D67 5A 45 2F 53
-659++ 7D6B 45 43 54 4F
-659++ 7D6F 52 53 0D 0A
-659++ 7D73 00
-660++ 7D74 5B 43 41 54  p126_bios_log_sector_error:     db "[CAT] BIOS ERROR: SECTOR READ",13,10,0
-660++ 7D78 5D 20 42 49
-660++ 7D7C 4F 53 20 45
-660++ 7D80 52 52 4F 52
-660++ 7D84 3A 20 53 45
-660++ 7D88 43 54 4F 52
-660++ 7D8C 20 52 45 41
-660++ 7D90 44 0D 0A 00
-661++ 7D94 5B 43 41 54  p126_bios_log_transport_error:  db "[CAT] BIOS ERROR: IPC/DMA",13,10,0
-661++ 7D98 5D 20 42 49
-661++ 7D9C 4F 53 20 45
-661++ 7DA0 52 52 4F 52
-661++ 7DA4 3A 20 49 50
-661++ 7DA8 43 2F 44 4D
-661++ 7DAC 41 0D 0A 00
-662++ 7DB0
+394++ 78C6                      ; CRC field at offsets 16..17 is excluded from the checksum.
+395++ 78C6                      ; Continue with payload at frame+18, matching the NeoGS validator.
+396++ 78C6 13                   inc     de
+397++ 78C7 13                   inc     de
+398++ 78C8 ED 4B 18 7A          ld      bc,(p126_bios_payload_length)
+399++ 78CC              .p126_bios_crc_payload:
+400++ 78CC 78                   ld      a,b
+401++ 78CD B1                   or      c
+402++ 78CE 28 08                jr      z,.p126_bios_crc_done
+403++ 78D0 1A                   ld      a,(de)
+404++ 78D1 13                   inc     de
+405++ 78D2 CD 48 66             call    p126_ipc_crc16_update
+406++ 78D5 0B                   dec     bc
+407++ 78D6 18 F4                jr      .p126_bios_crc_payload
+408++ 78D8              .p126_bios_crc_done:
+409++ 78D8 22 10 C0             ld      (P126_BIOS_FRAME+16),hl
+410++ 78DB                      ; DMA API expects the exact frame byte count, not the absolute
+411++ 78DB                      ; address of the end of the frame. Compute 18-byte header + payload.
+412++ 78DB 2A 18 7A             ld      hl,(p126_bios_payload_length)
+413++ 78DE 11 12 00             ld      de,P126_IPC_HEADER_SIZE
+414++ 78E1 19                   add     hl,de
+415++ 78E2 44                   ld      b,h
+416++ 78E3 4D                   ld      c,l
+417++ 78E4 21 00 C0             ld      hl,P126_BIOS_FRAME
+418++ 78E7 C3 78 68             jp      p126_ipc_dma_send_frame
+419++ 78EA
+420++ 78EA              ; Read one sector using the proven Project125 TR-DOS C=5/B=1 ABI.
+421++ 78EA              ; Cursor advances only after the ROM call reports success.
+422++ 78EA              p126_bios_read_next_sector:
+423++ 78EA 3A 12 7A             ld      a,(p126_bios_track)
+424++ 78ED 57                   ld      d,a
+425++ 78EE 3A 13 7A             ld      a,(p126_bios_sector)
+426++ 78F1 5F                   ld      e,a
+427++ 78F2 2A 0F 7A             ld      hl,(p126_bios_buffer_ptr)
+428++ 78F5 06 01                ld      b,1
+429++ 78F7 0E 05                ld      c,5
+430++ 78F9 AF                   xor     a
+431++ 78FA 32 0F 5D             ld      (#5D0F),a
+432++ 78FD 32 10 5D             ld      (#5D10),a
+433++ 7900 CD 48 79             call    p126_bios_trdos_call
+434++ 7903 3A 0F 5D             ld      a,(#5D0F)
+435++ 7906 47                   ld      b,a
+436++ 7907 3A 10 5D             ld      a,(#5D10)
+437++ 790A B0                   or      b
+438++ 790B 20 2B                jr      nz,.p126_bios_read_failed
+439++ 790D
+440++ 790D 2A 0F 7A             ld      hl,(p126_bios_buffer_ptr)
+441++ 7910 11 00 01             ld      de,P126_BIOS_SECTOR_SIZE
+442++ 7913 19                   add     hl,de
+443++ 7914 22 0F 7A             ld      (p126_bios_buffer_ptr),hl
+444++ 7917 3A 13 7A             ld      a,(p126_bios_sector)
+445++ 791A 3C                   inc     a
+446++ 791B FE 10                cp      16
+447++ 791D 38 0D                jr      c,.p126_bios_same_track
+448++ 791F AF                   xor     a
+449++ 7920 32 13 7A             ld      (p126_bios_sector),a
+450++ 7923 3A 12 7A             ld      a,(p126_bios_track)
+451++ 7926 3C                   inc     a
+452++ 7927 32 12 7A             ld      (p126_bios_track),a
+453++ 792A 18 03                jr      .p126_bios_cursor_done
+454++ 792C              .p126_bios_same_track:
+455++ 792C 32 13 7A             ld      (p126_bios_sector),a
+456++ 792F              .p126_bios_cursor_done:
+457++ 792F 3A 11 7A             ld      a,(p126_bios_sectors_left)
+458++ 7932 3D                   dec     a
+459++ 7933 32 11 7A             ld      (p126_bios_sectors_left),a
+460++ 7936 B7                   or      a
+461++ 7937 C9                   ret
+462++ 7938              .p126_bios_read_failed:
+463++ 7938 37                   scf
+464++ 7939 C9                   ret
+465++ 793A
+466++ 793A              ; Keep ROM2 active for the ATM2+ automatic TR-DOS overlay.
+467++ 793A              ; Preserve BANKM D3: it selects the alternate video pages 7/3.
+468++ 793A              p126_bios_enter_trdos_mode:
+469++ 793A 3A 3B 5C             ld      a,(#5C3B)
+470++ 793D F6 10                or      #10
+471++ 793F 01 FD 7F             ld      bc,#7FFD
+472++ 7942 ED 79                out     (c),a
+473++ 7944 32 3B 5C             ld      (#5C3B),a
+474++ 7947 C9                   ret
+475++ 7948
+476++ 7948              ; NedoOS ATM2+ sys_SHADOFF / dos3d13_resident call boundary.
+477++ 7948              ; The active high-resolution display keeps shadow ports open through #0177.
+478++ 7948              ; Before each TR-DOS ROM call, select the documented switchable BASIC-48
+479++ 7948              ; ROM page (#83 in WIN0), then write the current Project126 RG=6 mode via
+480++ 7948              ; #FF77 (A9=1) to close shadow ports. Entering #3D13 with ROM2 set causes
+481++ 7948              ; the hardware TR-DOS overlay/DOSEN transition.
+482++ 7948              ;
+483++ 7948              ; The TR-DOS routine's primary and alternate register results are preserved
+484++ 7948              ; across the video restoration. This wrapper is used for C=0Ah, C=08h and
+485++ 7948              ; each C=05h sector read, matching NedoOS' per-call SHADOFF discipline.
+486++ 7948              p126_bios_trdos_call:
+487++ 7948                      ; Preserve all caller registers while preparing the ROM mapping.
+488++ 7948 F5                   push    af
+489++ 7949 C5                   push    bc
+490++ 794A D5                   push    de
+491++ 794B E5                   push    hl
+492++ 794C DD E5                push    ix
+493++ 794E FD E5                push    iy
+494++ 7950 D9                   exx
+495++ 7951 C5                   push    bc
+496++ 7952 D5                   push    de
+497++ 7953 E5                   push    hl
+498++ 7954 D9                   exx
+499++ 7955 08                   ex      af,af'
+500++ 7956 F5                   push    af
+501++ 7957 08                   ex      af,af'
+502++ 7958
+503++ 7958 3E 83                ld      a,#83
+504++ 795A 01 F7 3F             ld      bc,#3FF7
+505++ 795D ED 79                out     (c),a
+506++ 795F 3E C6                ld      a,#C6
+507++ 7961 01 77 FF             ld      bc,#FF77
+508++ 7964 ED 79                out     (c),a
+509++ 7966
+510++ 7966 08                   ex      af,af'
+511++ 7967 F1                   pop     af
+512++ 7968 08                   ex      af,af'
+513++ 7969 D9                   exx
+514++ 796A E1                   pop     hl
+515++ 796B D1                   pop     de
+516++ 796C C1                   pop     bc
+517++ 796D D9                   exx
+518++ 796E FD E1                pop     iy
+519++ 7970 DD E1                pop     ix
+520++ 7972 E1                   pop     hl
+521++ 7973 D1                   pop     de
+522++ 7974 C1                   pop     bc
+523++ 7975 F1                   pop     af
+524++ 7976
+525++ 7976                      ; Execute the requested TR-DOS function. Preserve its complete
+526++ 7976                      ; register result while restoring the ATM 80x25 host display.
+527++ 7976 CD 13 3D             call    #3D13
+528++ 7979 F5                   push    af
+529++ 797A C5                   push    bc
+530++ 797B D5                   push    de
+531++ 797C E5                   push    hl
+532++ 797D DD E5                push    ix
+533++ 797F FD E5                push    iy
+534++ 7981 D9                   exx
+535++ 7982 C5                   push    bc
+536++ 7983 D5                   push    de
+537++ 7984 E5                   push    hl
+538++ 7985 D9                   exx
+539++ 7986 08                   ex      af,af'
+540++ 7987 F5                   push    af
+541++ 7988 08                   ex      af,af'
+542++ 7989
+543++ 7989 CD 02 A0             call    p126_atm_video_init
+544++ 798C
+545++ 798C 08                   ex      af,af'
+546++ 798D F1                   pop     af
+547++ 798E 08                   ex      af,af'
+548++ 798F D9                   exx
+549++ 7990 E1                   pop     hl
+550++ 7991 D1                   pop     de
+551++ 7992 C1                   pop     bc
+552++ 7993 D9                   exx
+553++ 7994 FD E1                pop     iy
+554++ 7996 DD E1                pop     ix
+555++ 7998 E1                   pop     hl
+556++ 7999 D1                   pop     de
+557++ 799A C1                   pop     bc
+558++ 799B F1                   pop     af
+559++ 799C C9                   ret
+560++ 799D
+561++ 799D              ; Rebuild the ATM 80x25 display mapping after TR-DOS I/O is complete.
+562++ 799D              p126_bios_restore_atm_video:
+563++ 799D CD 02 A0             call    p126_atm_video_init
+564++ 79A0 C9                   ret
+565++ 79A1
+566++ 79A1              p126_bios_bad_selection:
+567++ 79A1 3E 01                ld      a,1
+568++ 79A3 C3 C1 79             jp      p126_bios_fail
+569++ 79A6              p126_bios_bad_file_type:
+570++ 79A6 3E 02                ld      a,2
+571++ 79A8 C3 C1 79             jp      p126_bios_fail
+572++ 79AB              p126_bios_file_not_found:
+573++ 79AB 3E 03                ld      a,3
+574++ 79AD C3 C1 79             jp      p126_bios_fail
+575++ 79B0              p126_bios_bad_descriptor:
+576++ 79B0 3E 04                ld      a,4
+577++ 79B2 C3 C1 79             jp      p126_bios_fail
+578++ 79B5              p126_bios_bad_size:
+579++ 79B5 3E 05                ld      a,5
+580++ 79B7 C3 C1 79             jp      p126_bios_fail
+581++ 79BA              p126_bios_sector_error:
+582++ 79BA 3E 06                ld      a,6
+583++ 79BC C3 C1 79             jp      p126_bios_fail
+584++ 79BF              p126_bios_transport_error:
+585++ 79BF 3E 07                ld      a,7
+586++ 79C1              p126_bios_fail:
+587++ 79C1 32 14 7A             ld      (p126_bios_error),a
+588++ 79C4 3A 15 7A             ld      a,(p126_bios_disk_mode_active)
+589++ 79C7 B7                   or      a
+590++ 79C8 28 07                jr      z,.p126_bios_fail_restore_stack
+591++ 79CA CD 9D 79             call    p126_bios_restore_atm_video
+592++ 79CD AF                   xor     a
+593++ 79CE 32 15 7A             ld      (p126_bios_disk_mode_active),a
+594++ 79D1              .p126_bios_fail_restore_stack:
+595++ 79D1 2A 0D 7A             ld      hl,(p126_bios_saved_sp)
+596++ 79D4 F9                   ld      sp,hl
+597++ 79D5 3A 14 7A             ld      a,(p126_bios_error)
+598++ 79D8 FE 01                cp      1
+599++ 79DA 21 D3 7C             ld      hl,p126_bios_log_bad_selection
+600++ 79DD 28 26                jr      z,.p126_bios_log_failure
+601++ 79DF FE 02                cp      2
+602++ 79E1 21 F5 7C             ld      hl,p126_bios_log_bad_type
+603++ 79E4 28 1F                jr      z,.p126_bios_log_failure
+604++ 79E6 FE 03                cp      3
+605++ 79E8 21 13 7D             ld      hl,p126_bios_log_not_found
+606++ 79EB 28 18                jr      z,.p126_bios_log_failure
+607++ 79ED FE 04                cp      4
+608++ 79EF 21 36 7D             ld      hl,p126_bios_log_bad_descriptor
+609++ 79F2 28 11                jr      z,.p126_bios_log_failure
+610++ 79F4 FE 05                cp      5
+611++ 79F6 21 55 7D             ld      hl,p126_bios_log_bad_size
+612++ 79F9 28 0A                jr      z,.p126_bios_log_failure
+613++ 79FB FE 06                cp      6
+614++ 79FD 21 76 7D             ld      hl,p126_bios_log_sector_error
+615++ 7A00 28 03                jr      z,.p126_bios_log_failure
+616++ 7A02 21 96 7D             ld      hl,p126_bios_log_transport_error
+617++ 7A05              .p126_bios_log_failure:
+618++ 7A05 CD 73 6F             call    p126_catalog_log
+619++ 7A08 3A 14 7A             ld      a,(p126_bios_error)
+620++ 7A0B 37                   scf
+621++ 7A0C C9                   ret
+622++ 7A0D
+623++ 7A0D 00 00        p126_bios_saved_sp:        dw 0
+624++ 7A0F 1C C0        p126_bios_buffer_ptr:      dw P126_BIOS_FRAGMENT_DATA
+625++ 7A11 00           p126_bios_sectors_left:    db 0
+626++ 7A12 00           p126_bios_track:           db 0
+627++ 7A13 00           p126_bios_sector:          db 0
+628++ 7A14 00           p126_bios_error:           db 0
+629++ 7A15 00           p126_bios_disk_mode_active: db 0
+630++ 7A16 00           p126_bios_operation:       db 0
+631++ 7A17 00           p126_bios_frame_flags:     db 0
+632++ 7A18 00 00        p126_bios_payload_length:  dw 0
+633++ 7A1A 00 00        p126_bios_sequence:        dw 0
+634++ 7A1C
+635++ 7A1C              ; ATM-side progress markers for the selected BIOS load transaction.
+636++ 7A1C 5B 43 41 54  p126_bios_log_load_begin:       db "[CAT] BIOS LOAD BEGIN",13,10,0
+636++ 7A20 5D 20 42 49
+636++ 7A24 4F 53 20 4C
+636++ 7A28 4F 41 44 20
+636++ 7A2C 42 45 47 49
+636++ 7A30 4E 0D 0A 00
+637++ 7A34 5B 43 41 54  p126_bios_log_selection_resolved: db "[CAT] BIOS SELECTION RESOLVED",13,10,0
+637++ 7A38 5D 20 42 49
+637++ 7A3C 4F 53 20 53
+637++ 7A40 45 4C 45 43
+637++ 7A44 54 49 4F 4E
+637++ 7A48 20 52 45 53
+637++ 7A4C 4F 4C 56 45
+637++ 7A50 44 0D 0A 00
+638++ 7A54 5B 43 41 54  p126_bios_log_filename_prefix:   db "[CAT] BIOS FILE SELECTED: ",0
+638++ 7A58 5D 20 42 49
+638++ 7A5C 4F 53 20 46
+638++ 7A60 49 4C 45 20
+638++ 7A64 53 45 4C 45
+638++ 7A68 43 54 45 44
+638++ 7A6C 3A 20 00
+639++ 7A6F 5B 43 41 54  p126_bios_trace_state_prefix:   db "[CAT] TRDOS C=0A STATE BANKM/EXT/LEN/SP/ROM=",0
+639++ 7A73 5D 20 54 52
+639++ 7A77 44 4F 53 20
+639++ 7A7B 43 3D 30 41
+639++ 7A7F 20 53 54 41
+639++ 7A83 54 45 20 42
+639++ 7A87 41 4E 4B 4D
+639++ 7A8B 2F 45 58 54
+639++ 7A8F 2F 4C 45 4E
+639++ 7A93 2F 53 50 2F
+639++ 7A97 52 4F 4D 3D
+639++ 7A9B 00
+640++ 7A9C 5B 43 41 54  p126_bios_trace_name_prefix:    db "[CAT] TRDOS C=0A NAME=",0
+640++ 7AA0 5D 20 54 52
+640++ 7AA4 44 4F 53 20
+640++ 7AA8 43 3D 30 41
+640++ 7AAC 20 4E 41 4D
+640++ 7AB0 45 3D 00
+641++ 7AB3 5B 43 41 54  p126_bios_log_file_type_ok:      db "[CAT] BIOS FILE TYPE C OK",13,10,0
+641++ 7AB7 5D 20 42 49
+641++ 7ABB 4F 53 20 46
+641++ 7ABF 49 4C 45 20
+641++ 7AC3 54 59 50 45
+641++ 7AC7 20 43 20 4F
+641++ 7ACB 4B 0D 0A 00
+642++ 7ACF 5B 43 41 54  p126_bios_log_trdos_map_begin:   db "[CAT] TRDOS MAP SWITCH BEGIN",13,10,0
+642++ 7AD3 5D 20 54 52
+642++ 7AD7 44 4F 53 20
+642++ 7ADB 4D 41 50 20
+642++ 7ADF 53 57 49 54
+642++ 7AE3 43 48 20 42
+642++ 7AE7 45 47 49 4E
+642++ 7AEB 0D 0A 00
+643++ 7AEE 5B 43 41 54  p126_bios_log_trdos_map_done:    db "[CAT] TRDOS MAP SWITCH DONE",13,10,0
+643++ 7AF2 5D 20 54 52
+643++ 7AF6 44 4F 53 20
+643++ 7AFA 4D 41 50 20
+643++ 7AFE 53 57 49 54
+643++ 7B02 43 48 20 44
+643++ 7B06 4F 4E 45 0D
+643++ 7B0A 0A 00
+644++ 7B0C 5B 43 41 54  p126_bios_log_open_call:         db "[CAT] TRDOS OPEN C=0A CALL",13,10,0
+644++ 7B10 5D 20 54 52
+644++ 7B14 44 4F 53 20
+644++ 7B18 4F 50 45 4E
+644++ 7B1C 20 43 3D 30
+644++ 7B20 41 20 43 41
+644++ 7B24 4C 4C 0D 0A
+644++ 7B28 00
+645++ 7B29 5B 43 41 54  p126_bios_log_open_return:       db "[CAT] TRDOS OPEN C=0A RETURN",13,10,0
+645++ 7B2D 5D 20 54 52
+645++ 7B31 44 4F 53 20
+645++ 7B35 4F 50 45 4E
+645++ 7B39 20 43 3D 30
+645++ 7B3D 41 20 52 45
+645++ 7B41 54 55 52 4E
+645++ 7B45 0D 0A 00
+646++ 7B48 5B 43 41 54  p126_bios_log_descriptor_call:   db "[CAT] TRDOS DESCRIPTOR C=08 CALL",13,10,0
+646++ 7B4C 5D 20 54 52
+646++ 7B50 44 4F 53 20
+646++ 7B54 44 45 53 43
+646++ 7B58 52 49 50 54
+646++ 7B5C 4F 52 20 43
+646++ 7B60 3D 30 38 20
+646++ 7B64 43 41 4C 4C
+646++ 7B68 0D 0A 00
+647++ 7B6B 5B 43 41 54  p126_bios_log_descriptor_return: db "[CAT] TRDOS DESCRIPTOR C=08 RETURN",13,10,0
+647++ 7B6F 5D 20 54 52
+647++ 7B73 44 4F 53 20
+647++ 7B77 44 45 53 43
+647++ 7B7B 52 49 50 54
+647++ 7B7F 4F 52 20 43
+647++ 7B83 3D 30 38 20
+647++ 7B87 52 45 54 55
+647++ 7B8B 52 4E 0D 0A
+647++ 7B8F 00
+648++ 7B90 5B 43 41 54  p126_bios_log_file_open:        db "[CAT] BIOS FILE OPEN OK",13,10,0
+648++ 7B94 5D 20 42 49
+648++ 7B98 4F 53 20 46
+648++ 7B9C 49 4C 45 20
+648++ 7BA0 4F 50 45 4E
+648++ 7BA4 20 4F 4B 0D
+648++ 7BA8 0A 00
+649++ 7BAA 5B 43 41 54  p126_bios_log_size_ok:          db "[CAT] BIOS FILE SIZE OK",13,10,0
+649++ 7BAE 5D 20 42 49
+649++ 7BB2 4F 53 20 46
+649++ 7BB6 49 4C 45 20
+649++ 7BBA 53 49 5A 45
+649++ 7BBE 20 4F 4B 0D
+649++ 7BC2 0A 00
+650++ 7BC4 5B 43 41 54  p126_bios_log_read_begin:       db "[CAT] BIOS READ BEGIN",13,10,0
+650++ 7BC8 5D 20 42 49
+650++ 7BCC 4F 53 20 52
+650++ 7BD0 45 41 44 20
+650++ 7BD4 42 45 47 49
+650++ 7BD8 4E 0D 0A 00
+651++ 7BDC 5B 43 41 54  p126_bios_log_read_done:        db "[CAT] BIOS READ COMPLETE",13,10,0
+651++ 7BE0 5D 20 42 49
+651++ 7BE4 4F 53 20 52
+651++ 7BE8 45 41 44 20
+651++ 7BEC 43 4F 4D 50
+651++ 7BF0 4C 45 54 45
+651++ 7BF4 0D 0A 00
+652++ 7BF7 5B 43 41 54  p126_bios_log_video_restored:   db "[CAT] BIOS ATM VIDEO RESTORED",13,10,0
+652++ 7BFB 5D 20 42 49
+652++ 7BFF 4F 53 20 41
+652++ 7C03 54 4D 20 56
+652++ 7C07 49 44 45 4F
+652++ 7C0B 20 52 45 53
+652++ 7C0F 54 4F 52 45
+652++ 7C13 44 0D 0A 00
+653++ 7C17 5B 43 41 54  p126_bios_log_image_begin_tx:   db "[CAT] IMAGE BEGIN TX",13,10,0
+653++ 7C1B 5D 20 49 4D
+653++ 7C1F 41 47 45 20
+653++ 7C23 42 45 47 49
+653++ 7C27 4E 20 54 58
+653++ 7C2B 0D 0A 00
+654++ 7C2E 5B 43 41 54  p126_bios_log_image_begin_ok:   db "[CAT] IMAGE BEGIN HANDLER COMPLETE",13,10,0
+654++ 7C32 5D 20 49 4D
+654++ 7C36 41 47 45 20
+654++ 7C3A 42 45 47 49
+654++ 7C3E 4E 20 48 41
+654++ 7C42 4E 44 4C 45
+654++ 7C46 52 20 43 4F
+654++ 7C4A 4D 50 4C 45
+654++ 7C4E 54 45 0D 0A
+654++ 7C52 00
+655++ 7C53 5B 43 41 54  p126_bios_log_image_fragment_tx: db "[CAT] IMAGE FRAGMENT TX",13,10,0
+655++ 7C57 5D 20 49 4D
+655++ 7C5B 41 47 45 20
+655++ 7C5F 46 52 41 47
+655++ 7C63 4D 45 4E 54
+655++ 7C67 20 54 58 0D
+655++ 7C6B 0A 00
+656++ 7C6D 5B 43 41 54  p126_bios_log_image_fragment_ok: db "[CAT] IMAGE FRAGMENT HANDLER COMPLETE",13,10,0
+656++ 7C71 5D 20 49 4D
+656++ 7C75 41 47 45 20
+656++ 7C79 46 52 41 47
+656++ 7C7D 4D 45 4E 54
+656++ 7C81 20 48 41 4E
+656++ 7C85 44 4C 45 52
+656++ 7C89 20 43 4F 4D
+656++ 7C8D 50 4C 45 54
+656++ 7C91 45 0D 0A 00
+657++ 7C95 5B 43 41 54  p126_bios_log_image_finish_tx:  db "[CAT] IMAGE FINISH TX",13,10,0
+657++ 7C99 5D 20 49 4D
+657++ 7C9D 41 47 45 20
+657++ 7CA1 46 49 4E 49
+657++ 7CA5 53 48 20 54
+657++ 7CA9 58 0D 0A 00
+658++ 7CAD 5B 43 41 54  p126_bios_log_image_finish_ok:  db "[CAT] IMAGE FINISH HANDLER COMPLETE",13,10,0
+658++ 7CB1 5D 20 49 4D
+658++ 7CB5 41 47 45 20
+658++ 7CB9 46 49 4E 49
+658++ 7CBD 53 48 20 48
+658++ 7CC1 41 4E 44 4C
+658++ 7CC5 45 52 20 43
+658++ 7CC9 4F 4D 50 4C
+658++ 7CCD 45 54 45 0D
+658++ 7CD1 0A 00
+659++ 7CD3 5B 43 41 54  p126_bios_log_bad_selection:    db "[CAT] BIOS ERROR: BAD SELECTION",13,10,0
+659++ 7CD7 5D 20 42 49
+659++ 7CDB 4F 53 20 45
+659++ 7CDF 52 52 4F 52
+659++ 7CE3 3A 20 42 41
+659++ 7CE7 44 20 53 45
+659++ 7CEB 4C 45 43 54
+659++ 7CEF 49 4F 4E 0D
+659++ 7CF3 0A 00
+660++ 7CF5 5B 43 41 54  p126_bios_log_bad_type:         db "[CAT] BIOS ERROR: FILE TYPE",13,10,0
+660++ 7CF9 5D 20 42 49
+660++ 7CFD 4F 53 20 45
+660++ 7D01 52 52 4F 52
+660++ 7D05 3A 20 46 49
+660++ 7D09 4C 45 20 54
+660++ 7D0D 59 50 45 0D
+660++ 7D11 0A 00
+661++ 7D13 5B 43 41 54  p126_bios_log_not_found:        db "[CAT] BIOS ERROR: FILE NOT FOUND",13,10,0
+661++ 7D17 5D 20 42 49
+661++ 7D1B 4F 53 20 45
+661++ 7D1F 52 52 4F 52
+661++ 7D23 3A 20 46 49
+661++ 7D27 4C 45 20 4E
+661++ 7D2B 4F 54 20 46
+661++ 7D2F 4F 55 4E 44
+661++ 7D33 0D 0A 00
+662++ 7D36 5B 43 41 54  p126_bios_log_bad_descriptor:   db "[CAT] BIOS ERROR: DESCRIPTOR",13,10,0
+662++ 7D3A 5D 20 42 49
+662++ 7D3E 4F 53 20 45
+662++ 7D42 52 52 4F 52
+662++ 7D46 3A 20 44 45
+662++ 7D4A 53 43 52 49
+662++ 7D4E 50 54 4F 52
+662++ 7D52 0D 0A 00
+663++ 7D55 5B 43 41 54  p126_bios_log_bad_size:         db "[CAT] BIOS ERROR: SIZE/SECTORS",13,10,0
+663++ 7D59 5D 20 42 49
+663++ 7D5D 4F 53 20 45
+663++ 7D61 52 52 4F 52
+663++ 7D65 3A 20 53 49
+663++ 7D69 5A 45 2F 53
+663++ 7D6D 45 43 54 4F
+663++ 7D71 52 53 0D 0A
+663++ 7D75 00
+664++ 7D76 5B 43 41 54  p126_bios_log_sector_error:     db "[CAT] BIOS ERROR: SECTOR READ",13,10,0
+664++ 7D7A 5D 20 42 49
+664++ 7D7E 4F 53 20 45
+664++ 7D82 52 52 4F 52
+664++ 7D86 3A 20 53 45
+664++ 7D8A 43 54 4F 52
+664++ 7D8E 20 52 45 41
+664++ 7D92 44 0D 0A 00
+665++ 7D96 5B 43 41 54  p126_bios_log_transport_error:  db "[CAT] BIOS ERROR: IPC/DMA",13,10,0
+665++ 7D9A 5D 20 42 49
+665++ 7D9E 4F 53 20 45
+665++ 7DA2 52 52 4F 52
+665++ 7DA6 3A 20 49 50
+665++ 7DAA 43 2F 44 4D
+665++ 7DAE 41 0D 0A 00
+666++ 7DB2
 # file closed: p126_bios_loader.asm
-299+  7DB0
-300+  7DB0              ; Project125-derived ATM-native text console, relocated to window 2.
-301+  7DB0              ; Its renderer maps video pages only for each write and restores host pages.
-302+  7DB0                      PAGE 0
-303+  7DB0                      ORG #A000
+299+  7DB2
+300+  7DB2              ; Project125-derived ATM-native text console, relocated to window 2.
+301+  7DB2              ; Its renderer maps video pages only for each write and restores host pages.
+302+  7DB2                      PAGE 0
+303+  7DB2                      ORG #A000
 304+  A000                      INCLUDE "atm_host/p126_screen_console.asm"
 # file opened: p126_screen_console.asm
   1++ A000              ; =========================================================================
@@ -5386,76 +5390,76 @@ Value    Label
 0xC000   p126_bios2_file_start
 0xE000   p126_bios3_file_end
 0xC000   p126_bios3_file_start
-0x79AE   p126_bios_bad_descriptor
-0x79A4   p126_bios_bad_file_type
-0x799F   p126_bios_bad_selection
-0x79B3   p126_bios_bad_size
-0x7A0D   p126_bios_buffer_ptr
-0x7A13   p126_bios_disk_mode_active
-0x7938   p126_bios_enter_trdos_mode
-0x7A12   p126_bios_error
-0x79BF   p126_bios_fail
-0x79CF   p126_bios_fail.p126_bios_fail_restore_stack
-0x7A03   p126_bios_fail.p126_bios_log_failure
-0x79A9   p126_bios_file_not_found
+0x79B0   p126_bios_bad_descriptor
+0x79A6   p126_bios_bad_file_type
+0x79A1   p126_bios_bad_selection
+0x79B5   p126_bios_bad_size
+0x7A0F   p126_bios_buffer_ptr
+0x7A15   p126_bios_disk_mode_active
+0x793A   p126_bios_enter_trdos_mode
+0x7A14   p126_bios_error
+0x79C1   p126_bios_fail
+0x79D1   p126_bios_fail.p126_bios_fail_restore_stack
+0x7A05   p126_bios_fail.p126_bios_log_failure
+0x79AB   p126_bios_file_not_found
 0x2000   P126_BIOS_FILE_SIZE
 0xC01C   P126_BIOS_FRAGMENT_DATA
 0xC000   P126_BIOS_FRAME
-0x7A15   p126_bios_frame_flags
+0x7A17   p126_bios_frame_flags
 0x7607   p126_bios_load_selected
 0x76F2   p126_bios_load_selected.p126_bios_read_done
 0x76E4   p126_bios_load_selected.p126_bios_read_loop
-0x7D34   p126_bios_log_bad_descriptor
-0x7CD1   p126_bios_log_bad_selection
-0x7D53   p126_bios_log_bad_size
-0x7CF3   p126_bios_log_bad_type
-0x7B46   p126_bios_log_descriptor_call
-0x7B69   p126_bios_log_descriptor_return
-0x7B8E   p126_bios_log_file_open
-0x7AB1   p126_bios_log_file_type_ok
-0x7A52   p126_bios_log_filename_prefix
-0x7C2C   p126_bios_log_image_begin_ok
-0x7C15   p126_bios_log_image_begin_tx
-0x7CAB   p126_bios_log_image_finish_ok
-0x7C93   p126_bios_log_image_finish_tx
-0x7C6B   p126_bios_log_image_fragment_ok
-0x7C51   p126_bios_log_image_fragment_tx
-0x7A1A   p126_bios_log_load_begin
-0x7D11   p126_bios_log_not_found
-0x7B0A   p126_bios_log_open_call
-0x7B27   p126_bios_log_open_return
-0x7BC2   p126_bios_log_read_begin
-0x7BDA   p126_bios_log_read_done
-0x7D74   p126_bios_log_sector_error
+0x7D36   p126_bios_log_bad_descriptor
+0x7CD3   p126_bios_log_bad_selection
+0x7D55   p126_bios_log_bad_size
+0x7CF5   p126_bios_log_bad_type
+0x7B48   p126_bios_log_descriptor_call
+0x7B6B   p126_bios_log_descriptor_return
+0x7B90   p126_bios_log_file_open
+0x7AB3   p126_bios_log_file_type_ok
+0x7A54   p126_bios_log_filename_prefix
+0x7C2E   p126_bios_log_image_begin_ok
+0x7C17   p126_bios_log_image_begin_tx
+0x7CAD   p126_bios_log_image_finish_ok
+0x7C95   p126_bios_log_image_finish_tx
+0x7C6D   p126_bios_log_image_fragment_ok
+0x7C53   p126_bios_log_image_fragment_tx
+0x7A1C   p126_bios_log_load_begin
+0x7D13   p126_bios_log_not_found
+0x7B0C   p126_bios_log_open_call
+0x7B29   p126_bios_log_open_return
+0x7BC4   p126_bios_log_read_begin
+0x7BDC   p126_bios_log_read_done
+0x7D76   p126_bios_log_sector_error
 0x7836   p126_bios_log_selected_filename
 0x784C   p126_bios_log_selected_filename.p126_bios_log_filename_name
 0x7851   p126_bios_log_selected_filename.p126_bios_log_filename_name_loop
 0x7843   p126_bios_log_selected_filename.p126_bios_log_filename_prefix_loop
-0x7A32   p126_bios_log_selection_resolved
-0x7BA8   p126_bios_log_size_ok
-0x7D94   p126_bios_log_transport_error
-0x7ACD   p126_bios_log_trdos_map_begin
-0x7AEC   p126_bios_log_trdos_map_done
-0x7BF5   p126_bios_log_video_restored
-0x7A14   p126_bios_operation
-0x7A16   p126_bios_payload_length
-0x78E8   p126_bios_read_next_sector
-0x792D   p126_bios_read_next_sector.p126_bios_cursor_done
-0x7936   p126_bios_read_next_sector.p126_bios_read_failed
-0x792A   p126_bios_read_next_sector.p126_bios_same_track
-0x799B   p126_bios_restore_atm_video
-0x7A0B   p126_bios_saved_sp
-0x7A11   p126_bios_sector
+0x7A34   p126_bios_log_selection_resolved
+0x7BAA   p126_bios_log_size_ok
+0x7D96   p126_bios_log_transport_error
+0x7ACF   p126_bios_log_trdos_map_begin
+0x7AEE   p126_bios_log_trdos_map_done
+0x7BF7   p126_bios_log_video_restored
+0x7A16   p126_bios_operation
+0x7A18   p126_bios_payload_length
+0x78EA   p126_bios_read_next_sector
+0x792F   p126_bios_read_next_sector.p126_bios_cursor_done
+0x7938   p126_bios_read_next_sector.p126_bios_read_failed
+0x792C   p126_bios_read_next_sector.p126_bios_same_track
+0x799D   p126_bios_restore_atm_video
+0x7A0D   p126_bios_saved_sp
+0x7A13   p126_bios_sector
 0x0020   P126_BIOS_SECTOR_COUNT
-0x79B8   p126_bios_sector_error
+0x79BA   p126_bios_sector_error
 0x0100   P126_BIOS_SECTOR_SIZE
-0x7A0F   p126_bios_sectors_left
+0x7A11   p126_bios_sectors_left
 0x786C   p126_bios_send_frame
-0x78D6   p126_bios_send_frame.p126_bios_crc_done
+0x78D8   p126_bios_send_frame.p126_bios_crc_done
 0x78BF   p126_bios_send_frame.p126_bios_crc_header
-0x78CA   p126_bios_send_frame.p126_bios_crc_payload
-0x7A18   p126_bios_sequence
-0x7A9A   p126_bios_trace_name_prefix
+0x78CC   p126_bios_send_frame.p126_bios_crc_payload
+0x7A1A   p126_bios_sequence
+0x7A9C   p126_bios_trace_name_prefix
 0x77B0 X p126_bios_trace_search_state
 0x7823   p126_bios_trace_search_state.p126_bios_trace_name_loop
 0x7815   p126_bios_trace_search_state.p126_bios_trace_name_text
@@ -5463,10 +5467,10 @@ Value    Label
 0x77F9   p126_bios_trace_search_state.p126_bios_trace_rom_loop
 0x77BD   p126_bios_trace_search_state.p126_bios_trace_state_text
 0x77C6   p126_bios_trace_search_state.p126_bios_trace_state_values
-0x7A6D   p126_bios_trace_state_prefix
-0x7A10   p126_bios_track
-0x79BD   p126_bios_transport_error
-0x7946   p126_bios_trdos_call
+0x7A6F   p126_bios_trace_state_prefix
+0x7A12   p126_bios_track
+0x79BF   p126_bios_transport_error
+0x7948   p126_bios_trdos_call
 0xC100   p126_bootstrap_file_end
 0xC000   p126_bootstrap_file_start
 0x7174   p126_catalog_bios_loaded
