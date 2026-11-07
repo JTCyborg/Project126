@@ -692,5 +692,15 @@ x86_alu_high_flags:  db 0
 
 ; Fixed-origin probe used by IMAGE_FINISH to validate the page-05 gate path.
 x86_alu_overlay_probe_impl:
+        ; IMAGE_FINISH enters with A=3Ch, carry set and HL=1234h.
+        ; Check input AF/HL survived the resident gate, then return a
+        ; signature in both A and HL for the caller-side return check.
+        jp      nc,.overlay_probe_failed
+        cp      #3C
+        jr      nz,.overlay_probe_failed
+        ld      hl,#5AA5
         ld      a,#A5
+        ret
+.overlay_probe_failed:
+        xor     a
         ret
