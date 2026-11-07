@@ -10,21 +10,19 @@ P126_DEBUG_IO_TRACE EQU 0
 ;   0000h-000Fh, 0080h-0083h: 8237 address/count, controller and page registers.
 ;   0020h-0021h: 8259A master PIC register model and CPU acknowledge path.
 ;   0040h-0043h: 8253 channel programming, latches and static readback.
-;   0060h-0063h: initial XT-compatible 8255 PPI / keyboard interface.
+;   0060h-0063h: PCem-compatible XT keyboard/PPI port handler.
 ;   00E0h: retained 16-bit diagnostic test latch.
-;   Keyboard FIFO pushes raise master-PIC IRQ1; ATM input producer remains pending.
-;   DMA transfer engine and PIT clock/IRQ0 are separate, not-yet-implemented services.
+;   Keyboard FIFO is idle after reset; XT BAT response AAh is queued only
+;   when PB6 has a low-to-high edge. ATM keyboard input remains a future IPC
+;   producer; no physical NeoGS I/O is involved.
+;   DMA transfer engine and PIT clock/IRQ0 are separate services.
 ;
-; PPI compatibility slice:
-;   60h = port A / keyboard data (FIFO consumer when configured input).
-;   61h = port B / system control; bit-6 rising edge resets XT keyboard,
-;         bit 7 acknowledges/clears the current keyboard data latch.
-;   62h = port C input/output composition.
-;   63h = mode-set and bit-set/reset control register (mode 0 implemented).
-;   PPI reset defaults follow PCem/ppi.c: PA=00h, PB=40h.
-;
-; Keyboard FIFO bytes raise PIC IRQ1 when accepted. ATM keyboard input delivery
-; remains a future DMA/IPC producer; no physical NeoGS I/O is involved.
+; PCem keyboard_xt.c owns the observable 60h-63h handler:
+;   60h = keyboard data latch/FIFO, 61h = XT system-control PB,
+;   62h = board configuration/speaker status, 63h = open bus (FFh).
+; PCem ppi_reset() initializes PA=00h/PB=40h, while keyboard_xt.pb itself
+; starts at 00h. The XT handler reads its own PB latch, so this model keeps
+; the keyboard PB latch at 00h until the guest writes port 61h.
 
 x86_io_reset_impl:
         ld      hl,0
@@ -39,7 +37,8 @@ x86_io_reset_impl:
         ld      (x86_io_ppi_pc),a
         ld      a,#9B
         ld      (x86_io_ppi_control),a
-        ld      a,#40
+        ; keyboard_xt.pb is zero-initialized separately from ppi.pb=40h.
+        xor     a
         ld      (x86_io_ppi_pb),a
         ; 8259A master PIC reset state: no pending/in-service IRQs,
         ; all lines masked, XT vector base 08h.
@@ -307,36 +306,25 @@ x86_io_ppi_read8:
         or      a
         ret
 .ppi_read_c:
-        ; Port C combines external input pins and the output latch by nibble.
-        ld      a,(x86_io_ppi_control)
+        ; PCem keyboard_xt_read() generic XT profile:
+        ; PB3 selects video identification (CGA=6), otherwise FPU
+        ; identification (no FPU=Dh). Bit 5 reflects an enabled speaker.
+        ld      a,(x86_io_ppi_pb)
+        bit     3,a
+        jr      z,.ppi_pc_no_video_id
+        ld      a,#06
+        jr      .ppi_pc_speaker
+.ppi_pc_no_video_id:
+        ld      a,#0D
+.ppi_pc_speaker:
         ld      b,a
-        ld      a,(x86_io_ppi_pc)
-        ld      c,a
-        ld      a,(x86_io_ppi_port_c_input)
-        bit     3,b
-        jr      nz,.ppi_pc_upper_input
-        ld      a,c
-        and     #F0
-        ld      d,a
-        ld      a,(x86_io_ppi_port_c_input)
-        and     #0F
-        or      d
-        jr      .ppi_pc_lower
-.ppi_pc_upper_input:
-        and     #F0
-        ld      d,a
-        ld      a,c
-        and     #0F
-        or      d
-.ppi_pc_lower:
-        bit     0,b
-        jr      nz,.ppi_pc_done
-        and     #F0
-        ld      d,a
-        ld      a,c
-        and     #0F
-        or      d
-.ppi_pc_done:
+        ld      a,(x86_io_ppi_pb)
+        and     3
+        cp      3
+        ld      a,b
+        jr      nz,.ppi_pc_return
+        or      #20
+.ppi_pc_return:
         or      a
         ret
 
@@ -705,7 +693,8 @@ x86_io_ppi_write8:
         or      a
         ret
 .ppi_write_b:
-        ; XT keyboard reset is triggered by a low-to-high transition on PB6.
+        ; Match PCem keyboard_xt_write(61h): detect PB6 rising edge,
+        ; store the keyboard PB latch, then process PB7 acknowledge.
         ld      a,(x86_io_ppi_pb)
         and     #40
         ld      b,a
@@ -722,51 +711,25 @@ x86_io_ppi_write8:
         ld      (x86_io_ppi_pb),a
         bit     7,a
         jr      z,.ppi_pb_done
+        ; PCem clears the current data latch and deasserts the keyboard IRQ.
         xor     a
         ld      (x86_io_keyboard_last),a
+        ld      (x86_io_keyboard_head),a
+        ld      (x86_io_keyboard_tail),a
+        ld      (x86_io_keyboard_count),a
+        ld      a,(x86_io_pic_irr)
+        and     #FD
+        ld      (x86_io_pic_irr),a
+        jp      x86_io_pic_update_pending
 .ppi_pb_done:
         or      a
         ret
 .ppi_write_c:
-        ld      a,(x86_io_ppi_write_value)
-        ld      (x86_io_ppi_pc),a
+        ; PCem XT keyboard handler ignores writes to port 62h.
         or      a
         ret
 .ppi_write_control:
-        ld      a,(x86_io_ppi_write_value)
-        bit     7,a
-        jr      z,.ppi_bit_set_reset
-        ; Mode-set operation. XT BIOS selects mode 0 (control word 99h).
-        ld      (x86_io_ppi_control),a
-        xor     a
-        ld      (x86_io_ppi_pb),a
-        ld      (x86_io_ppi_pc),a
-        or      a
-        ret
-.ppi_bit_set_reset:
-        ; Bit set/reset: D3..D1 select PC bit, D0 selects set/reset.
-        ld      b,a
-        and     #0E
-        srl     a
-        ld      e,a
-        ld      d,0
-        ld      hl,x86_io_ppi_pc_masks
-        add     hl,de
-        ld      a,(hl)
-        ld      c,a
-        ld      a,(x86_io_ppi_pc)
-        bit     0,b
-        jr      z,.ppi_bsr_clear
-        or      c
-        jr      .ppi_bsr_store
-.ppi_bsr_clear:
-        ld      a,c
-        cpl
-        ld      c,a
-        ld      a,(x86_io_ppi_pc)
-        and     c
-.ppi_bsr_store:
-        ld      (x86_io_ppi_pc),a
+        ; PCem XT keyboard handler ignores writes to port 63h.
         or      a
         ret
 
@@ -941,7 +904,6 @@ x86_io_log_nibble:
         call    x86_io_log_char
         ret
 
-x86_io_ppi_pc_masks: db #01,#02,#04,#08,#10,#20,#40,#80
 x86_io_log_prefix:    db "[IO] ",0
 x86_io_log_in:        db "IN",0
 x86_io_log_out:       db "OUT",0
@@ -965,9 +927,8 @@ x86_io_word_value: dw 0
 x86_io_word_low: db 0
 x86_io_word_high: db 0
 
-x86_io_ppi_pb: db #40
+x86_io_ppi_pb: db 0
 x86_io_ppi_pc: db 0
-x86_io_ppi_control: db #9B
 x86_io_ppi_write_value: db 0
 x86_io_write_value: db 0
 
@@ -989,10 +950,6 @@ x86_io_pic_bit_masks: db #01,#02,#04,#08,#10,#20,#40,#80
 x86_io_pic_higher_masks: db #00,#01,#03,#07,#0F,#1F,#3F,#7F
 
 ; 8237 register state: four address/count pairs, page latches and controller.
-; Deterministic XT profile switch input (generic XT/no-FPU default). This
-; value remains a profile parameter until the ATM-PC board switches are set.
-x86_io_ppi_port_c_input: db #0D
-
 x86_io_keyboard_fifo: defs 16,0
 x86_io_keyboard_head: db 0
 x86_io_keyboard_tail: db 0
