@@ -283,6 +283,34 @@ p126_ipc_validate_frame::
         xor     a
         ret
 .p126_frame_magic:
+        ; Preserve the validator result while reporting the actual source
+        ; address and four bytes. This distinguishes a bad header from a
+        ; wrong ATM page mapping at C000h before DMA is armed.
+        push    af
+        push    hl
+        push    de
+        push    ix
+        ld      hl,p126_ipc_log_bad_magic_ptr
+        call    p126_ipc_debug_string
+        ld      hl,(p126_ipc_frame_ptr)
+        ld      a,h
+        call    p126_ipc_debug_hex_byte
+        ld      a,l
+        call    p126_ipc_debug_hex_byte
+        ld      hl,p126_ipc_log_bad_magic_data
+        call    p126_ipc_debug_string
+        ld      ix,(p126_ipc_frame_ptr)
+        ld      b,4
+.p126_bad_magic_dump:
+        ld      a,(ix+0)
+        call    p126_ipc_debug_hex_byte
+        inc     ix
+        djnz    .p126_bad_magic_dump
+        call    p126_ipc_debug_crlf
+        pop     ix
+        pop     de
+        pop     hl
+        pop     af
         ld      a,P126_STATUS_BAD_MAGIC
         scf
         ret
@@ -630,6 +658,8 @@ p126_ipc_debug_string:
 
 p126_ipc_log_crc_calculated:      db "[ATM IPC] CRC CALCULATED=",0
 p126_ipc_log_crc_expected:        db " FRAME CRC=",0
+p126_ipc_log_bad_magic_ptr: db "[ATM IPC] BAD MAGIC PTR=",0
+p126_ipc_log_bad_magic_data: db " DATA=",0
 p126_ipc_log_dma_tx_begin:        db "[ATM IPC] DMA TX BEGIN",13,10,0
 p126_ipc_log_dma_tx_validate_ok:  db "[ATM IPC] FRAME VALID",13,10,0
 p126_ipc_log_dma_tx_validate_bad: db "[ATM IPC] FRAME VALIDATION FAILED",13,10,0
