@@ -41,6 +41,13 @@ p126_catalog_initialize::
         call    p126_catalog_log
         ld      a, (p126_catalog_total)
         call    p126_host_debug_hex_byte
+        push    bc
+        ld      bc,#00EF
+        ld      a,13
+        out     (c),a
+        ld      a,10
+        out     (c),a
+        pop     bc
         ld      a, 1
         ld      (p126_catalog_enabled), a
         ld      hl, p126_log_draw_begin
@@ -606,7 +613,7 @@ p126_log_io_error:             db "[CAT] IO RESULT=ERROR",13,10,0
 p126_log_io_success:           db "[CAT] IO RESULT=OK",13,10,0
 p126_log_read_ok:              db "[CAT] read_disk OK",13,10,0
 p126_log_read_failed:          db "[CAT] read_disk CARRY=1",13,10,0
-p126_log_count_done:           db "[CAT] directory COUNT DONE",13,10,0
+p126_log_count_done:           db "[CAT] FILE COUNT=",0
 p126_log_draw_begin:           db "[CAT] DRAW BEGIN",13,10,0
 p126_log_draw_done:            db "[CAT] DRAW DONE",13,10,0
 p126_log_key_seen:             db "[CAT] CURSOR KEY DETECTED",13,10,0
