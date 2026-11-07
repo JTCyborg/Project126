@@ -381,7 +381,12 @@ p126_ipc_validate_tx_frame::
 .p126_tx_min_ok:
         ld      a,b
         cp      #40
-        jp      nc,.p126_tx_bad
+        jr      c,.p126_tx_size_ok
+        jp      nz,.p126_tx_bad
+        ld      a,c
+        or      a
+        jp      nz,.p126_tx_bad
+.p126_tx_size_ok:
         push    hl
         pop     ix
         ld      a,(ix+0)
