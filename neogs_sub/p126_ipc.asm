@@ -936,12 +936,12 @@ p126_ngs_overlay_win2_selftest:
         ld      a,P126_NGS_X86IO_OVERLAY_PAGE
         rrca
         out     (P126_NGS_MPAGEX_PORT),a
-        ld      a,(#CFFF)
+        ld      a,(#FFFF)
         ld      (p126_ngs_overlay_test_old04),a
         ld      a,P126_NGS_OVERLAY_TEST_PAGE
         rrca
         out     (P126_NGS_MPAGEX_PORT),a
-        ld      a,(#CFFF)
+        ld      a,(#FFFF)
         ld      (p126_ngs_overlay_test_old05),a
 
         ; Stage 01: prove WIN3 can write/read page04 with a nonzero marker.
@@ -951,8 +951,8 @@ p126_ngs_overlay_win2_selftest:
         rrca
         out     (P126_NGS_MPAGEX_PORT),a
         ld      a,#3C
-        ld      (#CFFF),a
-        ld      a,(#CFFF)
+        ld      (#FFFF),a
+        ld      a,(#FFFF)
         cp      #3C
         jp      nz,.overlay_win2_test_failed
 
@@ -972,8 +972,8 @@ p126_ngs_overlay_win2_selftest:
         rrca
         out     (P126_NGS_MPAGEX_PORT),a
         ld      a,#5A
-        ld      (#CFFF),a
-        ld      a,(#CFFF)
+        ld      (#FFFF),a
+        ld      a,(#FFFF)
         cp      #5A
         jp      nz,.overlay_win2_test_failed
 
@@ -1002,7 +1002,7 @@ p126_ngs_overlay_win2_selftest:
         ld      a,P126_NGS_OVERLAY_TEST_PAGE
         rrca
         out     (P126_NGS_MPAGEX_PORT),a
-        ld      a,(#CFFF)
+        ld      a,(#FFFF)
         cp      #A5
         jp      nz,.overlay_win2_test_failed
 
@@ -1016,18 +1016,18 @@ p126_ngs_overlay_win2_selftest:
         ld      a,P126_NGS_X86IO_OVERLAY_PAGE
         rrca
         out     (P126_NGS_MPAGEX_PORT),a
-        ld      a,(#CFFF)
+        ld      a,(#FFFF)
         cp      #C3
         jp      nz,.overlay_win2_test_failed
 
         ; Restore both original bytes through WIN3 after all checks pass.
         ld      a,(p126_ngs_overlay_test_old04)
-        ld      (#CFFF),a
+        ld      (#FFFF),a
         ld      a,P126_NGS_OVERLAY_TEST_PAGE
         rrca
         out     (P126_NGS_MPAGEX_PORT),a
         ld      a,(p126_ngs_overlay_test_old05)
-        ld      (#CFFF),a
+        ld      (#FFFF),a
         jr      .overlay_win2_test_restore_maps
 
 .overlay_win2_test_config_failed:
@@ -1043,12 +1043,12 @@ p126_ngs_overlay_win2_selftest:
         rrca
         out     (P126_NGS_MPAGEX_PORT),a
         ld      a,(p126_ngs_overlay_test_old04)
-        ld      (#CFFF),a
+        ld      (#FFFF),a
         ld      a,P126_NGS_OVERLAY_TEST_PAGE
         rrca
         out     (P126_NGS_MPAGEX_PORT),a
         ld      a,(p126_ngs_overlay_test_old05)
-        ld      (#CFFF),a
+        ld      (#FFFF),a
         call    p126_ngs_overlay_test_restore_maps
         scf
         ret
