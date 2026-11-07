@@ -220,6 +220,23 @@ p126_ngs_ipc_dma_receive_frame::
         ld      hl,p126_ngs_ipc_log_dma_end
         call    p126_ngs_ipc_log
 
+        ; Capture the actual bytes visible through WIN3 after DMA. This
+        ; distinguishes an aperture/addressing problem from a bad validator.
+        ld      hl,p126_ngs_ipc_log_rx_first4
+        call    p126_ngs_ipc_log
+        ld      ix,#C000
+        ld      b,4
+.p126_ngs_rx_dump_loop:
+        ld      a,(ix+0)
+        call    p126_ngs_ipc_log_hex_byte_inline
+        inc     ix
+        djnz    .p126_ngs_rx_dump_loop
+        ld      bc,#00EF
+        ld      a,13
+        out     (c),a
+        ld      a,10
+        out     (c),a
+
         ; Derive exact frame size from the fixed header's payload length.
         ld      a,(#C00C)
         ld      e,a
@@ -364,8 +381,26 @@ p126_ngs_ipc_log_bad_length:      db "[NGS] DMA FRAME LENGTH INVALID",13,10,0
 p126_ngs_ipc_log_dma_stopped:     db "[NGS] DMA STOPPED",13,10,0
 p126_ngs_ipc_log_dma_page_mapped: db "[NGS] DMA PAGE 42 MAPPED",13,10,0
 p126_ngs_ipc_log_dma_end:         db "[NGS] DMA END RECEIVED",13,10,0
+p126_ngs_ipc_log_rx_first4:       db "[NGS] DMA RX FIRST4=",0
 p126_ngs_ipc_log_frame_valid:     db "[NGS] DMA FRAME VALID",13,10,0
 p126_ngs_ipc_log_frame_rejected:  db "[NGS] DMA FRAME REJECTED STATUS=",0
+
+; Print A as two hex digits without a line ending. Preserves AF/BC.
+p126_ngs_ipc_log_hex_byte_inline:
+        push    af
+        push    bc
+        rrca
+        rrca
+        rrca
+        rrca
+        call    p126_ngs_ipc_log_hex_nibble
+        pop     bc
+        pop     af
+        push    af
+        and     #0F
+        call    p126_ngs_ipc_log_hex_nibble
+        pop     af
+        ret
 
 ; Print a status byte as two hex digits followed by CR/LF. Preserves AF/BC.
 p126_ngs_ipc_log_hex_byte:
