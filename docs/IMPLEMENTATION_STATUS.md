@@ -932,3 +932,13 @@ All device models execute as software on NeoGS. NeoGS must not issue guest IN/OU
 - On completion the map is restored to WIN2/page04 and WIN3/page42. The boot log reports [NGS] WIN2 MAP/GATE TEST PASS or [NGS] WIN2 MAP/GATE TEST FAIL. Failure keeps X86IO_READY clear and blocks BIOS bring-up.
 - BUILD PASS: [GitHub Actions run 42398073825](https://github.com/JTCyborg/Project126/actions/runs/42398073825), commit 99f007da68aacc57dd0ff9d87a568b1d4df10600. X86CORE.C 16,322/16,384 bytes; X86IO.C 796/4,096 bytes; all assembly and TR-DOS packaging 0 errors/0 warnings.
 - Physical execution remains pending. This exercises one page05→page04→page05 nested return; deeper nesting, repeated calls, register/alternate-register preservation and physical stack limits are not yet proven. No BIOS POST or CPU functional-suite pass is implied.
+
+
+## 2026-11-07 — X86ALU moved to fixed-origin page05 overlay
+
+- Moved the 1,175-byte 8086 ALU/flags implementation out of the 16 KiB resident image into X86ALU.C at logical origin 8000h, physical page05/selector82. X86IO remains page04/selector02 at 796 bytes.
+- Added resident wrappers through the common WIN2 call gate for the ten ALU entry points used by x86_exec: ADD/SUB/ADC/SBB/LOGIC in 8-bit and 16-bit forms. Internal ALU helper calls remain within page05.
+- Added IMAGE kind02, destination selector82, readback verification, and an X86ALU gate probe. IMAGE_FINISH calls x86_alu_overlay_probe, checks A=A5 and verifies that WIN2 returns to page04 before publishing X86ALU_READY.
+- ATM now uses one shared fixed-profile loader for X86IO.C and X86ALU.C. Both files are packaged into TR-DOS; build script and CI artifact validate/include X86ALU.C. BIOS execution now waits for X86IO_READY, X86ALU_READY and BIOS_IMAGE_READY.
+- BUILD PASS: [GitHub Actions run 42398846093](https://github.com/JTCyborg/Project126/actions/runs/42398846093), commit 94ac5ba2a2cbb338af0e0bb1af8b1efd826a469a. X86CORE.C 15,610/16,384 bytes (774 free); X86IO.C 796/4,096; X86ALU.C 1,175/4,096. Assembly and TR-DOS packaging: 0 errors, 0 warnings.
+- This is a source/build/package pass only. Physical X86ALU transfer, page05 readback, gate probe and ALU instruction execution are unverified. The dynamic allocator, module table/manifest, generic module loading, unload/refcounting and deeper nested-call validation remain pending.
