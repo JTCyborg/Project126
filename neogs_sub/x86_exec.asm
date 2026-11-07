@@ -2343,7 +2343,9 @@ x86_exec_string_adjust_si:
 
 x86_exec_string_adjust_di:
         ld      hl,(x86_reg_di)
-        ld      de,(x86_exec_string_width)
+        ld      a,(x86_exec_string_width)
+        ld      e,a
+        ld      d,0
         ld      a,(x86_reg_flags+1)
         bit     2,a
         jr      nz,.string_di_decrement
