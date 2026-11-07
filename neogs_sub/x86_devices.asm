@@ -325,7 +325,7 @@ x86_dev_pit_write8:
         call    x86_dev_pit_decode
         ret     c
         cp      3
-        jr      z,.pit_write_control
+        jp      z,.pit_write_control
         ld      (x86_dev_pit_channel),a
         ld      e,a
         ld      d,0
