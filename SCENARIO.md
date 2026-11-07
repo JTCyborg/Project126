@@ -1452,3 +1452,13 @@ This is an observational diagnostic; it does not change guest CPU state.
 No BIOS POST pass is claimed. Use the next target log to identify whether
 the defect is in BIOS image mapping, CMP flag generation, or JZ condition
 handling before applying a functional fix.
+
+
+## 2026-11-07 — BIOS first port-table boundary confirmed
+
+The latest target log confirms that the first table terminator is read correctly:
+`LODSB` reads `FF` at `F000:E0AF`, leaving `SI=E0B0`; `CMP AL,FF` produces `FLAGS=0046` (ZF=1), and `JZ` lands at `F000:E0BF`. The first table therefore exits normally. The earlier diagnostic stop was intentional and occurred before `XOR DH,03` / `JNZ E06E` could run; it was not a CPU fault or BIOS hang.
+
+The BIOS source shows that `E0BF` begins the table-loop exit logic. The first terminator toggles `DH` from 0 to 3 and returns to `E06E` for the second table. The second table occupies `E0B0..E0BA` and contains the pairs `BF/00`, `B8/01`, `D8/01`, `F2/08`, `B9/00`, followed by `FF`. Its terminator should leave `SI=E0BB`; `XOR DH,03` should then clear DH and set ZF, so `JNZ E06E` must fall through to `E0C4`, where RAM sizing begins.
+
+The temporary diagnostic now targets this second terminator and runs four instructions from its `CMP`: `CMP`, `JZ`, `XOR DH,03`, `JNZ`. Expected stop: `CS:IP=F000:E0C4`, `SI=E0BB`, and `DH=00`. This remains an observational stop, not a BIOS POST pass. The next target trace will determine whether execution reaches the RAM test at `E0C4`.
