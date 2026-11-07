@@ -45,10 +45,63 @@ x86_cpu_fetch16:
 ; One architectural instruction boundary. The dispatcher intentionally
 ; rejects unknown opcodes rather than silently advancing or corrupting state.
 x86_cpu_step:
+        xor     a
+        ld      (x86_exec_prefix_seg),a
+        ld      (x86_exec_prefix_rep),a
+        ld      (x86_exec_prefix_lock),a
+
+x86_cpu_step_fetch_opcode:
         call    x86_cpu_fetch8
         ret     c
         ld      (x86_exec_opcode),a
 
+        ; Prefix groups: segment override, LOCK, REPNE and REP/REPE.
+        cp      #26
+        jp      z,.prefix_es
+        cp      #2E
+        jp      z,.prefix_cs
+        cp      #36
+        jp      z,.prefix_ss
+        cp      #3E
+        jp      z,.prefix_ds
+        cp      #F0
+        jp      z,.prefix_lock
+        cp      #F2
+        jp      z,.prefix_repne
+        cp      #F3
+        jp      z,.prefix_rep
+        jp      .dispatch_opcode
+
+.prefix_es:
+        ld      a,1
+        ld      (x86_exec_prefix_seg),a
+        jp      x86_cpu_step_fetch_opcode
+.prefix_cs:
+        ld      a,2
+        ld      (x86_exec_prefix_seg),a
+        jp      x86_cpu_step_fetch_opcode
+.prefix_ss:
+        ld      a,3
+        ld      (x86_exec_prefix_seg),a
+        jp      x86_cpu_step_fetch_opcode
+.prefix_ds:
+        ld      a,4
+        ld      (x86_exec_prefix_seg),a
+        jp      x86_cpu_step_fetch_opcode
+.prefix_lock:
+        ld      a,1
+        ld      (x86_exec_prefix_lock),a
+        jp      x86_cpu_step_fetch_opcode
+.prefix_repne:
+        ld      a,1
+        ld      (x86_exec_prefix_rep),a
+        jp      x86_cpu_step_fetch_opcode
+.prefix_rep:
+        ld      a,2
+        ld      (x86_exec_prefix_rep),a
+        jp      x86_cpu_step_fetch_opcode
+
+.dispatch_opcode:
         cp      #06
         jp      c,x86_exec_add_family
         cp      #27
@@ -583,6 +636,31 @@ x86_exec_adc_sbb16:
         ld      hl,(x86_exec_adc_sbb_lhs16)
         jp      nz,x86_alu_sbb16
         jp      x86_alu_adc16
+
+; Resolve the current default data segment with the active segment override.
+; OUT HL=segment. Prefix codes: ES=1, CS=2, SS=3, DS=4; zero means DS.
+x86_exec_get_data_segment:
+        ld      a,(x86_exec_prefix_seg)
+        or      a
+        jr      nz,.segment_override
+        ld      hl,(x86_reg_ds)
+        ret
+.segment_override:
+        dec     a
+        add     a,a
+        ld      e,a
+        ld      d,0
+        ld      hl,x86_exec_segment_table
+        add     hl,de
+        ld      e,(hl)
+        inc     hl
+        ld      d,(hl)
+        ex      de,hl
+        ld      e,(hl)
+        inc     hl
+        ld      d,(hl)
+        ex      de,hl
+        ret
 
 ; 06/0E/16/1E PUSH ES/CS/SS/DS; 07/17/1F POP ES/SS/DS.
 ; POP SS arms the same one-instruction interrupt-inhibit latch as MOV SS.
@@ -2374,7 +2452,7 @@ x86_exec_moffs:
 
 ; Convert DS:offset into the Project126 physical-address scratch triple.
 x86_exec_moffs_make_address:
-        ld      hl,(x86_reg_ds)
+        call    x86_exec_get_data_segment
         ld      de,(x86_exec_moffs_offset)
         jp      x86_cpu_calc_phys
 
@@ -2673,6 +2751,11 @@ x86_exec_hlt:
         or      a
         ret
 
+x86_exec_prefix_seg: db 0
+x86_exec_prefix_rep: db 0
+x86_exec_prefix_lock: db 0
+x86_exec_segment_table:
+        dw x86_reg_es,x86_reg_cs,x86_reg_ss,x86_reg_ds
 x86_exec_fetch_byte: db 0
 x86_exec_imm_low: db 0
 x86_exec_opcode: db 0
