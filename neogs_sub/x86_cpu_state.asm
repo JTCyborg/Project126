@@ -45,6 +45,7 @@ x86_cpu_reset:
         ld      (x86_pending_irq),a
         ld      (x86_pending_nmi),a
         ld      (x86_irq_inhibit),a
+        ld      (x86_tf_pending),a
         ld      a,8
         ld      (x86_irq_vector),a
         ret
@@ -570,6 +571,8 @@ x86_halted:      db 0
 x86_pending_irq: db 0
 x86_pending_nmi: db 0
 x86_irq_inhibit: db 0
+; Set from TF at instruction start; consumed at the following boundary.
+x86_tf_pending: db 0
 x86_irq_vector: db 8
 x86_phys_addr: db 0,0,0
 x86_mem_data:  db 0
