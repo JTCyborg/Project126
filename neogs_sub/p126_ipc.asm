@@ -852,18 +852,18 @@ p126_ngs_image_finish:
         ; the X86IO mapping and nested-gate self-tests have completed.
         call    p126_ngs_overlay_win2_selftest
         jr      nc,.image_finish_x86io_map_ok
-        ld      hl,p126_ngs_overlay_win2_test_fail_log
-        call    p126_ngs_ipc_log
+        call    p126_ngs_overlay_log_test_failure
         jr      .image_finish_bad
 .image_finish_x86io_map_ok:
         ; The self-test leaves physical page 04h selected in WIN2.
         ; Keep the nested-call gate's software selector synchronized.
         ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
         ld      (p126_overlay_current_selector),a
+        ld      a,5
+        ld      (p126_ngs_overlay_test_fail_stage),a
         call    p126_ngs_overlay_gate_selftest
         jr      nc,.image_finish_gate_ok
-        ld      hl,p126_ngs_overlay_win2_test_fail_log
-        call    p126_ngs_ipc_log
+        call    p126_ngs_overlay_log_test_failure
         jr      .image_finish_bad
 .image_finish_gate_ok:
         ld      hl,p126_ngs_overlay_win2_test_pass_log
@@ -935,7 +935,9 @@ p126_ngs_overlay_win2_selftest:
         ld      a,(#CFFF)
         ld      (p126_ngs_overlay_test_old05),a
 
-        ; WIN2 page 04h must expose the exact same physical byte.
+        ; Stage 01: WIN2 page 04h read must match the WIN3 reference.
+        ld      a,1
+        ld      (p126_ngs_overlay_test_fail_stage),a
         ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
         out     (P126_NGS_OVERLAY_WINDOW_PORT),a
         ld      a,(#BFFF)
@@ -944,7 +946,9 @@ p126_ngs_overlay_win2_selftest:
         cp      b
         jr      nz,.overlay_win2_test_failed
 
-        ; WIN2 page 05h must expose the same byte as WIN3/MPAGEX.
+        ; Stage 02: WIN2 page 05h read must match the WIN3 reference.
+        ld      a,2
+        ld      (p126_ngs_overlay_test_fail_stage),a
         ld      a,P126_NGS_OVERLAY_TEST_PAGE
         rrca
         out     (P126_NGS_OVERLAY_WINDOW_PORT),a
@@ -954,7 +958,9 @@ p126_ngs_overlay_win2_selftest:
         cp      b
         jr      nz,.overlay_win2_test_failed
 
-        ; Verify writes through WIN2 are visible through WIN3 on page 05h.
+        ; Stage 03: WIN2 page 05h write must be visible through WIN3.
+        ld      a,3
+        ld      (p126_ngs_overlay_test_fail_stage),a
         ld      a,#55
         ld      (#BFFF),a
         ld      a,P126_NGS_OVERLAY_TEST_PAGE
@@ -964,7 +970,9 @@ p126_ngs_overlay_win2_selftest:
         cp      #55
         jr      nz,.overlay_win2_test_failed
 
-        ; Verify writes through WIN2 are visible through WIN3 on page 04h.
+        ; Stage 04: WIN2 page 04h write must be visible through WIN3.
+        ld      a,4
+        ld      (p126_ngs_overlay_test_fail_stage),a
         ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
         out     (P126_NGS_OVERLAY_WINDOW_PORT),a
         ld      a,#AA
@@ -990,6 +998,8 @@ p126_ngs_overlay_win2_selftest:
         jr      .overlay_win2_test_restore_maps
 
 .overlay_win2_test_failed:
+        ; Emit the exact failed phase before restoring the physical pages.
+        call    p126_ngs_overlay_log_test_failure
         ; Best-effort restoration even when one WIN2 selector is incorrect.
         ld      a,P126_NGS_X86IO_OVERLAY_PAGE
         rrca
@@ -1092,8 +1102,16 @@ p126_ngs_overlay_test_restore_maps:
 
 p126_ngs_overlay_test_old04: db 0
 p126_ngs_overlay_test_old05: db 0
+p126_ngs_overlay_test_fail_stage: db 0
+p126_ngs_overlay_test_fail_prefix: db "[NGS] WIN2 FAIL STAGE ",0
 p126_ngs_overlay_win2_test_pass_log: db "[NGS] WIN2 MAP/GATE TEST PASS",13,10,0
-p126_ngs_overlay_win2_test_fail_log: db "[NGS] WIN2 MAP/GATE TEST FAIL",13,10,0
+
+p126_ngs_overlay_log_test_failure:
+        ld      hl,p126_ngs_overlay_test_fail_prefix
+        call    p126_ngs_ipc_log
+        ld      a,(p126_ngs_overlay_test_fail_stage)
+        call    p126_ngs_ipc_log_hex_byte_inline
+        jp      p126_ngs_ipc_log_crlf
 
 p126_ngs_image_active:       db 0
 p126_ngs_image_received:     db 0
