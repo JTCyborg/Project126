@@ -1222,3 +1222,21 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 - IMAGE_FINISH runs the ALU probe through the gate, verifies A=A5 and that the previous page04 selector is restored, then publishes X86ALU_READY. BIOS now waits for X86IO_READY, X86ALU_READY and BIOS_IMAGE_READY.
 - TR-DOS packaging and CI artifact include X86ALU.C. BUILD PASS: run [42399458157](https://github.com/JTCyborg/Project126/actions/runs/42399458157), commit 705a0d5e41909a2cd42654f9095d7dfa43a57669. X86CORE 15,632/16,384 (752 free), X86IO 796/4,096, X86ALU 1,187/4,096; 0 errors, 0 warnings.
 - Physical X86ALU transfer, probe and arithmetic execution remain unverified. Dynamic allocator/manifest and generic module loading remain the next manager tasks.
+
+
+## 2026-11-07 — first 8259A master PIC register slice
+
+- Added a software register model for guest ports 0020h–0021h in `neogs_sub/x86_io.asm`. It is part of the existing X86IO overlay; no resident image limit or physical memory-map change was made.
+- Implemented reset state (vector base 08h, IMR=FFh, IRR/ISR=00h), ICW1 initialization, ICW2 vector-base programming, ICW3/ICW4 sequence consumption, IMR read/write, OCW3 IRR/ISR read selection, and specific/non-specific EOI.
+- The model is deliberately only a register-level slice. IRQ producers, IRQ0/IRQ1 sources, priority arbitration, CPU interrupt acknowledge/INTA integration, and full 8259A modes remain pending. No BIOS POST pass is inferred.
+- Code commits: `075eeaea08932a414d656f2f02d97ff0920e5138` (PIC model) and `8d1ece0b6ef70576177c1752416867f16a390034` (module header and relative-branch range correction).
+- GitHub Actions build run [42404453625](https://github.com/JTCyborg/Project126/actions/runs/42404453625) was triggered for the code commit; its assembly/package result must be checked before calling this BUILD PASS. No target execution or PIC register self-test has been performed.
+
+## 2026-11-07 — BIOS1-specific I/O trace clarification
+
+- Inspected the actual selected `BIOS1.C` source image `bios/27c64d.bin`. Its embedded identification string is `BIOS V1.11. Copyright 1986,87 Central Point Software, Inc.`, with date string `07/30/87`.
+- Important source distinction: `bios/bios.asm` is documented in the profile as the source family for `BIOS2.C`, not `BIOS1.C`. Its generic Turbo XT port list must not be treated as the exact BIOS1 I/O map.
+- The BIOS1 bytes at F000:E06E decode as a table-driven writer: `LODSB; CMP AL,FFh; JZ exit; MOV DL,AL; LODSB; OUT DX,AL; JMP loop`. It consumes port-low-byte/value pairs from DS:SI and terminates only when the port byte is FFh.
+- The latest BIOS1 watchdog snapshot has DS=F000h, SI=2978h and DX=E602h. The runtime log records 9,321 I/O operations, 382 distinct 16-bit port values, and 5,325 writes to E602h with value 00h. This is consistent with the BIOS repeatedly processing a table without finding its FFh terminator; it does not by itself prove whether the table pointer, high-memory contents, or an earlier BIOS setup step is wrong.
+- The high DX byte is preserved by the 8086 instruction sequence and is part of the observed 16-bit DX address. Do not mask/truncate it or invent E6xx device semantics until the BIOS caller, memory bytes at DS:SI and the selected machine decode are verified.
+- Next diagnostic priority: identify the caller that supplies DS:SI/DH for the E06E table routine; verify the first bytes at F000:2978 and whether SI advances through distinct RAM bytes. Device models must not be used to hide a missing table terminator.
