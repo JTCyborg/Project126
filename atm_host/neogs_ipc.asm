@@ -214,9 +214,11 @@ p126_ipc_validate_frame::
         sbc     hl,de
         jp      nz,.p126_frame_bad
         ; CRC header and payload in one pass.
+        ; Keep DE pointing at the frame while HL holds the CRC accumulator.
+        ; EX DE,HL here would move the frame pointer into HL and then lose it
+        ; when HL is initialized to FFFFh, causing CRC to read from address 0000h.
         push    ix
         pop     de
-        ex      de,hl
         ld      hl,#FFFF
         ld      b,16
 .p126_frame_crc_head:
