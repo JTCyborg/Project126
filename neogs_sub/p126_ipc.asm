@@ -180,10 +180,10 @@ p126_ngs_ipc_dma_receive_frame::
         out     (P126_NGS_DMA_CST),a
         ld      hl,p126_ngs_ipc_log_dma_armed
         call    p126_ngs_ipc_log
-        ld      hl,p126_ngs_ipc_log_dma_ready
-        call    p126_ngs_ipc_log
         xor     a
         out     (P126_NGS_CLRCBIT),a
+        ld      hl,p126_ngs_ipc_log_dma_ready
+        call    p126_ngs_ipc_log
 
         ld      bc,P126_NGS_DMA_TIMEOUT
 .p126_ngs_dma_wait_end:
@@ -195,6 +195,8 @@ p126_ngs_ipc_dma_receive_frame::
         or      c
         jr      nz,.p126_ngs_dma_wait_end
         ; Always stop DMA before releasing the command on timeout.
+        ld      hl,p126_ngs_ipc_log_dma_timeout
+        call    p126_ngs_ipc_log
         xor     a
         out     (P126_NGS_DMA_CST),a
         out     (P126_NGS_CLRCBIT),a
@@ -266,6 +268,8 @@ p126_ngs_ipc_dma_receive_frame::
         ret
 
 .p126_ngs_dma_bad_length:
+        ld      hl,p126_ngs_ipc_log_bad_length
+        call    p126_ngs_ipc_log
         ld      a,P126_STATUS_BAD_FRAME
         scf
         push    af
@@ -355,6 +359,8 @@ p126_ngs_ipc_log_dma_cfg_begin:   db "[NGS] DMA CONFIG BEGIN",13,10,0
 p126_ngs_ipc_log_dma_armed:       db "[NGS] DMA ARMED",13,10,0
 p126_ngs_ipc_log_dma_ready:       db "[NGS] DMA READY / CBIT RELEASED",13,10,0
 p126_ngs_ipc_log_dma_host_end:    db "[NGS] DMA HOST END DETECTED",13,10,0
+p126_ngs_ipc_log_dma_timeout:     db "[NGS] DMA WAIT TIMEOUT",13,10,0
+p126_ngs_ipc_log_bad_length:      db "[NGS] DMA FRAME LENGTH INVALID",13,10,0
 p126_ngs_ipc_log_dma_stopped:     db "[NGS] DMA STOPPED",13,10,0
 p126_ngs_ipc_log_dma_page_mapped: db "[NGS] DMA PAGE 42 MAPPED",13,10,0
 p126_ngs_ipc_log_dma_end:         db "[NGS] DMA END RECEIVED",13,10,0
