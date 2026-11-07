@@ -692,3 +692,5 @@ p126_neogs_dma_test_frame:
         db      #00,#00              ; status = OK
         db      #00,#00              ; CRC, filled at runtime
         defs    P126_IPC_MAX_PAYLOAD,0
+        ASSERT  p126_neogs_dma_test_frame = #C000
+        ASSERT  p126_neogs_dma_test_frame + P126_IPC_MAX_FRAME_SIZE = #10000
