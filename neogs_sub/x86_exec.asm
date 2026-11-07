@@ -114,6 +114,8 @@ x86_cpu_step:
         cp      #98
         jp      c,x86_exec_xchg_ax_reg
 .not_xchg_ax_reg:
+        cp      #8D
+        jp      z,x86_exec_lea
         cp      #88
         jp      c,.not_mov_rm_reg
         cp      #8C
@@ -189,6 +191,20 @@ x86_exec_mov_rm_reg:
 .mov_r16_from_rm16:
         call    x86_modrm_read_rm16
         jp      x86_modrm_write_reg16
+
+; 8D LEA r16,m. The source must be a memory effective address;
+; the segment is not used and no memory read is performed.
+x86_exec_lea:
+        call    x86_decode_modrm16
+        ret     c
+        ld      a,(x86_ea_is_reg)
+        or      a
+        jr      nz,.lea_invalid
+        ld      hl,(x86_ea_offset)
+        jp      x86_modrm_write_reg16
+.lea_invalid:
+        scf
+        ret
 
 ; C6/C7 MOV r/m8/16, immediate. The ModR/M extension field must be /0.
 x86_exec_mov_imm_rm:
