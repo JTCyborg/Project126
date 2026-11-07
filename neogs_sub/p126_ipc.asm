@@ -624,6 +624,7 @@ p126_ngs_image_begin:
 .image_x86io_size_ok:
         ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR ; WIN3 selector for physical page 04h
         ld      (p126_ngs_image_dest_selector),a
+        jr      .image_begin_common
 
 .image_begin_x86alu:
         ld      hl,(#C016)
@@ -870,6 +871,7 @@ p126_ngs_image_finish:
         ld      a,1
         ld      (p126_ngs_io_overlay_ready),a
         ld      hl,p126_ngs_io_overlay_installed_log
+        jr      .image_finish_log
 .image_finish_x86alu:
         ; Page05 is the fixed-origin ALU overlay. Probe it through the same
         ; resident gate used by every arithmetic entry point.
