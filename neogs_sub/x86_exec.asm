@@ -583,8 +583,10 @@ x86_exec_group1_immediate:
         ret     c
         ld      (x86_exec_group1_imm8),a
         call    x86_modrm_read_rm8
+        ld      (x86_exec_group1_lhs8),a
         ld      a,(x86_exec_group1_imm8)
         ld      c,a
+        ld      a,(x86_exec_group1_lhs8)
         call    x86_exec_group1_apply8
         ld      a,(x86_exec_group1_is_cmp)
         or      a
