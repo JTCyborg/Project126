@@ -350,12 +350,16 @@ P126_IPC_DMA_WINDOW EQU #0000
 P126_IPC_DMA_END    EQU #FF
 
 p126_ipc_dma_send_frame::
-        ld      hl,p126_ipc_log_dma_tx_begin
-        call    p126_ipc_debug_string
+        ; Preserve the caller's frame pointer and length before any logger
+        ; call, because the string writer advances HL.
         ld      a,1
         ld      (p126_ipc_dma_stage),a
         ld      (p126_ipc_dma_source),hl
         ld      (p126_ipc_dma_size),bc
+        ld      hl,p126_ipc_log_dma_tx_begin
+        call    p126_ipc_debug_string
+        ld      hl,(p126_ipc_dma_source)
+        ld      bc,(p126_ipc_dma_size)
         call    p126_ipc_validate_frame
         jr      nc,.p126_dma_frame_valid
         ld      (p126_ipc_dma_error),a
