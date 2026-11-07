@@ -768,18 +768,18 @@ Source commit: `aac9d7e60c391510150016d3b29906a7b2f90e3d`.
 
 ## 2026-11-07 — BIOS reset-vector fetch/decode gate added
 
-- The resident NeoGS main loop now consumes `p126_ngs_bios_image_ready` once after a validated IMAGE_FINISH event and invokes a dedicated reset-vector probe. The ready flag is cleared before the probe, preventing repeated reset attempts.
-- The probe initializes the 8086 architectural reset state (`CS:IP=FFFF:0000`, `FLAGS=0002h`), computes the reset physical address through `x86_cpu_calc_phys`, and reads five bytes through the production `x86_guest_mem_read8` backend. It therefore exercises the SYSBIOS overlay and WIN3 page selector, not a hard-coded physical-page peek.
-- The expected BIOS1 vector is verified byte-for-byte as `EA 5B E0 00 F0`. On match, the immediate FAR JMP operands are decoded and stored as `CS:IP=F000:E05B`; success/failure is emitted on NeoGS debug port EFh.
-- This is a reset-vector memory-fetch and FAR JMP decode gate only. It does **not** execute the JMP, implement the 8086 instruction loop, run BIOS POST, or establish VGA operation. Those remain separate stages.
-- **VERIFICATION REQUIRED:** CI assembly and physical hardware log must show `X86 BIOS RESET VECTOR FETCH PASS` followed by `X86 FAR JMP DECODED F000:E05B`. No hardware PASS is claimed by this source change.
+- The resident NeoGS main loop consumes p126_ngs_bios_image_ready once after a validated IMAGE_FINISH event. It deliberately does NOT invoke the reset-vector probe: automatic guest execution is gated until the full PCem 8086 semantic port is complete.
+- A dormant diagnostic routine x86_bios_reset_vector_probe remains in source for later use. It must not be called before the full CPU port is complete.
+- BIOS image installation is currently acknowledged only with the log "[NGS] BIOS IMAGE READY; X86 EXECUTION GATED". No reset-vector fetch, instruction execution, or BIOS POST is performed.
+- This is an explicit execution safety gate, not a reset-vector test. BIOS execution and guest program execution remain disabled.
+- The gate itself is compile/package verified; no CPU or BIOS functional tests are run.
 
 
 ## Intel 8086 execution core — opcode coverage ledger
 
 - Detailed ledger: `docs/8086_PCEM_OPCODE_COVERAGE.md`.
-- Current implementation: `neogs_sub/x86_exec.asm` now covers NOP, HLT, three JMP encodings and MOV immediate to all eight 8-bit and eight 16-bit registers.
-- **Current raw opcode-byte coverage: 48 / 256 = 18.75%.** This is a dispatch-coverage metric only; ModR/M, prefix, flags, interrupt and semantic completeness are separately required before claiming 100%.
+- Current implementation: neogs_sub/x86_exec.asm contains execution paths for the complete 256-byte primary opcode dispatch map, with ModR/M, ALU, stack, interrupt, string and virtual-I/O handlers. This is dispatch coverage, not proof that all 8086 forms and edge cases are semantically complete.
+- **Current primary opcode-byte dispatch coverage: 256 / 256 = 100.00%.** Semantic completeness remains below 100% and is not yet assigned a percentage; PCem form-by-form review and integration gaps remain.
 - The 16 MOV-immediate encodings were added in commit `28575e385d5d2a66c5ca448e72f7b4e2f01d2391`.
 - CPU functional tests and BIOS execution remain blocked until the complete 8086 implementation is ported. Assembly-only build checks are permitted solely for syntax, linkage and image-size validation.
 
@@ -787,4 +787,14 @@ Source commit: `aac9d7e60c391510150016d3b29906a7b2f90e3d`.
 
 - Added `XCHG AX,r16` encodings `91–97`; swaps AX with CX, DX, BX, SP, BP, SI or DI without modifying FLAGS. No CPU functional tests were run.
 
-- Added `A0–A3` direct-offset MOV AL/AX transfers. Reads and writes route through `x86_guest_mem_read8/write8`; DS is used as the default segment until prefix handling is ported. No CPU functional tests were run.
+- Added A0–A3 direct-offset MOV AL/AX transfers. Reads and writes route through x86_guest_mem_read8/write8; segment overrides are now applied by the prefix layer. No CPU functional tests were run.
+
+
+## 2026-11-07 — Latest PCem 8086 semantic review
+
+- Corrected 8Eh MOV Sreg,r/m16: the original PCem 8086 path permits loading CS through selector /1; this is not restricted as it is on later x86 profiles.
+- Matched PCem's ModR/M extension behavior: 8F POP and C6/C7 MOV immediate execute for every /n selector; FE treats /0 as INC and every nonzero selector as DEC; FF /7 consumes ModR/M and has no operation; 8C/8E /4-/7 are ignored.
+- REP/REPE/REPNE string instructions now yield after each iteration, restore IP to the first prefix byte when continuing, and pass through the normal IRQ/NMI boundary before the next iteration. REPE/REPNE initialize ZF as PCem does, including when CX is zero.
+- BIOS image installation no longer triggers automatic reset-vector probing or guest execution. It only logs that x86 execution is gated.
+- Compile/package CI passed for the ModR/M behavior update (run 42375880001). The BIOS execution-gate update passed in run 42375738280. The REP scheduling build is pending at the time of this entry.
+- No CPU functional tests, BIOS POST, or guest programs have been run. Only assembler/linker/package checks are permitted until the complete Intel 8086 core has been ported and reviewed.
