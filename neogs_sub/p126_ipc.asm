@@ -827,6 +827,14 @@ p126_ngs_image_finish:
         ; Keep the nested-call gate's software selector synchronized.
         ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
         ld      (p126_overlay_current_selector),a
+        call    p126_ngs_overlay_gate_selftest
+        jr      nc,.image_finish_gate_ok
+        ld      hl,p126_ngs_overlay_gate_test_fail_log
+        call    p126_ngs_ipc_log
+        jr      .image_finish_bad
+.image_finish_gate_ok:
+        ld      hl,p126_ngs_overlay_gate_test_pass_log
+        call    p126_ngs_ipc_log
         ld      a,1
         ld      (p126_ngs_io_overlay_ready),a
         ld      hl,p126_ngs_io_overlay_installed_log
@@ -942,6 +950,82 @@ p126_ngs_overlay_win2_selftest:
         call    p126_ngs_overlay_test_restore_maps
         or      a
         ret
+
+; Exercise the resident call gate before publishing X86IO_READY.
+; Page 05h is currently free. Preserve its first four bytes, install a tiny
+; CALL x86_io_reset / RET overlay stub, and execute it while WIN2=page05.
+; The resident wrapper must switch to page04 for X86IO, then restore page05
+; so the test stub can execute its RET at 8003h. Finally restore page05 bytes
+; and leave WIN2=page04, WIN3=page42.
+; OUT: carry clear if the page05 -> page04 -> page05 call completed correctly.
+p126_ngs_overlay_gate_selftest:
+        ld      a,P126_NGS_OVERLAY_TEST_PAGE
+        rrca
+        out     (P126_NGS_MPAGEX_PORT),a
+        ld      hl,#C000
+        ld      de,p126_ngs_overlay_gate_old_code
+        ld      bc,4
+        ldir
+
+        ld      hl,p126_ngs_overlay_gate_test_code
+        ld      de,#C000
+        ld      bc,4
+        ldir
+
+        ; Set the software shadow before entering page05 through WIN2.
+        ld      a,P126_NGS_OVERLAY_TEST_PAGE
+        rrca
+        ld      (p126_overlay_current_selector),a
+        out     (P126_NGS_OVERLAY_WINDOW_PORT),a
+
+        call    #8000                  ; page05 stub calls resident X86IO wrapper
+
+        ; If the trampoline restored page05, its first opcode is still CDh.
+        ld      a,(#8000)
+        cp      #CD
+        jr      nz,.overlay_gate_test_failed
+        ld      a,(p126_overlay_current_selector)
+        cp      #82                    ; ROR8(page05)
+        jr      nz,.overlay_gate_test_failed
+
+        ; Restore page05's original first four bytes.
+        ld      a,P126_NGS_OVERLAY_TEST_PAGE
+        rrca
+        out     (P126_NGS_MPAGEX_PORT),a
+        ld      hl,p126_ngs_overlay_gate_old_code
+        ld      de,#C000
+        ld      bc,4
+        ldir
+        jr      .overlay_gate_test_restore_maps
+
+.overlay_gate_test_failed:
+        ; Restore the scratch bytes even when the gate returned incorrectly.
+        ld      a,P126_NGS_OVERLAY_TEST_PAGE
+        rrca
+        out     (P126_NGS_MPAGEX_PORT),a
+        ld      hl,p126_ngs_overlay_gate_old_code
+        ld      de,#C000
+        ld      bc,4
+        ldir
+        call    p126_ngs_overlay_test_restore_maps
+        scf
+        ret
+
+.overlay_gate_test_restore_maps:
+        call    p126_ngs_overlay_test_restore_maps
+        or      a
+        ret
+
+p126_ngs_overlay_gate_test_code:
+        db      #CD
+        dw      x86_io_reset
+        db      #C9
+p126_ngs_overlay_gate_old_code:
+        defs    4,0
+p126_ngs_overlay_gate_test_pass_log:
+        db      "[NGS] WIN2 NESTED GATE TEST PASS",13,10,0
+p126_ngs_overlay_gate_test_fail_log:
+        db      "[NGS] WIN2 NESTED GATE TEST FAIL",13,10,0
 
 p126_ngs_overlay_test_restore_maps:
         ld      a,P126_NGS_DMA_PAGE
