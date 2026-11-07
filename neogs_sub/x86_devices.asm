@@ -1,8 +1,8 @@
 ; PROJECT126 — 8237 DMA and 8253 PIT guest-device overlay
 ; Fixed origin 8000h, physical page 06h (WIN2 selector 03h).
-; Guest port emulation only: no guest port value is issued as physical I/O.
-; Resident gate ABI: x86_dev_read8/write8/reset are in p126_overlay_gate.asm.
-; This register-model overlay does NOT implement DMA transfers or PIT timing.
+; Guest port emulation only: guest port values are never physical NeoGS I/O.
+; Resident gate exports x86_dev_read8, x86_dev_write8 and x86_dev_reset.
+; Register models only: DMA transfer execution and PIT clock/IRQ0 pending.
 
 x86_dev_read8_impl:
         ld      (x86_dev_port),hl
@@ -809,6 +809,14 @@ x86_dev_dma_selftest_impl:
 
 ; -------------------------------------------------------------------------
 
+x86_dev_dma_address: defs 8,0
+x86_dev_dma_count: defs 8,0
+x86_dev_dma_page: defs 4,0
+x86_dev_dma_command: db 0
+x86_dev_dma_status: db 0
+x86_dev_dma_request: db 0
+x86_dev_dma_mask: db #0F
+x86_dev_dma_mode: db 0
 x86_dev_dma_temporary: db 0
 x86_dev_dma_flipflop: db 0
 x86_dev_dma_page_select: db 0
