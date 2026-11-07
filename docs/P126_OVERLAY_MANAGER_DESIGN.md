@@ -6,7 +6,7 @@
 
 ## 1. Purpose
 
-The resident `X86CORE.C` has a hard 16 KiB loader limit. The first overlay split now produces a 15,994-byte resident image and a separate 796-byte `X86IO.C` module at logical origin `8000h`. The NeoGS physical map reserves pages `00h–0Fh` (256 KiB) for the kernel/runtime.
+The resident `X86CORE.C` has a hard 16 KiB loader limit. The current overlay-gate build produces a 16,204-byte resident image (180 bytes free) and a separate 796-byte `X86IO.C` module at logical origin `8000h`. The NeoGS physical map reserves pages `00h–0Fh` (256 KiB) for the kernel/runtime.
 
 The manager must use that existing allocation without changing the physical map, enlarging the `X86CORE.C` limit, taking ownership of WIN3, or moving the operational stack.
 
@@ -16,7 +16,7 @@ This document records the source-backed design direction and the remaining valid
 
 - Stage-0 is assembled at `4000h`, loaded by the GS105a ROM path, and receives one resident image through the bootstrap DBIT byte channel.
 - Stage-0 currently accepts a nonzero image length up to `4000h`, copies it to logical `0000h`, then jumps to `0000h`.
-- The resident image is assembled at `ORG 0`; it contains the resident dispatcher, CPU state, execution, ModR/M, ALU and IPC code. `neogs_sub/x86_io.asm` is assembled in the same translation unit at `ORG 8000h`, so calls from resident CPU code resolve to fixed absolute overlay addresses without runtime relocation.
+- The resident image is assembled at `ORG 0`; it contains the resident dispatcher, CPU state, execution, ModR/M, ALU, IPC and the WIN2 call gate. `neogs_sub/x86_io.asm` is assembled in the same translation unit at `ORG 8000h`. The X86IO implementation symbols live in the overlay; stable public entry points in WIN0 route calls through the resident gate.
 - Resident startup maps WIN0 to physical page `00h`, WIN1 to page `03h`, WIN2 initially to page `01h`, and initializes WIN3 to page `02h`. The operational stack is `7FFEh` in WIN1/page 03. After X86IO IMAGE_FINISH, WIN2 is mapped to physical page `04h`.
 - WIN3 (`C000h–FFFFh`) is exclusively owned by the guest physical-memory backend. Its mapping is volatile and is never used as an overlay execution window.
 - Kernel pages `00h–0Fh` are allocated. Page 03 contains the operational stack and narrow diagnostic buffers. Page 00 contains the resident image; page 03 contains the operational stack and fixed data; page 04 currently holds the pinned X86IO overlay. The initial WIN2/WIN3 mappings are page 01/page 02.
@@ -32,7 +32,7 @@ Rationale:
 2. The operational stack remains in WIN1/page 03.
 3. Guest memory access continues to own WIN3 exclusively.
 4. An overlay can execute at a fixed logical origin (`8000h`) while its physical backing page is selected from the kernel pool.
-5. All current X86IO call sites are linked directly to fixed addresses in `8000h–831Bh`. The loader maps page 04h into WIN2 once and keeps it pinned. A general resident call gate that switches among multiple overlay pages and restores nested mappings is future work.
+5. X86IO implementation symbols are fixed at `8000h–831Bh`; public CPU-facing calls use resident wrappers. The resident call gate saves the current WIN2 selector on the WIN1 stack, maps the requested page, enters through IX, and restores the previous selector at a resident RET trampoline. The gate is source-built but has not yet passed a physical nested-switch test.
 
 Candidate physical overlay pool: pages `04h–0Fh` (12 pages, 192 KiB). Page 04h is currently pinned to X86IO; pages 05h–0Fh remain unallocated for future overlays. Pages 00–03 are excluded from allocation. No dynamic allocator exists yet.
 
@@ -82,7 +82,7 @@ Modules larger than one frame must be streamed as multiple fragments. A 16 KiB m
 
 ## 6. Call ABI and lifetime rules
 
-The future dynamic manager will own a module table and WIN2 mapping state. The current pinned-X86IO slice does not have a module call gate: resident call sites are statically linked to the fixed `8000h` addresses, and page 04h remains mapped in WIN2 after load.
+The resident WIN2 call gate is now implemented as a low-level primitive. Existing X86IO public entry points are resident wrappers and request page 04h through that gate, so the overlay can be called while another trusted overlay temporarily owns WIN2. The higher-level dynamic manager is still absent: there is no module table, allocator, manifest validation, generic loader, unload/refcounting or ownership policy.
 
 A future module call request will identify a module ID and exported function ID (or validated entry offset). The resident gate:
 
@@ -107,16 +107,16 @@ Rules:
 
 The first candidate module is the existing XT PPI/keyboard I/O implementation in `neogs_sub/x86_io.asm`. It is a small, bounded source unit and provides a real consumer of the module ABI.
 
-The first pinned-overlay source/build/load slice is implemented:
+The first pinned-overlay source/build/load slice and the low-level resident call gate are implemented:
 - `x86_io.asm` is assembled at `8000h` and exported as `X86IO.C` (796 bytes in the current build);
 - `X86CORE.C` is separately exported at 0000h (15,756 bytes in the current build);
-- resident CPU call sites resolve directly to the overlay symbols in the same assembler pass;
+- resident public X86IO entry points route through the WIN2 gate; implementation symbols remain fixed at the overlay origin;
 - ATM loads `X86IO.C` from TR-DOS after A2h and sends the IMAGE transaction over ABI 1.0 DMA;
 - NeoGS installs page 04h, verifies the complete image by readback, runs a reversible WIN2 selector test across pages 04h and 05h at offset 3FFFh, then leaves page 04h mapped;
 - BIOS execution waits for both IO_OVERLAY_READY and BIOS_IMAGE_READY;
 - `00E0h` diagnostic latch and current PPI/keyboard semantics are retained.
 
-Not implemented: dynamic page allocator, general manifest, call/return trampoline, nested overlays, unload/refcounting, and WIN2 save/restore tests. No physical target test has yet verified the transfer or mapping.
+Not implemented: dynamic page allocator, general manifest, generic ATM module streaming, unload/refcounting, and runtime validation of nested/repeated gate calls. The call gate is present in source and CI, but no physical target test has yet verified page switching, X86IO transfer or return-state preservation.
 
 ## 8. Implementation gates
 
@@ -130,10 +130,10 @@ The manager is not complete until all of the following are true:
 - [x] ATM TR-DOS reader loads the complete X86IO.C file and sends a single bounded IMAGE fragment.
 - [x] NeoGS IMAGE receiver validates frame CRC, image kind, ID, fragment metadata, total size and frame length for the X86IO profile.
 - [x] Destination page-04 readback is byte-for-byte verified before IO_OVERLAY_READY is published.
-- [ ] General call/return trampoline preserves arbitrary WIN2 mappings and WIN1 stack.
-- [ ] Nested and repeated dynamic overlay calls restore mappings correctly.
+- [x] Resident call/return gate saves the previous WIN2 selector on the WIN1 stack and restores it at a resident RET trampoline; X86IO wrappers use this gate.
+- [ ] Physical and repeated nested-call tests confirm arbitrary WIN2 mappings, register/FLAGS preservation and stack integrity.
 - [ ] Invalid/unloaded dynamic module calls fail closed.
-- [x] CI build/package passes (run 42396958741, commit 5121b2c0; X86CORE 15994 bytes, X86IO 796 bytes; NeoGS assembly and TR-DOS packaging 0 errors/0 warnings).
+- [x] CI build/package passes with the resident gate (run 42397778997, commit b0e708b0; X86CORE 16204/16384 bytes, X86IO 796/4096 bytes; NeoGS, ATM, IPC and TR-DOS assembly 0 errors/0 warnings).
 - [ ] Physical ATM/NeoGS log confirms X86IO module load, page-04 readback, `[NGS] WIN2 PAGE04/05 TEST PASS`, and final WIN2 mapping.
 
 No PIC/PIT/DMA/VGA/RTC/IDE implementation is to be added to the resident image before these gates are met. No CPU functional suite, full BIOS POST, or guest operating-system test is implied by overlay infrastructure validation.
