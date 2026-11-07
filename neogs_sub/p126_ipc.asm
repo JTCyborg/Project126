@@ -83,9 +83,9 @@ p126_ngs_ipc_validate_frame::
         sbc     hl,de
         jp      nz,.p126_ngs_frame_bad
         ; CRC header and payload in one pass.
+        ; Keep DE as the frame pointer while HL is the CRC accumulator.
         push    ix
         pop     de
-        ex      de,hl
         ld      hl,#FFFF
         ld      b,16
 .p126_ngs_frame_crc_head:
@@ -93,6 +93,9 @@ p126_ngs_ipc_validate_frame::
         inc     de
         call    p126_ngs_ipc_crc16_update
         djnz    .p126_ngs_frame_crc_head
+        ; DE currently points at frame+16; skip the two stored CRC bytes.
+        inc     de
+        inc     de
         push    de
         ld      ix,(p126_ngs_ipc_frame_ptr)
         ld      e,(ix+12)
@@ -254,6 +257,7 @@ p126_ngs_ipc_dma_receive_frame::
         ld      hl,p126_ngs_ipc_log_frame_rejected
         call    p126_ngs_ipc_log
         pop     af
+        call    p126_ngs_ipc_log_hex_byte
         push    af
         xor     a
         out     (P126_NGS_CLRCBIT),a
@@ -355,7 +359,42 @@ p126_ngs_ipc_log_dma_stopped:     db "[NGS] DMA STOPPED",13,10,0
 p126_ngs_ipc_log_dma_page_mapped: db "[NGS] DMA PAGE 42 MAPPED",13,10,0
 p126_ngs_ipc_log_dma_end:         db "[NGS] DMA END RECEIVED",13,10,0
 p126_ngs_ipc_log_frame_valid:     db "[NGS] DMA FRAME VALID",13,10,0
-p126_ngs_ipc_log_frame_rejected:  db "[NGS] DMA FRAME REJECTED",13,10,0
+p126_ngs_ipc_log_frame_rejected:  db "[NGS] DMA FRAME REJECTED STATUS=",0
+
+; Print a status byte as two hex digits followed by CR/LF. Preserves AF/BC.
+p126_ngs_ipc_log_hex_byte:
+        push    af
+        push    bc
+        rrca
+        rrca
+        rrca
+        rrca
+        call    p126_ngs_ipc_log_hex_nibble
+        pop     af
+        push    af
+        call    p126_ngs_ipc_log_hex_nibble
+        ld      bc,#00EF
+        ld      a,13
+        out     (c),a
+        ld      a,10
+        out     (c),a
+        pop     af
+        pop     bc
+        pop     af
+        ret
+
+p126_ngs_ipc_log_hex_nibble:
+        and     #0F
+        add     a,'0'
+        cp      '9'+1
+        jr      c,.p126_ngs_hex_emit
+        add     a,7
+.p126_ngs_hex_emit:
+        push    bc
+        ld      bc,#00EF
+        out     (c),a
+        pop     bc
+        ret
 
 ; This IPC module is assembled both standalone and into the resident image.
 ; Keep its diagnostics self-contained instead of importing the resident logger.
