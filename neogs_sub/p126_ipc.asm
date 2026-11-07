@@ -549,8 +549,8 @@ p126_ngs_ipc_dispatch_once::
 
 .p126_ngs_dispatch_ngs_frame:
         ; The host may request the stop record immediately after IMAGE_FINISH.
-        ; Keep the same two-image readiness gate as the resident main loop:
-        ; BIOS code may call the fixed-origin X86IO overlay at 8000h.
+        ; Keep the three-image readiness gate as the resident main loop:
+        ; BIOS execution requires SYSBIOS, X86IO and X86ALU overlays.
         ld      a,(p126_ngs_io_overlay_ready)
         or      a
         jr      z,.ngs_frame_trace_ready
@@ -570,9 +570,9 @@ p126_ngs_ipc_dispatch_once::
         ret
 
 ; -------------------------------------------------------------------------
-; IMAGE service — fixed SYSBIOS and first resident-overlay profiles.
+; IMAGE service — SYSBIOS and two fixed-origin overlay profiles.
 ; Every image is one CRC-validated fragment. SYSBIOS installs at page 10h;
-; X86IO installs at kernel page 04h and is then pinned into WIN2.
+; X86IO installs at page 04h, X86ALU at page 05h.
 ; -------------------------------------------------------------------------
 p126_ngs_image_begin:
         ld      hl,p126_ngs_image_begin_log
@@ -848,8 +848,8 @@ p126_ngs_image_finish:
         jr      nz,.image_finish_x86alu
 .image_finish_x86io:
         ; Prove that MPAG selects two distinct physical pages through WIN2.
-        ; The test saves/restores the last byte of page 04h and page 05h;
-        ; X86IO is only 796 bytes, so BFFFh is outside its image.
+        ; At this point page05 is still free; X86ALU is loaded only after
+        ; the X86IO mapping and nested-gate self-tests have completed.
         call    p126_ngs_overlay_win2_selftest
         jr      nc,.image_finish_x86io_map_ok
         ld      hl,p126_ngs_overlay_win2_test_fail_log
