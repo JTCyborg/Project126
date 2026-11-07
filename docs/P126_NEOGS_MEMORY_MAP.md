@@ -61,7 +61,7 @@ The build can prove internal consistency and fit within 4 MiB. It cannot prove p
 ## Deliberately unresolved
 
 - Guest x86 logical 1 MiB address map: RAM/ROM overlays, VGA apertures, option ROM and device windows.
-- WIN2 is the fixed-origin overlay aperture at 8000h–BFFFh, selected by MPAG port 00h using the Project125 RRCA selector encoding. The first pinned module occupies physical page 04h (selector 02h). WIN3 remains the banked guest-memory aperture through MPAGEX port 10h. Dynamic overlay allocation and target validation remain pending.
+- WIN2 is the fixed-origin overlay aperture at 8000h–BFFFh, selected by MPAG port 00h using the Project125 RRCA selector encoding. X86IO is pinned to physical page04 (selector02) and X86ALU to page05 (selector82); pages06h–0Fh are the remaining dynamic pool. WIN3 remains the banked guest-memory aperture through MPAGEX port 10h. Dynamic allocation and target validation remain pending.
 - DMA register address encoding and exact DMA transaction setup.
 - ATM host staging-buffer addresses and host paging state.
 - Guest-visible system-board profile, I/O ports, PIC/PIT/keyboard/RTC.
