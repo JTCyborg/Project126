@@ -500,3 +500,14 @@ User-provided target log confirms both diagnostic DMA directions end-to-end on p
 - **Not proven:** production page 42h / physical 108000h staging, payloads beyond the tested smoke-frame sizes, multi-frame fragmentation/reassembly, sustained streaming, application service dispatch, VGA frame delivery, BIOS transfer or x86 execution. Do not promote the page-03 diagnostic carve-outs to production allocation.
 - The earlier failure entries above are historical and remain as debugging chronology; this section supersedes their pending/failed verification status for the two smoke directions only.
 - **Next:** retain the now-proven Project125 DMA path unchanged. Validate production page 42h separately, then run full-frame integrity and fragmentation/stress tests. Every fragment must be validated by its complete header, declared length and CRC; byte-count-only checks are insufficient.
+
+
+## 2026-11-07 — Production DMA page 42 validation implemented (hardware pending)
+
+- NeoGS forward receive now selects physical page 42h in WIN3 via port #23 before arming DMA. Destination registers are module 1, HAD=10h, MAD=80h, LAD=00h (physical 108000h). Received data is validated from logical C000h; declared frame size is bounded to 16 KiB.
+- NeoGS reverse test now constructs the response in the same page-42 WIN3 mapping and DMA-reads from physical 108000h. The ATM reverse sequence is unchanged: DI, one discarded ROM-aperture read, exact frame copy, FF/end, full CRC and payload pattern validation.
+- ATM forward test frame increased from a header-only request to 274 bytes: 18-byte ABI header plus deterministic payload 00h..FFh. ATM computes CRC across header[0..15] and all 256 payload bytes; NeoGS validates the complete frame after DMA stop.
+- Expected DMA progression in both directions is 108000h→108112h. Independent NeoGS log markers identify page-42 mapping and reverse address readback.
+- The known-good page-03 Project125-parity transport is not altered in its hardware-tested implementation history; the current test path now specifically exercises the allocated production page 42h through the documented WIN3 selector.
+- **Verification state:** source committed; CI BUILD and page-42 target HARDWARE verification pending. Do not mark page 42h as hardware PASS until the new ATM/NeoGS target log confirms full CRC and payload checks in both directions.
+- **Next after page-42 PASS:** maximum-size single-frame test, then ABI fragmentation/reassembly with per-fragment CRC/sequence/metadata validation, followed by sustained multi-frame streaming stress and error/recovery tests.
