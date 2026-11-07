@@ -470,6 +470,16 @@ p126_bios_enter_trdos_mode:
         ld      bc,#7FFD
         out     (c),a
         ld      (#5C3B),a
+
+        ; Reassert the window-0 ROM page selector after restoring ROM2.
+        ; On ATM2+ #3FF7 is the independent WIN0 memory-manager port:
+        ; D7=1 enables #7FFD coupling and D0 is replaced by the permanent
+        ; DOSEN signal. With DOSEN held active via #0177, #BF selects the
+        ; automatic TR-DOS overlay when execution enters #3Dxx. Do not touch
+        ; #EFF7 or #0177 here: that would reset the permanent DOSEN state.
+        ld      a,#BF
+        ld      bc,#3FF7
+        out     (c),a
         ret
 
 ; Rebuild the ATM 80x25 display mapping after TR-DOS I/O is complete.
