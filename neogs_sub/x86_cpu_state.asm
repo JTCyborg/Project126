@@ -91,11 +91,12 @@ x86_bios_reset_vector_probe:
         ret
 
 ; -------------------------------------------------------------------------
-; First BIOS bring-up slice.
-; Runs only after the resident receives and verifies IMAGE_FINISH.
-; Execute the reset vector, then at most 16 further BIOS instructions.
-; Stop at the first unsupported opcode, memory fault or guest HLT so the
-; current core state can be inspected without entering an uncontrolled loop.
+; Continuous BIOS bring-up execution.
+; Runs after IMAGE_FINISH and page-10 readback verification. The old
+; 16-instruction slice is removed. Execution continues until guest HLT,
+; unsupported opcode, guest-memory fault, or a 65535-instruction watchdog.
+; The watchdog is only a runaway-loop safety net; it is not a BIOS slice.
+; Progress is reported every 256 instructions to avoid flooding #EF.
 ; -------------------------------------------------------------------------
 x86_bios_startup_trace:
         call    x86_bios_reset_vector_probe
@@ -108,29 +109,34 @@ x86_bios_startup_trace:
         ld      (x86_bios_trace_event_status),a
         ld      hl,x86_bios_trace_start_log
         call    p126_ngs_resident_log
-        ld      a,16
-        ld      (x86_bios_trace_remaining),a
-        xor     a
-        ld      (x86_bios_trace_executed),a
+        ld      hl,#FFFF
+        ld      (x86_bios_trace_remaining),hl
+        ld      hl,0
+        ld      (x86_bios_trace_executed),hl
 .trace_loop:
         call    x86_cpu_step
         jr      c,.trace_fault
-        ld      a,(x86_bios_trace_executed)
-        inc     a
-        ld      (x86_bios_trace_executed),a
-        call    x86_bios_trace_log_cs_ip
+        ld      hl,(x86_bios_trace_executed)
+        inc     hl
+        ld      (x86_bios_trace_executed),hl
+        ld      a,l
+        or      a
+        call    z,x86_bios_trace_log_cs_ip
         ld      a,(x86_halted)
         or      a
         jr      nz,.trace_halted
-        ld      a,(x86_bios_trace_remaining)
-        dec     a
-        ld      (x86_bios_trace_remaining),a
+        ld      hl,(x86_bios_trace_remaining)
+        dec     hl
+        ld      (x86_bios_trace_remaining),hl
+        ld      a,h
+        or      l
         jr      nz,.trace_loop
-        ld      a,1
+        ld      a,5
         call    x86_bios_trace_capture_event
-        ld      hl,x86_bios_trace_budget_log
+        ld      hl,x86_bios_trace_watchdog_log
         call    p126_ngs_resident_log
-        or      a
+        call    x86_bios_trace_log_cs_ip
+        scf
         ret
 .trace_fault:
         ld      a,3
@@ -145,6 +151,7 @@ x86_bios_startup_trace:
         call    x86_bios_trace_capture_event
         ld      hl,x86_bios_trace_halted_log
         call    p126_ngs_resident_log
+        call    x86_bios_trace_log_cs_ip
         or      a
         ret
 
@@ -211,13 +218,13 @@ x86_bios_trace_emit_nibble:
         out     (#EF),a
         ret
 
-x86_bios_trace_remaining: db 0
-x86_bios_trace_executed:  db 0
-x86_bios_trace_start_log: db "[NGS] X86 BIOS INSTRUCTION TRACE START (16-STEP SLICE)",13,10,0
+x86_bios_trace_remaining: dw 0
+x86_bios_trace_executed:  dw 0
+x86_bios_trace_start_log: db "[NGS] X86 BIOS CONTINUOUS EXECUTION START",13,10,0
 x86_bios_trace_cs_ip_prefix: db "[X86] CS:IP=",0
 x86_bios_trace_fault_log: db "[NGS] X86 BIOS TRACE STOP: OPCODE OR MEMORY FAULT",13,10,0
 x86_bios_trace_halted_log: db "[NGS] X86 BIOS EXECUTION HALTED BY GUEST",13,10,0
-x86_bios_trace_budget_log: db "[NGS] X86 BIOS TRACE SLICE COMPLETE (16 INSTRUCTIONS)",13,10,0
+x86_bios_trace_watchdog_log: db "[NGS] X86 BIOS STOP: 65535-INSTRUCTION WATCHDOG",13,10,0
 
 ; physical = ((segment << 4) + offset) & 0FFFFFh
 x86_cpu_calc_phys:
