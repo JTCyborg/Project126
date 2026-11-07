@@ -98,13 +98,16 @@ p126_ngs_resident_main_loop:
         ld      hl,p126_ngs_resident_frame_ok
         call    p126_ngs_resident_log
 .check_bios_ready:
-        ; CPU execution calls the fixed-origin I/O overlay at 8000h.
-        ; Do not enter the BIOS until its page-04 image has been verified
-        ; and mapped into WIN2 by IMAGE_FINISH.
+        ; CPU execution calls X86IO/page04, which delegates DMA/PIT ports to
+        ; X86DEV/page06 through the resident nested overlay gate. BIOS waits
+        ; until all three overlay images have passed installation checks.
         ld      a,(p126_ngs_io_overlay_ready)
         or      a
         jr      z,p126_ngs_resident_main_loop
         ld      a,(p126_ngs_alu_overlay_ready)
+        or      a
+        jr      z,p126_ngs_resident_main_loop
+        ld      a,(p126_ngs_dev_overlay_ready)
         or      a
         jr      z,p126_ngs_resident_main_loop
         ld      a,(p126_ngs_bios_image_ready)
