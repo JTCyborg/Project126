@@ -1500,3 +1500,11 @@ The temporary diagnostic is therefore moved back to the first terminator and now
 - Confirmed in `x86_cpu_state.asm` that `x86_bios_trace_remaining` was initialized to `0200h` (512 instructions), although the execution path already has a 16-bit watchdog.
 - Changed the diagnostic execution budget to `FFFFh`, retaining the watchdog/fault/HLT snapshots. This allows the current BIOS RAM-sizing loop and subsequent POST code to execute rather than stopping after 512 instructions.
 - Source commit: `3c7c31beec3a0df46d6ff7e278716ea1433d7194`. Build and target validation are pending. No RAM-sizing or full POST pass is claimed yet.
+
+
+## 2026-11-08 — Capture the BIOS polling port at watchdog
+
+- The latest target trace reached the BIOS polling sequence IN AL,imm8; TEST AL,imm8; LOOPZ at F000:FA18..FA1C, with AL=00, CX=0435 and ZF=1. This is consistent with the BIOS waiting for a device status bit; the opcode history alone did not identify the port or tested mask.
+- Extended the existing terminal I/O-count line to append the last I/O port (x86_io_port) and the current low byte of AX (AL). At the observed watchdog point, the most recent I/O instruction is the IN, and the following TEST/LOOPZ instructions do not alter the port latch or AL, so the pair identifies the polled port and returned byte without adding a new state variable or expanding the instruction-history ring.
+- This is diagnostic-only. It does not change guest I/O behavior, synthesize a device-ready status, or bypass BIOS polling. Use the next hardware log to identify the exact port/value and then implement the appropriate device status model.
+- Build and package validation are pending. BIOS POST is not yet considered passed.
