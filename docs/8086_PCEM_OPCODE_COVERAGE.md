@@ -8,8 +8,8 @@ Later 80186/286/386 instructions are not part of the target CPU.
 
 - Denominator: 256 possible opcode-byte values in the documented original 8086 opcode map, including the 8087 ESC opcode range and undocumented 8086-compatible values where PCem has an execution path.
 - Numerator: opcode-byte values with a concrete execution path in the Project126 dispatcher.
-- Current numerator: 112.
-- **Opcode-byte dispatch coverage: 112 / 256 = 43.75%.**
+- Current numerator: 116.
+- **Opcode-byte dispatch coverage: 116 / 256 = 45.31%.**
 - This is a source-coverage metric, not a claim of full semantic correctness. ModR/M forms, memory addressing, prefixes, flags, interrupt behavior and corner cases are tracked separately and must also be complete before the CPU is called 100%.
 - An instruction family is not considered complete merely because one opcode in the family is present.
 
@@ -34,6 +34,7 @@ Later 80186/286/386 instructions are not part of the target CPU.
 | 9C–9F | PUSHF, POPF, SAHF, LAHF | `neogs_sub/x86_exec.asm` |
 |  B0–B7 | MOV r8,imm8 (AL,CL,DL,BL,AH,CH,DH,BH) | `neogs_sub/x86_exec.asm` |
 |  B8–BF | MOV r16,imm16 (AX,CX,DX,BX,SP,BP,SI,DI) | `neogs_sub/x86_exec.asm` |
+| E0–E3 | LOOPNE, LOOPE, LOOP, JCXZ | `neogs_sub/x86_exec.asm` |
 | E8 | CALL rel16 | `neogs_sub/x86_exec.asm` |
 | E9 | JMP rel16 | `neogs_sub/x86_exec.asm` |
 | EA | JMP ptr16:16 | `neogs_sub/x86_exec.asm` |
@@ -41,7 +42,7 @@ Later 80186/286/386 instructions are not part of the target CPU.
 | F4 | HLT | `neogs_sub/x86_exec.asm` |
 
 The 7 opcodes 98h–9Ah and 9Ch–9Fh are implemented; 9Ah (far immediate CALL) was added in commit `98cb5efe6f5be565fd44533aba11884a20c426c4`. It pushes the post-immediate return IP and old CS to SS:SP through the Project126 memory backend before transferring CS:IP. The 6 opcodes 98h, 99h, 9Ch–9Fh were added in commits `374c661e8bf3adf7390d06032c30a9d8bfc796c2` and `b1665b8a96764f77b9f5b7d6267babebf00c270d`: CBW/CWD, PUSHF/POPF, SAHF/LAHF. Stack flag operations use SS:SP through the Project126 guest-memory interface and follow PCem's 8086 flag masks.
-Near CALL `E8` was added in commit `5acb6d3b6d658cf1e1558099b3509bb57b25e6dc`; near RET aliases `C1/C3`, `RET imm16` (`C2`), far RET aliases `C8/C9/CB` and `RETF imm16` (`CA`), plus WAIT (`9B`), were added in commit `e7652be5d5c7d4ac9510aeb277f78f95448f7a9d`. Return instructions restore IP (and CS for far return) from SS:SP and apply immediate stack cleanup where encoded.
+LOOPNE/LOOPE/LOOP/JCXZ (`E0`–`E3`) were added in commit `f63ee592a60356254926333b5859bac0d3a3c151`. LOOP variants decrement CX without modifying FLAGS; JCXZ only tests CX. Near CALL `E8` was added in commit `5acb6d3b6d658cf1e1558099b3509bb57b25e6dc`; near RET aliases `C1/C3`, `RET imm16` (`C2`), far RET aliases `C8/C9/CB` and `RETF imm16` (`CA`), plus WAIT (`9B`), were added in commit `e7652be5d5c7d4ac9510aeb277f78f95448f7a9d`. Return instructions restore IP (and CS for far return) from SS:SP and apply immediate stack cleanup where encoded.
 The 32 conditional branch opcode bytes 60h–7Fh were added in commits `a7379c6fa55f9c87746bb25670be72b7cdf6aa47` and `f9909dcead0de8ca297a79c16e8c888e05343a34`. Conditions use OF, CF, ZF, SF and PF from the guest FLAGS word; all branches consume the signed displacement even when not taken. The 60h–6Fh aliases follow the PCem 8086 execution path and are not treated as 80186 PUSHA/POPA.
 The 16 PUSH/POP register opcodes 50h–5Fh were added in commit `6279ab0c9182574c9782b4bbb1222d777838467d`. Stack accesses use SS:SP via the Project126 guest-memory backend, wrap the 16-bit stack offset, and preserve PCem's original 8086 PUSH SP / POP SP ordering.
 The 16 MOV-immediate opcodes were added in commit `28575e385d5d2a66c5ca448e72f7b4e2f01d2391`.
@@ -57,7 +58,7 @@ All other original 8086 opcode families remain open, including:
 - all ModR/M operand forms and 8086 effective-address calculations;
 - register/memory/immediate MOV, segment-register operations, LEA, LES/LDS, XCHG;
 - remaining stack operations, PUSHF/POPF, LAHF/SAHF, CBW/CWD;
-- LOOP family, remaining near/far CALL/RET/JMP variants;
+- remaining near/far CALL/RET/JMP variants;
 - software interrupts, INTO, IRET and interrupt frame semantics;
 - string instructions and REP/REPE/REPNE;
 - IN/OUT as virtual guest ports, with no physical NeoGS device I/O;
