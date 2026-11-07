@@ -661,8 +661,8 @@ P126_ScrollConsoleUp::
 ; =========================================================================
 p126_ui_line0:       db "PROJECT126  |  ATM TURBO 2+  |  SYSTEM MONITOR", 0
 p126_ui_line1:       db "TR-DOS DISK A: FILE CATALOG", 0
-p126_ui_line11:      db "RTC: NOT INITIALIZED | UP/DOWN MOVE | CAPS+3/4 PAGE", 0
-p126_ui_line11_ready: db "RTC: DS12887 ONLINE | UP/DOWN MOVE | CAPS+3/4 PAGE", 0
+p126_ui_line11:      db "RTC: NOT INITIALIZED | UP/DOWN MOVE | CAPS+5/8 PAGE", 0
+p126_ui_line11_ready: db "RTC: DS12887 ONLINE | UP/DOWN MOVE | CAPS+5/8 PAGE", 0
 
 ; =========================================================================
 ; Renderer state — all data is in window 2 with this module.
