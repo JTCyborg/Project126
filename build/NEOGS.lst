@@ -240,23 +240,23 @@
   53  001C ED 79                out     (c),a                  ; WIN1 -> physical page 03
   54  001E 3E 80                ld      a,#80
   55  0020 D3 00                out     (P126_NGS_OVERLAY_WINDOW_PORT),a ; WIN2 placeholder -> page 01
-  56  0022 32 87 3E             ld      (p126_overlay_current_selector),a
+  56  0022 32 A1 3E             ld      (p126_overlay_current_selector),a
   57  0025 3E 01                ld      a,#01
   58  0027 D3 10                out     (#10),a                ; WIN3 -> physical page 02 until banked
   59  0029 31 FE 7F             ld      sp,#7FFE
   60  002C AF                   xor     a
-  61  002D 32 86 3E             ld      (p126_overlay_call_depth),a
-  62  0030 21 8D 3E             ld      hl,p126_overlay_call_pages
-  63  0033 11 8E 3E             ld      de,p126_overlay_call_pages+1
+  61  002D 32 A0 3E             ld      (p126_overlay_call_depth),a
+  62  0030 21 A7 3E             ld      hl,p126_overlay_call_pages
+  63  0033 11 A8 3E             ld      de,p126_overlay_call_pages+1
   64  0036 01 07 00             ld      bc,P126_OVERLAY_MAX_CALL_DEPTH-1
   65  0039 77                   ld      (hl),a
   66  003A ED B0                ldir
-  67  003C 21 95 3E             ld      hl,p126_overlay_alloc_state
-  68  003F 11 96 3E             ld      de,p126_overlay_alloc_state+1
+  67  003C 21 AF 3E             ld      hl,p126_overlay_alloc_state
+  68  003F 11 B0 3E             ld      de,p126_overlay_alloc_state+1
   69  0042 01 09 00             ld      bc,9
   70  0045 77                   ld      (hl),a
   71  0046 ED B0                ldir
-  72  0048 CD 7A 3C             call    p126_overlay_allocator_selftest
+  72  0048 CD 94 3C             call    p126_overlay_allocator_selftest
   73  004B 38 08                jr      c,.p126_allocator_selftest_failed
   74  004D 21 29 01             ld      hl,p126_ngs_resident_allocator_ok
   75  0050 CD BA 00             call    p126_ngs_resident_log
@@ -269,7 +269,7 @@
   82  005D
   83  005D 21 F5 00             ld      hl,p126_ngs_resident_banner
   84  0060 CD BA 00             call    p126_ngs_resident_log
-  85  0063 CD 33 39             call    p126_ngs_ipc_crc16_selftest
+  85  0063 CD 4D 39             call    p126_ngs_ipc_crc16_selftest
   86  0066 38 40                jr      c,p126_ngs_resident_crc_fail
   87  0068 21 12 01             ld      hl,p126_ngs_resident_crc_ok
   88  006B CD BA 00             call    p126_ngs_resident_log
@@ -288,18 +288,18 @@
  101  0083                      ; CPU execution calls the fixed-origin I/O overlay at 8000h.
  102  0083                      ; Do not enter the BIOS until its page-04 image has been verified
  103  0083                      ; and mapped into WIN2 by IMAGE_FINISH.
- 104  0083 3A DC 37             ld      a,(p126_ngs_io_overlay_ready)
+ 104  0083 3A F6 37             ld      a,(p126_ngs_io_overlay_ready)
  105  0086 B7                   or      a
  106  0087 28 EC                jr      z,p126_ngs_resident_main_loop
- 107  0089 3A DD 37             ld      a,(p126_ngs_alu_overlay_ready)
+ 107  0089 3A F7 37             ld      a,(p126_ngs_alu_overlay_ready)
  108  008C B7                   or      a
  109  008D 28 E6                jr      z,p126_ngs_resident_main_loop
- 110  008F 3A DB 37             ld      a,(p126_ngs_bios_image_ready)
+ 110  008F 3A F5 37             ld      a,(p126_ngs_bios_image_ready)
  111  0092 B7                   or      a
  112  0093 28 E0                jr      z,p126_ngs_resident_main_loop
  113  0095                      ; Consume the installation event before probing: one-shot transition.
  114  0095 AF                   xor     a
- 115  0096 32 DB 37             ld      (p126_ngs_bios_image_ready),a
+ 115  0096 32 F5 37             ld      (p126_ngs_bios_image_ready),a
  116  0099                      ; Begin BIOS bring-up only after both IMAGE_FINISH/readback gates.
  117  0099 CD 5C 02             call    x86_bios_startup_trace
  118  009C 18 D7                jr      p126_ngs_resident_main_loop
@@ -482,7 +482,7 @@
   49+ 0214 32 D8 0B             ld      (x86_tf_pending),a
   50+ 0217 3E 08                ld      a,8
   51+ 0219 32 D9 0B             ld      (x86_irq_vector),a
-  52+ 021C CD D1 3C             call    x86_io_reset
+  52+ 021C CD EB 3C             call    x86_io_reset
   53+ 021F C9                   ret
   54+ 0220
   55+ 0220              ; -------------------------------------------------------------------------
@@ -2492,7 +2492,7 @@
  469+ 1043 CD 72 2F             call    x86_modrm_read_reg8
  470+ 1046 4F                   ld      c,a
  471+ 1047 3A C3 2D             ld      a,(x86_exec_alu_lhs8)
- 472+ 104A CD 89 3D             call    x86_alu_add8
+ 472+ 104A CD A3 3D             call    x86_alu_add8
  473+ 104D C3 FC 2F             jp      x86_modrm_write_rm8
  474+ 1050
  475+ 1050              .add_r8_from_rm8:
@@ -2504,7 +2504,7 @@
  481+ 105C D8                   ret     c
  482+ 105D 4F                   ld      c,a
  483+ 105E 3A C3 2D             ld      a,(x86_exec_alu_lhs8)
- 484+ 1061 CD 89 3D             call    x86_alu_add8
+ 484+ 1061 CD A3 3D             call    x86_alu_add8
  485+ 1064 4F                   ld      c,a
  486+ 1065 3A 6A 2F             ld      a,(x86_modrm_reg)
  487+ 1068 C3 8F 2F             jp      x86_modrm_write_reg8
@@ -2520,7 +2520,7 @@
  497+ 1076 CD B3 2F             call    x86_modrm_read_reg16
  498+ 1079 EB                   ex      de,hl
  499+ 107A 2A C4 2D             ld      hl,(x86_exec_alu_lhs16)
- 500+ 107D CD B7 3D             call    x86_alu_add16
+ 500+ 107D CD D1 3D             call    x86_alu_add16
  501+ 1080 C3 56 30             jp      x86_modrm_write_rm16
  502+ 1083
  503+ 1083              .add_r16_from_rm16:
@@ -2531,7 +2531,7 @@
  508+ 108C D8                   ret     c
  509+ 108D EB                   ex      de,hl
  510+ 108E 2A C4 2D             ld      hl,(x86_exec_alu_lhs16)
- 511+ 1091 CD B7 3D             call    x86_alu_add16
+ 511+ 1091 CD D1 3D             call    x86_alu_add16
  512+ 1094 C3 CC 2F             jp      x86_modrm_write_reg16
  513+ 1097
  514+ 1097              .add_accumulator:
@@ -2541,7 +2541,7 @@
  518+ 109E D8                   ret     c
  519+ 109F 4F                   ld      c,a
  520+ 10A0 3A B8 0B             ld      a,(x86_reg_ax)
- 521+ 10A3 CD 89 3D             call    x86_alu_add8
+ 521+ 10A3 CD A3 3D             call    x86_alu_add8
  522+ 10A6 32 B8 0B             ld      (x86_reg_ax),a
  523+ 10A9 B7                   or      a
  524+ 10AA C9                   ret
@@ -2550,7 +2550,7 @@
  527+ 10AE D8                   ret     c
  528+ 10AF EB                   ex      de,hl
  529+ 10B0 2A B8 0B             ld      hl,(x86_reg_ax)
- 530+ 10B3 CD B7 3D             call    x86_alu_add16
+ 530+ 10B3 CD D1 3D             call    x86_alu_add16
  531+ 10B6 22 B8 0B             ld      (x86_reg_ax),hl
  532+ 10B9 B7                   or      a
  533+ 10BA C9                   ret
@@ -2583,7 +2583,7 @@
  560+ 10E7 CD 72 2F             call    x86_modrm_read_reg8
  561+ 10EA 4F                   ld      c,a
  562+ 10EB 3A C3 2D             ld      a,(x86_exec_alu_lhs8)
- 563+ 10EE CD A0 3D             call    x86_alu_sub8
+ 563+ 10EE CD BA 3D             call    x86_alu_sub8
  564+ 10F1 4F                   ld      c,a
  565+ 10F2 3A C9 2D             ld      a,(x86_exec_alu_is_cmp)
  566+ 10F5 B7                   or      a
@@ -2602,7 +2602,7 @@
  579+ 110E D8                   ret     c
  580+ 110F 4F                   ld      c,a
  581+ 1110 3A C3 2D             ld      a,(x86_exec_alu_lhs8)
- 582+ 1113 CD A0 3D             call    x86_alu_sub8
+ 582+ 1113 CD BA 3D             call    x86_alu_sub8
  583+ 1116 4F                   ld      c,a
  584+ 1117 3A C9 2D             ld      a,(x86_exec_alu_is_cmp)
  585+ 111A B7                   or      a
@@ -2621,7 +2621,7 @@
  598+ 112D CD B3 2F             call    x86_modrm_read_reg16
  599+ 1130 EB                   ex      de,hl
  600+ 1131 2A C4 2D             ld      hl,(x86_exec_alu_lhs16)
- 601+ 1134 CD CE 3D             call    x86_alu_sub16
+ 601+ 1134 CD E8 3D             call    x86_alu_sub16
  602+ 1137 22 C7 2D             ld      (x86_exec_alu_result16),hl
  603+ 113A 3A C9 2D             ld      a,(x86_exec_alu_is_cmp)
  604+ 113D B7                   or      a
@@ -2637,7 +2637,7 @@
  614+ 114E D8                   ret     c
  615+ 114F EB                   ex      de,hl
  616+ 1150 2A C4 2D             ld      hl,(x86_exec_alu_lhs16)
- 617+ 1153 CD CE 3D             call    x86_alu_sub16
+ 617+ 1153 CD E8 3D             call    x86_alu_sub16
  618+ 1156 22 C7 2D             ld      (x86_exec_alu_result16),hl
  619+ 1159 3A C9 2D             ld      a,(x86_exec_alu_is_cmp)
  620+ 115C B7                   or      a
@@ -2652,7 +2652,7 @@
  629+ 116B D8                   ret     c
  630+ 116C 4F                   ld      c,a
  631+ 116D 3A B8 0B             ld      a,(x86_reg_ax)
- 632+ 1170 CD A0 3D             call    x86_alu_sub8
+ 632+ 1170 CD BA 3D             call    x86_alu_sub8
  633+ 1173 32 C6 2D             ld      (x86_exec_alu_result8),a
  634+ 1176 3A C9 2D             ld      a,(x86_exec_alu_is_cmp)
  635+ 1179 B7                   or      a
@@ -2666,7 +2666,7 @@
  643+ 1186 D8                   ret     c
  644+ 1187 EB                   ex      de,hl
  645+ 1188 2A B8 0B             ld      hl,(x86_reg_ax)
- 646+ 118B CD CE 3D             call    x86_alu_sub16
+ 646+ 118B CD E8 3D             call    x86_alu_sub16
  647+ 118E 22 C7 2D             ld      (x86_exec_alu_result16),hl
  648+ 1191 3A C9 2D             ld      a,(x86_exec_alu_is_cmp)
  649+ 1194 B7                   or      a
@@ -2800,16 +2800,16 @@
  777+ 1279 3A CB 2D             ld      a,(x86_exec_alu_is_sbb)
  778+ 127C B7                   or      a
  779+ 127D 3A 28 2E             ld      a,(x86_exec_adc_sbb_lhs8)
- 780+ 1280 C2 FC 3D             jp      nz,x86_alu_sbb8
- 781+ 1283 C3 E5 3D             jp      x86_alu_adc8
+ 780+ 1280 C2 16 3E             jp      nz,x86_alu_sbb8
+ 781+ 1283 C3 FF 3D             jp      x86_alu_adc8
  782+ 1286
  783+ 1286              x86_exec_adc_sbb16:
  784+ 1286 22 29 2E             ld      (x86_exec_adc_sbb_lhs16),hl
  785+ 1289 3A CB 2D             ld      a,(x86_exec_alu_is_sbb)
  786+ 128C B7                   or      a
  787+ 128D 2A 29 2E             ld      hl,(x86_exec_adc_sbb_lhs16)
- 788+ 1290 C2 2A 3E             jp      nz,x86_alu_sbb16
- 789+ 1293 C3 13 3E             jp      x86_alu_adc16
+ 788+ 1290 C2 44 3E             jp      nz,x86_alu_sbb16
+ 789+ 1293 C3 2D 3E             jp      x86_alu_adc16
  790+ 1296
  791+ 1296              ; Resolve the current default data segment with the active segment override.
  792+ 1296              ; OUT HL=segment. Prefix codes: ES=1, CS=2, SS=3, DS=4; zero means DS.
@@ -3125,7 +3125,7 @@
 1102+ 14B6 4F                   ld      c,a
 1103+ 14B7 3A 16 2E             ld      a,(x86_exec_group3_value8)
 1104+ 14BA 06 01                ld      b,1
-1105+ 14BC CD 41 3E             call    x86_alu_logic8
+1105+ 14BC CD 5B 3E             call    x86_alu_logic8
 1106+ 14BF B7                   or      a
 1107+ 14C0 C9                   ret
 1108+ 14C1              .group3_test_word:
@@ -3136,7 +3136,7 @@
 1113+ 14CB D8                   ret     c
 1114+ 14CC ED 5B 14 2E          ld      de,(x86_exec_group3_imm16)
 1115+ 14D0 06 01                ld      b,1
-1116+ 14D2 CD 58 3E             call    x86_alu_logic16
+1116+ 14D2 CD 72 3E             call    x86_alu_logic16
 1117+ 14D5 B7                   or      a
 1118+ 14D6 C9                   ret
 1119+ 14D7
@@ -3167,14 +3167,14 @@
 1144+ 14FD D8                   ret     c
 1145+ 14FE 4F                   ld      c,a
 1146+ 14FF AF                   xor     a
-1147+ 1500 CD A0 3D             call    x86_alu_sub8
+1147+ 1500 CD BA 3D             call    x86_alu_sub8
 1148+ 1503 C3 FC 2F             jp      x86_modrm_write_rm8
 1149+ 1506              .group3_neg_word:
 1150+ 1506 CD 19 30             call    x86_modrm_read_rm16
 1151+ 1509 D8                   ret     c
 1152+ 150A EB                   ex      de,hl
 1153+ 150B 21 00 00             ld      hl,0
-1154+ 150E CD CE 3D             call    x86_alu_sub16
+1154+ 150E CD E8 3D             call    x86_alu_sub16
 1155+ 1511 C3 56 30             jp      x86_modrm_write_rm16
 1156+ 1514
 1157+ 1514              ; F6 byte and F7 word Group 3 arithmetic, including multiply and divide.
@@ -3805,7 +3805,7 @@
 1782+ 19F1 CD 05 1B             call    x86_exec_group45_save_cf
 1783+ 19F4 3A 19 2E             ld      a,(x86_exec_group45_value8)
 1784+ 19F7 0E 01                ld      c,1
-1785+ 19F9 CD A0 3D             call    x86_alu_sub8
+1785+ 19F9 CD BA 3D             call    x86_alu_sub8
 1786+ 19FC 32 19 2E             ld      (x86_exec_group45_value8),a
 1787+ 19FF CD 0E 1B             call    x86_exec_group45_restore_cf
 1788+ 1A02 3A 19 2E             ld      a,(x86_exec_group45_value8)
@@ -3817,7 +3817,7 @@
 1794+ 1A0F CD 05 1B             call    x86_exec_group45_save_cf
 1795+ 1A12 3A 19 2E             ld      a,(x86_exec_group45_value8)
 1796+ 1A15 0E 01                ld      c,1
-1797+ 1A17 CD 89 3D             call    x86_alu_add8
+1797+ 1A17 CD A3 3D             call    x86_alu_add8
 1798+ 1A1A 32 19 2E             ld      (x86_exec_group45_value8),a
 1799+ 1A1D CD 0E 1B             call    x86_exec_group45_restore_cf
 1800+ 1A20 3A 19 2E             ld      a,(x86_exec_group45_value8)
@@ -3834,10 +3834,10 @@
 1811+ 1A36 3A 18 2E             ld      a,(x86_exec_group45_ext)
 1812+ 1A39 B7                   or      a
 1813+ 1A3A 20 05                jr      nz,.group5_dec
-1814+ 1A3C CD B7 3D             call    x86_alu_add16
+1814+ 1A3C CD D1 3D             call    x86_alu_add16
 1815+ 1A3F 18 03                jr      .group5_incdec_done
 1816+ 1A41              .group5_dec:
-1817+ 1A41 CD CE 3D             call    x86_alu_sub16
+1817+ 1A41 CD E8 3D             call    x86_alu_sub16
 1818+ 1A44              .group5_incdec_done:
 1819+ 1A44 22 1A 2E             ld      (x86_exec_group45_value16),hl
 1820+ 1A47 CD 0E 1B             call    x86_exec_group45_restore_cf
@@ -4051,13 +4051,13 @@
 2028+ 1BC0 3A 23 2E             ld      a,(x86_exec_group1_rhs8)
 2029+ 1BC3 4F                   ld      c,a
 2030+ 1BC4 3A 22 2E             ld      a,(x86_exec_group1_lhs8)
-2031+ 1BC7 C3 89 3D             jp      x86_alu_add8
+2031+ 1BC7 C3 A3 3D             jp      x86_alu_add8
 2032+ 1BCA              .group1_or8:
 2033+ 1BCA 3A 23 2E             ld      a,(x86_exec_group1_rhs8)
 2034+ 1BCD 4F                   ld      c,a
 2035+ 1BCE 3A 22 2E             ld      a,(x86_exec_group1_lhs8)
 2036+ 1BD1 06 00                ld      b,0
-2037+ 1BD3 C3 41 3E             jp      x86_alu_logic8
+2037+ 1BD3 C3 5B 3E             jp      x86_alu_logic8
 2038+ 1BD6              .group1_adc8:
 2039+ 1BD6 3A 23 2E             ld      a,(x86_exec_group1_rhs8)
 2040+ 1BD9 4F                   ld      c,a
@@ -4065,7 +4065,7 @@
 2042+ 1BDD E6 01                and     1
 2043+ 1BDF 47                   ld      b,a
 2044+ 1BE0 3A 22 2E             ld      a,(x86_exec_group1_lhs8)
-2045+ 1BE3 C3 E5 3D             jp      x86_alu_adc8
+2045+ 1BE3 C3 FF 3D             jp      x86_alu_adc8
 2046+ 1BE6              .group1_sbb8:
 2047+ 1BE6 3A 23 2E             ld      a,(x86_exec_group1_rhs8)
 2048+ 1BE9 4F                   ld      c,a
@@ -4073,25 +4073,25 @@
 2050+ 1BED E6 01                and     1
 2051+ 1BEF 47                   ld      b,a
 2052+ 1BF0 3A 22 2E             ld      a,(x86_exec_group1_lhs8)
-2053+ 1BF3 C3 FC 3D             jp      x86_alu_sbb8
+2053+ 1BF3 C3 16 3E             jp      x86_alu_sbb8
 2054+ 1BF6              .group1_and8:
 2055+ 1BF6 3A 23 2E             ld      a,(x86_exec_group1_rhs8)
 2056+ 1BF9 4F                   ld      c,a
 2057+ 1BFA 3A 22 2E             ld      a,(x86_exec_group1_lhs8)
 2058+ 1BFD 06 01                ld      b,1
-2059+ 1BFF C3 41 3E             jp      x86_alu_logic8
+2059+ 1BFF C3 5B 3E             jp      x86_alu_logic8
 2060+ 1C02              .group1_sub8:
 2061+ 1C02              .group1_cmp8:
 2062+ 1C02 3A 23 2E             ld      a,(x86_exec_group1_rhs8)
 2063+ 1C05 4F                   ld      c,a
 2064+ 1C06 3A 22 2E             ld      a,(x86_exec_group1_lhs8)
-2065+ 1C09 C3 A0 3D             jp      x86_alu_sub8
+2065+ 1C09 C3 BA 3D             jp      x86_alu_sub8
 2066+ 1C0C              .group1_xor8:
 2067+ 1C0C 3A 23 2E             ld      a,(x86_exec_group1_rhs8)
 2068+ 1C0F 4F                   ld      c,a
 2069+ 1C10 3A 22 2E             ld      a,(x86_exec_group1_lhs8)
 2070+ 1C13 06 02                ld      b,2
-2071+ 1C15 C3 41 3E             jp      x86_alu_logic8
+2071+ 1C15 C3 5B 3E             jp      x86_alu_logic8
 2072+ 1C18
 2073+ 1C18              ; HL=left, DE=immediate; returns result in HL and updates guest FLAGS.
 2074+ 1C18              x86_exec_group1_apply16:
@@ -4116,41 +4116,41 @@
 2093+ 1C47              .group1_add16:
 2094+ 1C47 2A 24 2E             ld      hl,(x86_exec_group1_lhs16)
 2095+ 1C4A ED 5B 26 2E          ld      de,(x86_exec_group1_rhs16)
-2096+ 1C4E C3 B7 3D             jp      x86_alu_add16
+2096+ 1C4E C3 D1 3D             jp      x86_alu_add16
 2097+ 1C51              .group1_or16:
 2098+ 1C51 2A 24 2E             ld      hl,(x86_exec_group1_lhs16)
 2099+ 1C54 ED 5B 26 2E          ld      de,(x86_exec_group1_rhs16)
 2100+ 1C58 06 00                ld      b,0
-2101+ 1C5A C3 58 3E             jp      x86_alu_logic16
+2101+ 1C5A C3 72 3E             jp      x86_alu_logic16
 2102+ 1C5D              .group1_adc16:
 2103+ 1C5D 2A 24 2E             ld      hl,(x86_exec_group1_lhs16)
 2104+ 1C60 ED 5B 26 2E          ld      de,(x86_exec_group1_rhs16)
 2105+ 1C64 3A D2 0B             ld      a,(x86_reg_flags)
 2106+ 1C67 E6 01                and     1
 2107+ 1C69 47                   ld      b,a
-2108+ 1C6A C3 13 3E             jp      x86_alu_adc16
+2108+ 1C6A C3 2D 3E             jp      x86_alu_adc16
 2109+ 1C6D              .group1_sbb16:
 2110+ 1C6D 2A 24 2E             ld      hl,(x86_exec_group1_lhs16)
 2111+ 1C70 ED 5B 26 2E          ld      de,(x86_exec_group1_rhs16)
 2112+ 1C74 3A D2 0B             ld      a,(x86_reg_flags)
 2113+ 1C77 E6 01                and     1
 2114+ 1C79 47                   ld      b,a
-2115+ 1C7A C3 2A 3E             jp      x86_alu_sbb16
+2115+ 1C7A C3 44 3E             jp      x86_alu_sbb16
 2116+ 1C7D              .group1_and16:
 2117+ 1C7D 2A 24 2E             ld      hl,(x86_exec_group1_lhs16)
 2118+ 1C80 ED 5B 26 2E          ld      de,(x86_exec_group1_rhs16)
 2119+ 1C84 06 01                ld      b,1
-2120+ 1C86 C3 58 3E             jp      x86_alu_logic16
+2120+ 1C86 C3 72 3E             jp      x86_alu_logic16
 2121+ 1C89              .group1_sub16:
 2122+ 1C89              .group1_cmp16:
 2123+ 1C89 2A 24 2E             ld      hl,(x86_exec_group1_lhs16)
 2124+ 1C8C ED 5B 26 2E          ld      de,(x86_exec_group1_rhs16)
-2125+ 1C90 C3 CE 3D             jp      x86_alu_sub16
+2125+ 1C90 C3 E8 3D             jp      x86_alu_sub16
 2126+ 1C93              .group1_xor16:
 2127+ 1C93 2A 24 2E             ld      hl,(x86_exec_group1_lhs16)
 2128+ 1C96 ED 5B 26 2E          ld      de,(x86_exec_group1_rhs16)
 2129+ 1C9A 06 02                ld      b,2
-2130+ 1C9C C3 58 3E             jp      x86_alu_logic16
+2130+ 1C9C C3 72 3E             jp      x86_alu_logic16
 2131+ 1C9F
 2132+ 1C9F              ; OR 08-0D, AND 20-25, XOR 30-35, TEST 84-85.
 2133+ 1C9F              ; Each operation uses the shared logical ALU helpers, which clear CF/AF/OF
@@ -4202,7 +4202,7 @@
 2179+ 1CF1 3A CA 2D             ld      a,(x86_exec_alu_operation)
 2180+ 1CF4 47                   ld      b,a
 2181+ 1CF5 3A C3 2D             ld      a,(x86_exec_alu_lhs8)
-2182+ 1CF8 CD 41 3E             call    x86_alu_logic8
+2182+ 1CF8 CD 5B 3E             call    x86_alu_logic8
 2183+ 1CFB C3 FC 2F             jp      x86_modrm_write_rm8
 2184+ 1CFE
 2185+ 1CFE              .logic_r8_from_rm8:
@@ -4216,7 +4216,7 @@
 2193+ 1D0C 3A CA 2D             ld      a,(x86_exec_alu_operation)
 2194+ 1D0F 47                   ld      b,a
 2195+ 1D10 3A C3 2D             ld      a,(x86_exec_alu_lhs8)
-2196+ 1D13 CD 41 3E             call    x86_alu_logic8
+2196+ 1D13 CD 5B 3E             call    x86_alu_logic8
 2197+ 1D16 4F                   ld      c,a
 2198+ 1D17 3A 6A 2F             ld      a,(x86_modrm_reg)
 2199+ 1D1A C3 8F 2F             jp      x86_modrm_write_reg8
@@ -4234,7 +4234,7 @@
 2211+ 1D2C 2A C4 2D             ld      hl,(x86_exec_alu_lhs16)
 2212+ 1D2F 3A CA 2D             ld      a,(x86_exec_alu_operation)
 2213+ 1D32 47                   ld      b,a
-2214+ 1D33 CD 58 3E             call    x86_alu_logic16
+2214+ 1D33 CD 72 3E             call    x86_alu_logic16
 2215+ 1D36 C3 56 30             jp      x86_modrm_write_rm16
 2216+ 1D39
 2217+ 1D39              .logic_r16_from_rm16:
@@ -4247,7 +4247,7 @@
 2224+ 1D44 2A C4 2D             ld      hl,(x86_exec_alu_lhs16)
 2225+ 1D47 3A CA 2D             ld      a,(x86_exec_alu_operation)
 2226+ 1D4A 47                   ld      b,a
-2227+ 1D4B CD 58 3E             call    x86_alu_logic16
+2227+ 1D4B CD 72 3E             call    x86_alu_logic16
 2228+ 1D4E C3 CC 2F             jp      x86_modrm_write_reg16
 2229+ 1D51
 2230+ 1D51              .logic_test_rm_reg:
@@ -4264,7 +4264,7 @@
 2241+ 1D69 4F                   ld      c,a
 2242+ 1D6A 3A C3 2D             ld      a,(x86_exec_alu_lhs8)
 2243+ 1D6D 06 01                ld      b,1
-2244+ 1D6F CD 41 3E             call    x86_alu_logic8
+2244+ 1D6F CD 5B 3E             call    x86_alu_logic8
 2245+ 1D72 B7                   or      a
 2246+ 1D73 C9                   ret
 2247+ 1D74              .logic_test_word:
@@ -4275,7 +4275,7 @@
 2252+ 1D7E EB                   ex      de,hl
 2253+ 1D7F 2A C4 2D             ld      hl,(x86_exec_alu_lhs16)
 2254+ 1D82 06 01                ld      b,1
-2255+ 1D84 CD 58 3E             call    x86_alu_logic16
+2255+ 1D84 CD 72 3E             call    x86_alu_logic16
 2256+ 1D87 B7                   or      a
 2257+ 1D88 C9                   ret
 2258+ 1D89
@@ -4288,7 +4288,7 @@
 2265+ 1D92 3A CA 2D             ld      a,(x86_exec_alu_operation)
 2266+ 1D95 47                   ld      b,a
 2267+ 1D96 3A B8 0B             ld      a,(x86_reg_ax)
-2268+ 1D99 CD 41 3E             call    x86_alu_logic8
+2268+ 1D99 CD 5B 3E             call    x86_alu_logic8
 2269+ 1D9C 32 B8 0B             ld      (x86_reg_ax),a
 2270+ 1D9F B7                   or      a
 2271+ 1DA0 C9                   ret
@@ -4299,7 +4299,7 @@
 2276+ 1DA6 2A B8 0B             ld      hl,(x86_reg_ax)
 2277+ 1DA9 3A CA 2D             ld      a,(x86_exec_alu_operation)
 2278+ 1DAC 47                   ld      b,a
-2279+ 1DAD CD 58 3E             call    x86_alu_logic16
+2279+ 1DAD CD 72 3E             call    x86_alu_logic16
 2280+ 1DB0 22 B8 0B             ld      (x86_reg_ax),hl
 2281+ 1DB3 B7                   or      a
 2282+ 1DB4 C9                   ret
@@ -5721,7 +5721,7 @@
 3698+ 2745 D8                   ret     c
 3699+ 2746 4F                   ld      c,a
 3700+ 2747 3A D7 2D             ld      a,(x86_exec_string_value)
-3701+ 274A CD A0 3D             call    x86_alu_sub8
+3701+ 274A CD BA 3D             call    x86_alu_sub8
 3702+ 274D CD 5A 28             call    x86_exec_string_adjust_si
 3703+ 2750 C3 78 28             jp      x86_exec_string_adjust_di
 3704+ 2753              .cmps_word:
@@ -5732,7 +5732,7 @@
 3709+ 275D D8                   ret     c
 3710+ 275E EB                   ex      de,hl
 3711+ 275F 2A D8 2D             ld      hl,(x86_exec_string_word)
-3712+ 2762 CD CE 3D             call    x86_alu_sub16
+3712+ 2762 CD E8 3D             call    x86_alu_sub16
 3713+ 2765 CD 5A 28             call    x86_exec_string_adjust_si
 3714+ 2768 C3 78 28             jp      x86_exec_string_adjust_di
 3715+ 276B
@@ -5772,14 +5772,14 @@
 3749+ 27AB D8                   ret     c
 3750+ 27AC 4F                   ld      c,a
 3751+ 27AD 3A B8 0B             ld      a,(x86_reg_ax)
-3752+ 27B0 CD A0 3D             call    x86_alu_sub8
+3752+ 27B0 CD BA 3D             call    x86_alu_sub8
 3753+ 27B3 C3 78 28             jp      x86_exec_string_adjust_di
 3754+ 27B6              .scas_word:
 3755+ 27B6 CD 1C 28             call    x86_exec_string_read_dest16
 3756+ 27B9 D8                   ret     c
 3757+ 27BA EB                   ex      de,hl
 3758+ 27BB 2A B8 0B             ld      hl,(x86_reg_ax)
-3759+ 27BE CD CE 3D             call    x86_alu_sub16
+3759+ 27BE CD E8 3D             call    x86_alu_sub16
 3760+ 27C1 C3 78 28             jp      x86_exec_string_adjust_di
 3761+ 27C4
 3762+ 27C4              ; Source read helpers: DS/segment-override:SI.
@@ -6367,10 +6367,10 @@
 4344+ 2BB8 3A AE 2D             ld      a,(x86_exec_is_dec)
 4345+ 2BBB B7                   or      a
 4346+ 2BBC 20 05                jr      nz,.do_dec
-4347+ 2BBE CD B7 3D             call    x86_alu_add16
+4347+ 2BBE CD D1 3D             call    x86_alu_add16
 4348+ 2BC1 18 03                jr      .alu_done
 4349+ 2BC3              .do_dec:
-4350+ 2BC3 CD CE 3D             call    x86_alu_sub16
+4350+ 2BC3 CD E8 3D             call    x86_alu_sub16
 4351+ 2BC6              .alu_done:
 4352+ 2BC6 22 AB 2D             ld      (x86_exec_result_word),hl
 4353+ 2BC9
@@ -6550,24 +6550,24 @@
 4527+ 2CBB 3A D1 2D             ld      a,(x86_exec_io_opcode)
 4528+ 2CBE E6 01                and     1
 4529+ 2CC0 20 18                jr      nz,.io_input_word
-4530+ 2CC2 CD FF 3C             call    x86_io_read8
+4530+ 2CC2 CD 19 3D             call    x86_io_read8
 4531+ 2CC5 32 07 83             ld      (x86_io_log_value),a
 4532+ 2CC8 AF                   xor     a
 4533+ 2CC9 32 09 83             ld      (x86_io_log_direction),a
 4534+ 2CCC 32 0A 83             ld      (x86_io_log_width),a
-4535+ 2CCF CD 5B 3D             call    x86_io_log_access
+4535+ 2CCF CD 75 3D             call    x86_io_log_access
 4536+ 2CD2 3A 07 83             ld      a,(x86_io_log_value)
 4537+ 2CD5 32 B8 0B             ld      (x86_reg_ax),a
 4538+ 2CD8 B7                   or      a
 4539+ 2CD9 C9                   ret
 4540+ 2CDA              .io_input_word:
-4541+ 2CDA CD 16 3D             call    x86_io_read16
+4541+ 2CDA CD 30 3D             call    x86_io_read16
 4542+ 2CDD 22 07 83             ld      (x86_io_log_value),hl
 4543+ 2CE0 AF                   xor     a
 4544+ 2CE1 32 09 83             ld      (x86_io_log_direction),a
 4545+ 2CE4 3C                   inc     a
 4546+ 2CE5 32 0A 83             ld      (x86_io_log_width),a
-4547+ 2CE8 CD 5B 3D             call    x86_io_log_access
+4547+ 2CE8 CD 75 3D             call    x86_io_log_access
 4548+ 2CEB 2A 07 83             ld      hl,(x86_io_log_value)
 4549+ 2CEE 22 B8 0B             ld      (x86_reg_ax),hl
 4550+ 2CF1 B7                   or      a
@@ -6578,22 +6578,22 @@
 4555+ 2CF8 20 17                jr      nz,.io_output_word
 4556+ 2CFA 3A B8 0B             ld      a,(x86_reg_ax)
 4557+ 2CFD 32 07 83             ld      (x86_io_log_value),a
-4558+ 2D00 CD 2D 3D             call    x86_io_write8
+4558+ 2D00 CD 47 3D             call    x86_io_write8
 4559+ 2D03 3E 01                ld      a,1
 4560+ 2D05 32 09 83             ld      (x86_io_log_direction),a
 4561+ 2D08 AF                   xor     a
 4562+ 2D09 32 0A 83             ld      (x86_io_log_width),a
-4563+ 2D0C CD 5B 3D             call    x86_io_log_access
+4563+ 2D0C CD 75 3D             call    x86_io_log_access
 4564+ 2D0F B7                   or      a
 4565+ 2D10 C9                   ret
 4566+ 2D11              .io_output_word:
 4567+ 2D11 2A B8 0B             ld      hl,(x86_reg_ax)
 4568+ 2D14 22 07 83             ld      (x86_io_log_value),hl
-4569+ 2D17 CD 44 3D             call    x86_io_write16
+4569+ 2D17 CD 5E 3D             call    x86_io_write16
 4570+ 2D1A 3E 01                ld      a,1
 4571+ 2D1C 32 09 83             ld      (x86_io_log_direction),a
 4572+ 2D1F 32 0A 83             ld      (x86_io_log_width),a
-4573+ 2D22 CD 5B 3D             call    x86_io_log_access
+4573+ 2D22 CD 75 3D             call    x86_io_log_access
 4574+ 2D25 B7                   or      a
 4575+ 2D26 C9                   ret
 4576+ 2D27
@@ -7497,10 +7497,10 @@
  177+ 31A3 3E 42                ld      a,P126_NGS_DMA_PROD_PAGE
  178+ 31A5 0F                   rrca
  179+ 31A6 D3 10                out     (P126_NGS_MPAGEX_PORT),a
- 180+ 31A8 21 0E 3A             ld      hl,p126_ngs_ipc_log_dma_page42_premapped
- 181+ 31AB CD 9F 3B             call    p126_ngs_ipc_log
- 182+ 31AE 21 78 39             ld      hl,p126_ngs_ipc_log_dma_cfg_begin
- 183+ 31B1 CD 9F 3B             call    p126_ngs_ipc_log
+ 180+ 31A8 21 28 3A             ld      hl,p126_ngs_ipc_log_dma_page42_premapped
+ 181+ 31AB CD B9 3B             call    p126_ngs_ipc_log
+ 182+ 31AE 21 92 39             ld      hl,p126_ngs_ipc_log_dma_cfg_begin
+ 183+ 31B1 CD B9 3B             call    p126_ngs_ipc_log
  184+ 31B4
  185+ 31B4                      ; Physical page 42h base = 108000h: HAD=10h, MAD=80h, LAD=00h.
  186+ 31B4 3E 01                ld      a,1
@@ -7513,12 +7513,12 @@
  193+ 31C1 D3 1E                out     (P126_NGS_DMA_LAD),a
  194+ 31C3 3E 80                ld      a,#80
  195+ 31C5 D3 1F                out     (P126_NGS_DMA_CST),a
- 196+ 31C7 21 91 39             ld      hl,p126_ngs_ipc_log_dma_armed
- 197+ 31CA CD 9F 3B             call    p126_ngs_ipc_log
+ 196+ 31C7 21 AB 39             ld      hl,p126_ngs_ipc_log_dma_armed
+ 197+ 31CA CD B9 3B             call    p126_ngs_ipc_log
  198+ 31CD AF                   xor     a
  199+ 31CE D3 05                out     (P126_NGS_CLRCBIT),a
- 200+ 31D0 21 A3 39             ld      hl,p126_ngs_ipc_log_dma_ready
- 201+ 31D3 CD 9F 3B             call    p126_ngs_ipc_log
+ 200+ 31D0 21 BD 39             ld      hl,p126_ngs_ipc_log_dma_ready
+ 201+ 31D3 CD B9 3B             call    p126_ngs_ipc_log
  202+ 31D6
  203+ 31D6                      ; Match Project125's proven DMA completion watchdog: eight full
  204+ 31D6                      ; 16-bit polling windows. A single #FFFF window expires before the
@@ -7536,8 +7536,8 @@
  216+ 31E4 20 F5                jr      nz,.p126_ngs_dma_wait_end
  217+ 31E6 15                   dec     d
  218+ 31E7 20 EF                jr      nz,.p126_ngs_dma_wait_outer
- 219+ 31E9 21 CA 39             ld      hl,p126_ngs_ipc_log_dma_timeout
- 220+ 31EC CD 9F 3B             call    p126_ngs_ipc_log
+ 219+ 31E9 21 E4 39             ld      hl,p126_ngs_ipc_log_dma_timeout
+ 220+ 31EC CD B9 3B             call    p126_ngs_ipc_log
  221+ 31EF AF                   xor     a
  222+ 31F0 D3 1F                out     (P126_NGS_DMA_CST),a
  223+ 31F2 D3 05                out     (P126_NGS_CLRCBIT),a
@@ -7546,42 +7546,42 @@
  226+ 31F7 C9                   ret
  227+ 31F8
  228+ 31F8              .p126_ngs_dma_host_end:
- 229+ 31F8 21 B5 39             ld      hl,p126_ngs_ipc_log_dma_host_end
- 230+ 31FB CD 9F 3B             call    p126_ngs_ipc_log
+ 229+ 31F8 21 CF 39             ld      hl,p126_ngs_ipc_log_dma_host_end
+ 230+ 31FB CD B9 3B             call    p126_ngs_ipc_log
  231+ 31FE AF                   xor     a
  232+ 31FF D3 1F                out     (P126_NGS_DMA_CST),a
- 233+ 3201 21 FA 39             ld      hl,p126_ngs_ipc_log_dma_stopped
- 234+ 3204 CD 9F 3B             call    p126_ngs_ipc_log
+ 233+ 3201 21 14 3A             ld      hl,p126_ngs_ipc_log_dma_stopped
+ 234+ 3204 CD B9 3B             call    p126_ngs_ipc_log
  235+ 3207
  236+ 3207                      ; A maximum 16 KiB frame must advance 108000h to 10C000h.
- 237+ 3207 21 5B 3A             ld      hl,p126_ngs_ipc_log_dma_addr
- 238+ 320A CD 9F 3B             call    p126_ngs_ipc_log
+ 237+ 3207 21 75 3A             ld      hl,p126_ngs_ipc_log_dma_addr
+ 238+ 320A CD B9 3B             call    p126_ngs_ipc_log
  239+ 320D DB 1C                in      a,(P126_NGS_DMA_HAD)
  240+ 320F 32 C7 32             ld      (p126_ngs_ipc_dma_end_had),a
- 241+ 3212 CD 5A 3B             call    p126_ngs_ipc_log_hex_byte_inline
+ 241+ 3212 CD 74 3B             call    p126_ngs_ipc_log_hex_byte_inline
  242+ 3215 DB 1D                in      a,(P126_NGS_DMA_MAD)
  243+ 3217 32 C8 32             ld      (p126_ngs_ipc_dma_end_mad),a
- 244+ 321A CD 5A 3B             call    p126_ngs_ipc_log_hex_byte_inline
+ 244+ 321A CD 74 3B             call    p126_ngs_ipc_log_hex_byte_inline
  245+ 321D DB 1E                in      a,(P126_NGS_DMA_LAD)
  246+ 321F 32 C9 32             ld      (p126_ngs_ipc_dma_end_lad),a
- 247+ 3222 CD 5A 3B             call    p126_ngs_ipc_log_hex_byte_inline
- 248+ 3225 CD 4A 3B             call    p126_ngs_ipc_log_crlf
+ 247+ 3222 CD 74 3B             call    p126_ngs_ipc_log_hex_byte_inline
+ 248+ 3225 CD 64 3B             call    p126_ngs_ipc_log_crlf
  249+ 3228                      ; WIN3 remains mapped to physical page 42h; CPU view is C000h.
- 250+ 3228 21 28 3A             ld      hl,p126_ngs_ipc_log_dma_page42_mapped
- 251+ 322B CD 9F 3B             call    p126_ngs_ipc_log
- 252+ 322E 21 42 3A             ld      hl,p126_ngs_ipc_log_dma_end
- 253+ 3231 CD 9F 3B             call    p126_ngs_ipc_log
+ 250+ 3228 21 42 3A             ld      hl,p126_ngs_ipc_log_dma_page42_mapped
+ 251+ 322B CD B9 3B             call    p126_ngs_ipc_log
+ 252+ 322E 21 5C 3A             ld      hl,p126_ngs_ipc_log_dma_end
+ 253+ 3231 CD B9 3B             call    p126_ngs_ipc_log
  254+ 3234
- 255+ 3234 21 74 3A             ld      hl,p126_ngs_ipc_log_rx_header
- 256+ 3237 CD 9F 3B             call    p126_ngs_ipc_log
+ 255+ 3234 21 8E 3A             ld      hl,p126_ngs_ipc_log_rx_header
+ 256+ 3237 CD B9 3B             call    p126_ngs_ipc_log
  257+ 323A DD 21 00 C0          ld      ix,#C000
  258+ 323E 06 10                ld      b,16
  259+ 3240              .p126_ngs_rx_dump_loop:
  260+ 3240 DD 7E 00             ld      a,(ix+0)
- 261+ 3243 CD 5A 3B             call    p126_ngs_ipc_log_hex_byte_inline
+ 261+ 3243 CD 74 3B             call    p126_ngs_ipc_log_hex_byte_inline
  262+ 3246 DD 23                inc     ix
  263+ 3248 10 F6                djnz    .p126_ngs_rx_dump_loop
- 264+ 324A CD 4A 3B             call    p126_ngs_ipc_log_crlf
+ 264+ 324A CD 64 3B             call    p126_ngs_ipc_log_crlf
  265+ 324D
  266+ 324D                      ; Frame size must fit wholly in the 16 KiB production staging page.
  267+ 324D 3A 0C C0             ld      a,(#C00C)
@@ -7619,8 +7619,8 @@
  299+ 328C 21 00 C0             ld      hl,#C000
  300+ 328F CD D2 30             call    p126_ngs_ipc_validate_frame
  301+ 3292 38 0F                jr      c,.p126_ngs_dma_validation_failed
- 302+ 3294 21 89 3A             ld      hl,p126_ngs_ipc_log_frame_valid
- 303+ 3297 CD 9F 3B             call    p126_ngs_ipc_log
+ 302+ 3294 21 A3 3A             ld      hl,p126_ngs_ipc_log_frame_valid
+ 303+ 3297 CD B9 3B             call    p126_ngs_ipc_log
  304+ 329A
  305+ 329A                      ; Keep CBIT asserted until the service handler has consumed the
  306+ 329A                      ; validated frame. The host's FF wait therefore covers the complete
@@ -7632,10 +7632,10 @@
  312+ 32A3
  313+ 32A3              .p126_ngs_dma_validation_failed:
  314+ 32A3 F5                   push    af
- 315+ 32A4 21 A1 3A             ld      hl,p126_ngs_ipc_log_frame_rejected
- 316+ 32A7 CD 9F 3B             call    p126_ngs_ipc_log
+ 315+ 32A4 21 BB 3A             ld      hl,p126_ngs_ipc_log_frame_rejected
+ 316+ 32A7 CD B9 3B             call    p126_ngs_ipc_log
  317+ 32AA F1                   pop     af
- 318+ 32AB CD 6D 3B             call    p126_ngs_ipc_log_hex_byte
+ 318+ 32AB CD 87 3B             call    p126_ngs_ipc_log_hex_byte
  319+ 32AE F5                   push    af
  320+ 32AF AF                   xor     a
  321+ 32B0 D3 05                out     (P126_NGS_CLRCBIT),a
@@ -7644,8 +7644,8 @@
  324+ 32B4 C9                   ret
  325+ 32B5
  326+ 32B5              .p126_ngs_dma_bad_length:
- 327+ 32B5 21 E3 39             ld      hl,p126_ngs_ipc_log_bad_length
- 328+ 32B8 CD 9F 3B             call    p126_ngs_ipc_log
+ 327+ 32B5 21 FD 39             ld      hl,p126_ngs_ipc_log_bad_length
+ 328+ 32B8 CD B9 3B             call    p126_ngs_ipc_log
  329+ 32BB 3E 03                ld      a,P126_STATUS_BAD_FRAME
  330+ 32BD 37                   scf
  331+ 32BE F5                   push    af
@@ -7737,8 +7737,8 @@
  416+ 3328 D3 1E                out     (P126_NGS_DMA_LAD),a
  417+ 332A 3E 80                ld      a,#80
  418+ 332C D3 1F                out     (P126_NGS_DMA_CST),a
- 419+ 332E 21 D5 3A             ld      hl,p126_ngs_ipc_log_dma_rx_armed
- 420+ 3331 CD 9F 3B             call    p126_ngs_ipc_log
+ 419+ 332E 21 EF 3A             ld      hl,p126_ngs_ipc_log_dma_rx_armed
+ 420+ 3331 CD B9 3B             call    p126_ngs_ipc_log
  421+ 3334 AF                   xor     a
  422+ 3335 D3 05                out     (P126_NGS_CLRCBIT),a
  423+ 3337                      ; Same Project125 eight-window timeout as the receive endpoint.
@@ -7758,25 +7758,25 @@
  437+ 334A AF                   xor     a
  438+ 334B D3 1F                out     (P126_NGS_DMA_CST),a
  439+ 334D D3 05                out     (P126_NGS_CLRCBIT),a
- 440+ 334F 21 19 3B             ld      hl,p126_ngs_ipc_log_dma_rx_timeout
- 441+ 3352 CD 9F 3B             call    p126_ngs_ipc_log
+ 440+ 334F 21 33 3B             ld      hl,p126_ngs_ipc_log_dma_rx_timeout
+ 441+ 3352 CD B9 3B             call    p126_ngs_ipc_log
  442+ 3355 3E 0A                ld      a,P126_STATUS_TIMEOUT
  443+ 3357 37                   scf
  444+ 3358 C9                   ret
  445+ 3359              .ngs_host_end:
  446+ 3359 AF                   xor     a
  447+ 335A D3 1F                out     (P126_NGS_DMA_CST),a
- 448+ 335C 21 EA 3A             ld      hl,p126_ngs_ipc_log_dma_rx_end
- 449+ 335F CD 9F 3B             call    p126_ngs_ipc_log
- 450+ 3362 21 FD 3A             ld      hl,p126_ngs_ipc_log_dma_rx_addr
- 451+ 3365 CD 9F 3B             call    p126_ngs_ipc_log
+ 448+ 335C 21 04 3B             ld      hl,p126_ngs_ipc_log_dma_rx_end
+ 449+ 335F CD B9 3B             call    p126_ngs_ipc_log
+ 450+ 3362 21 17 3B             ld      hl,p126_ngs_ipc_log_dma_rx_addr
+ 451+ 3365 CD B9 3B             call    p126_ngs_ipc_log
  452+ 3368 DB 1C                in      a,(P126_NGS_DMA_HAD)
- 453+ 336A CD 5A 3B             call    p126_ngs_ipc_log_hex_byte_inline
+ 453+ 336A CD 74 3B             call    p126_ngs_ipc_log_hex_byte_inline
  454+ 336D DB 1D                in      a,(P126_NGS_DMA_MAD)
- 455+ 336F CD 5A 3B             call    p126_ngs_ipc_log_hex_byte_inline
+ 455+ 336F CD 74 3B             call    p126_ngs_ipc_log_hex_byte_inline
  456+ 3372 DB 1E                in      a,(P126_NGS_DMA_LAD)
- 457+ 3374 CD 5A 3B             call    p126_ngs_ipc_log_hex_byte_inline
- 458+ 3377 CD 4A 3B             call    p126_ngs_ipc_log_crlf
+ 457+ 3374 CD 74 3B             call    p126_ngs_ipc_log_hex_byte_inline
+ 458+ 3377 CD 64 3B             call    p126_ngs_ipc_log_crlf
  459+ 337A                      ; One dummy aperture read plus exactly 4000h frame bytes. Do not
  460+ 337A                      ; acknowledge FF until the counter confirms the complete transfer.
  461+ 337A DB 1C                in      a,(P126_NGS_DMA_HAD)
@@ -7792,8 +7792,8 @@
  471+ 338D D3 05                out     (P126_NGS_CLRCBIT),a
  472+ 338F C9                   ret
  473+ 3390              .ngs_reverse_length_bad:
- 474+ 3390 21 30 3B             ld      hl,p126_ngs_ipc_log_dma_rx_length_bad
- 475+ 3393 CD 9F 3B             call    p126_ngs_ipc_log
+ 474+ 3390 21 4A 3B             ld      hl,p126_ngs_ipc_log_dma_rx_length_bad
+ 475+ 3393 CD B9 3B             call    p126_ngs_ipc_log
  476+ 3396 3E 03                ld      a,P126_STATUS_BAD_FRAME
  477+ 3398 37                   scf
  478+ 3399 F5                   push    af
@@ -7836,8 +7836,8 @@
  514+ 33CA C9                   ret
  515+ 33CB
  516+ 33CB              .p126_ngs_dispatch_host_frame:
- 517+ 33CB 21 60 39             ld      hl,p126_ngs_ipc_log_dma_e0
- 518+ 33CE CD 9F 3B             call    p126_ngs_ipc_log
+ 517+ 33CB 21 7A 39             ld      hl,p126_ngs_ipc_log_dma_e0
+ 518+ 33CE CD B9 3B             call    p126_ngs_ipc_log
  519+ 33D1 CD A3 31             call    p126_ngs_ipc_dma_receive_frame
  520+ 33D4 D8                   ret     c
  521+ 33D5
@@ -7873,21 +7873,21 @@
  551+ 33FE                      ; The host may request the stop record immediately after IMAGE_FINISH.
  552+ 33FE                      ; Keep the three-image readiness gate as the resident main loop:
  553+ 33FE                      ; BIOS execution requires SYSBIOS, X86IO and X86ALU overlays.
- 554+ 33FE 3A DC 37             ld      a,(p126_ngs_io_overlay_ready)
+ 554+ 33FE 3A F6 37             ld      a,(p126_ngs_io_overlay_ready)
  555+ 3401 B7                   or      a
  556+ 3402 28 13                jr      z,.ngs_frame_trace_ready
- 557+ 3404 3A DD 37             ld      a,(p126_ngs_alu_overlay_ready)
+ 557+ 3404 3A F7 37             ld      a,(p126_ngs_alu_overlay_ready)
  558+ 3407 B7                   or      a
  559+ 3408 28 0D                jr      z,.ngs_frame_trace_ready
- 560+ 340A 3A DB 37             ld      a,(p126_ngs_bios_image_ready)
+ 560+ 340A 3A F5 37             ld      a,(p126_ngs_bios_image_ready)
  561+ 340D B7                   or      a
  562+ 340E 28 07                jr      z,.ngs_frame_trace_ready
  563+ 3410 AF                   xor     a
- 564+ 3411 32 DB 37             ld      (p126_ngs_bios_image_ready),a
+ 564+ 3411 32 F5 37             ld      (p126_ngs_bios_image_ready),a
  565+ 3414 CD 5C 02             call    x86_bios_startup_trace
  566+ 3417              .ngs_frame_trace_ready:
- 567+ 3417 21 C2 3A             ld      hl,p126_ngs_ipc_log_dma_rx_request
- 568+ 341A CD 9F 3B             call    p126_ngs_ipc_log
+ 567+ 3417 21 DC 3A             ld      hl,p126_ngs_ipc_log_dma_rx_request
+ 568+ 341A CD B9 3B             call    p126_ngs_ipc_log
  569+ 341D CD CA 32             call    p126_ngs_ipc_dma_send_test_frame
  570+ 3420 C9                   ret
  571+ 3421
@@ -7897,8 +7897,8 @@
  575+ 3421              ; X86IO installs at page 04h, X86ALU at page 05h.
  576+ 3421              ; -------------------------------------------------------------------------
  577+ 3421              p126_ngs_image_begin:
- 578+ 3421 21 E7 37             ld      hl,p126_ngs_image_begin_log
- 579+ 3424 CD 9F 3B             call    p126_ngs_ipc_log
+ 578+ 3421 21 01 38             ld      hl,p126_ngs_image_begin_log
+ 579+ 3424 CD B9 3B             call    p126_ngs_ipc_log
  580+ 3427 3A 0C C0             ld      a,(#C00C)
  581+ 342A FE 06                cp      6
  582+ 342C C2 D8 34             jp      nz,.image_begin_bad
@@ -7929,7 +7929,7 @@
  607+ 345B ED 52                sbc     hl,de
  608+ 345D C2 D8 34             jp      nz,.image_begin_bad
  609+ 3460 3E 08                ld      a,#08                  ; WIN3 selector for physical page 10h
- 610+ 3462 32 E3 37             ld      (p126_ngs_image_dest_selector),a
+ 610+ 3462 32 FD 37             ld      (p126_ngs_image_dest_selector),a
  611+ 3465 18 34                jr      .image_begin_common
  612+ 3467
  613+ 3467              .image_begin_x86io:
@@ -7945,7 +7945,7 @@
  623+ 3479 18 5D                jr      .image_begin_bad
  624+ 347B              .image_x86io_size_ok:
  625+ 347B 3E 02                ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR ; WIN3 selector for physical page 04h
- 626+ 347D 32 E3 37             ld      (p126_ngs_image_dest_selector),a
+ 626+ 347D 32 FD 37             ld      (p126_ngs_image_dest_selector),a
  627+ 3480 18 19                jr      .image_begin_common
  628+ 3482
  629+ 3482              .image_begin_x86alu:
@@ -7961,34 +7961,34 @@
  639+ 3494 18 42                jr      .image_begin_bad
  640+ 3496              .image_x86alu_size_ok:
  641+ 3496 3E 82                ld      a,P126_NGS_ALU_OVERLAY_SELECTOR
- 642+ 3498 32 E3 37             ld      (p126_ngs_image_dest_selector),a
+ 642+ 3498 32 FD 37             ld      (p126_ngs_image_dest_selector),a
  643+ 349B
  644+ 349B              .image_begin_common:
  645+ 349B 2A 12 C0             ld      hl,(#C012)
- 646+ 349E 22 DE 37             ld      (p126_ngs_image_id),hl
+ 646+ 349E 22 F8 37             ld      (p126_ngs_image_id),hl
  647+ 34A1 2A 16 C0             ld      hl,(#C016)
- 648+ 34A4 22 E0 37             ld      (p126_ngs_image_size),hl
+ 648+ 34A4 22 FA 37             ld      (p126_ngs_image_size),hl
  649+ 34A7 3A 14 C0             ld      a,(#C014)
- 650+ 34AA 32 E2 37             ld      (p126_ngs_image_kind),a
+ 650+ 34AA 32 FC 37             ld      (p126_ngs_image_kind),a
  651+ 34AD 3E 01                ld      a,1
- 652+ 34AF 32 D9 37             ld      (p126_ngs_image_active),a
+ 652+ 34AF 32 F3 37             ld      (p126_ngs_image_active),a
  653+ 34B2 AF                   xor     a
- 654+ 34B3 32 DA 37             ld      (p126_ngs_image_received),a
- 655+ 34B6 3A E2 37             ld      a,(p126_ngs_image_kind)
+ 654+ 34B3 32 F4 37             ld      (p126_ngs_image_received),a
+ 655+ 34B6 3A FC 37             ld      a,(p126_ngs_image_kind)
  656+ 34B9 FE 00                cp      P126_IMAGE_KIND_SYSBIOS
  657+ 34BB 20 06                jr      nz,.image_begin_not_bios
  658+ 34BD AF                   xor     a
- 659+ 34BE 32 DB 37             ld      (p126_ngs_bios_image_ready),a
+ 659+ 34BE 32 F5 37             ld      (p126_ngs_bios_image_ready),a
  660+ 34C1 18 0E                jr      .image_begin_ack
  661+ 34C3              .image_begin_not_bios:
  662+ 34C3 FE 01                cp      P126_IMAGE_KIND_X86IO
  663+ 34C5 20 06                jr      nz,.image_begin_not_x86io
  664+ 34C7 AF                   xor     a
- 665+ 34C8 32 DC 37             ld      (p126_ngs_io_overlay_ready),a
+ 665+ 34C8 32 F6 37             ld      (p126_ngs_io_overlay_ready),a
  666+ 34CB 18 04                jr      .image_begin_ack
  667+ 34CD              .image_begin_not_x86io:
  668+ 34CD AF                   xor     a
- 669+ 34CE 32 DD 37             ld      (p126_ngs_alu_overlay_ready),a
+ 669+ 34CE 32 F7 37             ld      (p126_ngs_alu_overlay_ready),a
  670+ 34D1              .image_begin_ack:
  671+ 34D1 AF                   xor     a
  672+ 34D2 D3 05                out     (P126_NGS_CLRCBIT),a
@@ -7996,8 +7996,8 @@
  674+ 34D6 B7                   or      a
  675+ 34D7 C9                   ret
  676+ 34D8              .image_begin_bad:
- 677+ 34D8 21 F1 38             ld      hl,p126_ngs_image_begin_rejected_log
- 678+ 34DB CD 9F 3B             call    p126_ngs_ipc_log
+ 677+ 34D8 21 0B 39             ld      hl,p126_ngs_image_begin_rejected_log
+ 678+ 34DB CD B9 3B             call    p126_ngs_ipc_log
  679+ 34DE AF                   xor     a
  680+ 34DF D3 05                out     (P126_NGS_CLRCBIT),a
  681+ 34E1 3E 03                ld      a,P126_STATUS_BAD_FRAME
@@ -8005,9 +8005,9 @@
  683+ 34E4 C9                   ret
  684+ 34E5
  685+ 34E5              p126_ngs_image_fragment:
- 686+ 34E5 21 F9 37             ld      hl,p126_ngs_image_fragment_log
- 687+ 34E8 CD 9F 3B             call    p126_ngs_ipc_log
- 688+ 34EB 3A D9 37             ld      a,(p126_ngs_image_active)
+ 686+ 34E5 21 13 38             ld      hl,p126_ngs_image_fragment_log
+ 687+ 34E8 CD B9 3B             call    p126_ngs_ipc_log
+ 688+ 34EB 3A F3 37             ld      a,(p126_ngs_image_active)
  689+ 34EE B7                   or      a
  690+ 34EF CA CE 35             jp      z,.image_fragment_bad
  691+ 34F2 3A 09 C0             ld      a,(#C009)
@@ -8016,7 +8016,7 @@
  694+ 34FA
  695+ 34FA                      ; Exactly one fragment: index 0, count 1, matching message ID.
  696+ 34FA 2A 12 C0             ld      hl,(#C012)
- 697+ 34FD ED 5B DE 37          ld      de,(p126_ngs_image_id)
+ 697+ 34FD ED 5B F8 37          ld      de,(p126_ngs_image_id)
  698+ 3501 B7                   or      a
  699+ 3502 ED 52                sbc     hl,de
  700+ 3504 C2 CE 35             jp      nz,.image_fragment_bad
@@ -8034,7 +8034,7 @@
  712+ 3522
  713+ 3522                      ; The u32 total logical length must equal the IMAGE_BEGIN size.
  714+ 3522 2A 18 C0             ld      hl,(#C018)
- 715+ 3525 ED 5B E0 37          ld      de,(p126_ngs_image_size)
+ 715+ 3525 ED 5B FA 37          ld      de,(p126_ngs_image_size)
  716+ 3529 B7                   or      a
  717+ 352A ED 52                sbc     hl,de
  718+ 352C C2 CE 35             jp      nz,.image_fragment_bad
@@ -8046,7 +8046,7 @@
  724+ 353A C2 CE 35             jp      nz,.image_fragment_bad
  725+ 353D
  726+ 353D                      ; Frame payload length must be exactly extension(10)+image bytes.
- 727+ 353D 2A E0 37             ld      hl,(p126_ngs_image_size)
+ 727+ 353D 2A FA 37             ld      hl,(p126_ngs_image_size)
  728+ 3540 11 0A 00             ld      de,P126_IMAGE_FRAGMENT_EXT_SIZE
  729+ 3543 19                   add     hl,de
  730+ 3544 ED 5B 0C C0          ld      de,(#C00C)
@@ -8058,13 +8058,13 @@
  736+ 354E                      ; Code/stack stay in WIN0/WIN1; WIN3 is used only as the copy aperture.
  737+ 354E 21 1C C0             ld      hl,#C01C
  738+ 3551 11 00 C0             ld      de,#C000
- 739+ 3554 ED 4B E0 37          ld      bc,(p126_ngs_image_size)
+ 739+ 3554 ED 4B FA 37          ld      bc,(p126_ngs_image_size)
  740+ 3558              .image_copy_loop:
  741+ 3558 3E 21                ld      a,#21                  ; page 42h RRCA selector
  742+ 355A D3 10                out     (P126_NGS_MPAGEX_PORT),a
  743+ 355C 7E                   ld      a,(hl)
  744+ 355D F5                   push    af
- 745+ 355E 3A E3 37             ld      a,(p126_ngs_image_dest_selector)
+ 745+ 355E 3A FD 37             ld      a,(p126_ngs_image_dest_selector)
  746+ 3561 D3 10                out     (P126_NGS_MPAGEX_PORT),a
  747+ 3563 F1                   pop     af
  748+ 3564 12                   ld      (de),a
@@ -8078,25 +8078,25 @@
  756+ 356C                      ; Verify every installed byte against the validated staging frame.
  757+ 356C 21 1C C0             ld      hl,#C01C
  758+ 356F 11 00 C0             ld      de,#C000
- 759+ 3572 ED 4B E0 37          ld      bc,(p126_ngs_image_size)
- 760+ 3576 ED 43 E4 37          ld      (p126_ngs_image_verify_count),bc
+ 759+ 3572 ED 4B FA 37          ld      bc,(p126_ngs_image_size)
+ 760+ 3576 ED 43 FE 37          ld      (p126_ngs_image_verify_count),bc
  761+ 357A              .image_verify_loop:
  762+ 357A 3E 21                ld      a,#21
  763+ 357C D3 10                out     (P126_NGS_MPAGEX_PORT),a
  764+ 357E 7E                   ld      a,(hl)
- 765+ 357F 32 E6 37             ld      (p126_ngs_image_verify_byte),a
- 766+ 3582 3A E3 37             ld      a,(p126_ngs_image_dest_selector)
+ 765+ 357F 32 00 38             ld      (p126_ngs_image_verify_byte),a
+ 766+ 3582 3A FD 37             ld      a,(p126_ngs_image_dest_selector)
  767+ 3585 D3 10                out     (P126_NGS_MPAGEX_PORT),a
  768+ 3587 1A                   ld      a,(de)
  769+ 3588 47                   ld      b,a
- 770+ 3589 3A E6 37             ld      a,(p126_ngs_image_verify_byte)
+ 770+ 3589 3A 00 38             ld      a,(p126_ngs_image_verify_byte)
  771+ 358C B8                   cp      b
  772+ 358D C2 CA 35             jp      nz,.image_verify_bad
  773+ 3590 23                   inc     hl
  774+ 3591 13                   inc     de
- 775+ 3592 ED 4B E4 37          ld      bc,(p126_ngs_image_verify_count)
+ 775+ 3592 ED 4B FE 37          ld      bc,(p126_ngs_image_verify_count)
  776+ 3596 0B                   dec     bc
- 777+ 3597 ED 43 E4 37          ld      (p126_ngs_image_verify_count),bc
+ 777+ 3597 ED 43 FE 37          ld      (p126_ngs_image_verify_count),bc
  778+ 359B 78                   ld      a,b
  779+ 359C B1                   or      c
  780+ 359D 20 DB                jr      nz,.image_verify_loop
@@ -8105,21 +8105,21 @@
  783+ 359F 3E 21                ld      a,#21
  784+ 35A1 D3 10                out     (P126_NGS_MPAGEX_PORT),a
  785+ 35A3 3E 01                ld      a,1
- 786+ 35A5 32 DA 37             ld      (p126_ngs_image_received),a
- 787+ 35A8 3A E2 37             ld      a,(p126_ngs_image_kind)
+ 786+ 35A5 32 F4 37             ld      (p126_ngs_image_received),a
+ 787+ 35A8 3A FC 37             ld      a,(p126_ngs_image_kind)
  788+ 35AB FE 00                cp      P126_IMAGE_KIND_SYSBIOS
  789+ 35AD 20 05                jr      nz,.image_not_bios_verify_log
- 790+ 35AF 21 37 38             ld      hl,p126_ngs_image_verify_ok_log
+ 790+ 35AF 21 51 38             ld      hl,p126_ngs_image_verify_ok_log
  791+ 35B2 18 0C                jr      .image_verify_log
  792+ 35B4              .image_not_bios_verify_log:
  793+ 35B4 FE 01                cp      P126_IMAGE_KIND_X86IO
  794+ 35B6 20 05                jr      nz,.image_alu_verify_log
- 795+ 35B8 21 70 38             ld      hl,p126_ngs_io_overlay_verify_ok_log
+ 795+ 35B8 21 8A 38             ld      hl,p126_ngs_io_overlay_verify_ok_log
  796+ 35BB 18 03                jr      .image_verify_log
  797+ 35BD              .image_alu_verify_log:
- 798+ 35BD 21 91 38             ld      hl,p126_ngs_alu_overlay_verify_ok_log
+ 798+ 35BD 21 AB 38             ld      hl,p126_ngs_alu_overlay_verify_ok_log
  799+ 35C0              .image_verify_log:
- 800+ 35C0 CD 9F 3B             call    p126_ngs_ipc_log
+ 800+ 35C0 CD B9 3B             call    p126_ngs_ipc_log
  801+ 35C3 AF                   xor     a
  802+ 35C4 D3 05                out     (P126_NGS_CLRCBIT),a
  803+ 35C6 3E 01                ld      a,1
@@ -8130,8 +8130,8 @@
  808+ 35CA 3E 21                ld      a,#21                  ; leave WIN3 on production DMA page
  809+ 35CC D3 10                out     (P126_NGS_MPAGEX_PORT),a
  810+ 35CE              .image_fragment_bad:
- 811+ 35CE 21 07 39             ld      hl,p126_ngs_image_fragment_rejected_log
- 812+ 35D1 CD 9F 3B             call    p126_ngs_ipc_log
+ 811+ 35CE 21 21 39             ld      hl,p126_ngs_image_fragment_rejected_log
+ 812+ 35D1 CD B9 3B             call    p126_ngs_ipc_log
  813+ 35D4 AF                   xor     a
  814+ 35D5 D3 05                out     (P126_NGS_CLRCBIT),a
  815+ 35D7 3E 0F                ld      a,P126_STATUS_BAD_FRAGMENT
@@ -8139,1160 +8139,1174 @@
  817+ 35DA C9                   ret
  818+ 35DB
  819+ 35DB              p126_ngs_image_finish:
- 820+ 35DB 21 0A 38             ld      hl,p126_ngs_image_finish_log
- 821+ 35DE CD 9F 3B             call    p126_ngs_ipc_log
- 822+ 35E1 3A D9 37             ld      a,(p126_ngs_image_active)
+ 820+ 35DB 21 24 38             ld      hl,p126_ngs_image_finish_log
+ 821+ 35DE CD B9 3B             call    p126_ngs_ipc_log
+ 822+ 35E1 3A F3 37             ld      a,(p126_ngs_image_active)
  823+ 35E4 B7                   or      a
- 824+ 35E5 CA 84 36             jp      z,.image_finish_bad
- 825+ 35E8 3A DA 37             ld      a,(p126_ngs_image_received)
+ 824+ 35E5 CA 83 36             jp      z,.image_finish_bad
+ 825+ 35E8 3A F4 37             ld      a,(p126_ngs_image_received)
  826+ 35EB B7                   or      a
- 827+ 35EC CA 84 36             jp      z,.image_finish_bad
+ 827+ 35EC CA 83 36             jp      z,.image_finish_bad
  828+ 35EF 3A 0C C0             ld      a,(#C00C)
  829+ 35F2 FE 02                cp      2
- 830+ 35F4 C2 84 36             jp      nz,.image_finish_bad
+ 830+ 35F4 C2 83 36             jp      nz,.image_finish_bad
  831+ 35F7 2A 12 C0             ld      hl,(#C012)
- 832+ 35FA ED 5B DE 37          ld      de,(p126_ngs_image_id)
+ 832+ 35FA ED 5B F8 37          ld      de,(p126_ngs_image_id)
  833+ 35FE B7                   or      a
  834+ 35FF ED 52                sbc     hl,de
- 835+ 3601 C2 84 36             jp      nz,.image_finish_bad
+ 835+ 3601 C2 83 36             jp      nz,.image_finish_bad
  836+ 3604
  837+ 3604 AF                   xor     a
- 838+ 3605 32 D9 37             ld      (p126_ngs_image_active),a
- 839+ 3608 3A E2 37             ld      a,(p126_ngs_image_kind)
+ 838+ 3605 32 F3 37             ld      (p126_ngs_image_active),a
+ 839+ 3608 3A FC 37             ld      a,(p126_ngs_image_kind)
  840+ 360B FE 00                cp      P126_IMAGE_KIND_SYSBIOS
  841+ 360D 20 0A                jr      nz,.image_finish_not_bios
  842+ 360F 3E 01                ld      a,1
- 843+ 3611 32 DB 37             ld      (p126_ngs_bios_image_ready),a
- 844+ 3614 21 1D 38             ld      hl,p126_ngs_image_installed_log
- 845+ 3617 18 61                jr      .image_finish_log
+ 843+ 3611 32 F5 37             ld      (p126_ngs_bios_image_ready),a
+ 844+ 3614 21 37 38             ld      hl,p126_ngs_image_installed_log
+ 845+ 3617 18 60                jr      .image_finish_log
  846+ 3619              .image_finish_not_bios:
  847+ 3619 FE 01                cp      P126_IMAGE_KIND_X86IO
- 848+ 361B 20 2F                jr      nz,.image_finish_x86alu
+ 848+ 361B 20 2E                jr      nz,.image_finish_x86alu
  849+ 361D              .image_finish_x86io:
  850+ 361D                      ; Prove that MPAG selects two distinct physical pages through WIN2.
  851+ 361D                      ; At this point page05 is still free; X86ALU is loaded only after
  852+ 361D                      ; the X86IO mapping and nested-gate self-tests have completed.
- 853+ 361D CD 91 36             call    p126_ngs_overlay_win2_selftest
- 854+ 3620 30 08                jr      nc,.image_finish_x86io_map_ok
- 855+ 3622 21 B9 37             ld      hl,p126_ngs_overlay_win2_test_fail_log
- 856+ 3625 CD 9F 3B             call    p126_ngs_ipc_log
- 857+ 3628 18 5A                jr      .image_finish_bad
- 858+ 362A              .image_finish_x86io_map_ok:
- 859+ 362A                      ; The self-test leaves physical page 04h selected in WIN2.
- 860+ 362A                      ; Keep the nested-call gate's software selector synchronized.
- 861+ 362A 3E 02                ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
- 862+ 362C 32 87 3E             ld      (p126_overlay_current_selector),a
- 863+ 362F CD 22 37             call    p126_ngs_overlay_gate_selftest
- 864+ 3632 30 08                jr      nc,.image_finish_gate_ok
- 865+ 3634 21 B9 37             ld      hl,p126_ngs_overlay_win2_test_fail_log
- 866+ 3637 CD 9F 3B             call    p126_ngs_ipc_log
- 867+ 363A 18 48                jr      .image_finish_bad
- 868+ 363C              .image_finish_gate_ok:
- 869+ 363C 21 99 37             ld      hl,p126_ngs_overlay_win2_test_pass_log
- 870+ 363F CD 9F 3B             call    p126_ngs_ipc_log
- 871+ 3642 3E 01                ld      a,1
- 872+ 3644 32 DC 37             ld      (p126_ngs_io_overlay_ready),a
- 873+ 3647 21 53 38             ld      hl,p126_ngs_io_overlay_installed_log
- 874+ 364A 18 2E                jr      .image_finish_log
- 875+ 364C              .image_finish_x86alu:
- 876+ 364C                      ; Page05 is the fixed-origin ALU overlay. Probe it through the same
- 877+ 364C                      ; resident gate used by every arithmetic entry point.
- 878+ 364C 3E 3C                ld      a,#3C
- 879+ 364E 37                   scf
- 880+ 364F 21 34 12             ld      hl,#1234
- 881+ 3652 CD 6F 3E             call    x86_alu_overlay_probe
- 882+ 3655 FE A5                cp      #A5
- 883+ 3657 20 19                jr      nz,.image_finish_alu_probe_bad
- 884+ 3659 11 A5 5A             ld      de,#5AA5
- 885+ 365C B7                   or      a
- 886+ 365D ED 52                sbc     hl,de
- 887+ 365F 20 11                jr      nz,.image_finish_alu_probe_bad
- 888+ 3661 3A 87 3E             ld      a,(p126_overlay_current_selector)
- 889+ 3664 FE 02                cp      P126_NGS_X86IO_OVERLAY_SELECTOR
- 890+ 3666 20 0A                jr      nz,.image_finish_alu_probe_bad
- 891+ 3668 3E 01                ld      a,1
- 892+ 366A 32 DD 37             ld      (p126_ngs_alu_overlay_ready),a
- 893+ 366D 21 B3 38             ld      hl,p126_ngs_alu_overlay_installed_log
- 894+ 3670 18 08                jr      .image_finish_log
- 895+ 3672              .image_finish_alu_probe_bad:
- 896+ 3672 21 D1 38             ld      hl,p126_ngs_alu_overlay_probe_fail_log
- 897+ 3675 CD 9F 3B             call    p126_ngs_ipc_log
- 898+ 3678 18 0A                jr      .image_finish_bad
- 899+ 367A
- 900+ 367A              .image_finish_log:
- 901+ 367A CD 9F 3B             call    p126_ngs_ipc_log
- 902+ 367D AF                   xor     a
- 903+ 367E D3 05                out     (P126_NGS_CLRCBIT),a
- 904+ 3680 3E 01                ld      a,1
- 905+ 3682 B7                   or      a
- 906+ 3683 C9                   ret
- 907+ 3684              .image_finish_bad:
- 908+ 3684 21 1C 39             ld      hl,p126_ngs_image_finish_rejected_log
- 909+ 3687 CD 9F 3B             call    p126_ngs_ipc_log
- 910+ 368A AF                   xor     a
- 911+ 368B D3 05                out     (P126_NGS_CLRCBIT),a
- 912+ 368D 3E 03                ld      a,P126_STATUS_BAD_FRAME
- 913+ 368F 37                   scf
- 914+ 3690 C9                   ret
- 915+ 3691
- 916+ 3691              ; Runtime WIN2 selector/read-write test for physical pages 04h and 05h.
- 917+ 3691              ; WIN3/MPAGEX is the physical reference. For each page, compare its last
- 918+ 3691              ; byte through WIN2/BFFFh and WIN3/CFFFh, write through WIN2, then read the
- 919+ 3691              ; same physical byte through WIN3. Save/restore both bytes and return with
- 920+ 3691              ; WIN2=page04 (X86IO), WIN3=page42 (production DMA staging).
- 921+ 3691              ; OUT: carry clear on success.
- 922+ 3691              p126_ngs_overlay_win2_selftest:
- 923+ 3691                      ; Save the original last byte of physical page 04h via WIN3.
- 924+ 3691 3E 04                ld      a,P126_NGS_X86IO_OVERLAY_PAGE
- 925+ 3693 0F                   rrca
- 926+ 3694 D3 10                out     (P126_NGS_MPAGEX_PORT),a
- 927+ 3696 3A FF CF             ld      a,(#CFFF)
- 928+ 3699 32 97 37             ld      (p126_ngs_overlay_test_old04),a
- 929+ 369C
- 930+ 369C                      ; Save the original last byte of physical page 05h via WIN3 too,
- 931+ 369C                      ; so every failure path can restore both pages.
- 932+ 369C 3E 05                ld      a,P126_NGS_OVERLAY_TEST_PAGE
- 933+ 369E 0F                   rrca
- 934+ 369F D3 10                out     (P126_NGS_MPAGEX_PORT),a
- 935+ 36A1 3A FF CF             ld      a,(#CFFF)
- 936+ 36A4 32 98 37             ld      (p126_ngs_overlay_test_old05),a
- 937+ 36A7
- 938+ 36A7                      ; WIN2 page 04h must expose the exact same physical byte.
- 939+ 36A7 3E 02                ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
- 940+ 36A9 D3 00                out     (P126_NGS_OVERLAY_WINDOW_PORT),a
- 941+ 36AB 3A FF BF             ld      a,(#BFFF)
- 942+ 36AE 47                   ld      b,a
- 943+ 36AF 3A 97 37             ld      a,(p126_ngs_overlay_test_old04)
- 944+ 36B2 B8                   cp      b
- 945+ 36B3 20 4D                jr      nz,.overlay_win2_test_failed
- 946+ 36B5
- 947+ 36B5                      ; WIN2 page 05h must expose the same byte as WIN3/MPAGEX.
- 948+ 36B5 3E 05                ld      a,P126_NGS_OVERLAY_TEST_PAGE
- 949+ 36B7 0F                   rrca
- 950+ 36B8 D3 00                out     (P126_NGS_OVERLAY_WINDOW_PORT),a
- 951+ 36BA 3A FF BF             ld      a,(#BFFF)
- 952+ 36BD 47                   ld      b,a
- 953+ 36BE 3A 98 37             ld      a,(p126_ngs_overlay_test_old05)
- 954+ 36C1 B8                   cp      b
- 955+ 36C2 20 3E                jr      nz,.overlay_win2_test_failed
- 956+ 36C4
- 957+ 36C4                      ; Verify writes through WIN2 are visible through WIN3 on page 05h.
- 958+ 36C4 3E 55                ld      a,#55
- 959+ 36C6 32 FF BF             ld      (#BFFF),a
- 960+ 36C9 3E 05                ld      a,P126_NGS_OVERLAY_TEST_PAGE
- 961+ 36CB 0F                   rrca
- 962+ 36CC D3 10                out     (P126_NGS_MPAGEX_PORT),a
- 963+ 36CE 3A FF CF             ld      a,(#CFFF)
- 964+ 36D1 FE 55                cp      #55
- 965+ 36D3 20 2D                jr      nz,.overlay_win2_test_failed
- 966+ 36D5
- 967+ 36D5                      ; Verify writes through WIN2 are visible through WIN3 on page 04h.
- 968+ 36D5 3E 02                ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
- 969+ 36D7 D3 00                out     (P126_NGS_OVERLAY_WINDOW_PORT),a
- 970+ 36D9 3E AA                ld      a,#AA
- 971+ 36DB 32 FF BF             ld      (#BFFF),a
- 972+ 36DE 3E 04                ld      a,P126_NGS_X86IO_OVERLAY_PAGE
- 973+ 36E0 0F                   rrca
- 974+ 36E1 D3 10                out     (P126_NGS_MPAGEX_PORT),a
- 975+ 36E3 3A FF CF             ld      a,(#CFFF)
- 976+ 36E6 FE AA                cp      #AA
- 977+ 36E8 20 18                jr      nz,.overlay_win2_test_failed
- 978+ 36EA
- 979+ 36EA                      ; Restore both original physical bytes through WIN3.
- 980+ 36EA 3E 04                ld      a,P126_NGS_X86IO_OVERLAY_PAGE
- 981+ 36EC 0F                   rrca
- 982+ 36ED D3 10                out     (P126_NGS_MPAGEX_PORT),a
- 983+ 36EF 3A 97 37             ld      a,(p126_ngs_overlay_test_old04)
- 984+ 36F2 32 FF CF             ld      (#CFFF),a
- 985+ 36F5 3E 05                ld      a,P126_NGS_OVERLAY_TEST_PAGE
- 986+ 36F7 0F                   rrca
- 987+ 36F8 D3 10                out     (P126_NGS_MPAGEX_PORT),a
- 988+ 36FA 3A 98 37             ld      a,(p126_ngs_overlay_test_old05)
- 989+ 36FD 32 FF CF             ld      (#CFFF),a
- 990+ 3700 18 1B                jr      .overlay_win2_test_restore_maps
- 991+ 3702
- 992+ 3702              .overlay_win2_test_failed:
- 993+ 3702                      ; Best-effort restoration even when one WIN2 selector is incorrect.
- 994+ 3702 3E 04                ld      a,P126_NGS_X86IO_OVERLAY_PAGE
- 995+ 3704 0F                   rrca
- 996+ 3705 D3 10                out     (P126_NGS_MPAGEX_PORT),a
- 997+ 3707 3A 97 37             ld      a,(p126_ngs_overlay_test_old04)
- 998+ 370A 32 FF CF             ld      (#CFFF),a
- 999+ 370D 3E 05                ld      a,P126_NGS_OVERLAY_TEST_PAGE
-1000+ 370F 0F                   rrca
-1001+ 3710 D3 10                out     (P126_NGS_MPAGEX_PORT),a
-1002+ 3712 3A 98 37             ld      a,(p126_ngs_overlay_test_old05)
-1003+ 3715 32 FF CF             ld      (#CFFF),a
-1004+ 3718 CD 8A 37             call    p126_ngs_overlay_test_restore_maps
-1005+ 371B 37                   scf
-1006+ 371C C9                   ret
-1007+ 371D
-1008+ 371D              .overlay_win2_test_restore_maps:
-1009+ 371D CD 8A 37             call    p126_ngs_overlay_test_restore_maps
-1010+ 3720 B7                   or      a
-1011+ 3721 C9                   ret
-1012+ 3722
-1013+ 3722              ; Exercise the resident call gate before publishing X86IO_READY.
-1014+ 3722              ; Page 05h is currently free. Preserve its first four bytes, install a tiny
-1015+ 3722              ; CALL x86_io_reset / RET overlay stub, and execute it while WIN2=page05.
-1016+ 3722              ; The resident wrapper must switch to page04 for X86IO, then restore page05
-1017+ 3722              ; so the test stub can execute its RET at 8003h. Finally restore page05 bytes
-1018+ 3722              ; and leave WIN2=page04, WIN3=page42.
-1019+ 3722              ; OUT: carry clear if the page05 -> page04 -> page05 call completed correctly.
-1020+ 3722              p126_ngs_overlay_gate_selftest:
-1021+ 3722 3E 05                ld      a,P126_NGS_OVERLAY_TEST_PAGE
-1022+ 3724 0F                   rrca
-1023+ 3725 D3 10                out     (P126_NGS_MPAGEX_PORT),a
-1024+ 3727 21 00 C0             ld      hl,#C000
-1025+ 372A 11 86 37             ld      de,p126_ngs_overlay_gate_old_code
-1026+ 372D 01 04 00             ld      bc,4
-1027+ 3730 ED B0                ldir
-1028+ 3732
-1029+ 3732 21 82 37             ld      hl,p126_ngs_overlay_gate_test_code
-1030+ 3735 11 00 C0             ld      de,#C000
-1031+ 3738 01 04 00             ld      bc,4
-1032+ 373B ED B0                ldir
-1033+ 373D
-1034+ 373D                      ; Set the software shadow before entering page05 through WIN2.
-1035+ 373D 3E 05                ld      a,P126_NGS_OVERLAY_TEST_PAGE
-1036+ 373F 0F                   rrca
-1037+ 3740 32 87 3E             ld      (p126_overlay_current_selector),a
-1038+ 3743 D3 00                out     (P126_NGS_OVERLAY_WINDOW_PORT),a
-1039+ 3745
-1040+ 3745 CD 00 80             call    #8000                  ; page05 stub calls resident X86IO wrapper
-1041+ 3748
-1042+ 3748                      ; If the trampoline restored page05, its first opcode is still CDh.
-1043+ 3748 3A 00 80             ld      a,(#8000)
-1044+ 374B FE CD                cp      #CD
-1045+ 374D 20 19                jr      nz,.overlay_gate_test_failed
-1046+ 374F 3A 87 3E             ld      a,(p126_overlay_current_selector)
-1047+ 3752 FE 82                cp      #82                    ; ROR8(page05)
-1048+ 3754 20 12                jr      nz,.overlay_gate_test_failed
-1049+ 3756
-1050+ 3756                      ; Restore page05's original first four bytes.
-1051+ 3756 3E 05                ld      a,P126_NGS_OVERLAY_TEST_PAGE
-1052+ 3758 0F                   rrca
-1053+ 3759 D3 10                out     (P126_NGS_MPAGEX_PORT),a
-1054+ 375B 21 86 37             ld      hl,p126_ngs_overlay_gate_old_code
-1055+ 375E 11 00 C0             ld      de,#C000
-1056+ 3761 01 04 00             ld      bc,4
-1057+ 3764 ED B0                ldir
-1058+ 3766 18 15                jr      .overlay_gate_test_restore_maps
-1059+ 3768
-1060+ 3768              .overlay_gate_test_failed:
-1061+ 3768                      ; Restore the scratch bytes even when the gate returned incorrectly.
-1062+ 3768 3E 05                ld      a,P126_NGS_OVERLAY_TEST_PAGE
-1063+ 376A 0F                   rrca
-1064+ 376B D3 10                out     (P126_NGS_MPAGEX_PORT),a
-1065+ 376D 21 86 37             ld      hl,p126_ngs_overlay_gate_old_code
-1066+ 3770 11 00 C0             ld      de,#C000
-1067+ 3773 01 04 00             ld      bc,4
-1068+ 3776 ED B0                ldir
-1069+ 3778 CD 8A 37             call    p126_ngs_overlay_test_restore_maps
-1070+ 377B 37                   scf
-1071+ 377C C9                   ret
-1072+ 377D
-1073+ 377D              .overlay_gate_test_restore_maps:
-1074+ 377D CD 8A 37             call    p126_ngs_overlay_test_restore_maps
-1075+ 3780 B7                   or      a
-1076+ 3781 C9                   ret
-1077+ 3782
-1078+ 3782              p126_ngs_overlay_gate_test_code:
-1079+ 3782 CD                   db      #CD
-1080+ 3783 D1 3C                dw      x86_io_reset
-1081+ 3785 C9                   db      #C9
-1082+ 3786              p126_ngs_overlay_gate_old_code:
-1083+ 3786 00 00 00 00          defs    4,0
-1084+ 378A              p126_ngs_overlay_test_restore_maps:
-1085+ 378A 3E 42                ld      a,P126_NGS_DMA_PAGE
-1086+ 378C 0F                   rrca
-1087+ 378D D3 10                out     (P126_NGS_MPAGEX_PORT),a
-1088+ 378F 3E 02                ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
-1089+ 3791 32 87 3E             ld      (p126_overlay_current_selector),a
-1090+ 3794 D3 00                out     (P126_NGS_OVERLAY_WINDOW_PORT),a
-1091+ 3796 C9                   ret
-1092+ 3797
-1093+ 3797 00           p126_ngs_overlay_test_old04: db 0
-1094+ 3798 00           p126_ngs_overlay_test_old05: db 0
-1095+ 3799 5B 4E 47 53  p126_ngs_overlay_win2_test_pass_log: db "[NGS] WIN2 MAP/GATE TEST PASS",13,10,0
-1095+ 379D 5D 20 57 49
-1095+ 37A1 4E 32 20 4D
-1095+ 37A5 41 50 2F 47
-1095+ 37A9 41 54 45 20
-1095+ 37AD 54 45 53 54
-1095+ 37B1 20 50 41 53
-1095+ 37B5 53 0D 0A 00
-1096+ 37B9 5B 4E 47 53  p126_ngs_overlay_win2_test_fail_log: db "[NGS] WIN2 MAP/GATE TEST FAIL",13,10,0
-1096+ 37BD 5D 20 57 49
-1096+ 37C1 4E 32 20 4D
-1096+ 37C5 41 50 2F 47
-1096+ 37C9 41 54 45 20
-1096+ 37CD 54 45 53 54
-1096+ 37D1 20 46 41 49
-1096+ 37D5 4C 0D 0A 00
-1097+ 37D9
-1098+ 37D9 00           p126_ngs_image_active:       db 0
-1099+ 37DA 00           p126_ngs_image_received:     db 0
-1100+ 37DB 00           p126_ngs_bios_image_ready:   db 0
-1101+ 37DC 00           p126_ngs_io_overlay_ready:   db 0
-1102+ 37DD 00           p126_ngs_alu_overlay_ready:  db 0
-1103+ 37DE 00 00        p126_ngs_image_id:           dw 0
-1104+ 37E0 00 00        p126_ngs_image_size:         dw 0
-1105+ 37E2 00           p126_ngs_image_kind:         db 0
-1106+ 37E3 00           p126_ngs_image_dest_selector: db 0
-1107+ 37E4 00 00        p126_ngs_image_verify_count: dw 0
-1108+ 37E6 00           p126_ngs_image_verify_byte:  db 0
-1109+ 37E7 5B 4E 47 53  p126_ngs_image_begin_log:    db "[NGS] IMG BEGIN",13,10,0
-1109+ 37EB 5D 20 49 4D
-1109+ 37EF 47 20 42 45
-1109+ 37F3 47 49 4E 0D
-1109+ 37F7 0A 00
-1110+ 37F9 5B 4E 47 53  p126_ngs_image_fragment_log: db "[NGS] IMG FRAG",13,10,0
-1110+ 37FD 5D 20 49 4D
-1110+ 3801 47 20 46 52
-1110+ 3805 41 47 0D 0A
-1110+ 3809 00
-1111+ 380A 5B 4E 47 53  p126_ngs_image_finish_log:   db "[NGS] IMG FINISH",13,10,0
-1111+ 380E 5D 20 49 4D
-1111+ 3812 47 20 46 49
-1111+ 3816 4E 49 53 48
-1111+ 381A 0D 0A 00
-1112+ 381D 5B 4E 47 53  p126_ngs_image_installed_log: db "[NGS] SYSBIOS PAGE10 OK",13,10,0
-1112+ 3821 5D 20 53 59
-1112+ 3825 53 42 49 4F
-1112+ 3829 53 20 50 41
-1112+ 382D 47 45 31 30
-1112+ 3831 20 4F 4B 0D
-1112+ 3835 0A 00
-1113+ 3837 5B 4E 47 53  p126_ngs_image_verify_ok_log: db "[NGS] SYSBIOS READBACK OK",13,10,0
-1113+ 383B 5D 20 53 59
-1113+ 383F 53 42 49 4F
-1113+ 3843 53 20 52 45
-1113+ 3847 41 44 42 41
-1113+ 384B 43 4B 20 4F
-1113+ 384F 4B 0D 0A 00
-1114+ 3853 5B 4E 47 53  p126_ngs_io_overlay_installed_log: db "[NGS] X86IO PAGE04 WIN2 OK",13,10,0
-1114+ 3857 5D 20 58 38
-1114+ 385B 36 49 4F 20
-1114+ 385F 50 41 47 45
-1114+ 3863 30 34 20 57
-1114+ 3867 49 4E 32 20
-1114+ 386B 4F 4B 0D 0A
-1114+ 386F 00
-1115+ 3870 5B 4E 47 53  p126_ngs_io_overlay_verify_ok_log: db "[NGS] X86IO PAGE04 READBACK OK",13,10,0
-1115+ 3874 5D 20 58 38
-1115+ 3878 36 49 4F 20
-1115+ 387C 50 41 47 45
-1115+ 3880 30 34 20 52
-1115+ 3884 45 41 44 42
-1115+ 3888 41 43 4B 20
-1115+ 388C 4F 4B 0D 0A
-1115+ 3890 00
-1116+ 3891 5B 4E 47 53  p126_ngs_alu_overlay_verify_ok_log: db "[NGS] X86ALU PAGE05 READBACK OK",13,10,0
-1116+ 3895 5D 20 58 38
-1116+ 3899 36 41 4C 55
-1116+ 389D 20 50 41 47
-1116+ 38A1 45 30 35 20
-1116+ 38A5 52 45 41 44
-1116+ 38A9 42 41 43 4B
-1116+ 38AD 20 4F 4B 0D
-1116+ 38B1 0A 00
-1117+ 38B3 5B 4E 47 53  p126_ngs_alu_overlay_installed_log: db "[NGS] X86ALU PAGE05 GATE OK",13,10,0
-1117+ 38B7 5D 20 58 38
-1117+ 38BB 36 41 4C 55
-1117+ 38BF 20 50 41 47
-1117+ 38C3 45 30 35 20
-1117+ 38C7 47 41 54 45
-1117+ 38CB 20 4F 4B 0D
-1117+ 38CF 0A 00
-1118+ 38D1 5B 4E 47 53  p126_ngs_alu_overlay_probe_fail_log: db "[NGS] X86ALU PAGE05 GATE FAIL",13,10,0
-1118+ 38D5 5D 20 58 38
-1118+ 38D9 36 41 4C 55
-1118+ 38DD 20 50 41 47
-1118+ 38E1 45 30 35 20
-1118+ 38E5 47 41 54 45
-1118+ 38E9 20 46 41 49
-1118+ 38ED 4C 0D 0A 00
-1119+ 38F1 5B 4E 47 53  p126_ngs_image_begin_rejected_log: db "[NGS] IMG BEGIN BAD",13,10,0
-1119+ 38F5 5D 20 49 4D
-1119+ 38F9 47 20 42 45
-1119+ 38FD 47 49 4E 20
-1119+ 3901 42 41 44 0D
-1119+ 3905 0A 00
-1120+ 3907 5B 4E 47 53  p126_ngs_image_fragment_rejected_log: db "[NGS] IMG FRAG BAD",13,10,0
-1120+ 390B 5D 20 49 4D
-1120+ 390F 47 20 46 52
-1120+ 3913 41 47 20 42
-1120+ 3917 41 44 0D 0A
-1120+ 391B 00
-1121+ 391C 5B 4E 47 53  p126_ngs_image_finish_rejected_log: db "[NGS] IMG FINISH BAD",13,10,0
-1121+ 3920 5D 20 49 4D
-1121+ 3924 47 20 46 49
-1121+ 3928 4E 49 53 48
-1121+ 392C 20 42 41 44
-1121+ 3930 0D 0A 00
-1122+ 3933
-1123+ 3933              ; Standard CRC-16/CCITT-FALSE regression vector.
-1124+ 3933              ; OUT: Carry clear and HL=#29B1 on pass; Carry set on failure.
-1125+ 3933              p126_ngs_ipc_crc16_selftest:
-1125+ 3933
-1126+ 3933 C5                   push    bc
-1127+ 3934 D5                   push    de
-1128+ 3935 21 FF FF             ld      hl, #FFFF
-1129+ 3938 11 57 39             ld      de, p126_ngs_ipc_crc16_test_vector
-1130+ 393B 06 09                ld      b, 9
-1131+ 393D              .p126_ngs_crc_test_loop:
-1132+ 393D 1A                   ld      a, (de)
-1133+ 393E 13                   inc     de
-1134+ 393F CD BE 30             call    p126_ngs_ipc_crc16_update
-1135+ 3942 10 F9                djnz    .p126_ngs_crc_test_loop
-1136+ 3944 11 B1 29             ld      de, #29B1
-1137+ 3947 B7                   or      a
-1138+ 3948 ED 52                sbc     hl, de
-1139+ 394A 20 07                jr      nz, .p126_ngs_crc_test_failed
-1140+ 394C D1                   pop     de
-1141+ 394D C1                   pop     bc
-1142+ 394E 21 B1 29             ld      hl, #29B1
-1143+ 3951 B7                   or      a
-1144+ 3952 C9                   ret
-1145+ 3953              .p126_ngs_crc_test_failed:
-1146+ 3953 D1                   pop     de
-1147+ 3954 C1                   pop     bc
-1148+ 3955 37                   scf
-1149+ 3956 C9                   ret
-1150+ 3957
-1151+ 3957              p126_ngs_ipc_crc16_test_vector:
-1152+ 3957 31 32 33 34          db "123456789"
-1152+ 395B 35 36 37 38
-1152+ 395F 39
-1153+ 3960
-1154+ 3960              ; Independent NeoGS #EF diagnostics for the DMA transaction lifecycle.
-1155+ 3960 5B 4E 47 53  p126_ngs_ipc_log_dma_e0:          db "[NGS] DMA E0 RECEIVED",13,10,0
-1155+ 3964 5D 20 44 4D
-1155+ 3968 41 20 45 30
-1155+ 396C 20 52 45 43
-1155+ 3970 45 49 56 45
-1155+ 3974 44 0D 0A 00
-1156+ 3978 5B 4E 47 53  p126_ngs_ipc_log_dma_cfg_begin:   db "[NGS] DMA CONFIG BEGIN",13,10,0
-1156+ 397C 5D 20 44 4D
-1156+ 3980 41 20 43 4F
-1156+ 3984 4E 46 49 47
-1156+ 3988 20 42 45 47
-1156+ 398C 49 4E 0D 0A
-1156+ 3990 00
-1157+ 3991 5B 4E 47 53  p126_ngs_ipc_log_dma_armed:       db "[NGS] DMA ARMED",13,10,0
-1157+ 3995 5D 20 44 4D
-1157+ 3999 41 20 41 52
-1157+ 399D 4D 45 44 0D
-1157+ 39A1 0A 00
-1158+ 39A3 5B 4E 47 53  p126_ngs_ipc_log_dma_ready:       db "[NGS] DMA READY",13,10,0
-1158+ 39A7 5D 20 44 4D
-1158+ 39AB 41 20 52 45
-1158+ 39AF 41 44 59 0D
-1158+ 39B3 0A 00
-1159+ 39B5 5B 4E 47 53  p126_ngs_ipc_log_dma_host_end:    db "[NGS] DMA HOST END",13,10,0
-1159+ 39B9 5D 20 44 4D
-1159+ 39BD 41 20 48 4F
-1159+ 39C1 53 54 20 45
-1159+ 39C5 4E 44 0D 0A
-1159+ 39C9 00
-1160+ 39CA 5B 4E 47 53  p126_ngs_ipc_log_dma_timeout:     db "[NGS] DMA WAIT TIMEOUT",13,10,0
-1160+ 39CE 5D 20 44 4D
-1160+ 39D2 41 20 57 41
-1160+ 39D6 49 54 20 54
-1160+ 39DA 49 4D 45 4F
-1160+ 39DE 55 54 0D 0A
-1160+ 39E2 00
-1161+ 39E3 5B 4E 47 53  p126_ngs_ipc_log_bad_length:      db "[NGS] DMA BAD LENGTH",13,10,0
-1161+ 39E7 5D 20 44 4D
-1161+ 39EB 41 20 42 41
-1161+ 39EF 44 20 4C 45
-1161+ 39F3 4E 47 54 48
-1161+ 39F7 0D 0A 00
-1162+ 39FA 5B 4E 47 53  p126_ngs_ipc_log_dma_stopped:     db "[NGS] DMA STOPPED",13,10,0
-1162+ 39FE 5D 20 44 4D
-1162+ 3A02 41 20 53 54
-1162+ 3A06 4F 50 50 45
-1162+ 3A0A 44 0D 0A 00
-1163+ 3A0E 5B 4E 47 53  p126_ngs_ipc_log_dma_page42_premapped: db "[NGS] DMA PAGE42 PREMAP",13,10,0
-1163+ 3A12 5D 20 44 4D
-1163+ 3A16 41 20 50 41
-1163+ 3A1A 47 45 34 32
-1163+ 3A1E 20 50 52 45
-1163+ 3A22 4D 41 50 0D
-1163+ 3A26 0A 00
-1164+ 3A28 5B 4E 47 53  p126_ngs_ipc_log_dma_page42_mapped: db "[NGS] DMA PAGE42 MAPPED",13,10,0
-1164+ 3A2C 5D 20 44 4D
-1164+ 3A30 41 20 50 41
-1164+ 3A34 47 45 34 32
-1164+ 3A38 20 4D 41 50
-1164+ 3A3C 50 45 44 0D
-1164+ 3A40 0A 00
-1165+ 3A42 5B 4E 47 53  p126_ngs_ipc_log_dma_end:         db "[NGS] DMA END RECEIVED",13,10,0
-1165+ 3A46 5D 20 44 4D
-1165+ 3A4A 41 20 45 4E
-1165+ 3A4E 44 20 52 45
-1165+ 3A52 43 45 49 56
-1165+ 3A56 45 44 0D 0A
-1165+ 3A5A 00
-1166+ 3A5B 5B 4E 47 53  p126_ngs_ipc_log_dma_addr:        db "[NGS] DMA ADDR READBACK=",0
-1166+ 3A5F 5D 20 44 4D
-1166+ 3A63 41 20 41 44
-1166+ 3A67 44 52 20 52
-1166+ 3A6B 45 41 44 42
-1166+ 3A6F 41 43 4B 3D
-1166+ 3A73 00
-1167+ 3A74 5B 4E 47 53  p126_ngs_ipc_log_rx_header:       db "[NGS] DMA RX HEADER=",0
-1167+ 3A78 5D 20 44 4D
-1167+ 3A7C 41 20 52 58
-1167+ 3A80 20 48 45 41
-1167+ 3A84 44 45 52 3D
-1167+ 3A88 00
-1168+ 3A89 5B 4E 47 53  p126_ngs_ipc_log_frame_valid:     db "[NGS] DMA FRAME VALID",13,10,0
-1168+ 3A8D 5D 20 44 4D
-1168+ 3A91 41 20 46 52
-1168+ 3A95 41 4D 45 20
-1168+ 3A99 56 41 4C 49
-1168+ 3A9D 44 0D 0A 00
-1169+ 3AA1 5B 4E 47 53  p126_ngs_ipc_log_frame_rejected:  db "[NGS] DMA FRAME REJECTED STATUS=",0
-1169+ 3AA5 5D 20 44 4D
-1169+ 3AA9 41 20 46 52
-1169+ 3AAD 41 4D 45 20
-1169+ 3AB1 52 45 4A 45
-1169+ 3AB5 43 54 45 44
-1169+ 3AB9 20 53 54 41
-1169+ 3ABD 54 55 53 3D
-1169+ 3AC1 00
-1170+ 3AC2 5B 4E 47 53  p126_ngs_ipc_log_dma_rx_request: db "[NGS] DMA RX REQ",13,10,0
-1170+ 3AC6 5D 20 44 4D
-1170+ 3ACA 41 20 52 58
-1170+ 3ACE 20 52 45 51
-1170+ 3AD2 0D 0A 00
-1171+ 3AD5 5B 4E 47 53  p126_ngs_ipc_log_dma_rx_armed:   db "[NGS] DMA RX ARMED",13,10,0
-1171+ 3AD9 5D 20 44 4D
-1171+ 3ADD 41 20 52 58
-1171+ 3AE1 20 41 52 4D
-1171+ 3AE5 45 44 0D 0A
-1171+ 3AE9 00
-1172+ 3AEA 5B 4E 47 53  p126_ngs_ipc_log_dma_rx_end:     db "[NGS] DMA RX END",13,10,0
-1172+ 3AEE 5D 20 44 4D
-1172+ 3AF2 41 20 52 58
-1172+ 3AF6 20 45 4E 44
-1172+ 3AFA 0D 0A 00
-1173+ 3AFD 5B 4E 47 53  p126_ngs_ipc_log_dma_rx_addr:    db "[NGS] DMA RX ADDR READBACK=",0
-1173+ 3B01 5D 20 44 4D
-1173+ 3B05 41 20 52 58
-1173+ 3B09 20 41 44 44
-1173+ 3B0D 52 20 52 45
-1173+ 3B11 41 44 42 41
-1173+ 3B15 43 4B 3D 00
-1174+ 3B19 5B 4E 47 53  p126_ngs_ipc_log_dma_rx_timeout: db "[NGS] DMA RX TIMEOUT",13,10,0
-1174+ 3B1D 5D 20 44 4D
-1174+ 3B21 41 20 52 58
-1174+ 3B25 20 54 49 4D
-1174+ 3B29 45 4F 55 54
-1174+ 3B2D 0D 0A 00
-1175+ 3B30 5B 4E 47 53  p126_ngs_ipc_log_dma_rx_length_bad: db "[NGS] DMA RX BAD LENGTH",13,10,0
-1175+ 3B34 5D 20 44 4D
-1175+ 3B38 41 20 52 58
-1175+ 3B3C 20 42 41 44
-1175+ 3B40 20 4C 45 4E
-1175+ 3B44 47 54 48 0D
-1175+ 3B48 0A 00
-1176+ 3B4A
-1177+ 3B4A              ; Emit CR/LF on NeoGS's independent #EF diagnostic channel.
-1178+ 3B4A              p126_ngs_ipc_log_crlf:
-1179+ 3B4A F5                   push    af
-1180+ 3B4B C5                   push    bc
-1181+ 3B4C 01 EF 00             ld      bc,#00EF
-1182+ 3B4F 3E 0D                ld      a,13
-1183+ 3B51 ED 79                out     (c),a
-1184+ 3B53 3E 0A                ld      a,10
-1185+ 3B55 ED 79                out     (c),a
-1186+ 3B57 C1                   pop     bc
-1187+ 3B58 F1                   pop     af
-1188+ 3B59 C9                   ret
-1189+ 3B5A
-1190+ 3B5A              ; Print A as two hex digits without a line ending. Preserves AF/BC.
-1191+ 3B5A              p126_ngs_ipc_log_hex_byte_inline:
-1192+ 3B5A F5                   push    af
-1193+ 3B5B C5                   push    bc
-1194+ 3B5C 0F                   rrca
-1195+ 3B5D 0F                   rrca
-1196+ 3B5E 0F                   rrca
-1197+ 3B5F 0F                   rrca
-1198+ 3B60 CD 8D 3B             call    p126_ngs_ipc_log_hex_nibble
-1199+ 3B63 C1                   pop     bc
-1200+ 3B64 F1                   pop     af
-1201+ 3B65 F5                   push    af
-1202+ 3B66 E6 0F                and     #0F
-1203+ 3B68 CD 8D 3B             call    p126_ngs_ipc_log_hex_nibble
-1204+ 3B6B F1                   pop     af
-1205+ 3B6C C9                   ret
-1206+ 3B6D
-1207+ 3B6D              ; Print a status byte as two hex digits followed by CR/LF. Preserves AF/BC.
-1208+ 3B6D              p126_ngs_ipc_log_hex_byte:
-1209+ 3B6D F5                   push    af
-1210+ 3B6E C5                   push    bc
-1211+ 3B6F 0F                   rrca
-1212+ 3B70 0F                   rrca
-1213+ 3B71 0F                   rrca
-1214+ 3B72 0F                   rrca
-1215+ 3B73 CD 8D 3B             call    p126_ngs_ipc_log_hex_nibble
-1216+ 3B76 C1                   pop     bc
-1217+ 3B77 F1                   pop     af
-1218+ 3B78 F5                   push    af
-1219+ 3B79 E6 0F                and     #0F
-1220+ 3B7B CD 8D 3B             call    p126_ngs_ipc_log_hex_nibble
-1221+ 3B7E F1                   pop     af
-1222+ 3B7F C5                   push    bc
-1223+ 3B80 01 EF 00             ld      bc,#00EF
-1224+ 3B83 3E 0D                ld      a,13
-1225+ 3B85 ED 79                out     (c),a
-1226+ 3B87 3E 0A                ld      a,10
-1227+ 3B89 ED 79                out     (c),a
-1228+ 3B8B C1                   pop     bc
-1229+ 3B8C C9                   ret
-1230+ 3B8D
-1231+ 3B8D              p126_ngs_ipc_log_hex_nibble:
-1232+ 3B8D E6 0F                and     #0F
-1233+ 3B8F C6 30                add     a,'0'
-1234+ 3B91 FE 3A                cp      '9'+1
-1235+ 3B93 38 02                jr      c,.p126_ngs_hex_emit
-1236+ 3B95 C6 07                add     a,7
-1237+ 3B97              .p126_ngs_hex_emit:
-1238+ 3B97 C5                   push    bc
-1239+ 3B98 01 EF 00             ld      bc,#00EF
-1240+ 3B9B ED 79                out     (c),a
-1241+ 3B9D C1                   pop     bc
-1242+ 3B9E C9                   ret
-1243+ 3B9F
-1244+ 3B9F              ; This IPC module is assembled both standalone and into the resident image.
-1245+ 3B9F              ; Keep its diagnostics self-contained instead of importing the resident logger.
-1246+ 3B9F              ; IN: HL = zero-terminated message. OUT: AF/BC preserved; HL advanced to NUL.
-1247+ 3B9F              p126_ngs_ipc_log:
-1248+ 3B9F F5                   push    af
-1249+ 3BA0 C5                   push    bc
-1250+ 3BA1 01 EF 00             ld      bc,#00EF
-1251+ 3BA4              .p126_ngs_ipc_log_loop:
-1252+ 3BA4 7E                   ld      a,(hl)
-1253+ 3BA5 23                   inc     hl
-1254+ 3BA6 B7                   or      a
-1255+ 3BA7 28 04                jr      z,.p126_ngs_ipc_log_done
-1256+ 3BA9 ED 79                out     (c),a
-1257+ 3BAB 18 F7                jr      .p126_ngs_ipc_log_loop
-1258+ 3BAD              .p126_ngs_ipc_log_done:
-1259+ 3BAD C1                   pop     bc
-1260+ 3BAE F1                   pop     af
-1261+ 3BAF C9                   ret
-1262+ 3BB0
+ 853+ 361D CD 90 36             call    p126_ngs_overlay_win2_selftest
+ 854+ 3620 30 05                jr      nc,.image_finish_x86io_map_ok
+ 855+ 3622 CD E4 37             call    p126_ngs_overlay_log_test_failure
+ 856+ 3625 18 5C                jr      .image_finish_bad
+ 857+ 3627              .image_finish_x86io_map_ok:
+ 858+ 3627                      ; The self-test leaves physical page 04h selected in WIN2.
+ 859+ 3627                      ; Keep the nested-call gate's software selector synchronized.
+ 860+ 3627 3E 02                ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
+ 861+ 3629 32 A1 3E             ld      (p126_overlay_current_selector),a
+ 862+ 362C 3E 05                ld      a,5
+ 863+ 362E 32 AC 37             ld      (p126_ngs_overlay_test_fail_stage),a
+ 864+ 3631 CD 35 37             call    p126_ngs_overlay_gate_selftest
+ 865+ 3634 30 05                jr      nc,.image_finish_gate_ok
+ 866+ 3636 CD E4 37             call    p126_ngs_overlay_log_test_failure
+ 867+ 3639 18 48                jr      .image_finish_bad
+ 868+ 363B              .image_finish_gate_ok:
+ 869+ 363B 21 C4 37             ld      hl,p126_ngs_overlay_win2_test_pass_log
+ 870+ 363E CD B9 3B             call    p126_ngs_ipc_log
+ 871+ 3641 3E 01                ld      a,1
+ 872+ 3643 32 F6 37             ld      (p126_ngs_io_overlay_ready),a
+ 873+ 3646 21 6D 38             ld      hl,p126_ngs_io_overlay_installed_log
+ 874+ 3649 18 2E                jr      .image_finish_log
+ 875+ 364B              .image_finish_x86alu:
+ 876+ 364B                      ; Page05 is the fixed-origin ALU overlay. Probe it through the same
+ 877+ 364B                      ; resident gate used by every arithmetic entry point.
+ 878+ 364B 3E 3C                ld      a,#3C
+ 879+ 364D 37                   scf
+ 880+ 364E 21 34 12             ld      hl,#1234
+ 881+ 3651 CD 89 3E             call    x86_alu_overlay_probe
+ 882+ 3654 FE A5                cp      #A5
+ 883+ 3656 20 19                jr      nz,.image_finish_alu_probe_bad
+ 884+ 3658 11 A5 5A             ld      de,#5AA5
+ 885+ 365B B7                   or      a
+ 886+ 365C ED 52                sbc     hl,de
+ 887+ 365E 20 11                jr      nz,.image_finish_alu_probe_bad
+ 888+ 3660 3A A1 3E             ld      a,(p126_overlay_current_selector)
+ 889+ 3663 FE 02                cp      P126_NGS_X86IO_OVERLAY_SELECTOR
+ 890+ 3665 20 0A                jr      nz,.image_finish_alu_probe_bad
+ 891+ 3667 3E 01                ld      a,1
+ 892+ 3669 32 F7 37             ld      (p126_ngs_alu_overlay_ready),a
+ 893+ 366C 21 CD 38             ld      hl,p126_ngs_alu_overlay_installed_log
+ 894+ 366F 18 08                jr      .image_finish_log
+ 895+ 3671              .image_finish_alu_probe_bad:
+ 896+ 3671 21 EB 38             ld      hl,p126_ngs_alu_overlay_probe_fail_log
+ 897+ 3674 CD B9 3B             call    p126_ngs_ipc_log
+ 898+ 3677 18 0A                jr      .image_finish_bad
+ 899+ 3679
+ 900+ 3679              .image_finish_log:
+ 901+ 3679 CD B9 3B             call    p126_ngs_ipc_log
+ 902+ 367C AF                   xor     a
+ 903+ 367D D3 05                out     (P126_NGS_CLRCBIT),a
+ 904+ 367F 3E 01                ld      a,1
+ 905+ 3681 B7                   or      a
+ 906+ 3682 C9                   ret
+ 907+ 3683              .image_finish_bad:
+ 908+ 3683 21 36 39             ld      hl,p126_ngs_image_finish_rejected_log
+ 909+ 3686 CD B9 3B             call    p126_ngs_ipc_log
+ 910+ 3689 AF                   xor     a
+ 911+ 368A D3 05                out     (P126_NGS_CLRCBIT),a
+ 912+ 368C 3E 03                ld      a,P126_STATUS_BAD_FRAME
+ 913+ 368E 37                   scf
+ 914+ 368F C9                   ret
+ 915+ 3690
+ 916+ 3690              ; Runtime WIN2 selector/read-write test for physical pages 04h and 05h.
+ 917+ 3690              ; WIN3/MPAGEX is the physical reference. For each page, compare its last
+ 918+ 3690              ; byte through WIN2/BFFFh and WIN3/CFFFh, write through WIN2, then read the
+ 919+ 3690              ; same physical byte through WIN3. Save/restore both bytes and return with
+ 920+ 3690              ; WIN2=page04 (X86IO), WIN3=page42 (production DMA staging).
+ 921+ 3690              ; OUT: carry clear on success.
+ 922+ 3690              p126_ngs_overlay_win2_selftest:
+ 923+ 3690                      ; Save the original last byte of physical page 04h via WIN3.
+ 924+ 3690 3E 04                ld      a,P126_NGS_X86IO_OVERLAY_PAGE
+ 925+ 3692 0F                   rrca
+ 926+ 3693 D3 10                out     (P126_NGS_MPAGEX_PORT),a
+ 927+ 3695 3A FF CF             ld      a,(#CFFF)
+ 928+ 3698 32 AA 37             ld      (p126_ngs_overlay_test_old04),a
+ 929+ 369B
+ 930+ 369B                      ; Save the original last byte of physical page 05h via WIN3 too,
+ 931+ 369B                      ; so every failure path can restore both pages.
+ 932+ 369B 3E 05                ld      a,P126_NGS_OVERLAY_TEST_PAGE
+ 933+ 369D 0F                   rrca
+ 934+ 369E D3 10                out     (P126_NGS_MPAGEX_PORT),a
+ 935+ 36A0 3A FF CF             ld      a,(#CFFF)
+ 936+ 36A3 32 AB 37             ld      (p126_ngs_overlay_test_old05),a
+ 937+ 36A6
+ 938+ 36A6                      ; Stage 01: WIN2 page 04h read must match the WIN3 reference.
+ 939+ 36A6 3E 01                ld      a,1
+ 940+ 36A8 32 AC 37             ld      (p126_ngs_overlay_test_fail_stage),a
+ 941+ 36AB 3E 02                ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
+ 942+ 36AD D3 00                out     (P126_NGS_OVERLAY_WINDOW_PORT),a
+ 943+ 36AF 3A FF BF             ld      a,(#BFFF)
+ 944+ 36B2 47                   ld      b,a
+ 945+ 36B3 3A AA 37             ld      a,(p126_ngs_overlay_test_old04)
+ 946+ 36B6 B8                   cp      b
+ 947+ 36B7 20 5C                jr      nz,.overlay_win2_test_failed
+ 948+ 36B9
+ 949+ 36B9                      ; Stage 02: WIN2 page 05h read must match the WIN3 reference.
+ 950+ 36B9 3E 02                ld      a,2
+ 951+ 36BB 32 AC 37             ld      (p126_ngs_overlay_test_fail_stage),a
+ 952+ 36BE 3E 05                ld      a,P126_NGS_OVERLAY_TEST_PAGE
+ 953+ 36C0 0F                   rrca
+ 954+ 36C1 D3 00                out     (P126_NGS_OVERLAY_WINDOW_PORT),a
+ 955+ 36C3 3A FF BF             ld      a,(#BFFF)
+ 956+ 36C6 47                   ld      b,a
+ 957+ 36C7 3A AB 37             ld      a,(p126_ngs_overlay_test_old05)
+ 958+ 36CA B8                   cp      b
+ 959+ 36CB 20 48                jr      nz,.overlay_win2_test_failed
+ 960+ 36CD
+ 961+ 36CD                      ; Stage 03: WIN2 page 05h write must be visible through WIN3.
+ 962+ 36CD 3E 03                ld      a,3
+ 963+ 36CF 32 AC 37             ld      (p126_ngs_overlay_test_fail_stage),a
+ 964+ 36D2 3E 55                ld      a,#55
+ 965+ 36D4 32 FF BF             ld      (#BFFF),a
+ 966+ 36D7 3E 05                ld      a,P126_NGS_OVERLAY_TEST_PAGE
+ 967+ 36D9 0F                   rrca
+ 968+ 36DA D3 10                out     (P126_NGS_MPAGEX_PORT),a
+ 969+ 36DC 3A FF CF             ld      a,(#CFFF)
+ 970+ 36DF FE 55                cp      #55
+ 971+ 36E1 20 32                jr      nz,.overlay_win2_test_failed
+ 972+ 36E3
+ 973+ 36E3                      ; Stage 04: WIN2 page 04h write must be visible through WIN3.
+ 974+ 36E3 3E 04                ld      a,4
+ 975+ 36E5 32 AC 37             ld      (p126_ngs_overlay_test_fail_stage),a
+ 976+ 36E8 3E 02                ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
+ 977+ 36EA D3 00                out     (P126_NGS_OVERLAY_WINDOW_PORT),a
+ 978+ 36EC 3E AA                ld      a,#AA
+ 979+ 36EE 32 FF BF             ld      (#BFFF),a
+ 980+ 36F1 3E 04                ld      a,P126_NGS_X86IO_OVERLAY_PAGE
+ 981+ 36F3 0F                   rrca
+ 982+ 36F4 D3 10                out     (P126_NGS_MPAGEX_PORT),a
+ 983+ 36F6 3A FF CF             ld      a,(#CFFF)
+ 984+ 36F9 FE AA                cp      #AA
+ 985+ 36FB 20 18                jr      nz,.overlay_win2_test_failed
+ 986+ 36FD
+ 987+ 36FD                      ; Restore both original physical bytes through WIN3.
+ 988+ 36FD 3E 04                ld      a,P126_NGS_X86IO_OVERLAY_PAGE
+ 989+ 36FF 0F                   rrca
+ 990+ 3700 D3 10                out     (P126_NGS_MPAGEX_PORT),a
+ 991+ 3702 3A AA 37             ld      a,(p126_ngs_overlay_test_old04)
+ 992+ 3705 32 FF CF             ld      (#CFFF),a
+ 993+ 3708 3E 05                ld      a,P126_NGS_OVERLAY_TEST_PAGE
+ 994+ 370A 0F                   rrca
+ 995+ 370B D3 10                out     (P126_NGS_MPAGEX_PORT),a
+ 996+ 370D 3A AB 37             ld      a,(p126_ngs_overlay_test_old05)
+ 997+ 3710 32 FF CF             ld      (#CFFF),a
+ 998+ 3713 18 1B                jr      .overlay_win2_test_restore_maps
+ 999+ 3715
+1000+ 3715              .overlay_win2_test_failed:
+1001+ 3715                      ; Best-effort restoration even when one WIN2 selector is incorrect.
+1002+ 3715 3E 04                ld      a,P126_NGS_X86IO_OVERLAY_PAGE
+1003+ 3717 0F                   rrca
+1004+ 3718 D3 10                out     (P126_NGS_MPAGEX_PORT),a
+1005+ 371A 3A AA 37             ld      a,(p126_ngs_overlay_test_old04)
+1006+ 371D 32 FF CF             ld      (#CFFF),a
+1007+ 3720 3E 05                ld      a,P126_NGS_OVERLAY_TEST_PAGE
+1008+ 3722 0F                   rrca
+1009+ 3723 D3 10                out     (P126_NGS_MPAGEX_PORT),a
+1010+ 3725 3A AB 37             ld      a,(p126_ngs_overlay_test_old05)
+1011+ 3728 32 FF CF             ld      (#CFFF),a
+1012+ 372B CD 9D 37             call    p126_ngs_overlay_test_restore_maps
+1013+ 372E 37                   scf
+1014+ 372F C9                   ret
+1015+ 3730
+1016+ 3730              .overlay_win2_test_restore_maps:
+1017+ 3730 CD 9D 37             call    p126_ngs_overlay_test_restore_maps
+1018+ 3733 B7                   or      a
+1019+ 3734 C9                   ret
+1020+ 3735
+1021+ 3735              ; Exercise the resident call gate before publishing X86IO_READY.
+1022+ 3735              ; Page 05h is currently free. Preserve its first four bytes, install a tiny
+1023+ 3735              ; CALL x86_io_reset / RET overlay stub, and execute it while WIN2=page05.
+1024+ 3735              ; The resident wrapper must switch to page04 for X86IO, then restore page05
+1025+ 3735              ; so the test stub can execute its RET at 8003h. Finally restore page05 bytes
+1026+ 3735              ; and leave WIN2=page04, WIN3=page42.
+1027+ 3735              ; OUT: carry clear if the page05 -> page04 -> page05 call completed correctly.
+1028+ 3735              p126_ngs_overlay_gate_selftest:
+1029+ 3735 3E 05                ld      a,P126_NGS_OVERLAY_TEST_PAGE
+1030+ 3737 0F                   rrca
+1031+ 3738 D3 10                out     (P126_NGS_MPAGEX_PORT),a
+1032+ 373A 21 00 C0             ld      hl,#C000
+1033+ 373D 11 99 37             ld      de,p126_ngs_overlay_gate_old_code
+1034+ 3740 01 04 00             ld      bc,4
+1035+ 3743 ED B0                ldir
+1036+ 3745
+1037+ 3745 21 95 37             ld      hl,p126_ngs_overlay_gate_test_code
+1038+ 3748 11 00 C0             ld      de,#C000
+1039+ 374B 01 04 00             ld      bc,4
+1040+ 374E ED B0                ldir
+1041+ 3750
+1042+ 3750                      ; Set the software shadow before entering page05 through WIN2.
+1043+ 3750 3E 05                ld      a,P126_NGS_OVERLAY_TEST_PAGE
+1044+ 3752 0F                   rrca
+1045+ 3753 32 A1 3E             ld      (p126_overlay_current_selector),a
+1046+ 3756 D3 00                out     (P126_NGS_OVERLAY_WINDOW_PORT),a
+1047+ 3758
+1048+ 3758 CD 00 80             call    #8000                  ; page05 stub calls resident X86IO wrapper
+1049+ 375B
+1050+ 375B                      ; If the trampoline restored page05, its first opcode is still CDh.
+1051+ 375B 3A 00 80             ld      a,(#8000)
+1052+ 375E FE CD                cp      #CD
+1053+ 3760 20 19                jr      nz,.overlay_gate_test_failed
+1054+ 3762 3A A1 3E             ld      a,(p126_overlay_current_selector)
+1055+ 3765 FE 82                cp      #82                    ; ROR8(page05)
+1056+ 3767 20 12                jr      nz,.overlay_gate_test_failed
+1057+ 3769
+1058+ 3769                      ; Restore page05's original first four bytes.
+1059+ 3769 3E 05                ld      a,P126_NGS_OVERLAY_TEST_PAGE
+1060+ 376B 0F                   rrca
+1061+ 376C D3 10                out     (P126_NGS_MPAGEX_PORT),a
+1062+ 376E 21 99 37             ld      hl,p126_ngs_overlay_gate_old_code
+1063+ 3771 11 00 C0             ld      de,#C000
+1064+ 3774 01 04 00             ld      bc,4
+1065+ 3777 ED B0                ldir
+1066+ 3779 18 15                jr      .overlay_gate_test_restore_maps
+1067+ 377B
+1068+ 377B              .overlay_gate_test_failed:
+1069+ 377B                      ; Restore the scratch bytes even when the gate returned incorrectly.
+1070+ 377B 3E 05                ld      a,P126_NGS_OVERLAY_TEST_PAGE
+1071+ 377D 0F                   rrca
+1072+ 377E D3 10                out     (P126_NGS_MPAGEX_PORT),a
+1073+ 3780 21 99 37             ld      hl,p126_ngs_overlay_gate_old_code
+1074+ 3783 11 00 C0             ld      de,#C000
+1075+ 3786 01 04 00             ld      bc,4
+1076+ 3789 ED B0                ldir
+1077+ 378B CD 9D 37             call    p126_ngs_overlay_test_restore_maps
+1078+ 378E 37                   scf
+1079+ 378F C9                   ret
+1080+ 3790
+1081+ 3790              .overlay_gate_test_restore_maps:
+1082+ 3790 CD 9D 37             call    p126_ngs_overlay_test_restore_maps
+1083+ 3793 B7                   or      a
+1084+ 3794 C9                   ret
+1085+ 3795
+1086+ 3795              p126_ngs_overlay_gate_test_code:
+1087+ 3795 CD                   db      #CD
+1088+ 3796 EB 3C                dw      x86_io_reset
+1089+ 3798 C9                   db      #C9
+1090+ 3799              p126_ngs_overlay_gate_old_code:
+1091+ 3799 00 00 00 00          defs    4,0
+1092+ 379D              p126_ngs_overlay_test_restore_maps:
+1093+ 379D 3E 42                ld      a,P126_NGS_DMA_PAGE
+1094+ 379F 0F                   rrca
+1095+ 37A0 D3 10                out     (P126_NGS_MPAGEX_PORT),a
+1096+ 37A2 3E 02                ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
+1097+ 37A4 32 A1 3E             ld      (p126_overlay_current_selector),a
+1098+ 37A7 D3 00                out     (P126_NGS_OVERLAY_WINDOW_PORT),a
+1099+ 37A9 C9                   ret
+1100+ 37AA
+1101+ 37AA 00           p126_ngs_overlay_test_old04: db 0
+1102+ 37AB 00           p126_ngs_overlay_test_old05: db 0
+1103+ 37AC 00           p126_ngs_overlay_test_fail_stage: db 0
+1104+ 37AD 5B 4E 47 53  p126_ngs_overlay_test_fail_prefix: db "[NGS] WIN2 FAIL STAGE ",0
+1104+ 37B1 5D 20 57 49
+1104+ 37B5 4E 32 20 46
+1104+ 37B9 41 49 4C 20
+1104+ 37BD 53 54 41 47
+1104+ 37C1 45 20 00
+1105+ 37C4 5B 4E 47 53  p126_ngs_overlay_win2_test_pass_log: db "[NGS] WIN2 MAP/GATE TEST PASS",13,10,0
+1105+ 37C8 5D 20 57 49
+1105+ 37CC 4E 32 20 4D
+1105+ 37D0 41 50 2F 47
+1105+ 37D4 41 54 45 20
+1105+ 37D8 54 45 53 54
+1105+ 37DC 20 50 41 53
+1105+ 37E0 53 0D 0A 00
+1106+ 37E4
+1107+ 37E4              p126_ngs_overlay_log_test_failure:
+1108+ 37E4 21 AD 37             ld      hl,p126_ngs_overlay_test_fail_prefix
+1109+ 37E7 CD B9 3B             call    p126_ngs_ipc_log
+1110+ 37EA 3A AC 37             ld      a,(p126_ngs_overlay_test_fail_stage)
+1111+ 37ED CD 74 3B             call    p126_ngs_ipc_log_hex_byte_inline
+1112+ 37F0 C3 64 3B             jp      p126_ngs_ipc_log_crlf
+1113+ 37F3
+1114+ 37F3 00           p126_ngs_image_active:       db 0
+1115+ 37F4 00           p126_ngs_image_received:     db 0
+1116+ 37F5 00           p126_ngs_bios_image_ready:   db 0
+1117+ 37F6 00           p126_ngs_io_overlay_ready:   db 0
+1118+ 37F7 00           p126_ngs_alu_overlay_ready:  db 0
+1119+ 37F8 00 00        p126_ngs_image_id:           dw 0
+1120+ 37FA 00 00        p126_ngs_image_size:         dw 0
+1121+ 37FC 00           p126_ngs_image_kind:         db 0
+1122+ 37FD 00           p126_ngs_image_dest_selector: db 0
+1123+ 37FE 00 00        p126_ngs_image_verify_count: dw 0
+1124+ 3800 00           p126_ngs_image_verify_byte:  db 0
+1125+ 3801 5B 4E 47 53  p126_ngs_image_begin_log:    db "[NGS] IMG BEGIN",13,10,0
+1125+ 3805 5D 20 49 4D
+1125+ 3809 47 20 42 45
+1125+ 380D 47 49 4E 0D
+1125+ 3811 0A 00
+1126+ 3813 5B 4E 47 53  p126_ngs_image_fragment_log: db "[NGS] IMG FRAG",13,10,0
+1126+ 3817 5D 20 49 4D
+1126+ 381B 47 20 46 52
+1126+ 381F 41 47 0D 0A
+1126+ 3823 00
+1127+ 3824 5B 4E 47 53  p126_ngs_image_finish_log:   db "[NGS] IMG FINISH",13,10,0
+1127+ 3828 5D 20 49 4D
+1127+ 382C 47 20 46 49
+1127+ 3830 4E 49 53 48
+1127+ 3834 0D 0A 00
+1128+ 3837 5B 4E 47 53  p126_ngs_image_installed_log: db "[NGS] SYSBIOS PAGE10 OK",13,10,0
+1128+ 383B 5D 20 53 59
+1128+ 383F 53 42 49 4F
+1128+ 3843 53 20 50 41
+1128+ 3847 47 45 31 30
+1128+ 384B 20 4F 4B 0D
+1128+ 384F 0A 00
+1129+ 3851 5B 4E 47 53  p126_ngs_image_verify_ok_log: db "[NGS] SYSBIOS READBACK OK",13,10,0
+1129+ 3855 5D 20 53 59
+1129+ 3859 53 42 49 4F
+1129+ 385D 53 20 52 45
+1129+ 3861 41 44 42 41
+1129+ 3865 43 4B 20 4F
+1129+ 3869 4B 0D 0A 00
+1130+ 386D 5B 4E 47 53  p126_ngs_io_overlay_installed_log: db "[NGS] X86IO PAGE04 WIN2 OK",13,10,0
+1130+ 3871 5D 20 58 38
+1130+ 3875 36 49 4F 20
+1130+ 3879 50 41 47 45
+1130+ 387D 30 34 20 57
+1130+ 3881 49 4E 32 20
+1130+ 3885 4F 4B 0D 0A
+1130+ 3889 00
+1131+ 388A 5B 4E 47 53  p126_ngs_io_overlay_verify_ok_log: db "[NGS] X86IO PAGE04 READBACK OK",13,10,0
+1131+ 388E 5D 20 58 38
+1131+ 3892 36 49 4F 20
+1131+ 3896 50 41 47 45
+1131+ 389A 30 34 20 52
+1131+ 389E 45 41 44 42
+1131+ 38A2 41 43 4B 20
+1131+ 38A6 4F 4B 0D 0A
+1131+ 38AA 00
+1132+ 38AB 5B 4E 47 53  p126_ngs_alu_overlay_verify_ok_log: db "[NGS] X86ALU PAGE05 READBACK OK",13,10,0
+1132+ 38AF 5D 20 58 38
+1132+ 38B3 36 41 4C 55
+1132+ 38B7 20 50 41 47
+1132+ 38BB 45 30 35 20
+1132+ 38BF 52 45 41 44
+1132+ 38C3 42 41 43 4B
+1132+ 38C7 20 4F 4B 0D
+1132+ 38CB 0A 00
+1133+ 38CD 5B 4E 47 53  p126_ngs_alu_overlay_installed_log: db "[NGS] X86ALU PAGE05 GATE OK",13,10,0
+1133+ 38D1 5D 20 58 38
+1133+ 38D5 36 41 4C 55
+1133+ 38D9 20 50 41 47
+1133+ 38DD 45 30 35 20
+1133+ 38E1 47 41 54 45
+1133+ 38E5 20 4F 4B 0D
+1133+ 38E9 0A 00
+1134+ 38EB 5B 4E 47 53  p126_ngs_alu_overlay_probe_fail_log: db "[NGS] X86ALU PAGE05 GATE FAIL",13,10,0
+1134+ 38EF 5D 20 58 38
+1134+ 38F3 36 41 4C 55
+1134+ 38F7 20 50 41 47
+1134+ 38FB 45 30 35 20
+1134+ 38FF 47 41 54 45
+1134+ 3903 20 46 41 49
+1134+ 3907 4C 0D 0A 00
+1135+ 390B 5B 4E 47 53  p126_ngs_image_begin_rejected_log: db "[NGS] IMG BEGIN BAD",13,10,0
+1135+ 390F 5D 20 49 4D
+1135+ 3913 47 20 42 45
+1135+ 3917 47 49 4E 20
+1135+ 391B 42 41 44 0D
+1135+ 391F 0A 00
+1136+ 3921 5B 4E 47 53  p126_ngs_image_fragment_rejected_log: db "[NGS] IMG FRAG BAD",13,10,0
+1136+ 3925 5D 20 49 4D
+1136+ 3929 47 20 46 52
+1136+ 392D 41 47 20 42
+1136+ 3931 41 44 0D 0A
+1136+ 3935 00
+1137+ 3936 5B 4E 47 53  p126_ngs_image_finish_rejected_log: db "[NGS] IMG FINISH BAD",13,10,0
+1137+ 393A 5D 20 49 4D
+1137+ 393E 47 20 46 49
+1137+ 3942 4E 49 53 48
+1137+ 3946 20 42 41 44
+1137+ 394A 0D 0A 00
+1138+ 394D
+1139+ 394D              ; Standard CRC-16/CCITT-FALSE regression vector.
+1140+ 394D              ; OUT: Carry clear and HL=#29B1 on pass; Carry set on failure.
+1141+ 394D              p126_ngs_ipc_crc16_selftest:
+1141+ 394D
+1142+ 394D C5                   push    bc
+1143+ 394E D5                   push    de
+1144+ 394F 21 FF FF             ld      hl, #FFFF
+1145+ 3952 11 71 39             ld      de, p126_ngs_ipc_crc16_test_vector
+1146+ 3955 06 09                ld      b, 9
+1147+ 3957              .p126_ngs_crc_test_loop:
+1148+ 3957 1A                   ld      a, (de)
+1149+ 3958 13                   inc     de
+1150+ 3959 CD BE 30             call    p126_ngs_ipc_crc16_update
+1151+ 395C 10 F9                djnz    .p126_ngs_crc_test_loop
+1152+ 395E 11 B1 29             ld      de, #29B1
+1153+ 3961 B7                   or      a
+1154+ 3962 ED 52                sbc     hl, de
+1155+ 3964 20 07                jr      nz, .p126_ngs_crc_test_failed
+1156+ 3966 D1                   pop     de
+1157+ 3967 C1                   pop     bc
+1158+ 3968 21 B1 29             ld      hl, #29B1
+1159+ 396B B7                   or      a
+1160+ 396C C9                   ret
+1161+ 396D              .p126_ngs_crc_test_failed:
+1162+ 396D D1                   pop     de
+1163+ 396E C1                   pop     bc
+1164+ 396F 37                   scf
+1165+ 3970 C9                   ret
+1166+ 3971
+1167+ 3971              p126_ngs_ipc_crc16_test_vector:
+1168+ 3971 31 32 33 34          db "123456789"
+1168+ 3975 35 36 37 38
+1168+ 3979 39
+1169+ 397A
+1170+ 397A              ; Independent NeoGS #EF diagnostics for the DMA transaction lifecycle.
+1171+ 397A 5B 4E 47 53  p126_ngs_ipc_log_dma_e0:          db "[NGS] DMA E0 RECEIVED",13,10,0
+1171+ 397E 5D 20 44 4D
+1171+ 3982 41 20 45 30
+1171+ 3986 20 52 45 43
+1171+ 398A 45 49 56 45
+1171+ 398E 44 0D 0A 00
+1172+ 3992 5B 4E 47 53  p126_ngs_ipc_log_dma_cfg_begin:   db "[NGS] DMA CONFIG BEGIN",13,10,0
+1172+ 3996 5D 20 44 4D
+1172+ 399A 41 20 43 4F
+1172+ 399E 4E 46 49 47
+1172+ 39A2 20 42 45 47
+1172+ 39A6 49 4E 0D 0A
+1172+ 39AA 00
+1173+ 39AB 5B 4E 47 53  p126_ngs_ipc_log_dma_armed:       db "[NGS] DMA ARMED",13,10,0
+1173+ 39AF 5D 20 44 4D
+1173+ 39B3 41 20 41 52
+1173+ 39B7 4D 45 44 0D
+1173+ 39BB 0A 00
+1174+ 39BD 5B 4E 47 53  p126_ngs_ipc_log_dma_ready:       db "[NGS] DMA READY",13,10,0
+1174+ 39C1 5D 20 44 4D
+1174+ 39C5 41 20 52 45
+1174+ 39C9 41 44 59 0D
+1174+ 39CD 0A 00
+1175+ 39CF 5B 4E 47 53  p126_ngs_ipc_log_dma_host_end:    db "[NGS] DMA HOST END",13,10,0
+1175+ 39D3 5D 20 44 4D
+1175+ 39D7 41 20 48 4F
+1175+ 39DB 53 54 20 45
+1175+ 39DF 4E 44 0D 0A
+1175+ 39E3 00
+1176+ 39E4 5B 4E 47 53  p126_ngs_ipc_log_dma_timeout:     db "[NGS] DMA WAIT TIMEOUT",13,10,0
+1176+ 39E8 5D 20 44 4D
+1176+ 39EC 41 20 57 41
+1176+ 39F0 49 54 20 54
+1176+ 39F4 49 4D 45 4F
+1176+ 39F8 55 54 0D 0A
+1176+ 39FC 00
+1177+ 39FD 5B 4E 47 53  p126_ngs_ipc_log_bad_length:      db "[NGS] DMA BAD LENGTH",13,10,0
+1177+ 3A01 5D 20 44 4D
+1177+ 3A05 41 20 42 41
+1177+ 3A09 44 20 4C 45
+1177+ 3A0D 4E 47 54 48
+1177+ 3A11 0D 0A 00
+1178+ 3A14 5B 4E 47 53  p126_ngs_ipc_log_dma_stopped:     db "[NGS] DMA STOPPED",13,10,0
+1178+ 3A18 5D 20 44 4D
+1178+ 3A1C 41 20 53 54
+1178+ 3A20 4F 50 50 45
+1178+ 3A24 44 0D 0A 00
+1179+ 3A28 5B 4E 47 53  p126_ngs_ipc_log_dma_page42_premapped: db "[NGS] DMA PAGE42 PREMAP",13,10,0
+1179+ 3A2C 5D 20 44 4D
+1179+ 3A30 41 20 50 41
+1179+ 3A34 47 45 34 32
+1179+ 3A38 20 50 52 45
+1179+ 3A3C 4D 41 50 0D
+1179+ 3A40 0A 00
+1180+ 3A42 5B 4E 47 53  p126_ngs_ipc_log_dma_page42_mapped: db "[NGS] DMA PAGE42 MAPPED",13,10,0
+1180+ 3A46 5D 20 44 4D
+1180+ 3A4A 41 20 50 41
+1180+ 3A4E 47 45 34 32
+1180+ 3A52 20 4D 41 50
+1180+ 3A56 50 45 44 0D
+1180+ 3A5A 0A 00
+1181+ 3A5C 5B 4E 47 53  p126_ngs_ipc_log_dma_end:         db "[NGS] DMA END RECEIVED",13,10,0
+1181+ 3A60 5D 20 44 4D
+1181+ 3A64 41 20 45 4E
+1181+ 3A68 44 20 52 45
+1181+ 3A6C 43 45 49 56
+1181+ 3A70 45 44 0D 0A
+1181+ 3A74 00
+1182+ 3A75 5B 4E 47 53  p126_ngs_ipc_log_dma_addr:        db "[NGS] DMA ADDR READBACK=",0
+1182+ 3A79 5D 20 44 4D
+1182+ 3A7D 41 20 41 44
+1182+ 3A81 44 52 20 52
+1182+ 3A85 45 41 44 42
+1182+ 3A89 41 43 4B 3D
+1182+ 3A8D 00
+1183+ 3A8E 5B 4E 47 53  p126_ngs_ipc_log_rx_header:       db "[NGS] DMA RX HEADER=",0
+1183+ 3A92 5D 20 44 4D
+1183+ 3A96 41 20 52 58
+1183+ 3A9A 20 48 45 41
+1183+ 3A9E 44 45 52 3D
+1183+ 3AA2 00
+1184+ 3AA3 5B 4E 47 53  p126_ngs_ipc_log_frame_valid:     db "[NGS] DMA FRAME VALID",13,10,0
+1184+ 3AA7 5D 20 44 4D
+1184+ 3AAB 41 20 46 52
+1184+ 3AAF 41 4D 45 20
+1184+ 3AB3 56 41 4C 49
+1184+ 3AB7 44 0D 0A 00
+1185+ 3ABB 5B 4E 47 53  p126_ngs_ipc_log_frame_rejected:  db "[NGS] DMA FRAME REJECTED STATUS=",0
+1185+ 3ABF 5D 20 44 4D
+1185+ 3AC3 41 20 46 52
+1185+ 3AC7 41 4D 45 20
+1185+ 3ACB 52 45 4A 45
+1185+ 3ACF 43 54 45 44
+1185+ 3AD3 20 53 54 41
+1185+ 3AD7 54 55 53 3D
+1185+ 3ADB 00
+1186+ 3ADC 5B 4E 47 53  p126_ngs_ipc_log_dma_rx_request: db "[NGS] DMA RX REQ",13,10,0
+1186+ 3AE0 5D 20 44 4D
+1186+ 3AE4 41 20 52 58
+1186+ 3AE8 20 52 45 51
+1186+ 3AEC 0D 0A 00
+1187+ 3AEF 5B 4E 47 53  p126_ngs_ipc_log_dma_rx_armed:   db "[NGS] DMA RX ARMED",13,10,0
+1187+ 3AF3 5D 20 44 4D
+1187+ 3AF7 41 20 52 58
+1187+ 3AFB 20 41 52 4D
+1187+ 3AFF 45 44 0D 0A
+1187+ 3B03 00
+1188+ 3B04 5B 4E 47 53  p126_ngs_ipc_log_dma_rx_end:     db "[NGS] DMA RX END",13,10,0
+1188+ 3B08 5D 20 44 4D
+1188+ 3B0C 41 20 52 58
+1188+ 3B10 20 45 4E 44
+1188+ 3B14 0D 0A 00
+1189+ 3B17 5B 4E 47 53  p126_ngs_ipc_log_dma_rx_addr:    db "[NGS] DMA RX ADDR READBACK=",0
+1189+ 3B1B 5D 20 44 4D
+1189+ 3B1F 41 20 52 58
+1189+ 3B23 20 41 44 44
+1189+ 3B27 52 20 52 45
+1189+ 3B2B 41 44 42 41
+1189+ 3B2F 43 4B 3D 00
+1190+ 3B33 5B 4E 47 53  p126_ngs_ipc_log_dma_rx_timeout: db "[NGS] DMA RX TIMEOUT",13,10,0
+1190+ 3B37 5D 20 44 4D
+1190+ 3B3B 41 20 52 58
+1190+ 3B3F 20 54 49 4D
+1190+ 3B43 45 4F 55 54
+1190+ 3B47 0D 0A 00
+1191+ 3B4A 5B 4E 47 53  p126_ngs_ipc_log_dma_rx_length_bad: db "[NGS] DMA RX BAD LENGTH",13,10,0
+1191+ 3B4E 5D 20 44 4D
+1191+ 3B52 41 20 52 58
+1191+ 3B56 20 42 41 44
+1191+ 3B5A 20 4C 45 4E
+1191+ 3B5E 47 54 48 0D
+1191+ 3B62 0A 00
+1192+ 3B64
+1193+ 3B64              ; Emit CR/LF on NeoGS's independent #EF diagnostic channel.
+1194+ 3B64              p126_ngs_ipc_log_crlf:
+1195+ 3B64 F5                   push    af
+1196+ 3B65 C5                   push    bc
+1197+ 3B66 01 EF 00             ld      bc,#00EF
+1198+ 3B69 3E 0D                ld      a,13
+1199+ 3B6B ED 79                out     (c),a
+1200+ 3B6D 3E 0A                ld      a,10
+1201+ 3B6F ED 79                out     (c),a
+1202+ 3B71 C1                   pop     bc
+1203+ 3B72 F1                   pop     af
+1204+ 3B73 C9                   ret
+1205+ 3B74
+1206+ 3B74              ; Print A as two hex digits without a line ending. Preserves AF/BC.
+1207+ 3B74              p126_ngs_ipc_log_hex_byte_inline:
+1208+ 3B74 F5                   push    af
+1209+ 3B75 C5                   push    bc
+1210+ 3B76 0F                   rrca
+1211+ 3B77 0F                   rrca
+1212+ 3B78 0F                   rrca
+1213+ 3B79 0F                   rrca
+1214+ 3B7A CD A7 3B             call    p126_ngs_ipc_log_hex_nibble
+1215+ 3B7D C1                   pop     bc
+1216+ 3B7E F1                   pop     af
+1217+ 3B7F F5                   push    af
+1218+ 3B80 E6 0F                and     #0F
+1219+ 3B82 CD A7 3B             call    p126_ngs_ipc_log_hex_nibble
+1220+ 3B85 F1                   pop     af
+1221+ 3B86 C9                   ret
+1222+ 3B87
+1223+ 3B87              ; Print a status byte as two hex digits followed by CR/LF. Preserves AF/BC.
+1224+ 3B87              p126_ngs_ipc_log_hex_byte:
+1225+ 3B87 F5                   push    af
+1226+ 3B88 C5                   push    bc
+1227+ 3B89 0F                   rrca
+1228+ 3B8A 0F                   rrca
+1229+ 3B8B 0F                   rrca
+1230+ 3B8C 0F                   rrca
+1231+ 3B8D CD A7 3B             call    p126_ngs_ipc_log_hex_nibble
+1232+ 3B90 C1                   pop     bc
+1233+ 3B91 F1                   pop     af
+1234+ 3B92 F5                   push    af
+1235+ 3B93 E6 0F                and     #0F
+1236+ 3B95 CD A7 3B             call    p126_ngs_ipc_log_hex_nibble
+1237+ 3B98 F1                   pop     af
+1238+ 3B99 C5                   push    bc
+1239+ 3B9A 01 EF 00             ld      bc,#00EF
+1240+ 3B9D 3E 0D                ld      a,13
+1241+ 3B9F ED 79                out     (c),a
+1242+ 3BA1 3E 0A                ld      a,10
+1243+ 3BA3 ED 79                out     (c),a
+1244+ 3BA5 C1                   pop     bc
+1245+ 3BA6 C9                   ret
+1246+ 3BA7
+1247+ 3BA7              p126_ngs_ipc_log_hex_nibble:
+1248+ 3BA7 E6 0F                and     #0F
+1249+ 3BA9 C6 30                add     a,'0'
+1250+ 3BAB FE 3A                cp      '9'+1
+1251+ 3BAD 38 02                jr      c,.p126_ngs_hex_emit
+1252+ 3BAF C6 07                add     a,7
+1253+ 3BB1              .p126_ngs_hex_emit:
+1254+ 3BB1 C5                   push    bc
+1255+ 3BB2 01 EF 00             ld      bc,#00EF
+1256+ 3BB5 ED 79                out     (c),a
+1257+ 3BB7 C1                   pop     bc
+1258+ 3BB8 C9                   ret
+1259+ 3BB9
+1260+ 3BB9              ; This IPC module is assembled both standalone and into the resident image.
+1261+ 3BB9              ; Keep its diagnostics self-contained instead of importing the resident logger.
+1262+ 3BB9              ; IN: HL = zero-terminated message. OUT: AF/BC preserved; HL advanced to NUL.
+1263+ 3BB9              p126_ngs_ipc_log:
+1264+ 3BB9 F5                   push    af
+1265+ 3BBA C5                   push    bc
+1266+ 3BBB 01 EF 00             ld      bc,#00EF
+1267+ 3BBE              .p126_ngs_ipc_log_loop:
+1268+ 3BBE 7E                   ld      a,(hl)
+1269+ 3BBF 23                   inc     hl
+1270+ 3BC0 B7                   or      a
+1271+ 3BC1 28 04                jr      z,.p126_ngs_ipc_log_done
+1272+ 3BC3 ED 79                out     (c),a
+1273+ 3BC5 18 F7                jr      .p126_ngs_ipc_log_loop
+1274+ 3BC7              .p126_ngs_ipc_log_done:
+1275+ 3BC7 C1                   pop     bc
+1276+ 3BC8 F1                   pop     af
+1277+ 3BC9 C9                   ret
+1278+ 3BCA
 # file closed: p126_ipc.asm
- 210  3BB0
- 211  3BB0              ; Resident bank-call gate and compatibility entry points for X86IO and X86ALU.
- 212  3BB0                      INCLUDE "neogs_sub/p126_overlay_gate.asm"
+ 210  3BCA
+ 211  3BCA              ; Resident bank-call gate and compatibility entry points for X86IO and X86ALU.
+ 212  3BCA                      INCLUDE "neogs_sub/p126_overlay_gate.asm"
 # file opened: p126_overlay_gate.asm
-   1+ 3BB0              ; =========================================================================
-   2+ 3BB0              ; PROJECT126 — resident WIN2 overlay call gate
-   3+ 3BB0              ;
-   4+ 3BB0              ; API:
-   5+ 3BB0              ;   p126_overlay_request_selector = ROR8(physical overlay page)
-   6+ 3BB0              ;   IX = entry address in 8000h-BFFFh
-   7+ 3BB0              ;   CALL p126_overlay_call
-   8+ 3BB0              ;
-   9+ 3BB0              ; AF, BC, DE, HL and IY are preserved at module entry; IX is consumed as
-  10+ 3BB0              ; the entry pointer. The module returns with RET. The resident trampoline
-  11+ 3BB0              ; restores the previous selector before returning to the original caller.
-  12+ 3BB0              ; Each nesting level stores its previous selector on the WIN1 stack.
-  13+ 3BB0              ;
-  14+ 3BB0              ; The request selector, entry and caller HL are copied/restored before module entry, so
-  15+ 3BB0              ; nested calls may safely reuse the resident scratch bytes/words.
-  16+ 3BB0              ; Host Z80 interrupts remain disabled by the resident execution contract.
-  17+ 3BB0              ; =========================================================================
-  18+ 3BB0
-  19+ 3BB0              P126_OVERLAY_MAX_CALL_DEPTH EQU 8
-  20+ 3BB0
-  21+ 3BB0              p126_overlay_call:
-  22+ 3BB0 DD 22 89 3E          ld      (p126_overlay_gate_entry),ix
-  23+ 3BB4 22 8B 3E             ld      (p126_overlay_gate_saved_hl),hl
-  24+ 3BB7 08                   ex      af,af'                   ; keep caller AF while using A
-  25+ 3BB8 3A 86 3E             ld      a,(p126_overlay_call_depth)
-  26+ 3BBB FE 08                cp      P126_OVERLAY_MAX_CALL_DEPTH
-  27+ 3BBD 30 53                jr      nc,p126_overlay_depth_rejected
-  28+ 3BBF 3C                   inc     a
-  29+ 3BC0 32 86 3E             ld      (p126_overlay_call_depth),a
-  30+ 3BC3                      ; Record the requested page for active-page release protection.
-  31+ 3BC3 D5                   push    de
-  32+ 3BC4 DD 21 8D 3E          ld      ix,p126_overlay_call_pages
-  33+ 3BC8 3D                   dec     a
-  34+ 3BC9 5F                   ld      e,a
-  35+ 3BCA 16 00                ld      d,0
-  36+ 3BCC DD 19                add     ix,de
-  37+ 3BCE 3A 88 3E             ld      a,(p126_overlay_request_selector)
-  38+ 3BD1 DD 77 00             ld      (ix+0),a
-  39+ 3BD4 D1                   pop     de
-  40+ 3BD5 3A 87 3E             ld      a,(p126_overlay_current_selector)
-  41+ 3BD8 F5                   push    af                       ; per-call previous-selector frame
-  42+ 3BD9 3A 88 3E             ld      a,(p126_overlay_request_selector)
-  43+ 3BDC 32 87 3E             ld      (p126_overlay_current_selector),a
-  44+ 3BDF D3 00                out     (P126_NGS_OVERLAY_WINDOW_PORT),a
-  45+ 3BE1 21 EF 3B             ld      hl,p126_overlay_gate_return
-  46+ 3BE4 E5                   push    hl                       ; overlay RET enters resident WIN0
-  47+ 3BE5 DD 2A 89 3E          ld      ix,(p126_overlay_gate_entry)
-  48+ 3BE9 2A 8B 3E             ld      hl,(p126_overlay_gate_saved_hl)
-  49+ 3BEC 08                   ex      af,af'                   ; restore caller AF for module
-  50+ 3BED DD E9                jp      (ix)
-  51+ 3BEF
-  52+ 3BEF              p126_overlay_gate_return:
-  53+ 3BEF 08                   ex      af,af'                   ; preserve module return AF
-  54+ 3BF0 F1                   pop     af                       ; restore previous WIN2 selector
-  55+ 3BF1 32 87 3E             ld      (p126_overlay_current_selector),a
-  56+ 3BF4 D3 00                out     (P126_NGS_OVERLAY_WINDOW_PORT),a
-  57+ 3BF6                      ; Clear this active-page slot before decrementing the frame depth.
-  58+ 3BF6 D5                   push    de
-  59+ 3BF7 3A 86 3E             ld      a,(p126_overlay_call_depth)
-  60+ 3BFA 3D                   dec     a
-  61+ 3BFB 5F                   ld      e,a
-  62+ 3BFC 16 00                ld      d,0
-  63+ 3BFE DD 21 8D 3E          ld      ix,p126_overlay_call_pages
-  64+ 3C02 DD 19                add     ix,de
-  65+ 3C04 AF                   xor     a
-  66+ 3C05 DD 77 00             ld      (ix+0),a
-  67+ 3C08 D1                   pop     de
-  68+ 3C09 3A 86 3E             ld      a,(p126_overlay_call_depth)
-  69+ 3C0C 3D                   dec     a
-  70+ 3C0D 32 86 3E             ld      (p126_overlay_call_depth),a
-  71+ 3C10 08                   ex      af,af'                   ; restore module return AF
-  72+ 3C11 C9                   ret
-  73+ 3C12
-  74+ 3C12              p126_overlay_depth_rejected:
-  75+ 3C12                      ; No selector change or stack frame is made on overflow.
-  76+ 3C12 2A 8B 3E             ld      hl,(p126_overlay_gate_saved_hl)
-  77+ 3C15 08                   ex      af,af'                   ; restore the caller's alternate AF
-  78+ 3C16 3E 0D                ld      a,P126_STATUS_BUSY
-  79+ 3C18 37                   scf
-  80+ 3C19 C9                   ret
-  81+ 3C1A
-  82+ 3C1A              ; -------------------------------------------------------------------------
-  83+ 3C1A              ; Physical overlay-page allocator.
-  84+ 3C1A              ; Pool: physical pages 06h..0Fh. Pages 04h/05h remain pinned to X86IO/X86ALU;
-  85+ 3C1A              ; pages 00h..03h are never allocator-owned. WIN3 is not used here.
-  86+ 3C1A              ;
-  87+ 3C1A              ; p126_overlay_allocate_page:
-  88+ 3C1A              ;   OUT A=physical page 06h..0Fh, carry clear; A=0/carry set if exhausted.
-  89+ 3C1A              ;   Clobbers BC, IX.
-  90+ 3C1A              ;
-  91+ 3C1A              ; p126_overlay_release_page:
-  92+ 3C1A              ;   IN A=physical page. Carry clear on release; carry set with A=status on
-  93+ 3C1A              ;   invalid, already-free, currently mapped, or actively executing page.
-  94+ 3C1A              ;   Clobbers BC, DE, HL, IX.
-  95+ 3C1A              ; -------------------------------------------------------------------------
-  96+ 3C1A              p126_overlay_allocate_page:
-  97+ 3C1A DD 21 95 3E          ld      ix,p126_overlay_alloc_state
-  98+ 3C1E 06 0A                ld      b,10
-  99+ 3C20 0E 06                ld      c,6
- 100+ 3C22              .allocate_scan:
- 101+ 3C22 DD 7E 00             ld      a,(ix+0)
- 102+ 3C25 B7                   or      a
- 103+ 3C26 28 08                jr      z,.allocate_found
- 104+ 3C28 DD 23                inc     ix
- 105+ 3C2A 0C                   inc     c
- 106+ 3C2B 10 F5                djnz    .allocate_scan
- 107+ 3C2D AF                   xor     a
- 108+ 3C2E 37                   scf
- 109+ 3C2F C9                   ret
- 110+ 3C30              .allocate_found:
- 111+ 3C30 3E 01                ld      a,1
- 112+ 3C32 DD 77 00             ld      (ix+0),a
- 113+ 3C35 79                   ld      a,c
- 114+ 3C36 B7                   or      a
- 115+ 3C37 C9                   ret
- 116+ 3C38
- 117+ 3C38              p126_overlay_release_page:
- 118+ 3C38 FE 06                cp      6
- 119+ 3C3A 38 3A                jr      c,.release_range_error
- 120+ 3C3C FE 10                cp      16
- 121+ 3C3E 30 36                jr      nc,.release_range_error
- 122+ 3C40 F5                   push    af
- 123+ 3C41 0F                   rrca
- 124+ 3C42 4F                   ld      c,a                       ; physical page -> WIN2 selector
- 125+ 3C43 3A 87 3E             ld      a,(p126_overlay_current_selector)
- 126+ 3C46 B9                   cp      c
- 127+ 3C47 28 28                jr      z,.release_busy
- 128+ 3C49 3A 86 3E             ld      a,(p126_overlay_call_depth)
- 129+ 3C4C 47                   ld      b,a
- 130+ 3C4D DD 21 8D 3E          ld      ix,p126_overlay_call_pages
- 131+ 3C51              .release_active_scan:
- 132+ 3C51 78                   ld      a,b
- 133+ 3C52 B7                   or      a
- 134+ 3C53 28 0A                jr      z,.release_not_active
- 135+ 3C55 DD 7E 00             ld      a,(ix+0)
- 136+ 3C58 B9                   cp      c
- 137+ 3C59 28 16                jr      z,.release_busy
- 138+ 3C5B DD 23                inc     ix
- 139+ 3C5D 10 F2                djnz    .release_active_scan
- 140+ 3C5F              .release_not_active:
- 141+ 3C5F F1                   pop     af
- 142+ 3C60 D6 06                sub     6
- 143+ 3C62 5F                   ld      e,a
- 144+ 3C63 16 00                ld      d,0
- 145+ 3C65 21 95 3E             ld      hl,p126_overlay_alloc_state
- 146+ 3C68 19                   add     hl,de
- 147+ 3C69 7E                   ld      a,(hl)
- 148+ 3C6A B7                   or      a
- 149+ 3C6B 28 09                jr      z,.release_range_error
- 150+ 3C6D AF                   xor     a
- 151+ 3C6E 77                   ld      (hl),a
- 152+ 3C6F B7                   or      a
- 153+ 3C70 C9                   ret
- 154+ 3C71              .release_busy:
- 155+ 3C71 F1                   pop     af
- 156+ 3C72 3E 0D                ld      a,P126_STATUS_BUSY
- 157+ 3C74 37                   scf
- 158+ 3C75 C9                   ret
- 159+ 3C76              .release_range_error:
- 160+ 3C76 3E 0C                ld      a,P126_STATUS_ADDRESS_RANGE
- 161+ 3C78 37                   scf
- 162+ 3C79 C9                   ret
- 163+ 3C7A
- 164+ 3C7A              ; Startup regression for the dynamic page allocator. It allocates all ten
- 165+ 3C7A              ; pages in ascending order, verifies exhaustion, releases in reverse order,
- 166+ 3C7A              ; then confirms page06 can be allocated and released again.
- 167+ 3C7A              ; OUT: carry clear on pass; carry set on failure. Startup halts on failure.
- 168+ 3C7A              p126_overlay_allocator_selftest:
- 169+ 3C7A C5                   push    bc
- 170+ 3C7B D5                   push    de
- 171+ 3C7C E5                   push    hl
- 172+ 3C7D DD E5                push    ix
- 173+ 3C7F 21 9F 3E             ld      hl,p126_overlay_allocator_test_pages
- 174+ 3C82 06 0A                ld      b,10
- 175+ 3C84 0E 06                ld      c,6
- 176+ 3C86              .allocator_test_allocate:
- 177+ 3C86 C5                   push    bc
- 178+ 3C87 CD 1A 3C             call    p126_overlay_allocate_page
- 179+ 3C8A C1                   pop     bc
- 180+ 3C8B 38 3B                jr      c,.allocator_test_failed
- 181+ 3C8D B9                   cp      c
- 182+ 3C8E 20 38                jr      nz,.allocator_test_failed
- 183+ 3C90 77                   ld      (hl),a
- 184+ 3C91 23                   inc     hl
- 185+ 3C92 0C                   inc     c
- 186+ 3C93 10 F1                djnz    .allocator_test_allocate
- 187+ 3C95
- 188+ 3C95                      ; All ten dynamic pages must now be reserved.
- 189+ 3C95 C5                   push    bc
- 190+ 3C96 CD 1A 3C             call    p126_overlay_allocate_page
- 191+ 3C99 C1                   pop     bc
- 192+ 3C9A 30 2C                jr      nc,.allocator_test_failed
- 193+ 3C9C B7                   or      a
- 194+ 3C9D 20 29                jr      nz,.allocator_test_failed
- 195+ 3C9F
- 196+ 3C9F                      ; Release every page in reverse order.
- 197+ 3C9F 21 A8 3E             ld      hl,p126_overlay_allocator_test_pages+9
- 198+ 3CA2 06 0A                ld      b,10
- 199+ 3CA4              .allocator_test_release:
- 200+ 3CA4 7E                   ld      a,(hl)
- 201+ 3CA5 C5                   push    bc
- 202+ 3CA6 E5                   push    hl
- 203+ 3CA7 CD 38 3C             call    p126_overlay_release_page
- 204+ 3CAA E1                   pop     hl
- 205+ 3CAB C1                   pop     bc
- 206+ 3CAC 38 1A                jr      c,.allocator_test_failed
- 207+ 3CAE 2B                   dec     hl
- 208+ 3CAF 10 F3                djnz    .allocator_test_release
- 209+ 3CB1
- 210+ 3CB1                      ; First-fit reuse must return page06 again.
- 211+ 3CB1 C5                   push    bc
- 212+ 3CB2 CD 1A 3C             call    p126_overlay_allocate_page
- 213+ 3CB5 C1                   pop     bc
- 214+ 3CB6 38 10                jr      c,.allocator_test_failed
- 215+ 3CB8 FE 06                cp      6
- 216+ 3CBA 20 0C                jr      nz,.allocator_test_failed
- 217+ 3CBC CD 38 3C             call    p126_overlay_release_page
- 218+ 3CBF 38 07                jr      c,.allocator_test_failed
- 219+ 3CC1
- 220+ 3CC1 DD E1                pop     ix
- 221+ 3CC3 E1                   pop     hl
- 222+ 3CC4 D1                   pop     de
- 223+ 3CC5 C1                   pop     bc
- 224+ 3CC6 AF                   xor     a
- 225+ 3CC7 C9                   ret
- 226+ 3CC8              .allocator_test_failed:
- 227+ 3CC8 DD E1                pop     ix
- 228+ 3CCA E1                   pop     hl
- 229+ 3CCB D1                   pop     de
- 230+ 3CCC C1                   pop     bc
- 231+ 3CCD 3E 03                ld      a,P126_STATUS_BAD_FRAME
- 232+ 3CCF 37                   scf
- 233+ 3CD0 C9                   ret
- 234+ 3CD1
- 235+ 3CD1              ; Compatibility entry points for the existing X86IO ABI. All use the same
- 236+ 3CD1              ; gate, so X86IO remains callable while another overlay owns WIN2.
- 237+ 3CD1              x86_io_reset:
- 238+ 3CD1 F5                   push    af
- 239+ 3CD2 DD E5                push    ix
- 240+ 3CD4 3E 02                ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
- 241+ 3CD6 32 88 3E             ld      (p126_overlay_request_selector),a
- 242+ 3CD9 DD E1                pop     ix
- 243+ 3CDB F1                   pop     af
- 244+ 3CDC DD E5                push    ix
- 245+ 3CDE DD 21 00 80          ld      ix,x86_io_reset_impl
- 246+ 3CE2 CD B0 3B             call    p126_overlay_call
- 247+ 3CE5 DD E1                pop     ix
- 248+ 3CE7 C9                   ret
- 249+ 3CE8
- 250+ 3CE8              x86_io_keyboard_push:
- 251+ 3CE8 F5                   push    af
- 252+ 3CE9 DD E5                push    ix
- 253+ 3CEB 3E 02                ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
- 254+ 3CED 32 88 3E             ld      (p126_overlay_request_selector),a
- 255+ 3CF0 DD E1                pop     ix
- 256+ 3CF2 F1                   pop     af
- 257+ 3CF3 DD E5                push    ix
- 258+ 3CF5 DD 21 27 80          ld      ix,x86_io_keyboard_push_impl
- 259+ 3CF9 CD B0 3B             call    p126_overlay_call
- 260+ 3CFC DD E1                pop     ix
- 261+ 3CFE C9                   ret
- 262+ 3CFF
- 263+ 3CFF              x86_io_read8:
- 264+ 3CFF F5                   push    af
- 265+ 3D00 DD E5                push    ix
- 266+ 3D02 3E 02                ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
- 267+ 3D04 32 88 3E             ld      (p126_overlay_request_selector),a
- 268+ 3D07 DD E1                pop     ix
- 269+ 3D09 F1                   pop     af
- 270+ 3D0A DD E5                push    ix
- 271+ 3D0C DD 21 9E 80          ld      ix,x86_io_read8_impl
- 272+ 3D10 CD B0 3B             call    p126_overlay_call
- 273+ 3D13 DD E1                pop     ix
- 274+ 3D15 C9                   ret
- 275+ 3D16
- 276+ 3D16              x86_io_read16:
- 277+ 3D16 F5                   push    af
- 278+ 3D17 DD E5                push    ix
- 279+ 3D19 3E 02                ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
- 280+ 3D1B 32 88 3E             ld      (p126_overlay_request_selector),a
- 281+ 3D1E DD E1                pop     ix
- 282+ 3D20 F1                   pop     af
- 283+ 3D21 DD E5                push    ix
- 284+ 3D23 DD 21 B3 81          ld      ix,x86_io_read16_impl
- 285+ 3D27 CD B0 3B             call    p126_overlay_call
- 286+ 3D2A DD E1                pop     ix
- 287+ 3D2C C9                   ret
- 288+ 3D2D
- 289+ 3D2D              x86_io_write8:
- 290+ 3D2D F5                   push    af
- 291+ 3D2E DD E5                push    ix
- 292+ 3D30 3E 02                ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
- 293+ 3D32 32 88 3E             ld      (p126_overlay_request_selector),a
- 294+ 3D35 DD E1                pop     ix
- 295+ 3D37 F1                   pop     af
- 296+ 3D38 DD E5                push    ix
- 297+ 3D3A DD 21 1E 81          ld      ix,x86_io_write8_impl
- 298+ 3D3E CD B0 3B             call    p126_overlay_call
- 299+ 3D41 DD E1                pop     ix
- 300+ 3D43 C9                   ret
- 301+ 3D44
- 302+ 3D44              x86_io_write16:
- 303+ 3D44 F5                   push    af
- 304+ 3D45 DD E5                push    ix
- 305+ 3D47 3E 02                ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
- 306+ 3D49 32 88 3E             ld      (p126_overlay_request_selector),a
- 307+ 3D4C DD E1                pop     ix
- 308+ 3D4E F1                   pop     af
- 309+ 3D4F DD E5                push    ix
- 310+ 3D51 DD 21 F1 81          ld      ix,x86_io_write16_impl
- 311+ 3D55 CD B0 3B             call    p126_overlay_call
- 312+ 3D58 DD E1                pop     ix
- 313+ 3D5A C9                   ret
- 314+ 3D5B
- 315+ 3D5B              x86_io_log_access:
- 316+ 3D5B F5                   push    af
- 317+ 3D5C DD E5                push    ix
- 318+ 3D5E 3E 02                ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
- 319+ 3D60 32 88 3E             ld      (p126_overlay_request_selector),a
- 320+ 3D63 DD E1                pop     ix
- 321+ 3D65 F1                   pop     af
- 322+ 3D66 DD E5                push    ix
- 323+ 3D68 DD 21 2D 82          ld      ix,x86_io_log_access_impl
- 324+ 3D6C CD B0 3B             call    p126_overlay_call
- 325+ 3D6F DD E1                pop     ix
- 326+ 3D71 C9                   ret
- 327+ 3D72
- 328+ 3D72              ; Nested-call regression entry: page04 X86IO -> page05 X86ALU.
- 329+ 3D72              ; Returns A=08h when the page05 ADD8 implementation returned correctly.
- 330+ 3D72              x86_io_overlay_nested_gate_probe:
- 331+ 3D72 F5                   push    af
- 332+ 3D73 DD E5                push    ix
- 333+ 3D75 3E 02                ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
- 334+ 3D77 32 88 3E             ld      (p126_overlay_request_selector),a
- 335+ 3D7A DD E1                pop     ix
- 336+ 3D7C F1                   pop     af
- 337+ 3D7D DD E5                push    ix
- 338+ 3D7F DD 21 8C 80          ld      ix,x86_io_overlay_nested_gate_probe_impl
- 339+ 3D83 CD B0 3B             call    p126_overlay_call
- 340+ 3D86 DD E1                pop     ix
- 341+ 3D88 C9                   ret
- 342+ 3D89
- 343+ 3D89              ; X86ALU public entry points; implementations live on physical page 05h.
- 344+ 3D89              x86_alu_add8:
- 345+ 3D89 F5                   push    af
- 346+ 3D8A DD E5                push    ix
- 347+ 3D8C 3E 82                ld      a,P126_NGS_ALU_OVERLAY_SELECTOR
- 348+ 3D8E 32 88 3E             ld      (p126_overlay_request_selector),a
- 349+ 3D91 DD E1                pop     ix
- 350+ 3D93 F1                   pop     af
- 351+ 3D94 DD E5                push    ix
- 352+ 3D96 DD 21 29 80          ld      ix,x86_alu_add8_impl
- 353+ 3D9A CD B0 3B             call    p126_overlay_call
- 354+ 3D9D DD E1                pop     ix
- 355+ 3D9F C9                   ret
- 356+ 3DA0
- 357+ 3DA0              x86_alu_sub8:
- 358+ 3DA0 F5                   push    af
- 359+ 3DA1 DD E5                push    ix
- 360+ 3DA3 3E 82                ld      a,P126_NGS_ALU_OVERLAY_SELECTOR
- 361+ 3DA5 32 88 3E             ld      (p126_overlay_request_selector),a
- 362+ 3DA8 DD E1                pop     ix
- 363+ 3DAA F1                   pop     af
- 364+ 3DAB DD E5                push    ix
- 365+ 3DAD DD 21 48 80          ld      ix,x86_alu_sub8_impl
- 366+ 3DB1 CD B0 3B             call    p126_overlay_call
- 367+ 3DB4 DD E1                pop     ix
- 368+ 3DB6 C9                   ret
- 369+ 3DB7
- 370+ 3DB7              x86_alu_add16:
- 371+ 3DB7 F5                   push    af
- 372+ 3DB8 DD E5                push    ix
- 373+ 3DBA 3E 82                ld      a,P126_NGS_ALU_OVERLAY_SELECTOR
- 374+ 3DBC 32 88 3E             ld      (p126_overlay_request_selector),a
- 375+ 3DBF DD E1                pop     ix
- 376+ 3DC1 F1                   pop     af
- 377+ 3DC2 DD E5                push    ix
- 378+ 3DC4 DD 21 67 80          ld      ix,x86_alu_add16_impl
- 379+ 3DC8 CD B0 3B             call    p126_overlay_call
- 380+ 3DCB DD E1                pop     ix
- 381+ 3DCD C9                   ret
- 382+ 3DCE
- 383+ 3DCE              x86_alu_sub16:
- 384+ 3DCE F5                   push    af
- 385+ 3DCF DD E5                push    ix
- 386+ 3DD1 3E 82                ld      a,P126_NGS_ALU_OVERLAY_SELECTOR
- 387+ 3DD3 32 88 3E             ld      (p126_overlay_request_selector),a
- 388+ 3DD6 DD E1                pop     ix
- 389+ 3DD8 F1                   pop     af
- 390+ 3DD9 DD E5                push    ix
- 391+ 3DDB DD 21 8D 80          ld      ix,x86_alu_sub16_impl
- 392+ 3DDF CD B0 3B             call    p126_overlay_call
- 393+ 3DE2 DD E1                pop     ix
- 394+ 3DE4 C9                   ret
- 395+ 3DE5
- 396+ 3DE5              x86_alu_adc8:
- 397+ 3DE5 F5                   push    af
- 398+ 3DE6 DD E5                push    ix
- 399+ 3DE8 3E 82                ld      a,P126_NGS_ALU_OVERLAY_SELECTOR
- 400+ 3DEA 32 88 3E             ld      (p126_overlay_request_selector),a
- 401+ 3DED DD E1                pop     ix
- 402+ 3DEF F1                   pop     af
- 403+ 3DF0 DD E5                push    ix
- 404+ 3DF2 DD 21 37 81          ld      ix,x86_alu_adc8_impl
- 405+ 3DF6 CD B0 3B             call    p126_overlay_call
- 406+ 3DF9 DD E1                pop     ix
- 407+ 3DFB C9                   ret
- 408+ 3DFC
- 409+ 3DFC              x86_alu_sbb8:
- 410+ 3DFC F5                   push    af
- 411+ 3DFD DD E5                push    ix
- 412+ 3DFF 3E 82                ld      a,P126_NGS_ALU_OVERLAY_SELECTOR
- 413+ 3E01 32 88 3E             ld      (p126_overlay_request_selector),a
- 414+ 3E04 DD E1                pop     ix
- 415+ 3E06 F1                   pop     af
- 416+ 3E07 DD E5                push    ix
- 417+ 3E09 DD 21 66 81          ld      ix,x86_alu_sbb8_impl
- 418+ 3E0D CD B0 3B             call    p126_overlay_call
- 419+ 3E10 DD E1                pop     ix
- 420+ 3E12 C9                   ret
- 421+ 3E13
- 422+ 3E13              x86_alu_adc16:
- 423+ 3E13 F5                   push    af
- 424+ 3E14 DD E5                push    ix
- 425+ 3E16 3E 82                ld      a,P126_NGS_ALU_OVERLAY_SELECTOR
- 426+ 3E18 32 88 3E             ld      (p126_overlay_request_selector),a
- 427+ 3E1B DD E1                pop     ix
- 428+ 3E1D F1                   pop     af
- 429+ 3E1E DD E5                push    ix
- 430+ 3E20 DD 21 95 81          ld      ix,x86_alu_adc16_impl
- 431+ 3E24 CD B0 3B             call    p126_overlay_call
- 432+ 3E27 DD E1                pop     ix
- 433+ 3E29 C9                   ret
- 434+ 3E2A
- 435+ 3E2A              x86_alu_sbb16:
- 436+ 3E2A F5                   push    af
- 437+ 3E2B DD E5                push    ix
- 438+ 3E2D 3E 82                ld      a,P126_NGS_ALU_OVERLAY_SELECTOR
- 439+ 3E2F 32 88 3E             ld      (p126_overlay_request_selector),a
- 440+ 3E32 DD E1                pop     ix
- 441+ 3E34 F1                   pop     af
- 442+ 3E35 DD E5                push    ix
- 443+ 3E37 DD 21 CB 81          ld      ix,x86_alu_sbb16_impl
- 444+ 3E3B CD B0 3B             call    p126_overlay_call
- 445+ 3E3E DD E1                pop     ix
- 446+ 3E40 C9                   ret
- 447+ 3E41
- 448+ 3E41              x86_alu_logic8:
- 449+ 3E41 F5                   push    af
- 450+ 3E42 DD E5                push    ix
- 451+ 3E44 3E 82                ld      a,P126_NGS_ALU_OVERLAY_SELECTOR
- 452+ 3E46 32 88 3E             ld      (p126_overlay_request_selector),a
- 453+ 3E49 DD E1                pop     ix
- 454+ 3E4B F1                   pop     af
- 455+ 3E4C DD E5                push    ix
- 456+ 3E4E DD 21 01 82          ld      ix,x86_alu_logic8_impl
- 457+ 3E52 CD B0 3B             call    p126_overlay_call
- 458+ 3E55 DD E1                pop     ix
- 459+ 3E57 C9                   ret
- 460+ 3E58
- 461+ 3E58              x86_alu_logic16:
- 462+ 3E58 F5                   push    af
- 463+ 3E59 DD E5                push    ix
- 464+ 3E5B 3E 82                ld      a,P126_NGS_ALU_OVERLAY_SELECTOR
- 465+ 3E5D 32 88 3E             ld      (p126_overlay_request_selector),a
- 466+ 3E60 DD E1                pop     ix
- 467+ 3E62 F1                   pop     af
- 468+ 3E63 DD E5                push    ix
- 469+ 3E65 DD 21 27 82          ld      ix,x86_alu_logic16_impl
- 470+ 3E69 CD B0 3B             call    p126_overlay_call
- 471+ 3E6C DD E1                pop     ix
- 472+ 3E6E C9                   ret
- 473+ 3E6F
- 474+ 3E6F              x86_alu_overlay_probe:
- 475+ 3E6F F5                   push    af
- 476+ 3E70 DD E5                push    ix
- 477+ 3E72 3E 82                ld      a,P126_NGS_ALU_OVERLAY_SELECTOR
- 478+ 3E74 32 88 3E             ld      (p126_overlay_request_selector),a
- 479+ 3E77 DD E1                pop     ix
- 480+ 3E79 F1                   pop     af
- 481+ 3E7A DD E5                push    ix
- 482+ 3E7C DD 21 94 84          ld      ix,x86_alu_overlay_probe_impl
- 483+ 3E80 CD B0 3B             call    p126_overlay_call
- 484+ 3E83 DD E1                pop     ix
- 485+ 3E85 C9                   ret
- 486+ 3E86
- 487+ 3E86 00           p126_overlay_call_depth:      db 0
- 488+ 3E87 80           p126_overlay_current_selector: db #80
- 489+ 3E88 80           p126_overlay_request_selector: db #80
- 490+ 3E89 00 00        p126_overlay_gate_entry:       dw 0
- 491+ 3E8B 00 00        p126_overlay_gate_saved_hl:    dw 0
- 492+ 3E8D 00 00 00...  p126_overlay_call_pages:       defs P126_OVERLAY_MAX_CALL_DEPTH,0
- 493+ 3E95 00 00 00...  p126_overlay_alloc_state:      defs 10,0
- 494+ 3E9F 00 00 00...  p126_overlay_allocator_test_pages: defs 10,0
- 495+ 3EA9
+   1+ 3BCA              ; =========================================================================
+   2+ 3BCA              ; PROJECT126 — resident WIN2 overlay call gate
+   3+ 3BCA              ;
+   4+ 3BCA              ; API:
+   5+ 3BCA              ;   p126_overlay_request_selector = ROR8(physical overlay page)
+   6+ 3BCA              ;   IX = entry address in 8000h-BFFFh
+   7+ 3BCA              ;   CALL p126_overlay_call
+   8+ 3BCA              ;
+   9+ 3BCA              ; AF, BC, DE, HL and IY are preserved at module entry; IX is consumed as
+  10+ 3BCA              ; the entry pointer. The module returns with RET. The resident trampoline
+  11+ 3BCA              ; restores the previous selector before returning to the original caller.
+  12+ 3BCA              ; Each nesting level stores its previous selector on the WIN1 stack.
+  13+ 3BCA              ;
+  14+ 3BCA              ; The request selector, entry and caller HL are copied/restored before module entry, so
+  15+ 3BCA              ; nested calls may safely reuse the resident scratch bytes/words.
+  16+ 3BCA              ; Host Z80 interrupts remain disabled by the resident execution contract.
+  17+ 3BCA              ; =========================================================================
+  18+ 3BCA
+  19+ 3BCA              P126_OVERLAY_MAX_CALL_DEPTH EQU 8
+  20+ 3BCA
+  21+ 3BCA              p126_overlay_call:
+  22+ 3BCA DD 22 A3 3E          ld      (p126_overlay_gate_entry),ix
+  23+ 3BCE 22 A5 3E             ld      (p126_overlay_gate_saved_hl),hl
+  24+ 3BD1 08                   ex      af,af'                   ; keep caller AF while using A
+  25+ 3BD2 3A A0 3E             ld      a,(p126_overlay_call_depth)
+  26+ 3BD5 FE 08                cp      P126_OVERLAY_MAX_CALL_DEPTH
+  27+ 3BD7 30 53                jr      nc,p126_overlay_depth_rejected
+  28+ 3BD9 3C                   inc     a
+  29+ 3BDA 32 A0 3E             ld      (p126_overlay_call_depth),a
+  30+ 3BDD                      ; Record the requested page for active-page release protection.
+  31+ 3BDD D5                   push    de
+  32+ 3BDE DD 21 A7 3E          ld      ix,p126_overlay_call_pages
+  33+ 3BE2 3D                   dec     a
+  34+ 3BE3 5F                   ld      e,a
+  35+ 3BE4 16 00                ld      d,0
+  36+ 3BE6 DD 19                add     ix,de
+  37+ 3BE8 3A A2 3E             ld      a,(p126_overlay_request_selector)
+  38+ 3BEB DD 77 00             ld      (ix+0),a
+  39+ 3BEE D1                   pop     de
+  40+ 3BEF 3A A1 3E             ld      a,(p126_overlay_current_selector)
+  41+ 3BF2 F5                   push    af                       ; per-call previous-selector frame
+  42+ 3BF3 3A A2 3E             ld      a,(p126_overlay_request_selector)
+  43+ 3BF6 32 A1 3E             ld      (p126_overlay_current_selector),a
+  44+ 3BF9 D3 00                out     (P126_NGS_OVERLAY_WINDOW_PORT),a
+  45+ 3BFB 21 09 3C             ld      hl,p126_overlay_gate_return
+  46+ 3BFE E5                   push    hl                       ; overlay RET enters resident WIN0
+  47+ 3BFF DD 2A A3 3E          ld      ix,(p126_overlay_gate_entry)
+  48+ 3C03 2A A5 3E             ld      hl,(p126_overlay_gate_saved_hl)
+  49+ 3C06 08                   ex      af,af'                   ; restore caller AF for module
+  50+ 3C07 DD E9                jp      (ix)
+  51+ 3C09
+  52+ 3C09              p126_overlay_gate_return:
+  53+ 3C09 08                   ex      af,af'                   ; preserve module return AF
+  54+ 3C0A F1                   pop     af                       ; restore previous WIN2 selector
+  55+ 3C0B 32 A1 3E             ld      (p126_overlay_current_selector),a
+  56+ 3C0E D3 00                out     (P126_NGS_OVERLAY_WINDOW_PORT),a
+  57+ 3C10                      ; Clear this active-page slot before decrementing the frame depth.
+  58+ 3C10 D5                   push    de
+  59+ 3C11 3A A0 3E             ld      a,(p126_overlay_call_depth)
+  60+ 3C14 3D                   dec     a
+  61+ 3C15 5F                   ld      e,a
+  62+ 3C16 16 00                ld      d,0
+  63+ 3C18 DD 21 A7 3E          ld      ix,p126_overlay_call_pages
+  64+ 3C1C DD 19                add     ix,de
+  65+ 3C1E AF                   xor     a
+  66+ 3C1F DD 77 00             ld      (ix+0),a
+  67+ 3C22 D1                   pop     de
+  68+ 3C23 3A A0 3E             ld      a,(p126_overlay_call_depth)
+  69+ 3C26 3D                   dec     a
+  70+ 3C27 32 A0 3E             ld      (p126_overlay_call_depth),a
+  71+ 3C2A 08                   ex      af,af'                   ; restore module return AF
+  72+ 3C2B C9                   ret
+  73+ 3C2C
+  74+ 3C2C              p126_overlay_depth_rejected:
+  75+ 3C2C                      ; No selector change or stack frame is made on overflow.
+  76+ 3C2C 2A A5 3E             ld      hl,(p126_overlay_gate_saved_hl)
+  77+ 3C2F 08                   ex      af,af'                   ; restore the caller's alternate AF
+  78+ 3C30 3E 0D                ld      a,P126_STATUS_BUSY
+  79+ 3C32 37                   scf
+  80+ 3C33 C9                   ret
+  81+ 3C34
+  82+ 3C34              ; -------------------------------------------------------------------------
+  83+ 3C34              ; Physical overlay-page allocator.
+  84+ 3C34              ; Pool: physical pages 06h..0Fh. Pages 04h/05h remain pinned to X86IO/X86ALU;
+  85+ 3C34              ; pages 00h..03h are never allocator-owned. WIN3 is not used here.
+  86+ 3C34              ;
+  87+ 3C34              ; p126_overlay_allocate_page:
+  88+ 3C34              ;   OUT A=physical page 06h..0Fh, carry clear; A=0/carry set if exhausted.
+  89+ 3C34              ;   Clobbers BC, IX.
+  90+ 3C34              ;
+  91+ 3C34              ; p126_overlay_release_page:
+  92+ 3C34              ;   IN A=physical page. Carry clear on release; carry set with A=status on
+  93+ 3C34              ;   invalid, already-free, currently mapped, or actively executing page.
+  94+ 3C34              ;   Clobbers BC, DE, HL, IX.
+  95+ 3C34              ; -------------------------------------------------------------------------
+  96+ 3C34              p126_overlay_allocate_page:
+  97+ 3C34 DD 21 AF 3E          ld      ix,p126_overlay_alloc_state
+  98+ 3C38 06 0A                ld      b,10
+  99+ 3C3A 0E 06                ld      c,6
+ 100+ 3C3C              .allocate_scan:
+ 101+ 3C3C DD 7E 00             ld      a,(ix+0)
+ 102+ 3C3F B7                   or      a
+ 103+ 3C40 28 08                jr      z,.allocate_found
+ 104+ 3C42 DD 23                inc     ix
+ 105+ 3C44 0C                   inc     c
+ 106+ 3C45 10 F5                djnz    .allocate_scan
+ 107+ 3C47 AF                   xor     a
+ 108+ 3C48 37                   scf
+ 109+ 3C49 C9                   ret
+ 110+ 3C4A              .allocate_found:
+ 111+ 3C4A 3E 01                ld      a,1
+ 112+ 3C4C DD 77 00             ld      (ix+0),a
+ 113+ 3C4F 79                   ld      a,c
+ 114+ 3C50 B7                   or      a
+ 115+ 3C51 C9                   ret
+ 116+ 3C52
+ 117+ 3C52              p126_overlay_release_page:
+ 118+ 3C52 FE 06                cp      6
+ 119+ 3C54 38 3A                jr      c,.release_range_error
+ 120+ 3C56 FE 10                cp      16
+ 121+ 3C58 30 36                jr      nc,.release_range_error
+ 122+ 3C5A F5                   push    af
+ 123+ 3C5B 0F                   rrca
+ 124+ 3C5C 4F                   ld      c,a                       ; physical page -> WIN2 selector
+ 125+ 3C5D 3A A1 3E             ld      a,(p126_overlay_current_selector)
+ 126+ 3C60 B9                   cp      c
+ 127+ 3C61 28 28                jr      z,.release_busy
+ 128+ 3C63 3A A0 3E             ld      a,(p126_overlay_call_depth)
+ 129+ 3C66 47                   ld      b,a
+ 130+ 3C67 DD 21 A7 3E          ld      ix,p126_overlay_call_pages
+ 131+ 3C6B              .release_active_scan:
+ 132+ 3C6B 78                   ld      a,b
+ 133+ 3C6C B7                   or      a
+ 134+ 3C6D 28 0A                jr      z,.release_not_active
+ 135+ 3C6F DD 7E 00             ld      a,(ix+0)
+ 136+ 3C72 B9                   cp      c
+ 137+ 3C73 28 16                jr      z,.release_busy
+ 138+ 3C75 DD 23                inc     ix
+ 139+ 3C77 10 F2                djnz    .release_active_scan
+ 140+ 3C79              .release_not_active:
+ 141+ 3C79 F1                   pop     af
+ 142+ 3C7A D6 06                sub     6
+ 143+ 3C7C 5F                   ld      e,a
+ 144+ 3C7D 16 00                ld      d,0
+ 145+ 3C7F 21 AF 3E             ld      hl,p126_overlay_alloc_state
+ 146+ 3C82 19                   add     hl,de
+ 147+ 3C83 7E                   ld      a,(hl)
+ 148+ 3C84 B7                   or      a
+ 149+ 3C85 28 09                jr      z,.release_range_error
+ 150+ 3C87 AF                   xor     a
+ 151+ 3C88 77                   ld      (hl),a
+ 152+ 3C89 B7                   or      a
+ 153+ 3C8A C9                   ret
+ 154+ 3C8B              .release_busy:
+ 155+ 3C8B F1                   pop     af
+ 156+ 3C8C 3E 0D                ld      a,P126_STATUS_BUSY
+ 157+ 3C8E 37                   scf
+ 158+ 3C8F C9                   ret
+ 159+ 3C90              .release_range_error:
+ 160+ 3C90 3E 0C                ld      a,P126_STATUS_ADDRESS_RANGE
+ 161+ 3C92 37                   scf
+ 162+ 3C93 C9                   ret
+ 163+ 3C94
+ 164+ 3C94              ; Startup regression for the dynamic page allocator. It allocates all ten
+ 165+ 3C94              ; pages in ascending order, verifies exhaustion, releases in reverse order,
+ 166+ 3C94              ; then confirms page06 can be allocated and released again.
+ 167+ 3C94              ; OUT: carry clear on pass; carry set on failure. Startup halts on failure.
+ 168+ 3C94              p126_overlay_allocator_selftest:
+ 169+ 3C94 C5                   push    bc
+ 170+ 3C95 D5                   push    de
+ 171+ 3C96 E5                   push    hl
+ 172+ 3C97 DD E5                push    ix
+ 173+ 3C99 21 B9 3E             ld      hl,p126_overlay_allocator_test_pages
+ 174+ 3C9C 06 0A                ld      b,10
+ 175+ 3C9E 0E 06                ld      c,6
+ 176+ 3CA0              .allocator_test_allocate:
+ 177+ 3CA0 C5                   push    bc
+ 178+ 3CA1 CD 34 3C             call    p126_overlay_allocate_page
+ 179+ 3CA4 C1                   pop     bc
+ 180+ 3CA5 38 3B                jr      c,.allocator_test_failed
+ 181+ 3CA7 B9                   cp      c
+ 182+ 3CA8 20 38                jr      nz,.allocator_test_failed
+ 183+ 3CAA 77                   ld      (hl),a
+ 184+ 3CAB 23                   inc     hl
+ 185+ 3CAC 0C                   inc     c
+ 186+ 3CAD 10 F1                djnz    .allocator_test_allocate
+ 187+ 3CAF
+ 188+ 3CAF                      ; All ten dynamic pages must now be reserved.
+ 189+ 3CAF C5                   push    bc
+ 190+ 3CB0 CD 34 3C             call    p126_overlay_allocate_page
+ 191+ 3CB3 C1                   pop     bc
+ 192+ 3CB4 30 2C                jr      nc,.allocator_test_failed
+ 193+ 3CB6 B7                   or      a
+ 194+ 3CB7 20 29                jr      nz,.allocator_test_failed
+ 195+ 3CB9
+ 196+ 3CB9                      ; Release every page in reverse order.
+ 197+ 3CB9 21 C2 3E             ld      hl,p126_overlay_allocator_test_pages+9
+ 198+ 3CBC 06 0A                ld      b,10
+ 199+ 3CBE              .allocator_test_release:
+ 200+ 3CBE 7E                   ld      a,(hl)
+ 201+ 3CBF C5                   push    bc
+ 202+ 3CC0 E5                   push    hl
+ 203+ 3CC1 CD 52 3C             call    p126_overlay_release_page
+ 204+ 3CC4 E1                   pop     hl
+ 205+ 3CC5 C1                   pop     bc
+ 206+ 3CC6 38 1A                jr      c,.allocator_test_failed
+ 207+ 3CC8 2B                   dec     hl
+ 208+ 3CC9 10 F3                djnz    .allocator_test_release
+ 209+ 3CCB
+ 210+ 3CCB                      ; First-fit reuse must return page06 again.
+ 211+ 3CCB C5                   push    bc
+ 212+ 3CCC CD 34 3C             call    p126_overlay_allocate_page
+ 213+ 3CCF C1                   pop     bc
+ 214+ 3CD0 38 10                jr      c,.allocator_test_failed
+ 215+ 3CD2 FE 06                cp      6
+ 216+ 3CD4 20 0C                jr      nz,.allocator_test_failed
+ 217+ 3CD6 CD 52 3C             call    p126_overlay_release_page
+ 218+ 3CD9 38 07                jr      c,.allocator_test_failed
+ 219+ 3CDB
+ 220+ 3CDB DD E1                pop     ix
+ 221+ 3CDD E1                   pop     hl
+ 222+ 3CDE D1                   pop     de
+ 223+ 3CDF C1                   pop     bc
+ 224+ 3CE0 AF                   xor     a
+ 225+ 3CE1 C9                   ret
+ 226+ 3CE2              .allocator_test_failed:
+ 227+ 3CE2 DD E1                pop     ix
+ 228+ 3CE4 E1                   pop     hl
+ 229+ 3CE5 D1                   pop     de
+ 230+ 3CE6 C1                   pop     bc
+ 231+ 3CE7 3E 03                ld      a,P126_STATUS_BAD_FRAME
+ 232+ 3CE9 37                   scf
+ 233+ 3CEA C9                   ret
+ 234+ 3CEB
+ 235+ 3CEB              ; Compatibility entry points for the existing X86IO ABI. All use the same
+ 236+ 3CEB              ; gate, so X86IO remains callable while another overlay owns WIN2.
+ 237+ 3CEB              x86_io_reset:
+ 238+ 3CEB F5                   push    af
+ 239+ 3CEC DD E5                push    ix
+ 240+ 3CEE 3E 02                ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
+ 241+ 3CF0 32 A2 3E             ld      (p126_overlay_request_selector),a
+ 242+ 3CF3 DD E1                pop     ix
+ 243+ 3CF5 F1                   pop     af
+ 244+ 3CF6 DD E5                push    ix
+ 245+ 3CF8 DD 21 00 80          ld      ix,x86_io_reset_impl
+ 246+ 3CFC CD CA 3B             call    p126_overlay_call
+ 247+ 3CFF DD E1                pop     ix
+ 248+ 3D01 C9                   ret
+ 249+ 3D02
+ 250+ 3D02              x86_io_keyboard_push:
+ 251+ 3D02 F5                   push    af
+ 252+ 3D03 DD E5                push    ix
+ 253+ 3D05 3E 02                ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
+ 254+ 3D07 32 A2 3E             ld      (p126_overlay_request_selector),a
+ 255+ 3D0A DD E1                pop     ix
+ 256+ 3D0C F1                   pop     af
+ 257+ 3D0D DD E5                push    ix
+ 258+ 3D0F DD 21 27 80          ld      ix,x86_io_keyboard_push_impl
+ 259+ 3D13 CD CA 3B             call    p126_overlay_call
+ 260+ 3D16 DD E1                pop     ix
+ 261+ 3D18 C9                   ret
+ 262+ 3D19
+ 263+ 3D19              x86_io_read8:
+ 264+ 3D19 F5                   push    af
+ 265+ 3D1A DD E5                push    ix
+ 266+ 3D1C 3E 02                ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
+ 267+ 3D1E 32 A2 3E             ld      (p126_overlay_request_selector),a
+ 268+ 3D21 DD E1                pop     ix
+ 269+ 3D23 F1                   pop     af
+ 270+ 3D24 DD E5                push    ix
+ 271+ 3D26 DD 21 9E 80          ld      ix,x86_io_read8_impl
+ 272+ 3D2A CD CA 3B             call    p126_overlay_call
+ 273+ 3D2D DD E1                pop     ix
+ 274+ 3D2F C9                   ret
+ 275+ 3D30
+ 276+ 3D30              x86_io_read16:
+ 277+ 3D30 F5                   push    af
+ 278+ 3D31 DD E5                push    ix
+ 279+ 3D33 3E 02                ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
+ 280+ 3D35 32 A2 3E             ld      (p126_overlay_request_selector),a
+ 281+ 3D38 DD E1                pop     ix
+ 282+ 3D3A F1                   pop     af
+ 283+ 3D3B DD E5                push    ix
+ 284+ 3D3D DD 21 B3 81          ld      ix,x86_io_read16_impl
+ 285+ 3D41 CD CA 3B             call    p126_overlay_call
+ 286+ 3D44 DD E1                pop     ix
+ 287+ 3D46 C9                   ret
+ 288+ 3D47
+ 289+ 3D47              x86_io_write8:
+ 290+ 3D47 F5                   push    af
+ 291+ 3D48 DD E5                push    ix
+ 292+ 3D4A 3E 02                ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
+ 293+ 3D4C 32 A2 3E             ld      (p126_overlay_request_selector),a
+ 294+ 3D4F DD E1                pop     ix
+ 295+ 3D51 F1                   pop     af
+ 296+ 3D52 DD E5                push    ix
+ 297+ 3D54 DD 21 1E 81          ld      ix,x86_io_write8_impl
+ 298+ 3D58 CD CA 3B             call    p126_overlay_call
+ 299+ 3D5B DD E1                pop     ix
+ 300+ 3D5D C9                   ret
+ 301+ 3D5E
+ 302+ 3D5E              x86_io_write16:
+ 303+ 3D5E F5                   push    af
+ 304+ 3D5F DD E5                push    ix
+ 305+ 3D61 3E 02                ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
+ 306+ 3D63 32 A2 3E             ld      (p126_overlay_request_selector),a
+ 307+ 3D66 DD E1                pop     ix
+ 308+ 3D68 F1                   pop     af
+ 309+ 3D69 DD E5                push    ix
+ 310+ 3D6B DD 21 F1 81          ld      ix,x86_io_write16_impl
+ 311+ 3D6F CD CA 3B             call    p126_overlay_call
+ 312+ 3D72 DD E1                pop     ix
+ 313+ 3D74 C9                   ret
+ 314+ 3D75
+ 315+ 3D75              x86_io_log_access:
+ 316+ 3D75 F5                   push    af
+ 317+ 3D76 DD E5                push    ix
+ 318+ 3D78 3E 02                ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
+ 319+ 3D7A 32 A2 3E             ld      (p126_overlay_request_selector),a
+ 320+ 3D7D DD E1                pop     ix
+ 321+ 3D7F F1                   pop     af
+ 322+ 3D80 DD E5                push    ix
+ 323+ 3D82 DD 21 2D 82          ld      ix,x86_io_log_access_impl
+ 324+ 3D86 CD CA 3B             call    p126_overlay_call
+ 325+ 3D89 DD E1                pop     ix
+ 326+ 3D8B C9                   ret
+ 327+ 3D8C
+ 328+ 3D8C              ; Nested-call regression entry: page04 X86IO -> page05 X86ALU.
+ 329+ 3D8C              ; Returns A=08h when the page05 ADD8 implementation returned correctly.
+ 330+ 3D8C              x86_io_overlay_nested_gate_probe:
+ 331+ 3D8C F5                   push    af
+ 332+ 3D8D DD E5                push    ix
+ 333+ 3D8F 3E 02                ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
+ 334+ 3D91 32 A2 3E             ld      (p126_overlay_request_selector),a
+ 335+ 3D94 DD E1                pop     ix
+ 336+ 3D96 F1                   pop     af
+ 337+ 3D97 DD E5                push    ix
+ 338+ 3D99 DD 21 8C 80          ld      ix,x86_io_overlay_nested_gate_probe_impl
+ 339+ 3D9D CD CA 3B             call    p126_overlay_call
+ 340+ 3DA0 DD E1                pop     ix
+ 341+ 3DA2 C9                   ret
+ 342+ 3DA3
+ 343+ 3DA3              ; X86ALU public entry points; implementations live on physical page 05h.
+ 344+ 3DA3              x86_alu_add8:
+ 345+ 3DA3 F5                   push    af
+ 346+ 3DA4 DD E5                push    ix
+ 347+ 3DA6 3E 82                ld      a,P126_NGS_ALU_OVERLAY_SELECTOR
+ 348+ 3DA8 32 A2 3E             ld      (p126_overlay_request_selector),a
+ 349+ 3DAB DD E1                pop     ix
+ 350+ 3DAD F1                   pop     af
+ 351+ 3DAE DD E5                push    ix
+ 352+ 3DB0 DD 21 29 80          ld      ix,x86_alu_add8_impl
+ 353+ 3DB4 CD CA 3B             call    p126_overlay_call
+ 354+ 3DB7 DD E1                pop     ix
+ 355+ 3DB9 C9                   ret
+ 356+ 3DBA
+ 357+ 3DBA              x86_alu_sub8:
+ 358+ 3DBA F5                   push    af
+ 359+ 3DBB DD E5                push    ix
+ 360+ 3DBD 3E 82                ld      a,P126_NGS_ALU_OVERLAY_SELECTOR
+ 361+ 3DBF 32 A2 3E             ld      (p126_overlay_request_selector),a
+ 362+ 3DC2 DD E1                pop     ix
+ 363+ 3DC4 F1                   pop     af
+ 364+ 3DC5 DD E5                push    ix
+ 365+ 3DC7 DD 21 48 80          ld      ix,x86_alu_sub8_impl
+ 366+ 3DCB CD CA 3B             call    p126_overlay_call
+ 367+ 3DCE DD E1                pop     ix
+ 368+ 3DD0 C9                   ret
+ 369+ 3DD1
+ 370+ 3DD1              x86_alu_add16:
+ 371+ 3DD1 F5                   push    af
+ 372+ 3DD2 DD E5                push    ix
+ 373+ 3DD4 3E 82                ld      a,P126_NGS_ALU_OVERLAY_SELECTOR
+ 374+ 3DD6 32 A2 3E             ld      (p126_overlay_request_selector),a
+ 375+ 3DD9 DD E1                pop     ix
+ 376+ 3DDB F1                   pop     af
+ 377+ 3DDC DD E5                push    ix
+ 378+ 3DDE DD 21 67 80          ld      ix,x86_alu_add16_impl
+ 379+ 3DE2 CD CA 3B             call    p126_overlay_call
+ 380+ 3DE5 DD E1                pop     ix
+ 381+ 3DE7 C9                   ret
+ 382+ 3DE8
+ 383+ 3DE8              x86_alu_sub16:
+ 384+ 3DE8 F5                   push    af
+ 385+ 3DE9 DD E5                push    ix
+ 386+ 3DEB 3E 82                ld      a,P126_NGS_ALU_OVERLAY_SELECTOR
+ 387+ 3DED 32 A2 3E             ld      (p126_overlay_request_selector),a
+ 388+ 3DF0 DD E1                pop     ix
+ 389+ 3DF2 F1                   pop     af
+ 390+ 3DF3 DD E5                push    ix
+ 391+ 3DF5 DD 21 8D 80          ld      ix,x86_alu_sub16_impl
+ 392+ 3DF9 CD CA 3B             call    p126_overlay_call
+ 393+ 3DFC DD E1                pop     ix
+ 394+ 3DFE C9                   ret
+ 395+ 3DFF
+ 396+ 3DFF              x86_alu_adc8:
+ 397+ 3DFF F5                   push    af
+ 398+ 3E00 DD E5                push    ix
+ 399+ 3E02 3E 82                ld      a,P126_NGS_ALU_OVERLAY_SELECTOR
+ 400+ 3E04 32 A2 3E             ld      (p126_overlay_request_selector),a
+ 401+ 3E07 DD E1                pop     ix
+ 402+ 3E09 F1                   pop     af
+ 403+ 3E0A DD E5                push    ix
+ 404+ 3E0C DD 21 37 81          ld      ix,x86_alu_adc8_impl
+ 405+ 3E10 CD CA 3B             call    p126_overlay_call
+ 406+ 3E13 DD E1                pop     ix
+ 407+ 3E15 C9                   ret
+ 408+ 3E16
+ 409+ 3E16              x86_alu_sbb8:
+ 410+ 3E16 F5                   push    af
+ 411+ 3E17 DD E5                push    ix
+ 412+ 3E19 3E 82                ld      a,P126_NGS_ALU_OVERLAY_SELECTOR
+ 413+ 3E1B 32 A2 3E             ld      (p126_overlay_request_selector),a
+ 414+ 3E1E DD E1                pop     ix
+ 415+ 3E20 F1                   pop     af
+ 416+ 3E21 DD E5                push    ix
+ 417+ 3E23 DD 21 66 81          ld      ix,x86_alu_sbb8_impl
+ 418+ 3E27 CD CA 3B             call    p126_overlay_call
+ 419+ 3E2A DD E1                pop     ix
+ 420+ 3E2C C9                   ret
+ 421+ 3E2D
+ 422+ 3E2D              x86_alu_adc16:
+ 423+ 3E2D F5                   push    af
+ 424+ 3E2E DD E5                push    ix
+ 425+ 3E30 3E 82                ld      a,P126_NGS_ALU_OVERLAY_SELECTOR
+ 426+ 3E32 32 A2 3E             ld      (p126_overlay_request_selector),a
+ 427+ 3E35 DD E1                pop     ix
+ 428+ 3E37 F1                   pop     af
+ 429+ 3E38 DD E5                push    ix
+ 430+ 3E3A DD 21 95 81          ld      ix,x86_alu_adc16_impl
+ 431+ 3E3E CD CA 3B             call    p126_overlay_call
+ 432+ 3E41 DD E1                pop     ix
+ 433+ 3E43 C9                   ret
+ 434+ 3E44
+ 435+ 3E44              x86_alu_sbb16:
+ 436+ 3E44 F5                   push    af
+ 437+ 3E45 DD E5                push    ix
+ 438+ 3E47 3E 82                ld      a,P126_NGS_ALU_OVERLAY_SELECTOR
+ 439+ 3E49 32 A2 3E             ld      (p126_overlay_request_selector),a
+ 440+ 3E4C DD E1                pop     ix
+ 441+ 3E4E F1                   pop     af
+ 442+ 3E4F DD E5                push    ix
+ 443+ 3E51 DD 21 CB 81          ld      ix,x86_alu_sbb16_impl
+ 444+ 3E55 CD CA 3B             call    p126_overlay_call
+ 445+ 3E58 DD E1                pop     ix
+ 446+ 3E5A C9                   ret
+ 447+ 3E5B
+ 448+ 3E5B              x86_alu_logic8:
+ 449+ 3E5B F5                   push    af
+ 450+ 3E5C DD E5                push    ix
+ 451+ 3E5E 3E 82                ld      a,P126_NGS_ALU_OVERLAY_SELECTOR
+ 452+ 3E60 32 A2 3E             ld      (p126_overlay_request_selector),a
+ 453+ 3E63 DD E1                pop     ix
+ 454+ 3E65 F1                   pop     af
+ 455+ 3E66 DD E5                push    ix
+ 456+ 3E68 DD 21 01 82          ld      ix,x86_alu_logic8_impl
+ 457+ 3E6C CD CA 3B             call    p126_overlay_call
+ 458+ 3E6F DD E1                pop     ix
+ 459+ 3E71 C9                   ret
+ 460+ 3E72
+ 461+ 3E72              x86_alu_logic16:
+ 462+ 3E72 F5                   push    af
+ 463+ 3E73 DD E5                push    ix
+ 464+ 3E75 3E 82                ld      a,P126_NGS_ALU_OVERLAY_SELECTOR
+ 465+ 3E77 32 A2 3E             ld      (p126_overlay_request_selector),a
+ 466+ 3E7A DD E1                pop     ix
+ 467+ 3E7C F1                   pop     af
+ 468+ 3E7D DD E5                push    ix
+ 469+ 3E7F DD 21 27 82          ld      ix,x86_alu_logic16_impl
+ 470+ 3E83 CD CA 3B             call    p126_overlay_call
+ 471+ 3E86 DD E1                pop     ix
+ 472+ 3E88 C9                   ret
+ 473+ 3E89
+ 474+ 3E89              x86_alu_overlay_probe:
+ 475+ 3E89 F5                   push    af
+ 476+ 3E8A DD E5                push    ix
+ 477+ 3E8C 3E 82                ld      a,P126_NGS_ALU_OVERLAY_SELECTOR
+ 478+ 3E8E 32 A2 3E             ld      (p126_overlay_request_selector),a
+ 479+ 3E91 DD E1                pop     ix
+ 480+ 3E93 F1                   pop     af
+ 481+ 3E94 DD E5                push    ix
+ 482+ 3E96 DD 21 94 84          ld      ix,x86_alu_overlay_probe_impl
+ 483+ 3E9A CD CA 3B             call    p126_overlay_call
+ 484+ 3E9D DD E1                pop     ix
+ 485+ 3E9F C9                   ret
+ 486+ 3EA0
+ 487+ 3EA0 00           p126_overlay_call_depth:      db 0
+ 488+ 3EA1 80           p126_overlay_current_selector: db #80
+ 489+ 3EA2 80           p126_overlay_request_selector: db #80
+ 490+ 3EA3 00 00        p126_overlay_gate_entry:       dw 0
+ 491+ 3EA5 00 00        p126_overlay_gate_saved_hl:    dw 0
+ 492+ 3EA7 00 00 00...  p126_overlay_call_pages:       defs P126_OVERLAY_MAX_CALL_DEPTH,0
+ 493+ 3EAF 00 00 00...  p126_overlay_alloc_state:      defs 10,0
+ 494+ 3EB9 00 00 00...  p126_overlay_allocator_test_pages: defs 10,0
+ 495+ 3EC3
 # file closed: p126_overlay_gate.asm
- 213  3EA9              p126_ngs_ipc_module_end:
- 214  3EA9
- 215  3EA9              ; Fixed-origin overlays share logical origin 8000h but are loaded into
- 216  3EA9              ; separate physical pages: X86IO/page04 and X86ALU/page05.
- 217  3EA9                      ASSERT p126_ngs_ipc_module_end <= #4000
- 218  3EA9                      ORG     #8000
+ 213  3EC3              p126_ngs_ipc_module_end:
+ 214  3EC3
+ 215  3EC3              ; Fixed-origin overlays share logical origin 8000h but are loaded into
+ 216  3EC3              ; separate physical pages: X86IO/page04 and X86ALU/page05.
+ 217  3EC3                      ASSERT p126_ngs_ipc_module_end <= #4000
+ 218  3EC3                      ORG     #8000
  219  8000              x86_io_module_start:
  220  8000                      INCLUDE "neogs_sub/x86_io.asm"
 # file opened: x86_io.asm
@@ -9404,7 +9418,7 @@
  106+ 808F E5                   push    hl
  107+ 8090 3E 05                ld      a,#05
  108+ 8092 0E 03                ld      c,#03
- 109+ 8094 CD 89 3D             call    x86_alu_add8
+ 109+ 8094 CD A3 3D             call    x86_alu_add8
  110+ 8097 FE 08                cp      #08
  111+ 8099 E1                   pop     hl
  112+ 809A 22 D2 0B             ld      (x86_reg_flags),hl
@@ -10534,15 +10548,15 @@
  705+ 849C E5                   push    hl
  706+ 849D 3E 05                ld      a,#05
  707+ 849F 0E 03                ld      c,#03
- 708+ 84A1 CD 72 3D             call    x86_io_overlay_nested_gate_probe
+ 708+ 84A1 CD 8C 3D             call    x86_io_overlay_nested_gate_probe
  709+ 84A4 FE 08                cp      #08
  710+ 84A6 20 16                jr      nz,.overlay_probe_nested_failed
  711+ 84A8                      ; The inner page05 call must have returned to the still-active
  712+ 84A8                      ; outer page05 frame: depth=1 and WIN2 selector=82h.
- 713+ 84A8 3A 86 3E             ld      a,(p126_overlay_call_depth)
+ 713+ 84A8 3A A0 3E             ld      a,(p126_overlay_call_depth)
  714+ 84AB FE 01                cp      1
  715+ 84AD 20 0F                jr      nz,.overlay_probe_nested_failed
- 716+ 84AF 3A 87 3E             ld      a,(p126_overlay_current_selector)
+ 716+ 84AF 3A A1 3E             ld      a,(p126_overlay_current_selector)
  717+ 84B2 FE 82                cp      P126_NGS_ALU_OVERLAY_SELECTOR
  718+ 84B4 20 08                jr      nz,.overlay_probe_nested_failed
  719+ 84B6 E1                   pop     hl
@@ -10663,16 +10677,16 @@ Value    Label
 0x0003   P126_MSG_EVENT
 0x0001   P126_MSG_REQUEST
 0x0002   P126_MSG_RESPONSE
-0x38B3   p126_ngs_alu_overlay_installed_log
+0x38CD   p126_ngs_alu_overlay_installed_log
 0x0005   P126_NGS_ALU_OVERLAY_PAGE
-0x38D1   p126_ngs_alu_overlay_probe_fail_log
-0x37DD   p126_ngs_alu_overlay_ready
+0x38EB   p126_ngs_alu_overlay_probe_fail_log
+0x37F7   p126_ngs_alu_overlay_ready
 0x0082   P126_NGS_ALU_OVERLAY_SELECTOR
-0x3891   p126_ngs_alu_overlay_verify_ok_log
+0x38AB   p126_ngs_alu_overlay_verify_ok_log
 0xC000   P126_NGS_BANK_WINDOW_BASE
 0x0003   P126_NGS_BANK_WINDOW_INDEX
 0x0010   P126_NGS_BANK_WINDOW_PORT
-0x37DB   p126_ngs_bios_image_ready
+0x37F5   p126_ngs_bios_image_ready
 0x0005   P126_NGS_CLRCBIT
 0x108000   P126_NGS_DMA_BASE
 0x001F   P126_NGS_DMA_CST
@@ -10698,7 +10712,7 @@ Value    Label
 0x00D1   P126_NGS_GUEST_SYSBIOS_PAGE_BIAS
 0x00F0   P126_NGS_GUEST_VGABIOS_PAGE_BIAS
 0x0008   P126_NGS_GUEST_VRAM_PAGE_BIAS
-0x37D9   p126_ngs_image_active
+0x37F3   p126_ngs_image_active
 0x3421   p126_ngs_image_begin
 0x34D1   p126_ngs_image_begin.image_begin_ack
 0x34D8   p126_ngs_image_begin.image_begin_bad
@@ -10710,20 +10724,20 @@ Value    Label
 0x3467   p126_ngs_image_begin.image_begin_x86io
 0x3496   p126_ngs_image_begin.image_x86alu_size_ok
 0x347B   p126_ngs_image_begin.image_x86io_size_ok
-0x37E7   p126_ngs_image_begin_log
-0x38F1   p126_ngs_image_begin_rejected_log
-0x37E3   p126_ngs_image_dest_selector
+0x3801   p126_ngs_image_begin_log
+0x390B   p126_ngs_image_begin_rejected_log
+0x37FD   p126_ngs_image_dest_selector
 0x35DB   p126_ngs_image_finish
-0x3672   p126_ngs_image_finish.image_finish_alu_probe_bad
-0x3684   p126_ngs_image_finish.image_finish_bad
-0x363C   p126_ngs_image_finish.image_finish_gate_ok
-0x367A   p126_ngs_image_finish.image_finish_log
+0x3671   p126_ngs_image_finish.image_finish_alu_probe_bad
+0x3683   p126_ngs_image_finish.image_finish_bad
+0x363B   p126_ngs_image_finish.image_finish_gate_ok
+0x3679   p126_ngs_image_finish.image_finish_log
 0x3619   p126_ngs_image_finish.image_finish_not_bios
-0x364C   p126_ngs_image_finish.image_finish_x86alu
+0x364B   p126_ngs_image_finish.image_finish_x86alu
 0x361D X p126_ngs_image_finish.image_finish_x86io
-0x362A   p126_ngs_image_finish.image_finish_x86io_map_ok
-0x380A   p126_ngs_image_finish_log
-0x391C   p126_ngs_image_finish_rejected_log
+0x3627   p126_ngs_image_finish.image_finish_x86io_map_ok
+0x3824   p126_ngs_image_finish_log
+0x3936   p126_ngs_image_finish_rejected_log
 0x34E5   p126_ngs_image_fragment
 0x35BD   p126_ngs_image_fragment.image_alu_verify_log
 0x3558   p126_ngs_image_fragment.image_copy_loop
@@ -10732,24 +10746,24 @@ Value    Label
 0x35CA   p126_ngs_image_fragment.image_verify_bad
 0x35C0   p126_ngs_image_fragment.image_verify_log
 0x357A   p126_ngs_image_fragment.image_verify_loop
-0x37F9   p126_ngs_image_fragment_log
-0x3907   p126_ngs_image_fragment_rejected_log
-0x37DE   p126_ngs_image_id
-0x381D   p126_ngs_image_installed_log
-0x37E2   p126_ngs_image_kind
-0x37DA   p126_ngs_image_received
-0x37E0   p126_ngs_image_size
-0x37E6   p126_ngs_image_verify_byte
-0x37E4   p126_ngs_image_verify_count
-0x3837   p126_ngs_image_verify_ok_log
-0x3853   p126_ngs_io_overlay_installed_log
-0x37DC   p126_ngs_io_overlay_ready
-0x3870   p126_ngs_io_overlay_verify_ok_log
+0x3813   p126_ngs_image_fragment_log
+0x3921   p126_ngs_image_fragment_rejected_log
+0x37F8   p126_ngs_image_id
+0x3837   p126_ngs_image_installed_log
+0x37FC   p126_ngs_image_kind
+0x37F4   p126_ngs_image_received
+0x37FA   p126_ngs_image_size
+0x3800   p126_ngs_image_verify_byte
+0x37FE   p126_ngs_image_verify_count
+0x3851   p126_ngs_image_verify_ok_log
+0x386D   p126_ngs_io_overlay_installed_log
+0x37F6   p126_ngs_io_overlay_ready
+0x388A   p126_ngs_io_overlay_verify_ok_log
 0x10C000   P126_NGS_IPC_BASE
-0x3933   p126_ngs_ipc_crc16_selftest
-0x3953   p126_ngs_ipc_crc16_selftest.p126_ngs_crc_test_failed
-0x393D   p126_ngs_ipc_crc16_selftest.p126_ngs_crc_test_loop
-0x3957   p126_ngs_ipc_crc16_test_vector
+0x394D   p126_ngs_ipc_crc16_selftest
+0x396D   p126_ngs_ipc_crc16_selftest.p126_ngs_crc_test_failed
+0x3957   p126_ngs_ipc_crc16_selftest.p126_ngs_crc_test_loop
+0x3971   p126_ngs_ipc_crc16_test_vector
 0x30BE   p126_ngs_ipc_crc16_update
 0x30C3   p126_ngs_ipc_crc16_update.p126_ngs_crc_bit
 0x30CE   p126_ngs_ipc_crc16_update.p126_ngs_crc_no_xor
@@ -10784,36 +10798,36 @@ Value    Label
 0x319D   p126_ngs_ipc_frame_ptr
 0x319F   p126_ngs_ipc_frame_size
 0x110000 X P126_NGS_IPC_LIMIT
-0x3B9F   p126_ngs_ipc_log
-0x3BAD   p126_ngs_ipc_log.p126_ngs_ipc_log_done
-0x3BA4   p126_ngs_ipc_log.p126_ngs_ipc_log_loop
-0x39E3   p126_ngs_ipc_log_bad_length
-0x3B4A   p126_ngs_ipc_log_crlf
-0x3A5B   p126_ngs_ipc_log_dma_addr
-0x3991   p126_ngs_ipc_log_dma_armed
-0x3978   p126_ngs_ipc_log_dma_cfg_begin
-0x3960   p126_ngs_ipc_log_dma_e0
-0x3A42   p126_ngs_ipc_log_dma_end
-0x39B5   p126_ngs_ipc_log_dma_host_end
-0x3A28   p126_ngs_ipc_log_dma_page42_mapped
-0x3A0E   p126_ngs_ipc_log_dma_page42_premapped
-0x39A3   p126_ngs_ipc_log_dma_ready
-0x3AFD   p126_ngs_ipc_log_dma_rx_addr
-0x3AD5   p126_ngs_ipc_log_dma_rx_armed
-0x3AEA   p126_ngs_ipc_log_dma_rx_end
-0x3B30   p126_ngs_ipc_log_dma_rx_length_bad
-0x3AC2   p126_ngs_ipc_log_dma_rx_request
-0x3B19   p126_ngs_ipc_log_dma_rx_timeout
-0x39FA   p126_ngs_ipc_log_dma_stopped
-0x39CA   p126_ngs_ipc_log_dma_timeout
-0x3AA1   p126_ngs_ipc_log_frame_rejected
-0x3A89   p126_ngs_ipc_log_frame_valid
-0x3B6D   p126_ngs_ipc_log_hex_byte
-0x3B5A   p126_ngs_ipc_log_hex_byte_inline
-0x3B8D   p126_ngs_ipc_log_hex_nibble
-0x3B97   p126_ngs_ipc_log_hex_nibble.p126_ngs_hex_emit
-0x3A74   p126_ngs_ipc_log_rx_header
-0x3EA9   p126_ngs_ipc_module_end
+0x3BB9   p126_ngs_ipc_log
+0x3BC7   p126_ngs_ipc_log.p126_ngs_ipc_log_done
+0x3BBE   p126_ngs_ipc_log.p126_ngs_ipc_log_loop
+0x39FD   p126_ngs_ipc_log_bad_length
+0x3B64   p126_ngs_ipc_log_crlf
+0x3A75   p126_ngs_ipc_log_dma_addr
+0x39AB   p126_ngs_ipc_log_dma_armed
+0x3992   p126_ngs_ipc_log_dma_cfg_begin
+0x397A   p126_ngs_ipc_log_dma_e0
+0x3A5C   p126_ngs_ipc_log_dma_end
+0x39CF   p126_ngs_ipc_log_dma_host_end
+0x3A42   p126_ngs_ipc_log_dma_page42_mapped
+0x3A28   p126_ngs_ipc_log_dma_page42_premapped
+0x39BD   p126_ngs_ipc_log_dma_ready
+0x3B17   p126_ngs_ipc_log_dma_rx_addr
+0x3AEF   p126_ngs_ipc_log_dma_rx_armed
+0x3B04   p126_ngs_ipc_log_dma_rx_end
+0x3B4A   p126_ngs_ipc_log_dma_rx_length_bad
+0x3ADC   p126_ngs_ipc_log_dma_rx_request
+0x3B33   p126_ngs_ipc_log_dma_rx_timeout
+0x3A14   p126_ngs_ipc_log_dma_stopped
+0x39E4   p126_ngs_ipc_log_dma_timeout
+0x3ABB   p126_ngs_ipc_log_frame_rejected
+0x3AA3   p126_ngs_ipc_log_frame_valid
+0x3B87   p126_ngs_ipc_log_hex_byte
+0x3B74   p126_ngs_ipc_log_hex_byte_inline
+0x3BA7   p126_ngs_ipc_log_hex_nibble
+0x3BB1   p126_ngs_ipc_log_hex_nibble.p126_ngs_hex_emit
+0x3A8E   p126_ngs_ipc_log_rx_header
+0x3EC3   p126_ngs_ipc_module_end
 0x30BE   p126_ngs_ipc_module_start
 0x0043   P126_NGS_IPC_PAGE
 0x0001   P126_NGS_IPC_PAGES
@@ -10833,20 +10847,22 @@ Value    Label
 0x0000   P126_NGS_KERNEL_PAGE
 0x0010   P126_NGS_KERNEL_PAGES
 0x0010   P126_NGS_MPAGEX_PORT
-0x3786   p126_ngs_overlay_gate_old_code
-0x3722   p126_ngs_overlay_gate_selftest
-0x3768   p126_ngs_overlay_gate_selftest.overlay_gate_test_failed
-0x377D   p126_ngs_overlay_gate_selftest.overlay_gate_test_restore_maps
-0x3782   p126_ngs_overlay_gate_test_code
-0x3797   p126_ngs_overlay_test_old04
-0x3798   p126_ngs_overlay_test_old05
+0x3799   p126_ngs_overlay_gate_old_code
+0x3735   p126_ngs_overlay_gate_selftest
+0x377B   p126_ngs_overlay_gate_selftest.overlay_gate_test_failed
+0x3790   p126_ngs_overlay_gate_selftest.overlay_gate_test_restore_maps
+0x3795   p126_ngs_overlay_gate_test_code
+0x37E4   p126_ngs_overlay_log_test_failure
+0x37AD   p126_ngs_overlay_test_fail_prefix
+0x37AC   p126_ngs_overlay_test_fail_stage
+0x37AA   p126_ngs_overlay_test_old04
+0x37AB   p126_ngs_overlay_test_old05
 0x0005   P126_NGS_OVERLAY_TEST_PAGE
-0x378A   p126_ngs_overlay_test_restore_maps
-0x3691   p126_ngs_overlay_win2_selftest
-0x3702   p126_ngs_overlay_win2_selftest.overlay_win2_test_failed
-0x371D   p126_ngs_overlay_win2_selftest.overlay_win2_test_restore_maps
-0x37B9   p126_ngs_overlay_win2_test_fail_log
-0x3799   p126_ngs_overlay_win2_test_pass_log
+0x379D   p126_ngs_overlay_test_restore_maps
+0x3690   p126_ngs_overlay_win2_selftest
+0x3715   p126_ngs_overlay_win2_selftest.overlay_win2_test_failed
+0x3730   p126_ngs_overlay_win2_selftest.overlay_win2_test_restore_maps
+0x37C4   p126_ngs_overlay_win2_test_pass_log
 0x8000   P126_NGS_OVERLAY_WINDOW_BASE
 0x0002   P126_NGS_OVERLAY_WINDOW_INDEX
 0x0000   P126_NGS_OVERLAY_WINDOW_PORT
@@ -10909,30 +10925,30 @@ Value    Label
 0x0001   P126_OP_IMAGE_FRAGMENT
 0x0003 X P126_OP_IMAGE_RESULT
 0x0002 X P126_OP_RESYNC
-0x3E95   p126_overlay_alloc_state
-0x3C1A   p126_overlay_allocate_page
-0x3C30   p126_overlay_allocate_page.allocate_found
-0x3C22   p126_overlay_allocate_page.allocate_scan
-0x3C7A   p126_overlay_allocator_selftest
-0x3C86   p126_overlay_allocator_selftest.allocator_test_allocate
-0x3CC8   p126_overlay_allocator_selftest.allocator_test_failed
-0x3CA4   p126_overlay_allocator_selftest.allocator_test_release
-0x3E9F   p126_overlay_allocator_test_pages
-0x3BB0   p126_overlay_call
-0x3E86   p126_overlay_call_depth
-0x3E8D   p126_overlay_call_pages
-0x3E87   p126_overlay_current_selector
-0x3C12   p126_overlay_depth_rejected
-0x3E89   p126_overlay_gate_entry
-0x3BEF   p126_overlay_gate_return
-0x3E8B   p126_overlay_gate_saved_hl
+0x3EAF   p126_overlay_alloc_state
+0x3C34   p126_overlay_allocate_page
+0x3C4A   p126_overlay_allocate_page.allocate_found
+0x3C3C   p126_overlay_allocate_page.allocate_scan
+0x3C94   p126_overlay_allocator_selftest
+0x3CA0   p126_overlay_allocator_selftest.allocator_test_allocate
+0x3CE2   p126_overlay_allocator_selftest.allocator_test_failed
+0x3CBE   p126_overlay_allocator_selftest.allocator_test_release
+0x3EB9   p126_overlay_allocator_test_pages
+0x3BCA   p126_overlay_call
+0x3EA0   p126_overlay_call_depth
+0x3EA7   p126_overlay_call_pages
+0x3EA1   p126_overlay_current_selector
+0x3C2C   p126_overlay_depth_rejected
+0x3EA3   p126_overlay_gate_entry
+0x3C09   p126_overlay_gate_return
+0x3EA5   p126_overlay_gate_saved_hl
 0x0008   P126_OVERLAY_MAX_CALL_DEPTH
-0x3C38   p126_overlay_release_page
-0x3C51   p126_overlay_release_page.release_active_scan
-0x3C71   p126_overlay_release_page.release_busy
-0x3C5F   p126_overlay_release_page.release_not_active
-0x3C76   p126_overlay_release_page.release_range_error
-0x3E88   p126_overlay_request_selector
+0x3C52   p126_overlay_release_page
+0x3C6B   p126_overlay_release_page.release_active_scan
+0x3C8B   p126_overlay_release_page.release_busy
+0x3C79   p126_overlay_release_page.release_not_active
+0x3C90   p126_overlay_release_page.release_range_error
+0x3EA2   p126_overlay_request_selector
 0x0004 X P126_SERVICE_CLOCK
 0x0006 X P126_SERVICE_CONFIG
 0x0005   P126_SERVICE_DIAGNOSTICS
@@ -10998,17 +11014,17 @@ Value    Label
 0x20000   P126_X86_VGA_APERTURE_SIZE
 0xC0000   P126_X86_VGABIOS_BASE
 0x8000   P126_X86_VGABIOS_SIZE
-0x3E13   x86_alu_adc16
+0x3E2D   x86_alu_adc16
 0x8195   x86_alu_adc16_impl
 0x81AB   x86_alu_adc16_impl.adc16_carry_clear
 0x81AC   x86_alu_adc16_impl.adc16_low
-0x3DE5   x86_alu_adc8
+0x3DFF   x86_alu_adc8
 0x8137   x86_alu_adc8_impl
 0x8152   x86_alu_adc8_impl.adc8_apply
 0x8151   x86_alu_adc8_impl.adc8_carry_clear
-0x3DB7   x86_alu_add16
+0x3DD1   x86_alu_add16
 0x8067   x86_alu_add16_impl
-0x3D89   x86_alu_add8
+0x3DA3   x86_alu_add8
 0x8029   x86_alu_add8_impl
 0x847A   x86_alu_carry_in
 0x8000 X x86_alu_emit_version
@@ -11018,12 +11034,12 @@ Value    Label
 0x00F7   X86_ALU_KEEP_FLAGS_HI
 0x002A   X86_ALU_KEEP_FLAGS_LO
 0x8486   x86_alu_lhs
-0x3E58   x86_alu_logic16
+0x3E72   x86_alu_logic16
 0x8227   x86_alu_logic16_impl
 0x8262   x86_alu_logic16_impl.logic16_no_pf
 0x826B   x86_alu_logic16_impl.logic16_no_sf
 0x8277   x86_alu_logic16_impl.logic16_no_zf
-0x3E41   x86_alu_logic8
+0x3E5B   x86_alu_logic8
 0x8201   x86_alu_logic8_impl
 0x827E   x86_alu_logic_apply8
 0x8290   x86_alu_logic_apply8.logic_and
@@ -11057,26 +11073,26 @@ Value    Label
 0x80EF   x86_alu_merge_word_flags.word_no_zf
 0x84C4   x86_alu_module_end
 0x8000   x86_alu_module_start
-0x3E6F   x86_alu_overlay_probe
+0x3E89   x86_alu_overlay_probe
 0x8494   x86_alu_overlay_probe_impl
 0x84C2   x86_alu_overlay_probe_impl.overlay_probe_failed
 0x84BE   x86_alu_overlay_probe_impl.overlay_probe_nested_failed
 0x8488   x86_alu_result
 0x8487   x86_alu_rhs
 0x848A   x86_alu_saved_flags
-0x3E2A   x86_alu_sbb16
+0x3E44   x86_alu_sbb16
 0x81CB   x86_alu_sbb16_impl
 0x81E1   x86_alu_sbb16_impl.sbb16_borrow_clear
 0x81E2   x86_alu_sbb16_impl.sbb16_low
-0x3DFC   x86_alu_sbb8
+0x3E16   x86_alu_sbb8
 0x8166   x86_alu_sbb8_impl
 0x8181   x86_alu_sbb8_impl.sbb8_apply
 0x8180   x86_alu_sbb8_impl.sbb8_borrow_clear
 0x82B9 X x86_alu_selftest
 0x846E   x86_alu_selftest.fail
-0x3DCE   x86_alu_sub16
+0x3DE8   x86_alu_sub16
 0x808D   x86_alu_sub16_impl
-0x3DA0   x86_alu_sub8
+0x3DBA   x86_alu_sub8
 0x8048   x86_alu_sub8_impl
 0x8011   x86_alu_version_text
 0x848C   x86_alu_word_lhs
@@ -11816,14 +11832,14 @@ Value    Label
 0x8316   x86_io_keyboard_fifo
 0x8326   x86_io_keyboard_head
 0x8329   x86_io_keyboard_last
-0x3CE8 X x86_io_keyboard_push
+0x3D02 X x86_io_keyboard_push
 0x8027   x86_io_keyboard_push_impl
 0x804C   x86_io_keyboard_push_impl.keyboard_push_full
 0x8060   x86_io_keyboard_read_impl
 0x8088   x86_io_keyboard_read_impl.keyboard_read_empty
 0x804E   x86_io_keyboard_reset_impl
 0x8327   x86_io_keyboard_tail
-0x3D5B   x86_io_log_access
+0x3D75   x86_io_log_access
 0x822D   x86_io_log_access_impl
 0x8282   x86_io_log_access_impl.log_byte_value
 0x8288   x86_io_log_access_impl.log_location
@@ -11848,7 +11864,7 @@ Value    Label
 0x830A   x86_io_log_width
 0x832E   x86_io_module_end
 0x8000   x86_io_module_start
-0x3D72   x86_io_overlay_nested_gate_probe
+0x3D8C   x86_io_overlay_nested_gate_probe
 0x808C   x86_io_overlay_nested_gate_probe_impl
 0x8303   x86_io_port
 0x8313   x86_io_ppi_control
@@ -11876,24 +11892,24 @@ Value    Label
 0x8174   x86_io_ppi_write8.ppi_write_c
 0x817C   x86_io_ppi_write8.ppi_write_control
 0x8314   x86_io_ppi_write_value
-0x3D16   x86_io_read16
+0x3D30   x86_io_read16
 0x81B3   x86_io_read16_impl
 0x81C9   x86_io_read16_impl.io_read16_split
-0x3CFF   x86_io_read8
+0x3D19   x86_io_read8
 0x809E   x86_io_read8_impl
 0x80A9   x86_io_read8_impl_device
 0x80B8   x86_io_read8_impl_device.io_read8_ppi
-0x3CD1   x86_io_reset
+0x3CEB   x86_io_reset
 0x8000   x86_io_reset_impl
 0x830B   x86_io_saved_port
 0x8305   x86_io_test_latch
 0x8310   x86_io_word_high
 0x830F   x86_io_word_low
 0x830D   x86_io_word_value
-0x3D44   x86_io_write16
+0x3D5E   x86_io_write16
 0x81F1   x86_io_write16_impl
 0x820D   x86_io_write16_impl.io_write16_split
-0x3D2D   x86_io_write8
+0x3D47   x86_io_write8
 0x811E   x86_io_write8_impl
 0x8128   x86_io_write8_impl_device
 0x8137   x86_io_write8_impl_device.io_write8_ppi
