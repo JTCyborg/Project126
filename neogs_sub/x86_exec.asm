@@ -51,6 +51,14 @@ x86_cpu_step:
 
         cp      #06
         jp      c,x86_exec_add_family
+        cp      #80
+        jp      z,x86_exec_group1_immediate
+        cp      #81
+        jp      z,x86_exec_group1_immediate
+        cp      #82
+        jp      z,x86_exec_group1_immediate
+        cp      #83
+        jp      z,x86_exec_group1_immediate
         cp      #10
         jp      c,.not_adc_family
         cp      #16
@@ -545,6 +553,195 @@ x86_exec_adc_sbb16:
         ld      hl,(x86_exec_adc_sbb_lhs16)
         jp      nz,x86_alu_sbb16
         jp      x86_alu_adc16
+
+; 80/82 Group 1 byte immediate; 81 word immediate; 83 sign-extended
+; byte immediate to word. ModR/M /0..7 select ADD/OR/ADC/SBB/AND/SUB/XOR/CMP.
+x86_exec_group1_immediate:
+        ld      a,(x86_exec_opcode)
+        ld      (x86_exec_group1_opcode),a
+        call    x86_decode_modrm16
+        ret     c
+        ld      a,(x86_modrm_reg)
+        ld      (x86_exec_group1_ext),a
+        cp      7
+        jr      nz,.group1_not_cmp
+        ld      a,1
+        jr      .group1_cmp_set
+.group1_not_cmp:
+        xor     a
+.group1_cmp_set:
+        ld      (x86_exec_group1_is_cmp),a
+
+        ld      a,(x86_exec_group1_opcode)
+        cp      #81
+        jr      z,.group1_word_immediate
+        cp      #83
+        jr      z,.group1_signext_immediate
+
+        ; 80/82: byte immediate.
+        call    x86_cpu_fetch8
+        ret     c
+        ld      (x86_exec_group1_imm8),a
+        call    x86_modrm_read_rm8
+        ld      a,(x86_exec_group1_imm8)
+        ld      c,a
+        call    x86_exec_group1_apply8
+        ld      a,(x86_exec_group1_is_cmp)
+        or      a
+        ret     nz
+        jp      x86_modrm_write_rm8
+
+.group1_word_immediate:
+        call    x86_cpu_fetch16
+        ret     c
+        ld      (x86_exec_group1_imm16),hl
+        jr      .group1_apply_word
+
+.group1_signext_immediate:
+        call    x86_cpu_fetch8
+        ret     c
+        ld      l,a
+        ld      h,0
+        bit     7,a
+        jr      z,.group1_signext_ready
+        ld      h,#FF
+.group1_signext_ready:
+        ld      (x86_exec_group1_imm16),hl
+
+.group1_apply_word:
+        call    x86_modrm_read_rm16
+        ld      de,(x86_exec_group1_imm16)
+        call    x86_exec_group1_apply16
+        ld      a,(x86_exec_group1_is_cmp)
+        or      a
+        ret     nz
+        jp      x86_modrm_write_rm16
+
+; A=left, C=immediate; returns result in A and updates guest FLAGS.
+x86_exec_group1_apply8:
+        ld      (x86_exec_group1_lhs8),a
+        ld      a,c
+        ld      (x86_exec_group1_rhs8),a
+        ld      a,(x86_exec_group1_ext)
+        cp      0
+        jp      z,.group1_add8
+        cp      1
+        jp      z,.group1_or8
+        cp      2
+        jp      z,.group1_adc8
+        cp      3
+        jp      z,.group1_sbb8
+        cp      4
+        jp      z,.group1_and8
+        cp      5
+        jp      z,.group1_sub8
+        cp      6
+        jp      z,.group1_xor8
+        jr      .group1_cmp8
+.group1_add8:
+        ld      a,(x86_exec_group1_rhs8)
+        ld      c,a
+        ld      a,(x86_exec_group1_lhs8)
+        jp      x86_alu_add8
+.group1_or8:
+        ld      a,(x86_exec_group1_rhs8)
+        ld      c,a
+        ld      a,(x86_exec_group1_lhs8)
+        ld      b,0
+        jp      x86_alu_logic8
+.group1_adc8:
+        ld      a,(x86_exec_group1_rhs8)
+        ld      c,a
+        ld      a,(x86_reg_flags)
+        and     1
+        ld      b,a
+        ld      a,(x86_exec_group1_lhs8)
+        jp      x86_alu_adc8
+.group1_sbb8:
+        ld      a,(x86_exec_group1_rhs8)
+        ld      c,a
+        ld      a,(x86_reg_flags)
+        and     1
+        ld      b,a
+        ld      a,(x86_exec_group1_lhs8)
+        jp      x86_alu_sbb8
+.group1_and8:
+        ld      a,(x86_exec_group1_rhs8)
+        ld      c,a
+        ld      a,(x86_exec_group1_lhs8)
+        ld      b,1
+        jp      x86_alu_logic8
+.group1_sub8:
+.group1_cmp8:
+        ld      a,(x86_exec_group1_rhs8)
+        ld      c,a
+        ld      a,(x86_exec_group1_lhs8)
+        jp      x86_alu_sub8
+.group1_xor8:
+        ld      a,(x86_exec_group1_rhs8)
+        ld      c,a
+        ld      a,(x86_exec_group1_lhs8)
+        ld      b,2
+        jp      x86_alu_logic8
+
+; HL=left, DE=immediate; returns result in HL and updates guest FLAGS.
+x86_exec_group1_apply16:
+        ld      (x86_exec_group1_lhs16),hl
+        ld      (x86_exec_group1_rhs16),de
+        ld      a,(x86_exec_group1_ext)
+        cp      0
+        jp      z,.group1_add16
+        cp      1
+        jp      z,.group1_or16
+        cp      2
+        jp      z,.group1_adc16
+        cp      3
+        jp      z,.group1_sbb16
+        cp      4
+        jp      z,.group1_and16
+        cp      5
+        jp      z,.group1_sub16
+        cp      6
+        jp      z,.group1_xor16
+        jr      .group1_cmp16
+.group1_add16:
+        ld      hl,(x86_exec_group1_lhs16)
+        ld      de,(x86_exec_group1_rhs16)
+        jp      x86_alu_add16
+.group1_or16:
+        ld      hl,(x86_exec_group1_lhs16)
+        ld      de,(x86_exec_group1_rhs16)
+        ld      b,0
+        jp      x86_alu_logic16
+.group1_adc16:
+        ld      hl,(x86_exec_group1_lhs16)
+        ld      de,(x86_exec_group1_rhs16)
+        ld      a,(x86_reg_flags)
+        and     1
+        ld      b,a
+        jp      x86_alu_adc16
+.group1_sbb16:
+        ld      hl,(x86_exec_group1_lhs16)
+        ld      de,(x86_exec_group1_rhs16)
+        ld      a,(x86_reg_flags)
+        and     1
+        ld      b,a
+        jp      x86_alu_sbb16
+.group1_and16:
+        ld      hl,(x86_exec_group1_lhs16)
+        ld      de,(x86_exec_group1_rhs16)
+        ld      b,1
+        jp      x86_alu_logic16
+.group1_sub16:
+.group1_cmp16:
+        ld      hl,(x86_exec_group1_lhs16)
+        ld      de,(x86_exec_group1_rhs16)
+        jp      x86_alu_sub16
+.group1_xor16:
+        ld      hl,(x86_exec_group1_lhs16)
+        ld      de,(x86_exec_group1_rhs16)
+        ld      b,2
+        jp      x86_alu_logic16
 
 ; OR 08-0D, AND 20-25, XOR 30-35, TEST 84-85.
 ; Each operation uses the shared logical ALU helpers, which clear CF/AF/OF
@@ -1963,6 +2160,15 @@ x86_exec_alu_result16: dw 0
 x86_exec_alu_is_cmp: db 0
 x86_exec_alu_operation: db 0
 x86_exec_alu_is_sbb: db 0
+x86_exec_group1_opcode: db 0
+x86_exec_group1_ext: db 0
+x86_exec_group1_is_cmp: db 0
+x86_exec_group1_imm8: db 0
+x86_exec_group1_imm16: dw 0
+x86_exec_group1_lhs8: db 0
+x86_exec_group1_rhs8: db 0
+x86_exec_group1_lhs16: dw 0
+x86_exec_group1_rhs16: dw 0
 x86_exec_adc_sbb_lhs8: db 0
 x86_exec_adc_sbb_lhs16: dw 0
 x86_exec_mov_byte: db 0
