@@ -82,7 +82,8 @@ p126_x86alu_file_end:
         SAVETRD "disk_A.trd", "X86ALU.C", #C000, p126_x86alu_file_end-p126_x86alu_file_start
 
 ; Third fixed-origin overlay: 8237 DMA and 8253 PIT guest-device models.
-        PAGE 8
+; Reuse build PAGE 7 after X86ALU has already been SAVETRD'd.
+        PAGE 7
         ORG #C000
 p126_x86dev_file_start:
         INCBIN "build/X86DEV.C"
