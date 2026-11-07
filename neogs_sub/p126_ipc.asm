@@ -213,6 +213,19 @@ p126_ngs_ipc_dma_receive_frame::
         out     (P126_NGS_DMA_CST),a
         ld      hl,p126_ngs_ipc_log_dma_stopped
         call    p126_ngs_ipc_log
+
+        ; Read back DMA address registers after stop. Their exact post-stop
+        ; semantics are diagnostic until confirmed on target hardware.
+        ld      hl,p126_ngs_ipc_log_dma_addr
+        call    p126_ngs_ipc_log
+        in      a,(P126_NGS_DMA_HAD)
+        call    p126_ngs_ipc_log_hex_byte_inline
+        in      a,(P126_NGS_DMA_MAD)
+        call    p126_ngs_ipc_log_hex_byte_inline
+        in      a,(P126_NGS_DMA_LAD)
+        call    p126_ngs_ipc_log_hex_byte_inline
+        call    p126_ngs_ipc_log_crlf
+
         ld      a,P126_NGS_DMA_TARGET_PAGE
         out     (P126_NGS_WIN3_PORT),a
         ld      hl,p126_ngs_ipc_log_dma_page_mapped
@@ -220,22 +233,37 @@ p126_ngs_ipc_dma_receive_frame::
         ld      hl,p126_ngs_ipc_log_dma_end
         call    p126_ngs_ipc_log
 
-        ; Capture the actual bytes visible through WIN3 after DMA. This
-        ; distinguishes an aperture/addressing problem from a bad validator.
-        ld      hl,p126_ngs_ipc_log_rx_first4
+        ; Reversible WIN3 RAM test at C100h, outside the smoke frame.
+        ld      a,(#C100)
+        ld      (p126_ngs_ipc_saved_probe),a
+        ld      a,#A5
+        ld      (#C100),a
+        ld      hl,#C100
+        cp      (hl)
+        jr      nz,.p126_ngs_win3_probe_failed
+        ld      a,(p126_ngs_ipc_saved_probe)
+        ld      (#C100),a
+        ld      hl,p126_ngs_ipc_log_win3_probe_pass
+        call    p126_ngs_ipc_log
+        jr      .p126_ngs_dump_frame
+.p126_ngs_win3_probe_failed:
+        ld      a,(p126_ngs_ipc_saved_probe)
+        ld      (#C100),a
+        ld      hl,p126_ngs_ipc_log_win3_probe_fail
+        call    p126_ngs_ipc_log
+
+.p126_ngs_dump_frame:
+        ; Dump all 16 fixed header bytes visible through WIN3.
+        ld      hl,p126_ngs_ipc_log_rx_header
         call    p126_ngs_ipc_log
         ld      ix,#C000
-        ld      b,4
+        ld      b,16
 .p126_ngs_rx_dump_loop:
         ld      a,(ix+0)
         call    p126_ngs_ipc_log_hex_byte_inline
         inc     ix
         djnz    .p126_ngs_rx_dump_loop
-        ld      bc,#00EF
-        ld      a,13
-        out     (c),a
-        ld      a,10
-        out     (c),a
+        call    p126_ngs_ipc_log_crlf
 
         ; Derive exact frame size from the fixed header's payload length.
         ld      a,(#C00C)
@@ -297,6 +325,7 @@ p126_ngs_ipc_dma_receive_frame::
         ret
 
 p126_ngs_ipc_rx_size: dw 0
+p126_ngs_ipc_saved_probe: db 0
 
 
 ; -------------------------------------------------------------------------
@@ -381,9 +410,25 @@ p126_ngs_ipc_log_bad_length:      db "[NGS] DMA FRAME LENGTH INVALID",13,10,0
 p126_ngs_ipc_log_dma_stopped:     db "[NGS] DMA STOPPED",13,10,0
 p126_ngs_ipc_log_dma_page_mapped: db "[NGS] DMA PAGE 42 MAPPED",13,10,0
 p126_ngs_ipc_log_dma_end:         db "[NGS] DMA END RECEIVED",13,10,0
-p126_ngs_ipc_log_rx_first4:       db "[NGS] DMA RX FIRST4=",0
+p126_ngs_ipc_log_dma_addr:        db "[NGS] DMA ADDR READBACK=",0
+p126_ngs_ipc_log_win3_probe_pass: db "[NGS] WIN3 RW TEST=PASS",13,10,0
+p126_ngs_ipc_log_win3_probe_fail: db "[NGS] WIN3 RW TEST=FAIL",13,10,0
+p126_ngs_ipc_log_rx_header:       db "[NGS] DMA RX HEADER=",0
 p126_ngs_ipc_log_frame_valid:     db "[NGS] DMA FRAME VALID",13,10,0
 p126_ngs_ipc_log_frame_rejected:  db "[NGS] DMA FRAME REJECTED STATUS=",0
+
+; Emit CR/LF on NeoGS's independent #EF diagnostic channel.
+p126_ngs_ipc_log_crlf:
+        push    af
+        push    bc
+        ld      bc,#00EF
+        ld      a,13
+        out     (c),a
+        ld      a,10
+        out     (c),a
+        pop     bc
+        pop     af
+        ret
 
 ; Print A as two hex digits without a line ending. Preserves AF/BC.
 p126_ngs_ipc_log_hex_byte_inline:
