@@ -1240,3 +1240,12 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 - The latest BIOS1 watchdog snapshot has DS=F000h, SI=2978h and DX=E602h. The runtime log records 9,321 I/O operations, 382 distinct 16-bit port values, and 5,325 writes to E602h with value 00h. This is consistent with the BIOS repeatedly processing a table without finding its FFh terminator; it does not by itself prove whether the table pointer, high-memory contents, or an earlier BIOS setup step is wrong.
 - The high DX byte is preserved by the 8086 instruction sequence and is part of the observed 16-bit DX address. Do not mask/truncate it or invent E6xx device semantics until the BIOS caller, memory bytes at DS:SI and the selected machine decode are verified.
 - Next diagnostic priority: identify the caller that supplies DS:SI/DH for the E06E table routine; verify the first bytes at F000:2978 and whether SI advances through distinct RAM bytes. Device models must not be used to hide a missing table terminator.
+
+
+## 2026-11-07 — BIOS1 table-source diagnostic added
+
+- Added a one-shot watchdog diagnostic through the X86IO overlay gate. At the 65,535-instruction BIOS stop it prints the current guest DS:SI and reads 16 bytes through the normal `x86_cpu_calc_phys` + `x86_guest_mem_read8` path, starting at SI-1 (the byte consumed by the last LODSB) and continuing forward.
+- The diagnostic does not alter guest registers, does not write guest memory, does not change the custom memory map, and does not issue physical NeoGS I/O using guest port numbers. It runs only once on the terminal watchdog path, so it does not flood the I/O trace.
+- Code commits: `06b43df06fc382bbe3a028c65e2fcbf291de6c03` (overlay memory dump), `0943df075b5ca3dd587dbcb49862101bf4f2aa96` (resident overlay-gate wrapper), `8b58ae370093ce5afe68b1889d8585b46c9b3be3` (watchdog call site).
+- **BUILD PASS:** GitHub Actions run [42404671411](https://github.com/JTCyborg/Project126/actions/runs/42404671411), commit `8b58ae370093ce5afe68b1889d8585b46c9b3be3`. NeoGS/ATM/IPC/TR-DOS assembly and packaging completed with 0 assembly errors and 0 warnings. X86CORE.C=16,171/16,384 bytes; X86IO.C=1,270/4,096 bytes; X86ALU.C=1,220/4,096 bytes; TR-DOS image=655,360 bytes.
+- The diagnostic output has not yet been observed on target hardware. Until the 16-byte memory snapshot is available, the exact caller and validity of the BIOS1 DS:SI table pointer remain unresolved. No BIOS POST pass is claimed.
