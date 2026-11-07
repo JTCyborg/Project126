@@ -1344,3 +1344,6 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 
 
 - Second assembly diagnostic: the assembler then identified the one-step DOWN dispatch as another out-of-range relative branch after the new page handlers were inserted. Changed UP/DOWN dispatch to absolute `JP` as well (commit `53e7d5af677a5cce36443c812f221b2c070d9990`). The subsequent workflow run is pending.
+
+
+- Validation result: GitHub Actions run `42408571066` for source commit `53e7d5af677a5cce36443c812f221b2c070d9990` completed successfully on 2026-11-07. ATM/NeoGS assembly and TR-DOS disk packaging passed after the branch-range fixes. This confirms assembly/package validity, not yet the live ATM keyboard behavior.
