@@ -1347,3 +1347,13 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 
 
 - Validation result: GitHub Actions run `42408571066` for source commit `53e7d5af677a5cce36443c812f221b2c070d9990` completed successfully on 2026-11-07. ATM/NeoGS assembly and TR-DOS disk packaging passed after the branch-range fixes. This confirms assembly/package validity, not yet the live ATM keyboard behavior.
+
+
+## 2026-11-07 — Catalogue paging follow-up
+
+- The latest target log confirms catalogue initialization and key polling, but it does not contain evidence that the selected index or visible window changed. The previous paging change was therefore not considered target-validated.
+- Cleaned up the Spectrum matrix scan for CAPS SHIFT+5 (row #F7FE, bit 4) and CAPS SHIFT+8 (row #EFFE, bit 2), removing the duplicated right-key read.
+- Corrected page-down positioning: a full page jump now starts the new selection at the top of the viewport; only the final partial page is bottom-aligned to keep the last entries visible.
+- Existing CAPS SHIFT+7 / CAPS SHIFT+6 single-entry navigation remains unchanged.
+- Source commit: `26a22b25aeb7f1eda6fabf41387c72c3528c79da`.
+- Build and physical ATM keyboard validation are pending. The current `spectrum_out.txt` still contains only generic key-detected messages, so it cannot prove that page navigation was received or that the displayed rows changed.
