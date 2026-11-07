@@ -1230,7 +1230,7 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 - Implemented reset state (vector base 08h, IMR=FFh, IRR/ISR=00h), ICW1 initialization, ICW2 vector-base programming, ICW3/ICW4 sequence consumption, IMR read/write, OCW3 IRR/ISR read selection, and specific/non-specific EOI.
 - The model is deliberately only a register-level slice. IRQ producers, IRQ0/IRQ1 sources, priority arbitration, CPU interrupt acknowledge/INTA integration, and full 8259A modes remain pending. No BIOS POST pass is inferred.
 - Code commits: `075eeaea08932a414d656f2f02d97ff0920e5138` (PIC model) and `8d1ece0b6ef70576177c1752416867f16a390034` (module header and relative-branch range correction).
-- GitHub Actions build run [42404453625](https://github.com/JTCyborg/Project126/actions/runs/42404453625) was triggered for the code commit; its assembly/package result must be checked before calling this BUILD PASS. No target execution or PIC register self-test has been performed.
+- **BUILD PASS:** GitHub Actions run [42404453625](https://github.com/JTCyborg/Project126/actions/runs/42404453625), source commit `8d1ece0b6ef70576177c1752416867f16a390034`. NeoGS/ATM/standalone IPC and TR-DOS packaging completed with 0 assembly errors and 0 warnings. X86CORE.C=16,145/16,384 bytes; X86IO.C=1,129/4,096 bytes; X86ALU.C=1,220/4,096 bytes; TR-DOS image=655,360 bytes. This is BUILD PASS only: no PIC register self-test or target execution has been performed.
 
 ## 2026-11-07 — BIOS1-specific I/O trace clarification
 
