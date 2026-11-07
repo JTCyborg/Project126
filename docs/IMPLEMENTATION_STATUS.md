@@ -558,3 +558,11 @@ User-provided physical target log (09:52:27) validates the corrected MPAGEX page
 - The first hardware attempt stopped at ATM-local frame validation (DMA FAIL STAGE=1, validator status 01 = BAD_MAGIC), before E0 or DMA activation.
 - The validator receives C000h as frame pointer. The test buffer was placed at ORG #C000; actual bytes at that address were not yet captured, so a page-selection/overwrite cause is not assumed.
 - Added target trace to print the failing frame pointer and four actual bytes at that pointer. Next hardware run is diagnostic; do not claim 16 KiB DMA PASS or change the NeoGS DMA engine until the header bytes are known.
+
+
+## DMA max-frame test: ATM staging-header initialization
+
+- Latest target log: ATM validator reported `BAD MAGIC PTR=C000 DATA=20444D41` (bytes `20 44 4D 41`) and failed at stage 1, before E0/READY or any DMA register activity.
+- Root cause confirmed in source/package layout: `project126_disk.asm` packages the ATM host only through `p126_host_program_end`, constrained to `<= A800h`; the former static header under `ORG C000h` was outside the loaded host file. Runtime code had filled payload bytes but had not initialized the header.
+- Commit `b366a37318d89f02f613e848e106db9f3fcf219c` changes the test to initialize all 18 header bytes in C000h at runtime before payload generation and CRC.
+- Verification status: source correction committed; assembly/build and hardware retest still pending. No DMA hardware PASS is claimed.
