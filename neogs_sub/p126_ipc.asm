@@ -302,8 +302,9 @@ p126_ngs_ipc_dma_receive_frame::
         ld      hl,p126_ngs_ipc_log_frame_valid
         call    p126_ngs_ipc_log
 
-        xor     a
-        out     (P126_NGS_CLRCBIT),a
+        ; Keep CBIT asserted until the service handler has consumed the
+        ; validated frame. The host's FF wait therefore covers the complete
+        ; service operation, not merely the DMA copy.
         ld      hl,#C000
         ld      bc,(p126_ngs_ipc_rx_size)
         xor     a
@@ -497,8 +498,7 @@ p126_ngs_ipc_dispatch_once::
         cp      P126_CMD_NGS_FRAME
         jr      z,.p126_ngs_dispatch_ngs_frame
 
-        ; Unknown/unimplemented command: release the doorbell so the host
-        ; cannot remain blocked, and report a defined ABI error.
+        ; Unknown command: release the doorbell and report a defined error.
         xor     a
         out     (P126_NGS_CLRCBIT),a
         ld      a,P126_STATUS_NO_OPERATION
@@ -510,16 +510,221 @@ p126_ngs_ipc_dispatch_once::
         call    p126_ngs_ipc_log
         call    p126_ngs_ipc_dma_receive_frame
         ret     c
+
+        ; Service dispatch happens only after full frame/CRC validation.
+        ld      a,(#C007)
+        cp      P126_SERVICE_IMAGE
+        jr      z,.p126_ngs_dispatch_image
+        ; Diagnostics currently has no additional side effects.
+        xor     a
+        out     (P126_NGS_CLRCBIT),a
         ld      a,1
         or      a
         ret
 
+.p126_ngs_dispatch_image:
+        ld      a,(#C008)
+        cp      P126_OP_IMAGE_BEGIN
+        jp      z,p126_ngs_image_begin
+        cp      P126_OP_IMAGE_FRAGMENT
+        jp      z,p126_ngs_image_fragment
+        cp      P126_OP_IMAGE_FINISH
+        jp      z,p126_ngs_image_finish
+        jr      .p126_ngs_image_bad_operation
+
+.p126_ngs_image_bad_operation:
+        xor     a
+        out     (P126_NGS_CLRCBIT),a
+        ld      a,P126_STATUS_NO_OPERATION
+        scf
+        ret
 
 .p126_ngs_dispatch_ngs_frame:
         ld      hl,p126_ngs_ipc_log_dma_rx_request
         call    p126_ngs_ipc_log
         call    p126_ngs_ipc_dma_send_test_frame
         ret
+
+; -------------------------------------------------------------------------
+; IMAGE service — initial 8 KiB system BIOS installation.
+; The standard 10-byte ABI fragment extension is used even for one fragment.
+; WIN3 maps the DMA staging page 42h and the destination SYSBIOS page 10h.
+; Resident code/stack remain outside WIN3.
+; -------------------------------------------------------------------------
+p126_ngs_image_begin:
+        ld      hl,p126_ngs_image_begin_log
+        call    p126_ngs_ipc_log
+        ld      a,(#C00C)
+        cp      6
+        jr      nz,.image_begin_bad
+        ld      a,(#C012)
+        cp      1
+        jr      nz,.image_begin_bad
+        ld      a,(#C013)
+        or      a
+        jr      nz,.image_begin_bad
+        ld      a,(#C014)
+        cp      P126_IMAGE_KIND_SYSBIOS
+        jr      nz,.image_begin_bad
+        ld      a,(#C015)
+        or      a
+        jr      nz,.image_begin_bad
+        ld      a,(#C016)
+        or      a
+        jr      nz,.image_begin_bad
+        ld      a,(#C017)
+        cp      #20
+        jr      nz,.image_begin_bad
+        ld      a,1
+        ld      (p126_ngs_image_active),a
+        xor     a
+        ld      (p126_ngs_image_received),a
+        ld      (p126_ngs_bios_image_ready),a
+        ld      hl,p126_ngs_image_id
+        ld      (hl),1
+        inc     hl
+        ld      (hl),0
+        xor     a
+        out     (P126_NGS_CLRCBIT),a
+        ld      a,1
+        or      a
+        ret
+.image_begin_bad:
+        xor     a
+        out     (P126_NGS_CLRCBIT),a
+        ld      a,P126_STATUS_BAD_FRAME
+        scf
+        ret
+
+p126_ngs_image_fragment:
+        ld      hl,p126_ngs_image_fragment_log
+        call    p126_ngs_ipc_log
+        ld      a,(p126_ngs_image_active)
+        or      a
+        jr      z,.image_fragment_bad
+        ld      a,(#C009)
+        bit     1,a
+        jr      z,.image_fragment_bad
+        ld      a,(#C00C)
+        cp      #0A
+        jr      nz,.image_fragment_bad
+        ld      a,(#C00D)
+        cp      #20
+        jr      nz,.image_fragment_bad
+        ld      a,(#C012)
+        cp      1
+        jr      nz,.image_fragment_bad
+        ld      a,(#C013)
+        or      a
+        jr      nz,.image_fragment_bad
+        ld      a,(#C014)
+        or      a
+        jr      nz,.image_fragment_bad
+        ld      a,(#C015)
+        or      a
+        jr      nz,.image_fragment_bad
+        ld      a,(#C016)
+        cp      1
+        jr      nz,.image_fragment_bad
+        ld      a,(#C017)
+        or      a
+        jr      nz,.image_fragment_bad
+        ld      a,(#C018)
+        or      a
+        jr      nz,.image_fragment_bad
+        ld      a,(#C019)
+        cp      #20
+        jr      nz,.image_fragment_bad
+        ld      a,(#C01A)
+        or      a
+        jr      nz,.image_fragment_bad
+        ld      a,(#C01B)
+        or      a
+        jr      nz,.image_fragment_bad
+
+        ; Copy 8192 bytes from the validated page-42 frame payload to
+        ; physical SYSBIOS page 10h, offset 0000h. Alternate WIN3 mapping
+        ; per byte; resident code and stack are never mapped out.
+        ld      hl,#C01C
+        ld      de,#C000
+        ld      bc,P126_IMAGE_SYSBIOS_SIZE
+.image_copy_loop:
+        ld      a,#21                  ; page 42h RRCA selector
+        out     (P126_NGS_MPAGEX_PORT),a
+        ld      a,(hl)
+        push    af
+        ld      a,#08                  ; page 10h RRCA selector
+        out     (P126_NGS_MPAGEX_PORT),a
+        pop     af
+        ld      (de),a
+        inc     hl
+        inc     de
+        dec     bc
+        ld      a,b
+        or      c
+        jr      nz,.image_copy_loop
+
+        ; Restore the production DMA page mapping for subsequent IPC frames.
+        ld      a,#21
+        out     (P126_NGS_MPAGEX_PORT),a
+        ld      a,1
+        ld      (p126_ngs_image_received),a
+        xor     a
+        out     (P126_NGS_CLRCBIT),a
+        ld      a,1
+        or      a
+        ret
+.image_fragment_bad:
+        xor     a
+        out     (P126_NGS_CLRCBIT),a
+        ld      a,P126_STATUS_BAD_FRAGMENT
+        scf
+        ret
+
+p126_ngs_image_finish:
+        ld      hl,p126_ngs_image_finish_log
+        call    p126_ngs_ipc_log
+        ld      a,(p126_ngs_image_active)
+        or      a
+        jr      z,.image_finish_bad
+        ld      a,(p126_ngs_image_received)
+        or      a
+        jr      z,.image_finish_bad
+        ld      a,(#C00C)
+        cp      2
+        jr      nz,.image_finish_bad
+        ld      a,(#C012)
+        cp      1
+        jr      nz,.image_finish_bad
+        ld      a,(#C013)
+        or      a
+        jr      nz,.image_finish_bad
+        xor     a
+        ld      (p126_ngs_image_active),a
+        ld      a,1
+        ld      (p126_ngs_bios_image_ready),a
+        ld      hl,p126_ngs_image_installed_log
+        call    p126_ngs_ipc_log
+        xor     a
+        out     (P126_NGS_CLRCBIT),a
+        ld      a,1
+        or      a
+        ret
+.image_finish_bad:
+        xor     a
+        out     (P126_NGS_CLRCBIT),a
+        ld      a,P126_STATUS_BAD_FRAME
+        scf
+        ret
+
+p126_ngs_image_active:       db 0
+p126_ngs_image_received:     db 0
+p126_ngs_bios_image_ready:   db 0
+p126_ngs_image_id:           dw 0
+p126_ngs_image_begin_log:    db "[NGS] SYSBIOS IMAGE BEGIN",13,10,0
+p126_ngs_image_fragment_log: db "[NGS] SYSBIOS IMAGE FRAGMENT",13,10,0
+p126_ngs_image_finish_log:   db "[NGS] SYSBIOS IMAGE FINISH",13,10,0
+p126_ngs_image_installed_log: db "[NGS] SYSBIOS IMAGE INSTALLED AT PAGE 10",13,10,0
 
 ; Standard CRC-16/CCITT-FALSE regression vector.
 ; OUT: Carry clear and HL=#29B1 on pass; Carry set on failure.
