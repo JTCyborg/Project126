@@ -114,6 +114,20 @@ x86_cpu_step:
         cp      #3E
         jp      c,x86_exec_subcmp_family
 .not_sub_family_38:
+        cp      #06
+        jp      z,x86_exec_push_segment
+        cp      #07
+        jp      z,x86_exec_pop_segment
+        cp      #0E
+        jp      z,x86_exec_push_segment
+        cp      #16
+        jp      z,x86_exec_push_segment
+        cp      #17
+        jp      z,x86_exec_pop_segment
+        cp      #1E
+        jp      z,x86_exec_push_segment
+        cp      #1F
+        jp      z,x86_exec_pop_segment
         cp      #D7
         jp      z,x86_exec_xlat
         cp      #F5
@@ -2618,6 +2632,7 @@ x86_exec_alu_result16: dw 0
 x86_exec_alu_is_cmp: db 0
 x86_exec_alu_operation: db 0
 x86_exec_alu_is_sbb: db 0
+x86_exec_segment_pop_opcode: db 0
 x86_exec_group3_opcode: db 0
 x86_exec_group3_ext: db 0
 x86_exec_group3_imm8: db 0
