@@ -245,9 +245,9 @@ x86_bios_trace_log_io_counts:
         ld      hl,(x86_io_count_out)
         call    x86_bios_trace_emit_hex16
         ld      a,13
-        out     (#EF),a
+        call    x86_bios_trace_emit_char
         ld      a,10
-        out     (#EF),a
+        call    x86_bios_trace_emit_char
         pop     hl
         pop     af
         ret
@@ -306,7 +306,7 @@ x86_bios_trace_log_history:
         ld      hl,(x86_bios_trace_dump_cs)
         call    x86_bios_trace_emit_hex16
         ld      a,':'
-        out     (#EF),a
+        call    x86_bios_trace_emit_char
         ld      hl,(x86_bios_trace_dump_ip)
         call    x86_bios_trace_emit_hex16
         ld      hl,x86_bios_trace_history_phys_text
@@ -326,9 +326,9 @@ x86_bios_trace_log_history:
         ld      a,(x86_bios_trace_dump_opcode)
         call    x86_bios_trace_emit_hex8
         ld      a,13
-        out     (#EF),a
+        call    x86_bios_trace_emit_char
         ld      a,10
-        out     (#EF),a
+        call    x86_bios_trace_emit_char
 
         ld      a,(x86_bios_trace_dump_index)
         inc     a
@@ -364,13 +364,13 @@ x86_bios_trace_log_cs_ip:
         ld      hl,(x86_reg_cs)
         call    x86_bios_trace_emit_hex16
         ld      a,':'
-        out     (#EF),a
+        call    x86_bios_trace_emit_char
         ld      hl,(x86_reg_ip)
         call    x86_bios_trace_emit_hex16
         ld      a,13
-        out     (#EF),a
+        call    x86_bios_trace_emit_char
         ld      a,10
-        out     (#EF),a
+        call    x86_bios_trace_emit_char
         pop     hl
         pop     af
         ret
@@ -454,13 +454,22 @@ x86_bios_trace_log_registers:
         ld      a,(x86_exec_opcode)
         call    x86_bios_trace_emit_hex8
         ld      a,13
-        out     (#EF),a
+        call    x86_bios_trace_emit_char
         ld      a,10
-        out     (#EF),a
+        call    x86_bios_trace_emit_char
         pop     hl
         pop     de
         pop     bc
         pop     af
+        ret
+
+; Use the same full 00EF diagnostic port as the resident logger.
+; Preserve BC because callers may be maintaining loop counters.
+x86_bios_trace_emit_char:
+        push    bc
+        ld      bc,#00EF
+        out     (c),a
+        pop     bc
         ret
 
 x86_bios_trace_emit_nibble:
@@ -470,7 +479,7 @@ x86_bios_trace_emit_nibble:
         jr      c,.hex_digit
         add     a,7
 .hex_digit:
-        out     (#EF),a
+        call    x86_bios_trace_emit_char
         ret
 
 x86_bios_trace_history_index: db 0
@@ -793,7 +802,7 @@ x86_cpu_emit_version:
         ld      a,(hl)
         or      a
         jr      z,.done
-        out     (#EF),a
+        call    x86_bios_trace_emit_char
         inc     hl
         jr      .loop
 .done:
