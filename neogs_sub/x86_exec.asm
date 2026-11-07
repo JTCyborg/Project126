@@ -51,6 +51,10 @@ x86_cpu_step:
 
         cp      #06
         jp      c,x86_exec_add_family
+        cp      #F6
+        jp      z,x86_exec_group3
+        cp      #F7
+        jp      z,x86_exec_group3
         cp      #FE
         jp      z,x86_exec_group4_5
         cp      #FF
@@ -557,6 +561,87 @@ x86_exec_adc_sbb16:
         ld      hl,(x86_exec_adc_sbb_lhs16)
         jp      nz,x86_alu_sbb16
         jp      x86_alu_adc16
+
+; F6/F7 Group 3 initial 8086 forms:
+; /0,/1 TEST r/m,immediate; /2 NOT r/m; /3 NEG r/m.
+; /4-/7 MUL/IMUL/DIV/IDIV are reserved for the next arithmetic tranche.
+x86_exec_group3:
+        ld      a,(x86_exec_opcode)
+        ld      (x86_exec_group3_opcode),a
+        call    x86_decode_modrm16
+        ret     c
+        ld      a,(x86_modrm_reg)
+        ld      (x86_exec_group3_ext),a
+        cp      0
+        jp      z,x86_exec_group3_test
+        cp      1
+        jp      z,x86_exec_group3_test
+        cp      2
+        jp      z,x86_exec_group3_not
+        cp      3
+        jp      z,x86_exec_group3_neg
+        scf
+        ret
+
+x86_exec_group3_test:
+        ld      a,(x86_exec_group3_opcode)
+        bit     0,a
+        jr      nz,.group3_test_word
+        call    x86_cpu_fetch8
+        ret     c
+        ld      (x86_exec_group3_imm8),a
+        call    x86_modrm_read_rm8
+        ld      (x86_exec_group3_value8),a
+        ld      a,(x86_exec_group3_imm8)
+        ld      c,a
+        ld      a,(x86_exec_group3_value8)
+        ld      b,1
+        call    x86_alu_logic8
+        or      a
+        ret
+.group3_test_word:
+        call    x86_cpu_fetch16
+        ret     c
+        ld      (x86_exec_group3_imm16),hl
+        call    x86_modrm_read_rm16
+        ld      de,(x86_exec_group3_imm16)
+        ld      b,1
+        call    x86_alu_logic16
+        or      a
+        ret
+
+x86_exec_group3_not:
+        ld      a,(x86_exec_group3_opcode)
+        bit     0,a
+        jr      nz,.group3_not_word
+        call    x86_modrm_read_rm8
+        cpl
+        jp      x86_modrm_write_rm8
+.group3_not_word:
+        call    x86_modrm_read_rm16
+        ld      a,l
+        cpl
+        ld      l,a
+        ld      a,h
+        cpl
+        ld      h,a
+        jp      x86_modrm_write_rm16
+
+x86_exec_group3_neg:
+        ld      a,(x86_exec_group3_opcode)
+        bit     0,a
+        jr      nz,.group3_neg_word
+        call    x86_modrm_read_rm8
+        ld      c,a
+        xor     a
+        call    x86_alu_sub8
+        jp      x86_modrm_write_rm8
+.group3_neg_word:
+        call    x86_modrm_read_rm16
+        ex      de,hl
+        ld      hl,0
+        call    x86_alu_sub16
+        jp      x86_modrm_write_rm16
 
 ; FE Group 4: INC/DEC r/m8.
 ; FF Group 5: INC/DEC, near/far CALL/JMP and PUSH r/m16.
@@ -2355,6 +2440,11 @@ x86_exec_alu_result16: dw 0
 x86_exec_alu_is_cmp: db 0
 x86_exec_alu_operation: db 0
 x86_exec_alu_is_sbb: db 0
+x86_exec_group3_opcode: db 0
+x86_exec_group3_ext: db 0
+x86_exec_group3_imm8: db 0
+x86_exec_group3_imm16: dw 0
+x86_exec_group3_value8: db 0
 x86_exec_group45_opcode: db 0
 x86_exec_group45_ext: db 0
 x86_exec_group45_value8: db 0
