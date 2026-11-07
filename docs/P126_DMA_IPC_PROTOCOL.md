@@ -256,4 +256,4 @@ Both frame validators now keep the frame pointer intact during CRC calculation a
 
 Diagnostic output adds timing overhead, especially around the DMA copy. It is intentionally placed at transaction boundaries rather than inside polling loops. If timing-sensitive hardware behavior changes, retain the stage markers but disable or reduce verbose strings for the final transport implementation.
 
-**Verification:** source instrumentation only. Assembly/CI and hardware correlation of both independent #EF streams are still required; no DMA hardware PASS is claimed.
+- **Verification:** GitHub Actions run [42351776510](https://github.com/JTCyborg/Project126/actions/runs/42351776510), commit `d9b2a391ddaf0bbf4ccd918b34a58cbecc17f40e`, completed successfully. ATM IPC and NeoGS assembly, including the new trace code, passed; TR-DOS image packaging and artifact publication also completed. This is BUILD PASS only. No hardware trace or DMA runtime PASS is claimed.
