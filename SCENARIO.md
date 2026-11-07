@@ -1033,3 +1033,11 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 - Corrected p126_bios_enter_trdos_mode to restore only #7FFD=#10 and the corresponding system variable #5C3B, preserving the already-configured #EFF7/DOSEN and #3FF7 automatic TR-DOS selection.
 - No changes to catalogue selection/navigation, file-name/type validation, TR-DOS C=0Ah/C=08h ABI, sector reader, DMA, IPC or IMAGE handlers.
 - Hardware verification pending. Expected next trace: TRDOS OPEN C=0A RETURN, then DESCRIPTOR C=08 CALL/RETURN. This correction is a reasoned mapping fix, not yet a hardware PASS.
+
+
+## 2026-11-07 — Log selected BIOS filename
+
+- After the directory-entry lookup and type-C validation, the ATM now emits the exact selected TR-DOS 8.3 filename to debug port #EF as a timestamped line: [CAT] BIOS FILE SELECTED: NAME    .C
+- The eight filename bytes are read from the already prepared TR-DOS system filename field at #5CDD; the validated extension C is appended explicitly. This keeps the diagnostic tied to the exact filename passed to the TR-DOS open routine.
+- Logging preserves AF/BC/DE/HL and does not alter catalogue selection, TR-DOS mapping, ROM calls, sector reads, DMA or IPC.
+- CI build and target hardware verification pending.
