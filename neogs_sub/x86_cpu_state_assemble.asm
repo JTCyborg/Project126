@@ -69,6 +69,16 @@ p126_ngs_resident_start:
         ld      bc,9
         ld      (hl),a
         ldir
+        call    p126_overlay_allocator_selftest
+        jr      c,.p126_allocator_selftest_failed
+        ld      hl,p126_ngs_resident_allocator_ok
+        call    p126_ngs_resident_log
+        jr      .p126_allocator_selftest_done
+.p126_allocator_selftest_failed:
+        ld      hl,p126_ngs_resident_allocator_bad
+        call    p126_ngs_resident_log
+        jr      p126_ngs_resident_halt
+.p126_allocator_selftest_done:
 
         ld      hl,p126_ngs_resident_banner
         call    p126_ngs_resident_log
@@ -174,6 +184,8 @@ p126_ngs_resident_send_boot_ack:
 
 p126_ngs_resident_banner: db "[NGS] P126 RESIDENT v0.1.0",13,10,0
 p126_ngs_resident_crc_ok: db "[NGS] ABI CRC16 PASS",13,10,0
+p126_ngs_resident_allocator_ok: db "[NGS] OVERLAY ALLOCATOR PASS",13,10,0
+p126_ngs_resident_allocator_bad: db "[NGS] OVERLAY ALLOCATOR FAIL",13,10,0
 p126_ngs_resident_crc_bad: db "[NGS] ABI CRC16 FAIL",13,10,0
 p126_ngs_resident_ack_bad: db "[NGS] HOST READY ACK TIMEOUT",13,10,0
 p126_ngs_resident_frame_ok: db "[NGS] DMA FRAME VALID",13,10,0
