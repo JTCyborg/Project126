@@ -216,8 +216,8 @@ p126_neogs_startup::
         jp      nz,p126_neogs_transport_error
 
         ; The resident now owns GSCOM and is polling the ABI 1.0 DMA endpoint.
-        ; Install the first fixed-origin overlay before the ATM menu can offer
-        ; BIOS execution. The module is copied to WIN2/page 04 by IMAGE service.
+        ; Install both fixed-origin overlays before BIOS execution. X86IO is placed
+        ; on page04 and X86ALU on page05 by the resident IMAGE service.
         ld      a,'I'
         ld      (p126_neogs_startup_stage),a
         call    p126_neogs_load_io_overlay
@@ -235,8 +235,8 @@ p126_neogs_startup::
         ret
 
 ; -------------------------------------------------------------------------
-; Load the fixed-origin X86IO overlay from TR-DOS and install it through
-; the already-running ABI 1.0 IMAGE service.
+; Load fixed-origin X86IO/X86ALU overlays from TR-DOS through the shared
+; ABI 1.0 fixed-profile IMAGE service.
 ;
 ; p126_neogs_open_file reads sector 0 to C000h and leaves the remaining
 ; sector cursor in the shared TR-DOS state. Move the first sector backwards
