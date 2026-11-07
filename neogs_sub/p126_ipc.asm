@@ -823,6 +823,10 @@ p126_ngs_image_finish:
 .image_finish_x86io_map_ok:
         ld      hl,p126_ngs_overlay_win2_test_pass_log
         call    p126_ngs_ipc_log
+        ; The self-test leaves physical page 04h selected in WIN2.
+        ; Keep the nested-call gate's software selector synchronized.
+        ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
+        ld      (p126_overlay_current_selector),a
         ld      a,1
         ld      (p126_ngs_io_overlay_ready),a
         ld      hl,p126_ngs_io_overlay_installed_log
