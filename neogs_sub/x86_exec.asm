@@ -3845,11 +3845,16 @@ x86_exec_string_adjust_si:
         jr      nz,.string_si_decrement
         add     hl,de
         ld      (x86_reg_si),hl
+        ; Host Z80 carry from SI wrap is not an x86 memory-access fault.
+        ; LODS/MOVS/CMPS complete normally when SI wraps FFFFh -> 0000h.
+        or      a
         ret
 .string_si_decrement:
         or      a
         sbc     hl,de
         ld      (x86_reg_si),hl
+        ; Discard host borrow on SI wrap in the DF=1 direction.
+        or      a
         ret
 
 x86_exec_string_adjust_di:
@@ -3862,12 +3867,15 @@ x86_exec_string_adjust_di:
         jr      nz,.string_di_decrement
         add     hl,de
         ld      (x86_reg_di),hl
+        ; ES:DI wrap is normal 8086 string-address arithmetic, not a fault.
         or      a
         ret
 .string_di_decrement:
         or      a
         sbc     hl,de
         ld      (x86_reg_di),hl
+        ; Do not leak the host Z80 borrow flag into x86 instruction status.
+        or      a
         ret
 
 ; A8 TEST AL,imm8; A9 TEST AX,imm16.
