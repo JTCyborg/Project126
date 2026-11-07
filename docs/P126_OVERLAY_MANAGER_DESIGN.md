@@ -34,7 +34,7 @@ Rationale:
 4. An overlay can execute at a fixed logical origin (`8000h`) while its physical backing page is selected from the kernel pool.
 5. X86IO implementation symbols occupy `8000h–831Bh` on page04; X86ALU occupies `8000h–8496h` on page05. Both public CPU-facing APIs use resident wrappers. The resident call gate saves the current WIN2 selector on the WIN1 stack, maps the requested page, enters through IX, and restores the previous selector at a resident RET trampoline. The gate is source-built but has not yet passed a physical nested-switch test.
 
-Candidate physical overlay pool: pages `04h–0Fh` (12 pages, 192 KiB). Pages 04h and 05h are pinned to X86IO and X86ALU; pages 06h–0Fh remain unallocated for future overlays. Pages 00–03 are excluded from allocation. No dynamic allocator exists yet.
+Candidate physical overlay pool: pages `04h–0Fh` (12 pages, 192 KiB). Pages 04h and 05h are pinned to X86IO and X86ALU; pages 06h–0Fh are managed by a first-fit allocator. Pages 00–03 are excluded. The allocator tracks ten dynamic pages, reports exhaustion, rejects out-of-pool/double releases, and refuses to release the currently mapped or actively executing page. This is a page allocator primitive, not yet a module registry or loader.
 
 ### Mapping register gate
 
@@ -132,6 +132,7 @@ The manager is not complete until all of the following are true:
 - [x] Destination page04/page05 readback is byte-for-byte verified before the respective overlay-ready flag is published.
 - [x] Resident call/return gate saves the previous WIN2 selector on the WIN1 stack and restores it at a resident RET trampoline; X86IO and X86ALU wrappers use this gate.
 - [x] Resident gate tracks active frames, resets depth at startup, permits at most 8 nested overlay calls, and rejects a ninth call with `P126_STATUS_BUSY`/carry before changing WIN2 or extending the stack.
+- [x] First-fit page allocator covers only pages06h–0Fh; release rejects invalid/double-free, current-WIN2 and active-call pages. Startup regression allocates all ten pages, verifies exhaustion, releases them in reverse order, and verifies page06 reuse.
 - [x] X86IO IMAGE_FINISH performs a boot-time page05→page04 X86IO wrapper call and verifies that the page05 test stub resumes after the gate restores WIN2; scratch bytes are restored before X86ALU is loaded.
 - [x] X86ALU IMAGE_FINISH calls the ALU probe through the gate, checks input A=#3C/C=1/HL=#1234, runs a nested page05→page04 X86IO→page05 ADD8 call (expects A=#08), verifies the outer frame remains at depth 1 with WIN2=page05, restores `x86_reg_flags` after the nested probe, checks output A=#A5/HL=#5AA5, then confirms WIN2 is restored to page04 before X86ALU_READY.
 - [ ] Physical target log confirms [NGS] WIN2 MAP/GATE TEST PASS and the nested page05→page04→page05 gate regression; deeper nesting beyond two frames, alternate-register use and stack-limit behavior remain to be tested.
