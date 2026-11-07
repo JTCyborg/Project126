@@ -208,6 +208,134 @@ x86_alu_merge_flags:
         ret
 
 
+
+; ADC/SBB helpers. Carry/borrow input is B bit 0; result and arithmetic
+; flags are returned exactly like ADD/SUB. The 16-bit variants propagate the
+; low-byte carry/borrow into the high-byte operation.
+x86_alu_adc8:
+        ld      (x86_alu_lhs),a
+        ld      a,c
+        ld      (x86_alu_rhs),a
+        ld      a,b
+        and     1
+        ld      (x86_alu_carry_in),a
+        ld      a,(x86_alu_rhs)
+        ld      c,a
+        ld      a,(x86_alu_carry_in)
+        or      a
+        jr      z,.adc8_carry_clear
+        scf
+        jr      .adc8_apply
+.adc8_carry_clear:
+        or      a
+.adc8_apply:
+        ld      a,(x86_alu_lhs)
+        adc     a,c
+        ld      (x86_alu_result),a
+        push    af
+        pop     hl
+        ld      a,l
+        ld      (x86_alu_z80_flags),a
+        call    x86_alu_merge_flags
+        ld      a,(x86_alu_result)
+        ret
+
+x86_alu_sbb8:
+        ld      (x86_alu_lhs),a
+        ld      a,c
+        ld      (x86_alu_rhs),a
+        ld      a,b
+        and     1
+        ld      (x86_alu_carry_in),a
+        ld      a,(x86_alu_rhs)
+        ld      c,a
+        ld      a,(x86_alu_carry_in)
+        or      a
+        jr      z,.sbb8_borrow_clear
+        scf
+        jr      .sbb8_apply
+.sbb8_borrow_clear:
+        or      a
+.sbb8_apply:
+        ld      a,(x86_alu_lhs)
+        sbc     a,c
+        ld      (x86_alu_result),a
+        push    af
+        pop     hl
+        ld      a,l
+        ld      (x86_alu_z80_flags),a
+        call    x86_alu_merge_flags
+        ld      a,(x86_alu_result)
+        ret
+
+x86_alu_adc16:
+        ld      (x86_alu_word_lhs),hl
+        ld      (x86_alu_word_rhs),de
+        ld      a,b
+        and     1
+        ld      (x86_alu_carry_in),a
+        ld      a,(x86_alu_carry_in)
+        or      a
+        jr      z,.adc16_carry_clear
+        scf
+        jr      .adc16_low
+.adc16_carry_clear:
+        or      a
+.adc16_low:
+        ld      a,l
+        ld      c,e
+        adc     a,c
+        ld      (x86_alu_word_result),a
+        push    af
+        pop     bc
+        ld      a,c
+        ld      (x86_alu_low_flags),a
+        ld      a,h
+        ld      c,d
+        adc     a,c
+        ld      (x86_alu_word_result+1),a
+        push    af
+        pop     bc
+        ld      a,c
+        ld      (x86_alu_high_flags),a
+        ld      hl,(x86_alu_word_result)
+        call    x86_alu_merge_word_flags
+        ret
+
+x86_alu_sbb16:
+        ld      (x86_alu_word_lhs),hl
+        ld      (x86_alu_word_rhs),de
+        ld      a,b
+        and     1
+        ld      (x86_alu_carry_in),a
+        ld      a,(x86_alu_carry_in)
+        or      a
+        jr      z,.sbb16_borrow_clear
+        scf
+        jr      .sbb16_low
+.sbb16_borrow_clear:
+        or      a
+.sbb16_low:
+        ld      a,l
+        ld      c,e
+        sbc     a,c
+        ld      (x86_alu_word_result),a
+        push    af
+        pop     bc
+        ld      a,c
+        ld      (x86_alu_low_flags),a
+        ld      a,h
+        ld      c,d
+        sbc     a,c
+        ld      (x86_alu_word_result+1),a
+        push    af
+        pop     bc
+        ld      a,c
+        ld      (x86_alu_high_flags),a
+        ld      hl,(x86_alu_word_result)
+        call    x86_alu_merge_word_flags
+        ret
+
 ; Logical operations for the original 8086.
 ; API: x86_alu_logic8: A=lhs, C=rhs, B=operation (0 OR, 1 AND, 2 XOR).
 ;      Returns A=result and updates SF/ZF/PF; clears CF/AF/OF.
@@ -541,6 +669,7 @@ x86_alu_selftest:
         scf
         ret
 
+x86_alu_carry_in: db 0
 x86_alu_logic_lhs: db 0
 x86_alu_logic_rhs: db 0
 x86_alu_logic_result: db 0
