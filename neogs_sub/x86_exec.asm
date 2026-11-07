@@ -211,19 +211,21 @@ x86_exec_incdec_reg:
         ld      d,(hl)
         ld      (x86_exec_reg_ptr),de
 
-        ; Read the selected guest word register.
+        ; Save CF before loading the arithmetic operand.
+        ld      hl,(x86_reg_flags)
+        ld      a,l
+        and     1
+        ld      (x86_exec_saved_cf),a
+
+        ; Read the selected guest word register into HL.
         ex      de,hl
         ld      e,(hl)
         inc     hl
         ld      d,(hl)
         ex      de,hl
 
-        ; Save CF, run the 16-bit add/subtract-by-one flag calculation.
+        ; Run the 16-bit add/subtract-by-one flag calculation.
         ld      de,1
-        ld      hl,(x86_reg_flags)
-        ld      a,l
-        and     1
-        ld      (x86_exec_saved_cf),a
         ld      a,(x86_exec_is_dec)
         or      a
         jr      nz,.do_dec
