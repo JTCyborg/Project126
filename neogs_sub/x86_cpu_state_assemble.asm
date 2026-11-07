@@ -177,10 +177,6 @@ x86_modrm_module_start:
         INCLUDE "neogs_sub/x86_modrm.asm"
 x86_modrm_module_end:
 
-x86_alu_module_start:
-        INCLUDE "neogs_sub/x86_alu.asm"
-x86_alu_module_end:
-
 ; Link the ABI 1.0 DMA receiver/dispatcher into the fixed resident image.
 p126_ngs_ipc_module_start:
         INCLUDE "neogs_sub/p126_ipc.asm"
@@ -189,20 +185,24 @@ p126_ngs_ipc_module_start:
         INCLUDE "neogs_sub/p126_overlay_gate.asm"
 p126_ngs_ipc_module_end:
 
-; The XT PPI/keyboard I/O model is the first fixed-origin overlay.
-; CPU call sites are linked to 8000h symbols in this same assembly pass;
-; the ATM host loads this binary into physical page 04h before BIOS execution.
+; Fixed-origin overlays share logical origin 8000h but are loaded into
+; separate physical pages: X86IO/page04 and X86ALU/page05.
         ASSERT p126_ngs_ipc_module_end <= #4000
         ORG     #8000
 x86_io_module_start:
         INCLUDE "neogs_sub/x86_io.asm"
 x86_io_module_end:
+        SAVEBIN "build/X86IO.C",x86_io_module_start,x86_io_module_end-x86_io_module_start
 
-; Emit independent TR-DOS files. The raw audit image still contains both
-; address regions; only X86CORE.C is loaded by stage-0.
+        ORG     #8000
+x86_alu_module_start:
+        INCLUDE "neogs_sub/x86_alu.asm"
+x86_alu_module_end:
+        SAVEBIN "build/X86ALU.C",x86_alu_module_start,x86_alu_module_end-x86_alu_module_start
+
+; The stage-0 loader receives only X86CORE.C at logical origin 0000h.
         SAVEBIN "build/x86_cpu_state.bin",0,p126_ngs_ipc_module_end
         SAVEBIN "build/X86CORE.C",0,p126_ngs_ipc_module_end
-        SAVEBIN "build/X86IO.C",x86_io_module_start,x86_io_module_end-x86_io_module_start
 
 ; Export explicit boundaries for build/map inspection.
     DISPLAY "P126_NGS_RESIDENT_START=", /H, p126_ngs_resident_entry_vector
@@ -231,6 +231,9 @@ x86_io_module_end:
     DISPLAY "P126_X86IO_OVERLAY_START=", /H, x86_io_module_start
     DISPLAY "P126_X86IO_OVERLAY_END=", /H, x86_io_module_end
     DISPLAY "P126_X86IO_OVERLAY_SIZE=", /D, x86_io_module_end-x86_io_module_start
+    DISPLAY "P126_X86ALU_OVERLAY_START=", /H, x86_alu_module_start
+    DISPLAY "P126_X86ALU_OVERLAY_END=", /H, x86_alu_module_end
+    DISPLAY "P126_X86ALU_OVERLAY_SIZE=", /D, x86_alu_module_end-x86_alu_module_start
 
     ASSERT p126_ngs_resident_entry_vector = 0
     ASSERT x86_cpu_state_module_start > p126_ngs_resident_entry_vector
@@ -239,12 +242,14 @@ x86_io_module_end:
     ASSERT x86_cpu_exec_module_start = x86_cpu_state_module_end
     ASSERT x86_modrm_module_end > x86_modrm_module_start
     ASSERT x86_modrm_module_start = x86_cpu_exec_module_end
-    ASSERT x86_alu_module_start = x86_modrm_module_end
-    ASSERT x86_alu_module_end > x86_alu_module_start
-    ASSERT p126_ngs_ipc_module_end > p126_ngs_ipc_module_start
-    ASSERT p126_ngs_ipc_module_start = x86_alu_module_end
+        ASSERT p126_ngs_ipc_module_end > p126_ngs_ipc_module_start
+    ASSERT p126_ngs_ipc_module_start = x86_modrm_module_end
     ASSERT p126_ngs_ipc_module_end <= #4000
     ASSERT x86_io_module_start = #8000
     ASSERT x86_io_module_end > x86_io_module_start
     ASSERT x86_io_module_end <= #C000
     ASSERT x86_io_module_end-x86_io_module_start <= P126_IMAGE_X86IO_MAX_SIZE
+    ASSERT x86_alu_module_start = #8000
+    ASSERT x86_alu_module_end > x86_alu_module_start
+    ASSERT x86_alu_module_end <= #C000
+    ASSERT x86_alu_module_end-x86_alu_module_start <= P126_IMAGE_X86ALU_MAX_SIZE
