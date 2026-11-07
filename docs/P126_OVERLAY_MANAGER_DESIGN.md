@@ -6,7 +6,7 @@
 
 ## 1. Purpose
 
-The resident `X86CORE.C` has a hard 16 KiB loader limit. The current CI build produces a 16,380-byte resident image (4 bytes free), an 1,871-byte `X86IO.C`, a 1,220-byte `X86ALU.C` and a 1,705-byte `X86DEV.C` device module at logical origin `8000h`. The NeoGS physical map reserves pages `00h–0Fh` (256 KiB) for the kernel/runtime.
+The resident `X86CORE.C` has a hard 16 KiB loader limit. The current CI build produces a 16,380-byte resident image (4 bytes free), an 1,871-byte `X86IO.C`, a 1,220-byte `X86ALU.C` and a 2,110-byte `X86DEV.C` device module at logical origin `8000h`. The NeoGS physical map reserves pages `00h–0Fh` (256 KiB) for the kernel/runtime.
 
 The manager must use that existing allocation without changing the physical map, enlarging the `X86CORE.C` limit, taking ownership of WIN3, or moving the operational stack.
 
@@ -32,7 +32,7 @@ Rationale:
 2. The operational stack remains in WIN1/page 03.
 3. Guest memory access continues to own WIN3 exclusively.
 4. An overlay can execute at a fixed logical origin (`8000h`) while its physical backing page is selected from the kernel pool.
-5. X86IO occupies 1,871 bytes at the fixed origin on page04; X86ALU occupies 1,220 bytes on page05; X86DEV occupies 1,705 bytes on page06. The X86IO port dispatcher delegates 8237/8253 accesses to X86DEV through resident wrappers. The resident call gate saves the current WIN2 selector on the WIN1 stack, maps the requested page, enters through IX, and restores the previous selector at a resident RET trampoline. The gate is source-built but has not yet passed a physical nested-switch test.
+5. X86IO occupies 1,871 bytes at the fixed origin on page04; X86ALU occupies 1,220 bytes on page05; X86DEV occupies 2,110 bytes on page06. The X86IO port dispatcher delegates 8237/8253 accesses to X86DEV through resident wrappers. The resident call gate saves the current WIN2 selector on the WIN1 stack, maps the requested page, enters through IX, and restores the previous selector at a resident RET trampoline. The gate is source-built but has not yet passed a physical nested-switch test.
 
 Physical overlay pool: pages `04h–0Fh` (12 pages, 192 KiB). Pages 04h, 05h and 06h are pinned to X86IO, X86ALU and X86DEV; pages 07h–0Fh (9 pages) are managed by a first-fit allocator. Pages 00–03 are excluded. The allocator tracks nine dynamic pages (07h–0Fh), reports exhaustion, rejects out-of-pool/double releases, and refuses to release the currently mapped or actively executing page. This is a page allocator primitive, not yet a module registry or loader.
 
