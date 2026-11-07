@@ -4,6 +4,7 @@
 ; These offsets describe the assembled module image, not yet the final
 ; physical NeoGS load address (runtime placement remains a separate stage).
 
+        DEVICE ZXSPECTRUM128
         ORG     0
 
 ; Physical NeoGS and guest x86 memory allocation contracts.
