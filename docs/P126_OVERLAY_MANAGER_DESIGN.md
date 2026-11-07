@@ -84,7 +84,7 @@ Modules larger than one frame must be streamed as multiple fragments. A 16 KiB m
 
 The resident WIN2 call gate is now implemented as a low-level primitive. Existing X86IO public entry points are resident wrappers and request page 04h through that gate, so the overlay can be called while another trusted overlay temporarily owns WIN2. The higher-level dynamic manager is still absent: there is no module table, allocator, manifest validation, generic loader, unload/refcounting or ownership policy.
 
-A future module call request will identify a module ID and exported function ID (or validated entry offset). The resident gate:
+A future module call request will identify a module ID and exported function ID (or validated entry offset). The current low-level gate only switches a caller-supplied selector/IX entry; the higher-level manager must extend it to:
 
 1. validates that the module is loaded and the entry lies within its image;
 2. saves the current WIN2 page and pushes a bounded call frame on the WIN1 stack;
@@ -97,7 +97,7 @@ Rules:
 
 - The call gate, return trampoline, module table, and stack must remain outside WIN2 and WIN3.
 - An overlay may call resident APIs through fixed resident entry points.
-- An overlay may request another overlay only through the resident gate. The gate must support bounded nesting and restore the suspended module's mapping before returning to it.
+- An overlay may request another overlay only through the resident gate. The current primitive saves/restores one selector frame per call; the manager must add a validated maximum depth and reject stack exhaustion before entering a module.
 - No pointer into WIN2 may be retained by resident code or another module across a call that can remap WIN2.
 - Interrupt handlers must remain resident and must not execute overlay code or access WIN2. Overlay entry points are synchronous and non-reentrant unless a module explicitly declares otherwise.
 - A module cannot be unloaded while its call depth is nonzero.
@@ -112,11 +112,11 @@ The first pinned-overlay source/build/load slice and the low-level resident call
 - `X86CORE.C` is separately exported at 0000h (16,322 bytes in the current build);
 - resident public X86IO entry points route through the WIN2 gate; implementation symbols remain fixed at the overlay origin;
 - ATM loads `X86IO.C` from TR-DOS after A2h and sends the IMAGE transaction over ABI 1.0 DMA;
-- NeoGS installs page 04h, verifies the complete image by readback, runs a reversible WIN2 selector test across pages 04h and 05h at offset 3FFFh, then leaves page 04h mapped;
+- NeoGS installs page 04h, verifies the complete image by readback, runs a reversible WIN2 selector test across pages 04h and 05h at offset 3FFFh, then runs a temporary page05→page04 X86IO-wrapper→page05 gate test and restores the page05 scratch bytes;
 - BIOS execution waits for both IO_OVERLAY_READY and BIOS_IMAGE_READY;
 - `00E0h` diagnostic latch and current PPI/keyboard semantics are retained.
 
-Not implemented: dynamic page allocator, general manifest, generic ATM module streaming, unload/refcounting, and runtime validation of nested/repeated gate calls. The call gate is present in source and CI, but no physical target test has yet verified page switching, X86IO transfer or return-state preservation.
+Not implemented: dynamic page allocator, general manifest, generic ATM module streaming, unload/refcounting, and runtime validation of repeated/deeper gate calls. A boot-time source-level self-test now exercises one page05→page04→page05 call and fails closed before IO_OVERLAY_READY; no physical target log has yet confirmed that self-test, X86IO transfer or return-state preservation.
 
 ## 8. Implementation gates
 
@@ -134,7 +134,7 @@ The manager is not complete until all of the following are true:
 - [x] IMAGE_FINISH performs a boot-time page05→page04 X86IO wrapper call and verifies that the page05 test stub resumes after the gate restores WIN2; scratch bytes are restored before BIOS is enabled.
 - [ ] Physical target log confirms [NGS] WIN2 MAP/GATE TEST PASS; repeated/deeper nested calls, alternate-register use and stack-limit behavior remain to be tested.
 - [ ] Invalid/unloaded dynamic module calls fail closed.
-- [x] CI build/package passes with the resident gate (run 42397778997, commit b0e708b0; X86CORE 16322/16384 bytes, X86IO 796/4096 bytes; NeoGS, ATM, IPC and TR-DOS assembly 0 errors/0 warnings).
-- [ ] Physical ATM/NeoGS log confirms X86IO module load, page-04 readback, `[NGS] WIN2 PAGE04/05 TEST PASS`, and final WIN2 mapping.
+- [x] CI build/package passes with the boot-time gate self-test (run 42398073825, commit 99f007da; X86CORE 16322/16384 bytes, X86IO 796/4096 bytes; NeoGS, ATM, IPC and TR-DOS assembly 0 errors/0 warnings).
+- [ ] Physical ATM/NeoGS log confirms X86IO module load, page-04 readback, `[NGS] WIN2 MAP/GATE TEST PASS`, and final WIN2 mapping.
 
 No PIC/PIT/DMA/VGA/RTC/IDE implementation is to be added to the resident image before these gates are met. No CPU functional suite, full BIOS POST, or guest operating-system test is implied by overlay infrastructure validation.
