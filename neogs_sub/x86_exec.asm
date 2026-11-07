@@ -289,6 +289,22 @@ x86_cpu_step_fetch_opcode:
         cp      #E4
         jp      c,x86_exec_loop_family
 .not_loop_family:
+        cp      #E4
+        jp      z,x86_exec_io_instruction
+        cp      #E5
+        jp      z,x86_exec_io_instruction
+        cp      #E6
+        jp      z,x86_exec_io_instruction
+        cp      #E7
+        jp      z,x86_exec_io_instruction
+        cp      #EC
+        jp      z,x86_exec_io_instruction
+        cp      #ED
+        jp      z,x86_exec_io_instruction
+        cp      #EE
+        jp      z,x86_exec_io_instruction
+        cp      #EF
+        jp      z,x86_exec_io_instruction
         cp      #E8
         jp      z,x86_exec_call_near_rel16
         cp      #E9
@@ -3674,6 +3690,51 @@ x86_exec_loop_family:
         or      a
         ret
 
+; E4/E5/E6/E7 immediate-port IN/OUT; EC/ED/EE/EF DX-port forms.
+; Port accesses are routed to the software-only virtual I/O bus.
+x86_exec_io_instruction:
+        ld      a,(x86_exec_opcode)
+        ld      (x86_exec_io_opcode),a
+        cp      #EC
+        jr      nc,.io_port_from_dx
+        call    x86_cpu_fetch8
+        ret     c
+        ld      l,a
+        ld      h,0
+        jr      .io_port_ready
+.io_port_from_dx:
+        ld      hl,(x86_reg_dx)
+.io_port_ready:
+        ld      (x86_io_port),hl
+        ld      a,(x86_exec_io_opcode)
+        and     2
+        jr      nz,.io_output
+        ld      a,(x86_exec_io_opcode)
+        and     1
+        jr      nz,.io_input_word
+        call    x86_io_read8
+        ld      (x86_reg_ax),a
+        or      a
+        ret
+.io_input_word:
+        call    x86_io_read16
+        ld      (x86_reg_ax),hl
+        or      a
+        ret
+.io_output:
+        ld      a,(x86_exec_io_opcode)
+        and     1
+        jr      nz,.io_output_word
+        ld      a,(x86_reg_ax)
+        call    x86_io_write8
+        or      a
+        ret
+.io_output_word:
+        ld      hl,(x86_reg_ax)
+        call    x86_io_write16
+        or      a
+        ret
+
 ; E8 CALL rel16. Push the post-displacement IP to SS:SP-2,
 ; then branch relative to the post-displacement IP.
 x86_exec_call_near_rel16:
@@ -3777,6 +3838,7 @@ x86_exec_alu_is_sbb: db 0
 x86_exec_interrupt_vector: db 0
 x86_exec_ivt_offset: dw 0
 x86_exec_ivt_value: dw 0
+x86_exec_io_opcode: db 0
 x86_exec_segment_pop_opcode: db 0
 x86_exec_string_opcode: db 0
 x86_exec_string_width: db 0
