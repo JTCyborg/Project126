@@ -132,7 +132,7 @@ The manager is not complete until all of the following are true:
 - [ ] General call/return trampoline preserves arbitrary WIN2 mappings and WIN1 stack.
 - [ ] Nested and repeated dynamic overlay calls restore mappings correctly.
 - [ ] Invalid/unloaded dynamic module calls fail closed.
-- [x] CI build/package passes (run 42396251021, commit a20da948; X86CORE 15756 bytes, X86IO 796 bytes).
+- [x] CI build/package passes (run 42396608945, commit 079c53a1; X86CORE 15756 bytes, X86IO 796 bytes; NeoGS assembly 0 errors/0 warnings).
 - [ ] Physical ATM/NeoGS log confirms X86IO module load, page-04 readback and WIN2 mapping.
 
 No PIC/PIT/DMA/VGA/RTC/IDE implementation is to be added to the resident image before these gates are met. No CPU functional suite, full BIOS POST, or guest operating-system test is implied by overlay infrastructure validation.
