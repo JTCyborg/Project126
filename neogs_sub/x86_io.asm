@@ -28,8 +28,6 @@ x86_io_reset:
         ld      (x86_io_keyboard_tail),a
         ld      (x86_io_keyboard_count),a
         ld      (x86_io_keyboard_last),a
-        ld      (x86_io_keyboard_overflow),a
-        ld      (x86_io_ppi_pa),a
         ld      (x86_io_ppi_pc),a
         ld      a,#9B
         ld      (x86_io_ppi_control),a
@@ -41,7 +39,7 @@ x86_io_reset:
 ; This is the software input-service API; the caller is the future IPC
 ; keyboard event handler, never a physical NeoGS port operation.
 x86_io_keyboard_push:
-        ld      (x86_io_keyboard_push_value),a
+        ld      b,a
         ld      a,(x86_io_keyboard_count)
         cp      16
         jr      nc,.keyboard_push_full
@@ -50,8 +48,7 @@ x86_io_keyboard_push:
         ld      d,0
         ld      hl,x86_io_keyboard_fifo
         add     hl,de
-        ld      a,(x86_io_keyboard_push_value)
-        ld      (hl),a
+        ld      (hl),b
         ld      a,(x86_io_keyboard_tail)
         inc     a
         and     #0F
@@ -62,8 +59,6 @@ x86_io_keyboard_push:
         or      a
         ret
 .keyboard_push_full:
-        ld      a,1
-        ld      (x86_io_keyboard_overflow),a
         scf
         ret
 
@@ -229,8 +224,7 @@ x86_io_ppi_write8:
         jr      z,.ppi_write_c
         jr      .ppi_write_control
 .ppi_write_a:
-        ld      a,(x86_io_ppi_write_value)
-        ld      (x86_io_ppi_pa),a
+        ; XT profile uses port A as keyboard input; output writes are ignored.
         or      a
         ret
 .ppi_write_b:
@@ -268,7 +262,6 @@ x86_io_ppi_write8:
         ; Mode-set operation. XT BIOS selects mode 0 (control word 99h).
         ld      (x86_io_ppi_control),a
         xor     a
-        ld      (x86_io_ppi_pa),a
         ld      (x86_io_ppi_pb),a
         ld      (x86_io_ppi_pc),a
         or      a
@@ -489,7 +482,6 @@ x86_io_word_value: dw 0
 x86_io_word_low: db 0
 x86_io_word_high: db 0
 
-x86_io_ppi_pa: db 0
 x86_io_ppi_pb: db #40
 x86_io_ppi_pc: db 0
 x86_io_ppi_control: db #9B
@@ -503,8 +495,6 @@ x86_io_keyboard_head: db 0
 x86_io_keyboard_tail: db 0
 x86_io_keyboard_count: db 0
 x86_io_keyboard_last: db 0
-x86_io_keyboard_push_value: db 0
-x86_io_keyboard_overflow: db 0
 
 x86_io_count_in:  dw 0
 x86_io_count_out: dw 0
