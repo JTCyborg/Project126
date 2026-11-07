@@ -346,10 +346,15 @@ P126_IPC_DMA_WINDOW EQU #0000
 P126_IPC_DMA_END    EQU #FF
 
 p126_ipc_dma_send_frame::
+        ld      a,1
+        ld      (p126_ipc_dma_stage),a
         ld      (p126_ipc_dma_source),hl
         ld      (p126_ipc_dma_size),bc
         call    p126_ipc_validate_frame
         ret     c
+
+        ld      a,2
+        ld      (p126_ipc_dma_stage),a
         ld      bc,(p126_ipc_dma_size)
         ld      a,b
         cp      #40
@@ -359,18 +364,32 @@ p126_ipc_dma_send_frame::
         or      a
         jr      z,.p126_dma_size_valid
         jp      .p126_dma_bad_size
+
 .p126_dma_size_valid:
+        ld      a,3
+        ld      (p126_ipc_dma_stage),a
         ld      a,P126_CMD_HOST_FRAME
         call    p126_ipc_send_command
         ret     c
+
+        ld      a,4
+        ld      (p126_ipc_dma_stage),a
         ld      hl,(p126_ipc_dma_source)
         ld      bc,(p126_ipc_dma_size)
         ld      de,P126_IPC_DMA_WINDOW
         di
         ldir
+
+        ld      a,5
+        ld      (p126_ipc_dma_stage),a
         ld      a,P126_IPC_DMA_END
         out     (P126_GSCOM),a
-        jp      p126_ipc_wait_cbit_clear
+        call    p126_ipc_wait_cbit_clear
+        ret     c
+        xor     a
+        ld      (p126_ipc_dma_stage),a
+        ret
+
 .p126_dma_bad_size:
         ld      a,P126_STATUS_BAD_FRAME
         scf
@@ -378,3 +397,6 @@ p126_ipc_dma_send_frame::
 
 p126_ipc_dma_source: dw 0
 p126_ipc_dma_size:   dw 0
+; 0=success/not started, 1=local frame validation, 2=DMA size,
+; 3=E0/READY handshake, 4=payload copy, 5=FF/completion acknowledgement.
+p126_ipc_dma_stage:  db 0
