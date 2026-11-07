@@ -305,25 +305,25 @@ p126_bios_restore_atm_video:
         call    p126_atm_video_init
         ret
 
-.p126_bios_bad_selection:
+p126_bios_bad_selection:
         ld      a,1
         jr      p126_bios_fail
-.p126_bios_bad_file_type:
+p126_bios_bad_file_type:
         ld      a,2
         jr      p126_bios_fail
-.p126_bios_file_not_found:
+p126_bios_file_not_found:
         ld      a,3
         jr      p126_bios_fail
-.p126_bios_bad_descriptor:
+p126_bios_bad_descriptor:
         ld      a,4
         jr      p126_bios_fail
-.p126_bios_bad_size:
+p126_bios_bad_size:
         ld      a,5
         jr      p126_bios_fail
-.p126_bios_sector_error:
+p126_bios_sector_error:
         ld      a,6
         jr      p126_bios_fail
-.p126_bios_transport_error:
+p126_bios_transport_error:
         ld      a,7
 .p126_bios_fail:
         ld      (p126_bios_error),a
