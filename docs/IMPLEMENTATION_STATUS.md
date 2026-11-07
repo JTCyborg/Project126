@@ -541,3 +541,13 @@ User-provided physical target log (09:52:27) validates the corrected MPAGEX page
 - This result supersedes earlier page-42 FAIL/PENDING entries and the misleading reverse result with CRC 7C1C. Keep those earlier entries as chronology, but treat this section as the final status for the 274-byte production-page smoke test.
 - Not yet proven: maximum-size frame, fragmentation/reassembly, sustained multi-frame streaming, error/recovery, application service dispatch, VGA frame delivery, BIOS transfer and full x86 execution.
 - Next: retain the now hardware-proven page-42 DMA mapping and protocol unchanged; extend validation to maximum-size frames, then fragment metadata/sequence/CRC integrity and sustained streaming stress.
+
+
+## 2026-11-07 — maximum-size DMA frame test added
+
+- Added the next test after the physical 274-byte production-page-42 bidirectional HARDWARE PASS: one full 16 KiB ABI 1.0 frame in each DMA direction.
+- ATM request and NeoGS response both declare payload length 3FEEh (16366 bytes), sequence 0002h, and carry a repeating 00h..FFh pattern across the complete payload. Both endpoints calculate/validate CRC-16/CCITT-FALSE over the entire frame; ATM also compares every reverse payload byte.
+- ATM uses one shared 16 KiB buffer at C000h..FFFFh on RAM page 0, reusing the TR-DOS staging window sequentially for TX and RX. No second 16 KiB buffer is allocated.
+- NeoGS validates the forward DMA address readback at 10C000h (108000h + 4000h). Reverse DMA readback is checked at 10C001h (one documented dummy read + 4000h data bytes).
+- Existing transport sequence, physical page 42h, MPAGEX #10/RRCA, DMA module 1, host aperture and dummy-read rules are unchanged.
+- **IMPLEMENTED / BUILD PENDING / HARDWARE PENDING.** Do not mark the 16 KiB test PASS until CI assembly/package succeeds and the target log confirms both complete frame checks and both exact address readbacks.
