@@ -62,6 +62,7 @@ x86_decode_modrm16:
         call    x86_cpu_fetch16
         ret     c
         ld      (x86_ea_offset),hl
+        call    x86_modrm_apply_segment_override
         or      a
         ret
 
@@ -125,6 +126,7 @@ x86_decode_modrm16:
         jr      z,.disp8
         cp      2
         jr      z,.disp16
+        call    x86_modrm_apply_segment_override
         or      a
         ret
 
@@ -140,6 +142,7 @@ x86_decode_modrm16:
         ld      hl,(x86_ea_offset)
         add     hl,de
         ld      (x86_ea_offset),hl
+        call    x86_modrm_apply_segment_override
         or      a
         ret
 
@@ -149,11 +152,22 @@ x86_decode_modrm16:
         ld      de,(x86_ea_offset)
         add     hl,de
         ld      (x86_ea_offset),hl
+        call    x86_modrm_apply_segment_override
         or      a
         ret
 
 x86_modrm_set_ss:
         ld      hl,(x86_reg_ss)
+        ld      (x86_ea_segment),hl
+        ret
+
+; Replace the ModR/M default segment only when a segment override prefix
+; was present for the current instruction.
+x86_modrm_apply_segment_override:
+        ld      a,(x86_exec_prefix_seg)
+        or      a
+        ret     z
+        call    x86_exec_get_data_segment
         ld      (x86_ea_segment),hl
         ret
 
