@@ -69,6 +69,11 @@ x86_cpu_step:
         cp      #A4
         jp      c,x86_exec_moffs
 .not_moffs:
+        cp      #60
+        jp      c,.not_jcc
+        cp      #80
+        jp      c,x86_exec_jcc
+.not_jcc:
         cp      #50
         jp      c,.not_push_pop_reg
         cp      #60
@@ -92,6 +97,170 @@ x86_cpu_step:
         jp      x86_exec_mov_imm_reg
 .not_mov_imm_reg:
         scf
+        ret
+
+; 60-6F are the undocumented conditional-branch aliases used by PCem's
+; 8086 execution path; 70-7F are the documented Jcc encodings.
+; All forms consume a signed 8-bit displacement, whether taken or not.
+x86_exec_jcc:
+        ld      a,(x86_exec_opcode)
+        and     #0F
+        ld      (x86_exec_jcc_condition),a
+        call    x86_cpu_fetch8
+        ret     c
+        ld      (x86_exec_jcc_displacement),a
+        call    x86_exec_jcc_test
+        or      a
+        ret     z
+
+        ld      a,(x86_exec_jcc_displacement)
+        ld      e,a
+        ld      d,0
+        bit     7,e
+        jr      z,.jcc_add
+        dec     d
+.jcc_add:
+        ld      hl,(x86_reg_ip)
+        add     hl,de
+        ld      (x86_reg_ip),hl
+        or      a
+        ret
+
+; A=condition nibble; returns A=1 when the condition is true, else A=0.
+x86_exec_jcc_test:
+        ld      hl,(x86_reg_flags)
+        ld      a,(x86_exec_jcc_condition)
+        cp      0
+        jr      nz,.jcc_no
+        bit     3,h
+        jr      nz,.jcc_yes
+        jr      .jcc_no
+.jcc_no:
+        ld      a,(x86_exec_jcc_condition)
+        cp      1
+        jr      nz,.jcc_b
+        bit     3,h
+        jr      z,.jcc_yes
+        jr      .jcc_no
+.jcc_b:
+        cp      2
+        jr      nz,.jcc_ae
+        bit     0,l
+        jr      nz,.jcc_yes
+        jr      .jcc_no
+.jcc_ae:
+        cp      3
+        jr      nz,.jcc_e
+        bit     0,l
+        jr      z,.jcc_yes
+        jr      .jcc_no
+.jcc_e:
+        cp      4
+        jr      nz,.jcc_ne
+        bit     6,l
+        jr      nz,.jcc_yes
+        jr      .jcc_no
+.jcc_ne:
+        cp      5
+        jr      nz,.jcc_be
+        bit     6,l
+        jr      z,.jcc_yes
+        jr      .jcc_no
+.jcc_be:
+        cp      6
+        jr      nz,.jcc_a
+        bit     0,l
+        jr      nz,.jcc_yes
+        bit     6,l
+        jr      nz,.jcc_yes
+        jr      .jcc_no
+.jcc_a:
+        cp      7
+        jr      nz,.jcc_s
+        bit     0,l
+        jr      nz,.jcc_no
+        bit     6,l
+        jr      z,.jcc_yes
+        jr      .jcc_no
+.jcc_s:
+        cp      8
+        jr      nz,.jcc_ns
+        bit     7,l
+        jr      nz,.jcc_yes
+        jr      .jcc_no
+.jcc_ns:
+        cp      9
+        jr      nz,.jcc_p
+        bit     7,l
+        jr      z,.jcc_yes
+        jr      .jcc_no
+.jcc_p:
+        cp      10
+        jr      nz,.jcc_np
+        bit     2,l
+        jr      nz,.jcc_yes
+        jr      .jcc_no
+.jcc_np:
+        cp      11
+        jr      nz,.jcc_l
+        bit     2,l
+        jr      z,.jcc_yes
+        jr      .jcc_no
+.jcc_l:
+        cp      12
+        jr      nz,.jcc_ge
+        bit     7,l
+        jr      nz,.jcc_l_sf1
+        bit     3,h
+        jr      nz,.jcc_yes
+        jr      .jcc_no
+.jcc_l_sf1:
+        bit     3,h
+        jr      z,.jcc_yes
+        jr      .jcc_no
+.jcc_ge:
+        cp      13
+        jr      nz,.jcc_le
+        bit     7,l
+        jr      nz,.jcc_ge_sf1
+        bit     3,h
+        jr      z,.jcc_yes
+        jr      .jcc_no
+.jcc_ge_sf1:
+        bit     3,h
+        jr      nz,.jcc_yes
+        jr      .jcc_no
+.jcc_le:
+        cp      14
+        jr      nz,.jcc_g
+        bit     6,l
+        jr      nz,.jcc_yes
+        bit     7,l
+        jr      nz,.jcc_le_sf1
+        bit     3,h
+        jr      nz,.jcc_yes
+        jr      .jcc_no
+.jcc_le_sf1:
+        bit     3,h
+        jr      z,.jcc_yes
+        jr      .jcc_no
+.jcc_g:
+        ; JG = !ZF && (SF == OF).
+        bit     6,l
+        jr      nz,.jcc_no
+        bit     7,l
+        jr      nz,.jcc_g_sf1
+        bit     3,h
+        jr      z,.jcc_yes
+        jr      .jcc_no
+.jcc_g_sf1:
+        bit     3,h
+        jr      nz,.jcc_yes
+.jcc_no:
+        xor     a
+        ret
+.jcc_yes:
+        ld      a,1
         ret
 
 ; 50-57 PUSH r16, 58-5F POP r16.
@@ -467,6 +636,8 @@ x86_exec_is_dec: db 0
 x86_exec_stack_is_pop: db 0
 x86_exec_stack_offset: dw 0
 x86_exec_stack_value: dw 0
+x86_exec_jcc_condition: db 0
+x86_exec_jcc_displacement: db 0
 x86_exec_moffs_opcode: db 0
 x86_exec_moffs_offset: dw 0
 x86_exec_moffs_value: dw 0
