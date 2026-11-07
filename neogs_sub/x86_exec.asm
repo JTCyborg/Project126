@@ -114,6 +114,10 @@ x86_cpu_step:
         cp      #98
         jp      c,x86_exec_xchg_ax_reg
 .not_xchg_ax_reg:
+        cp      #86
+        jp      z,x86_exec_xchg_rm_reg
+        cp      #87
+        jp      z,x86_exec_xchg_rm_reg
         cp      #8D
         jp      z,x86_exec_lea
         cp      #88
@@ -191,6 +195,41 @@ x86_exec_mov_rm_reg:
 .mov_r16_from_rm16:
         call    x86_modrm_read_rm16
         jp      x86_modrm_write_reg16
+
+; 86/87 XCHG r/m8/16,r8/16. FLAGS are not modified.
+; Memory forms use the same guest-memory accessors as MOV.
+x86_exec_xchg_rm_reg:
+        ld      a,(x86_exec_opcode)
+        ld      (x86_exec_xchg_opcode),a
+        call    x86_decode_modrm16
+        ret     c
+        ld      a,(x86_exec_xchg_opcode)
+        bit     0,a
+        jr      nz,.xchg_word
+
+        call    x86_modrm_read_rm8
+        ld      (x86_exec_xchg_rm_byte),a
+        ld      a,(x86_modrm_reg)
+        call    x86_modrm_read_reg8
+        ld      (x86_exec_xchg_reg_byte),a
+        jp      x86_exec_xchg_commit8
+
+.xchg_word:
+        call    x86_modrm_read_rm16
+        ld      (x86_exec_xchg_rm_word),hl
+        call    x86_modrm_read_reg16
+        ld      (x86_exec_xchg_reg_word),hl
+        ld      hl,(x86_exec_xchg_reg_word)
+        call    x86_modrm_write_rm16
+        ld      hl,(x86_exec_xchg_rm_word)
+        jp      x86_modrm_write_reg16
+
+x86_exec_xchg_commit8:
+        ld      a,(x86_exec_xchg_reg_byte)
+        call    x86_modrm_write_rm8
+        ld      c,(x86_exec_xchg_rm_byte)
+        ld      a,(x86_modrm_reg)
+        jp      x86_modrm_write_reg8
 
 ; 8D LEA r16,m. The source must be a memory effective address;
 ; the segment is not used and no memory read is performed.
@@ -1251,6 +1290,11 @@ x86_exec_test_result: db 0,0
 x86_exec_test_immediate: dw 0
 x86_exec_mov_opcode: db 0
 x86_exec_mov_byte: db 0
+x86_exec_xchg_opcode: db 0
+x86_exec_xchg_rm_byte: db 0
+x86_exec_xchg_reg_byte: db 0
+x86_exec_xchg_rm_word: dw 0
+x86_exec_xchg_reg_word: dw 0
 x86_exec_jcc_condition: db 0
 x86_exec_jcc_displacement: db 0
 x86_exec_moffs_opcode: db 0
