@@ -443,19 +443,19 @@ x86_io_dma_write8:
         cp      8
         jr      c,.dma_write_channel
         cp      8
-        jr      z,.dma_write_command
+        jp      z,.dma_write_command
         cp      9
-        jr      z,.dma_write_request
+        jp      z,.dma_write_request
         cp      #0A
-        jr      z,.dma_write_single_mask
+        jp      z,.dma_write_single_mask
         cp      #0B
-        jr      z,.dma_write_mode
+        jp      z,.dma_write_mode
         cp      #0C
-        jr      z,.dma_write_clear_flipflop
+        jp      z,.dma_write_clear_flipflop
         cp      #0D
-        jr      z,.dma_write_master_clear
+        jp      z,.dma_write_master_clear
         cp      #0E
-        jr      z,.dma_write_clear_mask
+        jp      z,.dma_write_clear_mask
         ; 0Fh: write all four channel mask bits.
         ld      a,(x86_io_dma_write_value)
         and     #0F
