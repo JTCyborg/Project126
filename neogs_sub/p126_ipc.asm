@@ -579,17 +579,17 @@ p126_ngs_image_begin:
         call    p126_ngs_ipc_log
         ld      a,(#C00C)
         cp      6
-        jr      nz,.image_begin_bad
+        jp      nz,.image_begin_bad
         ld      a,(#C015)
         or      a
-        jr      nz,.image_begin_bad
+        jp      nz,.image_begin_bad
 
         ; Message ID is currently 0001h for each serialized image transaction.
         ld      hl,(#C012)
         ld      de,1
         or      a
         sbc     hl,de
-        jr      nz,.image_begin_bad
+        jp      nz,.image_begin_bad
 
         ld      a,(#C014)
         cp      P126_IMAGE_KIND_SYSBIOS
@@ -605,7 +605,7 @@ p126_ngs_image_begin:
         ld      de,P126_IMAGE_SYSBIOS_SIZE
         or      a
         sbc     hl,de
-        jr      nz,.image_begin_bad
+        jp      nz,.image_begin_bad
         ld      a,#08                  ; WIN3 selector for physical page 10h
         ld      (p126_ngs_image_dest_selector),a
         jr      .image_begin_common
@@ -614,7 +614,7 @@ p126_ngs_image_begin:
         ld      hl,(#C016)
         ld      a,h
         or      l
-        jr      z,.image_begin_bad
+        jp      z,.image_begin_bad
         ld      de,P126_IMAGE_X86IO_MAX_SIZE
         or      a
         sbc     hl,de
@@ -630,7 +630,7 @@ p126_ngs_image_begin:
         ld      hl,(#C016)
         ld      a,h
         or      l
-        jr      z,.image_begin_bad
+        jp      z,.image_begin_bad
         ld      de,P126_IMAGE_X86ALU_MAX_SIZE
         or      a
         sbc     hl,de
@@ -821,18 +821,18 @@ p126_ngs_image_finish:
         call    p126_ngs_ipc_log
         ld      a,(p126_ngs_image_active)
         or      a
-        jr      z,.image_finish_bad
+        jp      z,.image_finish_bad
         ld      a,(p126_ngs_image_received)
         or      a
-        jr      z,.image_finish_bad
+        jp      z,.image_finish_bad
         ld      a,(#C00C)
         cp      2
-        jr      nz,.image_finish_bad
+        jp      nz,.image_finish_bad
         ld      hl,(#C012)
         ld      de,(p126_ngs_image_id)
         or      a
         sbc     hl,de
-        jr      nz,.image_finish_bad
+        jp      nz,.image_finish_bad
 
         xor     a
         ld      (p126_ngs_image_active),a
