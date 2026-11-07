@@ -1973,13 +1973,18 @@ x86_exec_group1_immediate:
         call    x86_modrm_read_rm8
         ret     c
         ld      (x86_exec_group1_lhs8),a
+
         ld      a,(x86_exec_group1_imm8)
         ld      c,a
         ld      a,(x86_exec_group1_lhs8)
         call    x86_exec_group1_apply8
+        ld      (x86_exec_group1_lhs8),a
         ld      a,(x86_exec_group1_is_cmp)
         or      a
         ret     nz
+        ; The CMP selector test above uses A; restore the ALU result before
+        ; committing the r/m8 destination (otherwise every 80h result is 00h).
+        ld      a,(x86_exec_group1_lhs8)
         jp      x86_modrm_write_rm8
 
 .group1_word_immediate:

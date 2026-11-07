@@ -1469,3 +1469,13 @@ The temporary diagnostic now targets this second terminator and runs four instru
 The target reached the second table terminator at `F000:E0BA`, read `FF`, and executed `XOR DH,03` followed by `JNZ`. It returned to `F000:E06E` with `SI=E0BB`, `DX=00B9`, and `FLAGS=0006`; this means the second XOR result was nonzero, so the loop state was not as expected. The trace alone does not identify whether the first XOR failed to set DH or whether DH was subsequently overwritten.
 
 The temporary diagnostic is therefore moved back to the first terminator and now stops after its four-instruction sequence (`CMP`, `JZ`, `XOR DH,03`, `JNZ`). Immediately after the first loop branch, the expected state is `DH=03` (with DL still `61h`, so `DX=0361h`). This isolates the first XOR result before the second table executes. No functional CPU or BIOS behavior has been changed.
+
+
+## 2026-11-07 — Fix 8086 group-1 immediate byte writeback
+
+- Source-level root cause confirmed in x86_exec_group1_immediate: after x86_exec_group1_apply8 returned the ALU result in A, the handler loaded x86_exec_group1_is_cmp into A and tested it. For every non-CMP operation this replaced the result with zero before x86_modrm_write_rm8.
+- This explains the BIOS trace exactly: XOR DH,03 generated the correct nonzero flags, but the destination received 00h, leaving DX unchanged at 0061h.
+- Fixed the writeback sequence by restoring the saved ALU result after the CMP-only test and before the ModR/M write. The same correction applies to all 80h/82h byte-immediate arithmetic and logic operations, not only BIOS XOR.
+- The temporary expanded diagnostic snapshot was removed because the resident X86CORE image has only four bytes of headroom under its 16 KiB limit. The existing BIOS stop/register trace is sufficient to verify the corrected DX value without increasing resident size.
+- The terminal marker now targets the second table terminator (SI=E0BB), rather than stopping after the first table. Expected corrected state after the second XOR/JNZ: CS:IP=F000:E0C4, DX=00B9, FLAGS with ZF=1. Reaching E0C4 proves both port tables exited and BIOS entered RAM initialization.
+- Build/package and physical ATM/NeoGS validation are pending. This is a CPU semantic fix; no BIOS POST pass is claimed.

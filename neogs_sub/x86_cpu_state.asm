@@ -589,11 +589,11 @@ x86_bios_trace_marker_arm:
         or      a
         sbc     hl,de
         ret     nz
-        ; Stop after the first table's CMP/JZ/XOR DH,03/JNZ sequence.
-        ; This captures DH immediately after the first XOR, before the
-        ; second table can change DL or issue any further OUT instructions.
+        ; Stop after the second table's CMP/JZ/XOR DH,03/JNZ sequence.
+        ; This verifies that both BIOS tables complete and that the loop
+        ; exits into the first RAM-initialization instruction at E0C4.
         ld      hl,(x86_reg_si)
-        ld      de,#E0B0
+        ld      de,#E0BB
         or      a
         sbc     hl,de
         ret     nz
