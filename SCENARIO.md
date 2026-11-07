@@ -701,3 +701,13 @@ This is diagnostic instrumentation; the next ATM log must report the letter afte
 
 
 - **CI verification:** GitHub Actions run [42352359828](https://github.com/JTCyborg/Project126/actions/runs/42352359828), source commit `7601e8e58c8c82a0bce4697de3cdcb824f743685`, completed with SUCCESS. The ATM/NeoGS assembly and TR-DOS image packaging step passed. This confirms build correctness only; hardware rerun is still required.
+
+
+### 2026-11-07 — DMA проходит, NeoGS отклоняет magic
+
+- Новый аппаратный лог подтверждает, что локальный ATM validator прошёл (CRC CALCULATED=FF5B FRAME CRC=FF5B, FRAME VALID), NeoGS принял E0, включил DMA, ATM выполнил копирование и FF, NeoGS остановил DMA и освободил CBIT.
+- NeoGS затем вернул DMA FRAME REJECTED STATUS=01 (BAD_MAGIC). Значит, ошибка находится после DMA-передачи — в содержимом, видимом через WIN3/page 42, либо в отображении/адресации staging buffer. CRC/handshake больше не являются текущим препятствием.
+- Добавлена временная диагностика в neogs_sub/p126_ipc.asm: сразу после остановки DMA и отображения страницы 42 выводятся первые четыре байта, реально прочитанные из C000h..C003h как [NGS] DMA RX FIRST4=...
+- По следующему логу: 50313236 означает, что magic P126 присутствует; тогда надо проверять путь/содержимое при валидации. 00000000, FFFFFFFF или другие значения покажут, что DMA-буфер не содержит ожидаемые первые байты, и позволят локализовать физический адрес/направление/окно.
+- Пока не менялись DMA-регистры, адрес 108000h, ABI или handshake: сначала снимаем фактические байты, не подменяя диагностику предположением.
+- Проверка: аппаратный лог пользователя подтверждает завершение транзакции, но frame validation пока FAIL. Временная диагностическая сборка должна пройти CI до следующего аппаратного теста.
