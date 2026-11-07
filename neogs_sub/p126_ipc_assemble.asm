@@ -18,6 +18,10 @@ p126_ngs_ipc_module_end:
 ; The production resident image defines this in p126_overlay_gate.asm.
 p126_overlay_current_selector: db #80
 
+; Standalone IPC assembly substitutes a local no-op for the production gate target.
+x86_io_reset:
+        ret
+
 x86_bios_trace_event_status: db 0
 x86_bios_trace_event_cs:     dw 0
 x86_bios_trace_event_ip:     dw 0
