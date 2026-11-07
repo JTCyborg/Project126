@@ -1129,7 +1129,7 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 - [ ] Добавить проверки размера/пересечений, page-switch restore, запрет вызова функции после выгрузки overlay, и тесты вложенных/повторных вызовов.
 - [ ] Перенести расширяемые device models (PIC/PIT/DMA/VGA/RTC/IDE) в отдельные overlay-модули после проверки менеджера. Не увеличивать лимит X86CORE.C и не менять физическую карту страниц без отдельного решения.
 
-Причина приоритета: X86CORE.C теперь занимает 15610 из 16384 байт; осталось 774 байта. Следующий полноценный контроллер нельзя безопасно добавлять в resident image — его следует выносить в отдельный overlay после завершения allocator/manifest/loader и проверки call gate на плате.
+Причина приоритета: X86CORE.C теперь занимает 15632 из 16384 байт; осталось 752 байта. Следующий полноценный контроллер нельзя безопасно добавлять в resident image — его следует выносить в отдельный overlay после завершения allocator/manifest/loader и проверки call gate на плате.
 
 
 ## 2026-11-07 — Overlay Manager: source audit and design baseline
@@ -1208,17 +1208,17 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 - Реализация 8086 ALU/flags (1,175 байт) вынесена из resident image в отдельный fixed-origin файл X86ALU.C, logical origin 8000h, physical page05 / MPAG selector82h. X86IO остаётся на page04 / selector02h.
 - Все 10 ALU entry points, используемых x86_exec (ADD/SUB/ADC/SBB/LOGIC 8/16), теперь resident wrappers через общий WIN2 gate. Внутренние вызовы и helpers внутри ALU overlay остаются прямыми.
 - Добавлен IMAGE kind02 для X86ALU. ATM использует общий fixed-profile loader: открывает X86IO.C и X86ALU.C, передаёт оба через ABI1.0 DMA. NeoGS копирует в page04/page05 и выполняет побайтный readback.
-- IMAGE_FINISH для X86ALU вызывает x86_alu_overlay_probe через resident gate, проверяет A=#A5 и восстановление WIN2 selector #02; только затем выставляет X86ALU_READY. BIOS теперь ждёт X86IO_READY, X86ALU_READY и BIOS_IMAGE_READY.
+- IMAGE_FINISH для X86ALU вызывает x86_alu_overlay_probe через resident gate, проверяет input A=#3C/C=1/HL=#1234, output A=#A5/HL=#5AA5 и восстановление WIN2 selector #02; только затем выставляет X86ALU_READY. BIOS теперь ждёт X86IO_READY, X86ALU_READY и BIOS_IMAGE_READY.
 - TR-DOS образ включает X86ALU.C, build script проверяет размер 1..4096 байт, CI artifact публикует файл.
-- BUILD PASS: GitHub Actions run [42398846093](https://github.com/JTCyborg/Project126/actions/runs/42398846093), commit 94ac5ba2a2cbb338af0e0bb1af8b1efd826a469a. X86CORE 15,610/16,384 bytes (774 free); X86IO 796/4,096; X86ALU 1,175/4,096. All assembly and TR-DOS packaging steps: 0 errors, 0 warnings.
+- BUILD PASS: GitHub Actions run [42399458157](https://github.com/JTCyborg/Project126/actions/runs/42399458157), commit 705a0d5e41909a2cd42654f9095d7dfa43a57669. X86CORE 15,632/16,384 bytes (752 free); X86IO 796/4,096; X86ALU 1,187/4,096. All assembly and TR-DOS packaging steps: 0 errors, 0 warnings.
 - Физическая загрузка X86ALU, probe и выполнение арифметических инструкций на ATM/NeoGS пока не подтверждены. Это второй pinned overlay, не dynamic allocator/module manager.
 
 
 ## 2026-11-07 — X86ALU overlay checkpoint
 
-- X86ALU (1,175 bytes) is now a separate fixed-origin module at logical 8000h, physical page05/selector82. X86IO remains page04/selector02 (796 bytes).
+- X86ALU (1,187 bytes) is now a separate fixed-origin module at logical 8000h, physical page05/selector82. X86IO remains page04/selector02 (796 bytes).
 - Ten ALU entry points used by x86_exec route through resident wrappers and the common WIN2 gate; internal ALU helper calls remain direct inside the overlay.
 - IMAGE kind02 and a shared ATM fixed-profile loader now transfer X86ALU.C after X86IO.C. NeoGS copies to page05 and verifies every byte through WIN3.
 - IMAGE_FINISH runs the ALU probe through the gate, verifies A=A5 and that the previous page04 selector is restored, then publishes X86ALU_READY. BIOS now waits for X86IO_READY, X86ALU_READY and BIOS_IMAGE_READY.
-- TR-DOS packaging and CI artifact include X86ALU.C. BUILD PASS: run [42398846093](https://github.com/JTCyborg/Project126/actions/runs/42398846093), commit 94ac5ba2a2cbb338af0e0bb1af8b1efd826a469a. X86CORE 15,610/16,384 (774 free), X86IO 796/4,096, X86ALU 1,175/4,096; 0 errors, 0 warnings.
+- TR-DOS packaging and CI artifact include X86ALU.C. BUILD PASS: run [42399458157](https://github.com/JTCyborg/Project126/actions/runs/42399458157), commit 705a0d5e41909a2cd42654f9095d7dfa43a57669. X86CORE 15,632/16,384 (752 free), X86IO 796/4,096, X86ALU 1,187/4,096; 0 errors, 0 warnings.
 - Physical X86ALU transfer, probe and arithmetic execution remain unverified. Dynamic allocator/manifest and generic module loading remain the next manager tasks.
