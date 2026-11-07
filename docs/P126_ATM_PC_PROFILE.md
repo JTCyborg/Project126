@@ -58,7 +58,7 @@ The profile reserves the following PC/XT-style interfaces. They are guest-visibl
 | Port range | Model / purpose | Status |
 |---|---|---|
 | 0000–000F | 8237-compatible DMA controller | Reserved decode; implementation pending |
-| 0020–0021 | 8259-compatible master PIC | Partial register model: ICW sequence, IMR, IRR/ISR readback and EOI; IRQ delivery pending |
+| 0020–0021 | 8259-compatible master PIC | Partial: register model, fixed-priority arbitration, keyboard IRQ1 request and CPU acknowledge; PIT IRQ0 and external keyboard producer pending |
 | 0040–0043 | 8253-compatible PIT | Reserved decode; implementation pending |
 | 0060–0063 | 8255-compatible PPI / XT keyboard and system control | Reserved decode; keyboard events originate at ATM and arrive through IPC |
 | 0070–0071 | DS12887-compatible RTC/CMOS extension | Custom ATM-PC extension; time source is ATM |
