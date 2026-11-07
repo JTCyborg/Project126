@@ -53,6 +53,8 @@ x86_cpu_step:
         jp      z,x86_exec_cbw
         cp      #99
         jp      z,x86_exec_cwd
+        cp      #9A
+        jp      z,x86_exec_call_far_imm
         cp      #9C
         jp      z,x86_exec_pushf
         cp      #9D
@@ -109,6 +111,65 @@ x86_cpu_step:
         jp      x86_exec_mov_imm_reg
 .not_mov_imm_reg:
         scf
+        ret
+
+; 9A CALL FAR ptr16:16. The return IP is the address after both immediates.
+; Stack layout after the call is [SS:SP]=return IP, [SS:SP+2]=old CS.
+x86_exec_call_far_imm:
+        call    x86_cpu_fetch16
+        ret     c
+        ld      (x86_exec_target_ip),hl
+        call    x86_cpu_fetch16
+        ret     c
+        ld      (x86_exec_target_cs),hl
+
+        ld      hl,(x86_reg_sp)
+        ld      de,4
+        or      a
+        sbc     hl,de
+        ld      (x86_exec_stack_offset),hl
+        ld      (x86_exec_stack_new_sp),hl
+
+        ; Store return IP at new SS:SP.
+        ld      hl,(x86_reg_ip)
+        ld      (x86_exec_stack_value),hl
+        call    x86_exec_stack_make_address
+        ld      a,(x86_exec_stack_value)
+        call    x86_guest_mem_write8
+        ret     c
+        ld      hl,(x86_exec_stack_offset)
+        inc     hl
+        ld      (x86_exec_stack_offset),hl
+        call    x86_exec_stack_make_address
+        ld      a,(x86_exec_stack_value+1)
+        call    x86_guest_mem_write8
+        ret     c
+
+        ; Store old CS at new SS:SP+2.
+        ld      hl,(x86_exec_stack_offset)
+        inc     hl
+        ld      (x86_exec_stack_offset),hl
+        ld      hl,(x86_reg_cs)
+        ld      (x86_exec_stack_value),hl
+        call    x86_exec_stack_make_address
+        ld      a,(x86_exec_stack_value)
+        call    x86_guest_mem_write8
+        ret     c
+        ld      hl,(x86_exec_stack_offset)
+        inc     hl
+        ld      (x86_exec_stack_offset),hl
+        call    x86_exec_stack_make_address
+        ld      a,(x86_exec_stack_value+1)
+        call    x86_guest_mem_write8
+        ret     c
+
+        ld      hl,(x86_exec_stack_new_sp)
+        ld      (x86_reg_sp),hl
+        ld      hl,(x86_exec_target_cs)
+        ld      (x86_reg_cs),hl
+        ld      hl,(x86_exec_target_ip)
+        ld      (x86_reg_ip),hl
+        or      a
         ret
 
 ; 98 CBW: sign-extend AL into AH. 99 CWD: sign-extend AX into DX.
@@ -737,6 +798,8 @@ x86_exec_is_dec: db 0
 x86_exec_stack_is_pop: db 0
 x86_exec_stack_offset: dw 0
 x86_exec_stack_value: dw 0
+x86_exec_stack_new_sp: dw 0
+x86_exec_target_cs: dw 0
 x86_exec_jcc_condition: db 0
 x86_exec_jcc_displacement: db 0
 x86_exec_moffs_opcode: db 0
