@@ -712,6 +712,49 @@ p126_ngs_image_fragment:
         or      c
         jr      nz,.image_verify_loop
 
+        ; Capture raw source and installed-slot bytes before the DMA frame is
+        ; replaced by IMAGE_FINISH. This distinguishes bad image content from
+        ; a page-10 copy or guest-address mapper error.
+        push    af
+        push    bc
+        push    de
+        push    hl
+        ld      a,#21                  ; DMA staging page 42h
+        out     (P126_NGS_MPAGEX_PORT),a
+        ld      a,(#C077)              ; payload offset 005Bh
+        ld      (p126_ngs_bios_diag_src_005b),a
+        ld      a,(#E00C)              ; payload offset 1FF0h
+        ld      (p126_ngs_bios_diag_src_1ff0),a
+        ld      a,#08                  ; installed physical page 10h
+        out     (P126_NGS_MPAGEX_PORT),a
+        ld      a,(#C05B)              ; installed BIOS offset 005Bh
+        ld      (p126_ngs_bios_diag_dst_005b),a
+        ld      a,(#DFF0)              ; installed BIOS offset 1FF0h
+        ld      (p126_ngs_bios_diag_dst_1ff0),a
+        ld      hl,p126_ngs_bios_diag_log
+        call    p126_ngs_ipc_log
+        ld      a,(p126_ngs_bios_diag_src_005b)
+        call    p126_ngs_ipc_log_hex_byte_inline
+        ld      hl,p126_ngs_bios_diag_dst_log
+        call    p126_ngs_ipc_log
+        ld      a,(p126_ngs_bios_diag_dst_005b)
+        call    p126_ngs_ipc_log_hex_byte_inline
+        ld      hl,p126_ngs_bios_diag_vector_src_log
+        call    p126_ngs_ipc_log
+        ld      a,(p126_ngs_bios_diag_src_1ff0)
+        call    p126_ngs_ipc_log_hex_byte_inline
+        ld      hl,p126_ngs_bios_diag_vector_dst_log
+        call    p126_ngs_ipc_log
+        ld      a,(p126_ngs_bios_diag_dst_1ff0)
+        call    p126_ngs_ipc_log_hex_byte_inline
+        call    p126_ngs_ipc_log_crlf
+        ld      a,#21                  ; restore production DMA page 42h
+        out     (P126_NGS_MPAGEX_PORT),a
+        pop     hl
+        pop     de
+        pop     bc
+        pop     af
+
         ; Restore the production DMA page mapping for subsequent IPC frames.
         ld      a,#21
         out     (P126_NGS_MPAGEX_PORT),a
@@ -786,6 +829,14 @@ p126_ngs_image_fragment_log: db "[NGS] SYSBIOS IMAGE FRAGMENT",13,10,0
 p126_ngs_image_finish_log:   db "[NGS] SYSBIOS IMAGE FINISH",13,10,0
 p126_ngs_image_installed_log: db "[NGS] SYSBIOS IMAGE INSTALLED AT PAGE 10",13,10,0
 p126_ngs_image_verify_ok_log: db "[NGS] SYSBIOS PAGE 10 READBACK MATCH",13,10,0
+p126_ngs_bios_diag_log: db "[BIOS IMAGE] SRC@005B=",0
+p126_ngs_bios_diag_dst_log: db " DST@005B=",0
+p126_ngs_bios_diag_vector_src_log: db " SRC@1FF0=",0
+p126_ngs_bios_diag_vector_dst_log: db " DST@1FF0=",0
+p126_ngs_bios_diag_src_005b: db 0
+p126_ngs_bios_diag_dst_005b: db 0
+p126_ngs_bios_diag_src_1ff0: db 0
+p126_ngs_bios_diag_dst_1ff0: db 0
 p126_ngs_image_begin_rejected_log: db "[NGS] SYSBIOS IMAGE BEGIN REJECTED",13,10,0
 p126_ngs_image_fragment_rejected_log: db "[NGS] SYSBIOS IMAGE FRAGMENT REJECTED",13,10,0
 p126_ngs_image_finish_rejected_log: db "[NGS] SYSBIOS IMAGE FINISH REJECTED",13,10,0
