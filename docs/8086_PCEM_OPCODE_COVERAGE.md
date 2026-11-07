@@ -8,8 +8,8 @@ Later 80186/286/386 instructions are not part of the target CPU.
 
 - Denominator: 256 possible opcode-byte values in the documented original 8086 opcode map, including the 8087 ESC opcode range and undocumented 8086-compatible values where PCem has an execution path.
 - Numerator: opcode-byte values with a concrete execution path in the Project126 dispatcher.
-- Current numerator: 226.
-- **Opcode-byte dispatch coverage: 226 / 256 = 88.28%.**
+- Current numerator: 230.
+- **Opcode-byte dispatch coverage: 230 / 256 = 89.84%.**
 - This is a source-coverage metric, not a claim of full semantic correctness. ModR/M forms, memory addressing, prefixes, flags, interrupt behavior and corner cases are tracked separately and must also be complete before the CPU is called 100%.
 - An instruction family is not considered complete merely because one opcode in the family is present.
 
@@ -54,6 +54,7 @@ Later 80186/286/386 instructions are not part of the target CPU.
 | 9A | CALL FAR ptr16:16 | `neogs_sub/x86_exec.asm` |
 | 9B | WAIT (PCem 8086 no-op path) | `neogs_sub/x86_exec.asm` |
 | C1–C3 | RET near aliases / RET imm16 | `neogs_sub/x86_exec.asm` |
+| CC–CF | INT3, INT imm8, INTO, IRET | `neogs_sub/x86_exec.asm` + `x86_modrm.asm` |
 | C4–C5 | LES, LDS far-pointer loads | `neogs_sub/x86_exec.asm` + `x86_modrm.asm` |
 | C6–C7 | MOV r/m8/16, immediate (ModR/M /0) | `neogs_sub/x86_exec.asm` + `x86_modrm.asm` |
 | C8–CB | RETF aliases / RETF imm16 | `neogs_sub/x86_exec.asm` |
@@ -86,6 +87,8 @@ The 16 register INC/DEC opcodes were added in commits `75a3e69da4549ffe2f2346b86
 
 ## Decoder foundation
 
+Software interrupt instructions INT3/INT/INTO and IRET (`CCh`–`CFh`) were added in commit `d614503ad5e6cff3d15c957416a1036cabeb2ad8`. Interrupt entry pushes FLAGS|F000, CS and post-instruction IP, clears IF/TF, then loads IP:CS from the guest IVT; IRET restores IP, CS and the 8086 FLAGS image. Asynchronous IRQ/NMI boundary dispatch is still pending.
+
 String opcodes A4h–A7h and AAh–AFh are implemented with SI/DI updates controlled by DF, ES-fixed destinations, and DS/segment-override sources. REP/REPE/REPNE loops decrement CX and apply ZF termination for CMPS/SCAS. Repetition currently runs within one interpreter step; interrupt servicing between individual repeated iterations remains pending.
 
 The instruction entry now consumes segment override (`26h`, `2Eh`, `36h`, `3Eh`), LOCK (`F0h`) and REPNE/REP (`F2h`/`F3h`) prefixes before dispatch. Segment overrides are applied to ModR/M effective addresses and direct-offset/XLAT data accesses. REP state is recorded for string execution; LOCK state is recorded, with no external bus-lock side effect in the single-guest-CPU model. REP string execution is still pending.
@@ -100,7 +103,7 @@ All other original 8086 opcode families remain open, including:
 - remaining ModR/M operand forms and string-specific segment/REP handling;
 - remaining XCHG and MOV variants, segment override and interrupt-shadow edge cases;
 - remaining stack operations and interrupt-shadow handling at instruction boundaries;
-- software interrupts, INTO, IRET and interrupt frame semantics;
+- asynchronous IRQ/NMI delivery and interrupt-shadow boundary handling;
 - string instructions and REP/REPE/REPNE;
 - IN/OUT as virtual guest ports, with no physical NeoGS device I/O;
 - REP string execution, ESC/8087 handling and remaining LOCK semantics;
