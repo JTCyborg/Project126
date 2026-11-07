@@ -206,7 +206,8 @@ x86_io_keyboard_push_impl:
         scf
         ret
 
-; Reset XT keyboard input state and queue the standard BAT completion byte.
+; Reset XT keyboard input state and queue BAT completion. PCem queues
+; the byte first; keyboard_xt_poll() raises IRQ1 asynchronously afterwards.
 x86_io_keyboard_reset_impl:
         xor     a
         ld      (x86_io_keyboard_head),a
@@ -214,7 +215,13 @@ x86_io_keyboard_reset_impl:
         ld      (x86_io_keyboard_count),a
         ld      (x86_io_keyboard_last),a
         ld      a,#AA
-        jp      x86_io_keyboard_push_impl
+        call    x86_io_keyboard_push_impl
+        ret     c
+        ; Defer IRQ1 until the guest releases PB7 acknowledge.
+        ld      a,(x86_io_pic_irr)
+        and     #FD
+        ld      (x86_io_pic_irr),a
+        jp      x86_io_pic_update_pending
 
 ; A=next keyboard byte, or last data latch if FIFO empty.
 x86_io_keyboard_read_impl:
@@ -693,31 +700,40 @@ x86_io_ppi_write8:
         ; Match PCem keyboard_xt_write(61h): detect PB6 rising edge,
         ; store the keyboard PB latch, then process PB7 acknowledge.
         ld      a,(x86_io_ppi_pb)
-        and     #40
         ld      b,a
+        and     #40
         ld      a,(x86_io_ppi_write_value)
         ld      c,a
         and     #40
         jr      z,.ppi_pb_store
         ld      a,b
-        or      a
+        and     #40
         jr      nz,.ppi_pb_store
+        push    bc
         call    x86_io_keyboard_reset_impl
+        pop     bc
 .ppi_pb_store:
         ld      a,c
         ld      (x86_io_ppi_pb),a
         bit     7,a
-        jr      z,.ppi_pb_done
-        ; PCem clears the current data latch and deasserts the keyboard IRQ.
+        jr      z,.ppi_pb_ack_released
+        ; PB7 acknowledges the current data latch/IRQ but does not discard
+        ; queued bytes: PCem's keyboard timer may deliver BAT after ACK.
         xor     a
         ld      (x86_io_keyboard_last),a
-        ld      (x86_io_keyboard_head),a
-        ld      (x86_io_keyboard_tail),a
-        ld      (x86_io_keyboard_count),a
         ld      a,(x86_io_pic_irr)
         and     #FD
         ld      (x86_io_pic_irr),a
         jp      x86_io_pic_update_pending
+.ppi_pb_ack_released:
+        ; Releasing PB7 lets the queued XT BAT byte become IRQ1-visible.
+        bit     7,b
+        jr      z,.ppi_pb_done
+        ld      a,(x86_io_keyboard_count)
+        or      a
+        jr      z,.ppi_pb_done
+        ld      a,1
+        jp      x86_io_pic_raise_impl
 .ppi_pb_done:
         or      a
         ret
