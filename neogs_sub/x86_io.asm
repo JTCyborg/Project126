@@ -76,6 +76,35 @@ x86_io_pic_selftest_impl:
         jp      c,.pic_selftest_fail
         cp      #A5
         jp      nz,.pic_selftest_fail
+        ; Unmasked IRQ1 must set IRR, pend vector 21h, and move to ISR on ACK.
+        ld      a,1
+        call    x86_io_pic_raise_impl
+        jp      c,.pic_selftest_fail
+        ld      a,(x86_pending_irq)
+        cp      1
+        jp      nz,.pic_selftest_fail
+        ld      a,(x86_irq_vector)
+        cp      #21
+        jp      nz,.pic_selftest_fail
+        call    x86_io_pic_ack_impl
+        jp      c,.pic_selftest_fail
+        cp      #21
+        jp      nz,.pic_selftest_fail
+        ld      a,(x86_io_pic_isr)
+        cp      2
+        jp      nz,.pic_selftest_fail
+        ld      a,(x86_io_pic_irr)
+        or      a
+        jp      nz,.pic_selftest_fail
+        ; Specific EOI for IRQ1 clears the acknowledged request.
+        ld      hl,#0020
+        ld      (x86_io_port),hl
+        ld      a,#61
+        call    x86_io_pic_write8
+        jp      c,.pic_selftest_fail
+        ld      a,(x86_io_pic_isr)
+        or      a
+        jp      nz,.pic_selftest_fail
         ; OCW3 selects ISR (0Bh) and IRR (0Ah) for command-port reads.
         ld      hl,#0020
         ld      (x86_io_port),hl
@@ -127,6 +156,10 @@ x86_io_pic_selftest_impl:
         ld      (x86_io_pic_imr),a
         ld      a,#08
         ld      (x86_io_pic_vector_base),a
+        xor     a
+        ld      (x86_pending_irq),a
+        ld      a,8
+        ld      (x86_irq_vector),a
         ld      hl,0
         ld      (x86_io_port),hl
         pop     hl
@@ -153,6 +186,9 @@ x86_io_keyboard_push_impl:
         ld      a,(x86_io_keyboard_count)
         inc     a
         ld      (x86_io_keyboard_count),a
+        ; XT keyboard data-ready edge is IRQ1 on the master PIC.
+        ld      a,1
+        call    x86_io_pic_raise_impl
         or      a
         ret
 .keyboard_push_full:
@@ -330,6 +366,128 @@ x86_io_pic_read8:
         or      a
         ret
 
+; Request an edge-triggered master-PIC IRQ. A=IRQ number 0..7.
+x86_io_pic_raise_impl:
+        cp      8
+        jr      nc,.pic_raise_bad
+        ld      e,a
+        ld      d,0
+        ld      hl,x86_io_pic_bit_masks
+        add     hl,de
+        ld      a,(hl)
+        ld      b,a
+        ld      a,(x86_io_pic_irr)
+        or      b
+        ld      (x86_io_pic_irr),a
+        call    x86_io_pic_update_pending
+        or      a
+        ret
+.pic_raise_bad:
+        scf
+        ret
+
+; Find the highest-priority eligible request. Returns A=IRQ 0..7,
+; carry set when no unmasked request can currently be delivered.
+x86_io_pic_find_pending:
+        ld      a,(x86_io_pic_irr)
+        ld      b,a
+        ld      a,(x86_io_pic_imr)
+        cpl
+        and     b
+        ld      (x86_io_pic_candidate),a
+        ; Fixed-priority nesting: only IRQs above the highest active ISR
+        ; priority may pre-empt an in-service interrupt.
+        ld      a,(x86_io_pic_isr)
+        or      a
+        jr      z,.pic_find_scan
+        ld      b,a
+        ld      c,0
+.pic_find_isr_loop:
+        srl     b
+        jr      c,.pic_find_isr_found
+        inc     c
+        jr      .pic_find_isr_loop
+.pic_find_isr_found:
+        ld      e,c
+        ld      d,0
+        ld      hl,x86_io_pic_higher_masks
+        add     hl,de
+        ld      a,(hl)
+        ld      b,a
+        ld      a,(x86_io_pic_candidate)
+        and     b
+        ld      (x86_io_pic_candidate),a
+.pic_find_scan:
+        ld      a,(x86_io_pic_candidate)
+        or      a
+        jr      z,.pic_find_none
+        ld      b,a
+        ld      c,0
+.pic_find_scan_loop:
+        srl     b
+        jr      c,.pic_find_found
+        inc     c
+        jr      .pic_find_scan_loop
+.pic_find_found:
+        ld      a,c
+        or      a
+        ret
+.pic_find_none:
+        scf
+        ret
+
+; Recalculate the CPU's maskable-interrupt pending latch after IRR/IMR/ISR
+; changes. All maskable IRQ producers enter through this PIC model.
+x86_io_pic_update_pending:
+        call    x86_io_pic_find_pending
+        jr      c,.pic_update_none
+        ld      e,a
+        ld      a,(x86_io_pic_vector_base)
+        add     a,e
+        ld      (x86_irq_vector),a
+        ld      a,1
+        ld      (x86_pending_irq),a
+        or      a
+        ret
+.pic_update_none:
+        xor     a
+        ld      (x86_pending_irq),a
+        or      a
+        ret
+
+; 8086 interrupt boundary calls this after seeing x86_pending_irq and IF=1.
+; A=vector on acknowledge; carry set means no PIC request was eligible.
+x86_io_pic_ack_impl:
+        call    x86_io_pic_find_pending
+        ret     c
+        ld      (x86_io_pic_selected_irq),a
+        ld      e,a
+        ld      d,0
+        ld      hl,x86_io_pic_bit_masks
+        add     hl,de
+        ld      a,(hl)
+        ld      (x86_io_pic_selected_mask),a
+        ld      a,(x86_io_pic_irr)
+        ld      b,a
+        ld      a,(x86_io_pic_selected_mask)
+        cpl
+        and     b
+        ld      (x86_io_pic_irr),a
+        ld      a,(x86_io_pic_isr)
+        ld      b,a
+        ld      a,(x86_io_pic_selected_mask)
+        or      b
+        ld      (x86_io_pic_isr),a
+        ld      a,(x86_io_pic_vector_base)
+        ld      b,a
+        ld      a,(x86_io_pic_selected_irq)
+        add     a,b
+        ld      (x86_io_pic_vector_result),a
+        call    x86_io_pic_update_pending
+        ld      a,(x86_io_pic_vector_result)
+        or      a
+        ret
+
 ; A=value. The original byte is retained because decode helpers return offset.
 x86_io_pic_write8:
         ld      (x86_io_pic_write_value),a
@@ -352,8 +510,7 @@ x86_io_pic_write8:
         ld      (x86_io_pic_single),a
         ld      a,1
         ld      (x86_io_pic_init_state),a
-        or      a
-        ret
+        jp      x86_io_pic_update_pending
 .pic_write_command:
         ld      a,(x86_io_pic_write_value)
         bit     3,a
@@ -402,8 +559,17 @@ x86_io_pic_write8:
         ld      a,(x86_io_pic_isr)
         and     b
         ld      (x86_io_pic_isr),a
+        ; Acknowledged keyboard bytes are consumed one at a time. If more
+        ; remain in the FIFO, re-latch IRQ1 after EOI.
+        ld      a,(x86_io_keyboard_count)
+        or      a
+        jr      z,.pic_eoi_recalculate
+        ld      a,1
+        call    x86_io_pic_raise_impl
         or      a
         ret
+.pic_eoi_recalculate:
+        jp      x86_io_pic_update_pending
 
 .pic_write_data:
         ld      a,(x86_io_pic_init_state)
@@ -454,8 +620,7 @@ x86_io_pic_write8:
 .pic_write_imr:
         ld      a,(x86_io_pic_write_value)
         ld      (x86_io_pic_imr),a
-        or      a
-        ret
+        jp      x86_io_pic_update_pending
 
 ; Decode ports 0060h..0063h. Returns A=offset 0..3, carry if unmatched.
 x86_io_ppi_decode:
@@ -851,7 +1016,12 @@ x86_io_pic_need_icw4: db 0
 x86_io_pic_single: db 0
 x86_io_pic_read_isr: db 0
 x86_io_pic_write_value: db 0
+x86_io_pic_candidate: db 0
+x86_io_pic_selected_irq: db 0
+x86_io_pic_selected_mask: db 0
+x86_io_pic_vector_result: db 0
 x86_io_pic_bit_masks: db #01,#02,#04,#08,#10,#20,#40,#80
+x86_io_pic_higher_masks: db #00,#01,#03,#07,#0F,#1F,#3F,#7F
 
 ; Deterministic XT profile switch input (generic XT/no-FPU default). This
 ; value remains a profile parameter until the ATM-PC board switches are set.
