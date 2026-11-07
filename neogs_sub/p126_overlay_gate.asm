@@ -411,6 +411,21 @@ x86_dev_write8:
         pop     ix
         ret
 
+; Advance guest time using the device overlay, keeping all timing logic
+; outside the fixed 16 KiB resident core.
+x86_dev_charge_guest_instruction:
+        push    af
+        push    ix
+        ld      a,P126_NGS_X86DEV_OVERLAY_SELECTOR
+        ld      (p126_overlay_request_selector),a
+        pop     ix
+        pop     af
+        push    ix
+        ld      ix,x86_dev_charge_guest_instruction_impl
+        call    p126_overlay_call
+        pop     ix
+        ret
+
 ; X86ALU public entry points; implementations live on physical page 05h.
 x86_alu_add8:
         push    af
