@@ -223,6 +223,11 @@ p126_neogs_startup::
         call    p126_neogs_load_io_overlay
         ret     c
 
+        ld      a,'A'
+        ld      (p126_neogs_startup_stage),a
+        call    p126_neogs_load_alu_overlay
+        ret     c
+
 .p126_neogs_startup_done:
         ld      a,'0'
         ld      (p126_neogs_startup_stage),a
@@ -241,26 +246,42 @@ p126_neogs_startup::
 ; -------------------------------------------------------------------------
 p126_neogs_load_io_overlay:
         ld      hl,p126_neogs_io_name
+        ld      a,P126_IMAGE_KIND_X86IO
+        ld      de,P126_IMAGE_X86IO_MAX_SIZE
+        jp      p126_neogs_load_fixed_overlay
+
+p126_neogs_load_alu_overlay:
+        ld      hl,p126_neogs_alu_name
+        ld      a,P126_IMAGE_KIND_X86ALU
+        ld      de,P126_IMAGE_X86ALU_MAX_SIZE
+        jp      p126_neogs_load_fixed_overlay
+
+; Shared fixed-profile loader. IN: HL=TR-DOS 8-byte name, A=IMAGE kind,
+; DE=maximum accepted size. The receiver selects the fixed physical page
+; from the image kind; every image uses the same CRC-checked DMA transaction.
+p126_neogs_load_fixed_overlay:
+        ld      (p126_neogs_overlay_kind),a
+        ld      (p126_neogs_overlay_max_size),de
         call    p126_neogs_open_file
-        jr      nc,.io_overlay_open
+        jr      nc,.fixed_overlay_open
         ld      a,5
         jp      p126_neogs_store_error
 
-.io_overlay_open:
+.fixed_overlay_open:
         ld      hl,(p126_neogs_file_length)
         ld      a,h
         or      l
-        jr      z,.io_overlay_bad_size
-        ld      de,P126_IMAGE_X86IO_MAX_SIZE
+        jr      z,.fixed_overlay_bad_size
+        ld      de,(p126_neogs_overlay_max_size)
         or      a
         sbc     hl,de
-        jr      c,.io_overlay_size_ok
-        jr      z,.io_overlay_size_ok
-.io_overlay_bad_size:
+        jr      c,.fixed_overlay_size_ok
+        jr      z,.fixed_overlay_size_ok
+.fixed_overlay_bad_size:
         ld      a,6
         jp      p126_neogs_store_error
 
-.io_overlay_size_ok:
+.fixed_overlay_size_ok:
         ld      hl,(p126_neogs_file_length)
         ld      (p126_neogs_overlay_size),hl
 
@@ -270,12 +291,12 @@ p126_neogs_load_io_overlay:
         ld      de,256
         or      a
         sbc     hl,de
-        jr      c,.io_overlay_first_partial
+        jr      c,.fixed_overlay_first_partial
         ld      bc,256
-        jr      .io_overlay_first_copy
-.io_overlay_first_partial:
+        jr      .fixed_overlay_first_copy
+.fixed_overlay_first_partial:
         ld      bc,(p126_neogs_file_length)
-.io_overlay_first_copy:
+.fixed_overlay_first_copy:
         ld      hl,#C000
         add     hl,bc
         dec     hl
@@ -290,28 +311,28 @@ p126_neogs_load_io_overlay:
         ; Remaining sectors are read directly after the first 256-byte block.
         ld      hl,#C11C
         ld      (p126_neogs_overlay_data_ptr),hl
-.io_overlay_sector_loop:
+.fixed_overlay_sector_loop:
         ld      a,(p126_neogs_file_sectors_left)
         or      a
-        jr      z,.io_overlay_data_ready
+        jr      z,.fixed_overlay_data_ready
         call    p126_neogs_overlay_read_sector
-        jr      nc,.io_overlay_sector_ok
+        jr      nc,.fixed_overlay_sector_ok
         ld      a,7
         jp      p126_neogs_store_error
-.io_overlay_sector_ok:
+.fixed_overlay_sector_ok:
         ld      hl,(p126_neogs_overlay_data_ptr)
         ld      de,256
         add     hl,de
         ld      (p126_neogs_overlay_data_ptr),hl
-        jr      .io_overlay_sector_loop
+        jr      .fixed_overlay_sector_loop
 
-.io_overlay_data_ready:
-        ; IMAGE_BEGIN: id=1, kind=X86IO, reserved=0, exact u16 byte length.
+.fixed_overlay_data_ready:
+        ; IMAGE_BEGIN: id=1, fixed kind, reserved=0, exact u16 byte length.
         ld      a,1
         ld      (#C012),a
         xor     a
         ld      (#C013),a
-        ld      a,P126_IMAGE_KIND_X86IO
+        ld      a,(p126_neogs_overlay_kind)
         ld      (#C014),a
         xor     a
         ld      (#C015),a
@@ -319,13 +340,20 @@ p126_neogs_load_io_overlay:
         ld      (#C016),hl
         xor     a
         ld      (p126_bios_frame_flags),a
+        ld      a,(p126_neogs_overlay_kind)
+        cp      P126_IMAGE_KIND_X86IO
+        jr      nz,.fixed_overlay_log_alu_begin
         ld      hl,p126_neogs_io_log_begin
+        jr      .fixed_overlay_log_begin
+.fixed_overlay_log_alu_begin:
+        ld      hl,p126_neogs_alu_log_begin
+.fixed_overlay_log_begin:
         call    p126_neogs_log_text
         ld      bc,6
         ld      de,1
         xor     a
         call    p126_bios_send_frame
-        jr      c,.io_overlay_transport_error
+        jr      c,.fixed_overlay_transport_error
 
         ; One FRAGMENT: id=1, index=0, count=1, u32 total length.
         ld      a,1
@@ -354,9 +382,9 @@ p126_neogs_load_io_overlay:
         ld      de,2
         ld      a,P126_OP_IMAGE_FRAGMENT
         call    p126_bios_send_frame
-        jr      c,.io_overlay_transport_error
+        jr      c,.fixed_overlay_transport_error
 
-        ; IMAGE_FINISH: the receiver publishes page 04h only after readback.
+        ; IMAGE_FINISH is accepted only after target readback and gate checks.
         ld      a,1
         ld      (#C012),a
         xor     a
@@ -367,20 +395,24 @@ p126_neogs_load_io_overlay:
         ld      de,3
         ld      a,P126_OP_IMAGE_FINISH
         call    p126_bios_send_frame
-        jr      c,.io_overlay_transport_error
+        jr      c,.fixed_overlay_transport_error
 
+        ld      a,(p126_neogs_overlay_kind)
+        cp      P126_IMAGE_KIND_X86IO
+        jr      nz,.fixed_overlay_log_alu_ready
         ld      hl,p126_neogs_io_log_ready
+        jr      .fixed_overlay_log_ready
+.fixed_overlay_log_alu_ready:
+        ld      hl,p126_neogs_alu_log_ready
+.fixed_overlay_log_ready:
         call    p126_neogs_log_text
         or      a
         ret
 
-.io_overlay_transport_error:
+.fixed_overlay_transport_error:
         ld      a,8
         jp      p126_neogs_store_error
 
-; Read one subsequent TR-DOS sector directly into p126_neogs_overlay_data_ptr.
-; Uses the same validated C=5/B=1 sector ABI and advances the shared cursor
-; only after the ROM reports success.
 p126_neogs_overlay_read_sector:
         ld      a,(p126_neogs_file_sectors_left)
         or      a
@@ -815,10 +847,15 @@ p126_neogs_wait_dbit_set:
 p126_neogs_boot_name: db "P126BOOT"
 p126_neogs_core_name: db "X86CORE "
 p126_neogs_io_name:   db "X86IO   "
+p126_neogs_alu_name:  db "X86ALU  "
 p126_neogs_overlay_size: dw 0
+p126_neogs_overlay_max_size: dw 0
+p126_neogs_overlay_kind: db 0
 p126_neogs_overlay_data_ptr: dw #C11C
 p126_neogs_io_log_begin: db "[NGS HOST] X86IO IMAGE BEGIN",13,10,0
 p126_neogs_io_log_ready: db "[NGS HOST] X86IO IMAGE TX COMPLETE",13,10,0
+p126_neogs_alu_log_begin: db "[NGS HOST] X86ALU IMAGE BEGIN",13,10,0
+p126_neogs_alu_log_ready: db "[NGS HOST] X86ALU IMAGE TX COMPLETE",13,10,0
 p126_neogs_name_ptr: dw 0
 p126_neogs_file_length: dw 0
 p126_neogs_core_length: dw 0
