@@ -64,6 +64,11 @@ x86_cpu_step:
         cp      #98
         jp      c,x86_exec_xchg_ax_reg
 .not_xchg_ax_reg:
+        cp      #A0
+        jp      c,.not_moffs
+        cp      #A4
+        jp      c,x86_exec_moffs
+.not_moffs:
         cp      #F4
         jp      z,x86_exec_hlt
         ; 40-4F: INC/DEC r16. Carry flag is preserved by both operations.
@@ -83,6 +88,79 @@ x86_cpu_step:
 .not_mov_imm_reg:
         scf
         ret
+
+; A0-A3: MOV AL/AX <-> DS:[moffs16].
+; Segment override prefixes are handled by the prefix layer, not yet present.
+x86_exec_moffs:
+        ld      a,(x86_exec_opcode)
+        ld      (x86_exec_moffs_opcode),a
+        call    x86_cpu_fetch16
+        ret     c
+        ld      (x86_exec_moffs_offset),hl
+
+        ld      a,(x86_exec_moffs_opcode)
+        bit     1,a
+        jr      nz,.store_to_memory
+        ; A0/A1: load AL/AX from memory.
+        bit     0,a
+        jr      nz,.load_word
+
+        call    x86_exec_moffs_make_address
+        call    x86_guest_mem_read8
+        ret     c
+        ld      (x86_reg_ax),a
+        or      a
+        ret
+
+.load_word:
+        call    x86_exec_moffs_make_address
+        call    x86_guest_mem_read8
+        ret     c
+        ld      (x86_exec_moffs_value),a
+        ld      hl,(x86_exec_moffs_offset)
+        inc     hl
+        ld      (x86_exec_moffs_offset),hl
+        call    x86_exec_moffs_make_address
+        call    x86_guest_mem_read8
+        ret     c
+        ld      (x86_exec_moffs_value+1),a
+        ld      hl,(x86_exec_moffs_value)
+        ld      (x86_reg_ax),hl
+        or      a
+        ret
+
+.store_to_memory:
+        ; A2/A3: store AL/AX to memory.
+        bit     0,a
+        jr      nz,.store_word
+
+        ld      a,(x86_reg_ax)
+        ld      (x86_exec_moffs_value),a
+        call    x86_exec_moffs_make_address
+        ld      a,(x86_exec_moffs_value)
+        call    x86_guest_mem_write8
+        ret
+
+.store_word:
+        ld      hl,(x86_reg_ax)
+        ld      (x86_exec_moffs_value),hl
+        call    x86_exec_moffs_make_address
+        ld      a,(x86_exec_moffs_value)
+        call    x86_guest_mem_write8
+        ret     c
+        ld      hl,(x86_exec_moffs_offset)
+        inc     hl
+        ld      (x86_exec_moffs_offset),hl
+        call    x86_exec_moffs_make_address
+        ld      a,(x86_exec_moffs_value+1)
+        call    x86_guest_mem_write8
+        ret
+
+; Convert DS:offset into the Project126 physical-address scratch triple.
+x86_exec_moffs_make_address:
+        ld      hl,(x86_reg_ds)
+        ld      de,(x86_exec_moffs_offset)
+        jp      x86_cpu_calc_phys
 
 ; 91-97: exchange AX with the selected 16-bit general register.
 ; XCHG does not modify FLAGS. Opcode 90 is dispatched separately as NOP.
@@ -295,6 +373,9 @@ x86_exec_reg_ptr: dw 0
 x86_exec_result_word: dw 0
 x86_exec_saved_cf: db 0
 x86_exec_is_dec: db 0
+x86_exec_moffs_opcode: db 0
+x86_exec_moffs_offset: dw 0
+x86_exec_moffs_value: dw 0
 x86_exec_reg16_table:
         dw x86_reg_ax,x86_reg_cx,x86_reg_dx,x86_reg_bx
         dw x86_reg_sp,x86_reg_bp,x86_reg_si,x86_reg_di
