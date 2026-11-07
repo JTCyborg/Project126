@@ -2231,6 +2231,7 @@ x86_exec_mov_rm_reg:
         jp      x86_modrm_write_rm8
 .mov_r8_from_rm8:
         call    x86_modrm_read_rm8
+        ret     c
         ld      c,a
         ld      a,(x86_modrm_reg)
         jp      x86_modrm_write_reg8
@@ -2242,6 +2243,7 @@ x86_exec_mov_rm_reg:
         jp      x86_modrm_write_rm16
 .mov_r16_from_rm16:
         call    x86_modrm_read_rm16
+        ret     c
         jp      x86_modrm_write_reg16
 
 ; 8C MOV r/m16,Sreg; 8E MOV Sreg,r/m16.
@@ -2354,6 +2356,7 @@ x86_exec_xchg_rm_reg:
         jr      nz,.xchg_word
 
         call    x86_modrm_read_rm8
+        ret     c
         ld      (x86_exec_xchg_rm_byte),a
         ld      a,(x86_modrm_reg)
         call    x86_modrm_read_reg8
@@ -2362,17 +2365,20 @@ x86_exec_xchg_rm_reg:
 
 .xchg_word:
         call    x86_modrm_read_rm16
+        ret     c
         ld      (x86_exec_xchg_rm_word),hl
         call    x86_modrm_read_reg16
         ld      (x86_exec_xchg_reg_word),hl
         ld      hl,(x86_exec_xchg_reg_word)
         call    x86_modrm_write_rm16
+        ret     c
         ld      hl,(x86_exec_xchg_rm_word)
         jp      x86_modrm_write_reg16
 
 x86_exec_xchg_commit8:
         ld      a,(x86_exec_xchg_reg_byte)
         call    x86_modrm_write_rm8
+        ret     c
         ld      a,(x86_exec_xchg_rm_byte)
         ld      c,a
         ld      a,(x86_modrm_reg)
@@ -2515,12 +2521,14 @@ x86_exec_les_lds:
         jr      nz,.les_lds_invalid
 
         call    x86_modrm_read_rm16
+        ret     c
         ld      (x86_exec_les_lds_offset),hl
         ld      hl,(x86_ea_offset)
         inc     hl
         inc     hl
         ld      (x86_ea_offset),hl
         call    x86_modrm_read_rm16
+        ret     c
         ld      (x86_exec_les_lds_segment),hl
 
         ld      hl,(x86_exec_les_lds_offset)
