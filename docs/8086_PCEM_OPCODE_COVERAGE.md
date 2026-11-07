@@ -8,8 +8,8 @@ Later 80186/286/386 instructions are not part of the target CPU.
 
 - Denominator: 256 possible opcode-byte values in the documented original 8086 opcode map, including the 8087 ESC opcode range and undocumented 8086-compatible values where PCem has an execution path.
 - Numerator: opcode-byte values with a concrete execution path in the Project126 dispatcher.
-- Current numerator: 133.
-- **Opcode-byte dispatch coverage: 133 / 256 = 51.95%.**
+- Current numerator: 136.
+- **Opcode-byte dispatch coverage: 136 / 256 = 53.13%.**
 - This is a source-coverage metric, not a claim of full semantic correctness. ModR/M forms, memory addressing, prefixes, flags, interrupt behavior and corner cases are tracked separately and must also be complete before the CPU is called 100%.
 - An instruction family is not considered complete merely because one opcode in the family is present.
 
@@ -18,6 +18,8 @@ Later 80186/286/386 instructions are not part of the target CPU.
 | Opcode | Instruction | Source |
 |---|---|---|
 | 60–6F | PCem 8086 conditional-branch aliases | `neogs_sub/x86_exec.asm` |
+| 86–87 | XCHG r/m8/16,r8/16 | `neogs_sub/x86_exec.asm` + `x86_modrm.asm` |
+| 8F | POP r/m16 (ModR/M /0) | `neogs_sub/x86_exec.asm` + `x86_modrm.asm` |
 | 70–7F | Jcc rel8 (all 16 conditions) | `neogs_sub/x86_exec.asm` |
 | 50–57 | PUSH r16 | `neogs_sub/x86_exec.asm` |
 | 58–5F | POP r16 | `neogs_sub/x86_exec.asm` |
@@ -59,7 +61,7 @@ The 16 register INC/DEC opcodes were added in commits `75a3e69da4549ffe2f2346b86
 
 ## Decoder foundation
 
-`neogs_sub/x86_modrm.asm` is linked into the resident image. It fetches ModR/M and displacement bytes through the Project126 CS:IP fetch path, decodes the 8086 BX/BP/SI/DI effective-address forms, applies signed disp8 or disp16, and selects DS versus SS for BP-based addressing. It now also provides byte/word register and r/m operand accessors, including AH/CH/DH/BH mapping and guest-memory access through the Project126 mapper. MOV 88h–8Bh, LEA 8Dh and MOV-immediate C6h/C7h use these helpers. These are initial supported forms, not completion of all ModR/M-dependent families or segment overrides.
+`neogs_sub/x86_modrm.asm` is linked into the resident image. It fetches ModR/M and displacement bytes through the Project126 CS:IP fetch path, decodes the 8086 BX/BP/SI/DI effective-address forms, applies signed disp8 or disp16, and selects DS versus SS for BP-based addressing. It now also provides byte/word register and r/m operand accessors, including AH/CH/DH/BH mapping and guest-memory access through the Project126 mapper. MOV 88h–8Bh, XCHG 86h–87h, POP 8Fh, LEA 8Dh and MOV-immediate C6h/C7h use these helpers. These are initial supported forms, not completion of all ModR/M-dependent families or segment overrides. XCHG memory/register forms preserve FLAGS; POP r/m16 resolves the destination EA before applying the stack increment.
 
 ## Not yet implemented
 
