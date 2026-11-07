@@ -551,3 +551,10 @@ User-provided physical target log (09:52:27) validates the corrected MPAGEX page
 - NeoGS validates the forward DMA address readback at 10C000h (108000h + 4000h). Reverse DMA readback is checked at 10C001h (one documented dummy read + 4000h data bytes).
 - Existing transport sequence, physical page 42h, MPAGEX #10/RRCA, DMA module 1, host aperture and dummy-read rules are unchanged.
 - **IMPLEMENTED / BUILD PENDING / HARDWARE PENDING.** Do not mark the 16 KiB test PASS until CI assembly/package succeeds and the target log confirms both complete frame checks and both exact address readbacks.
+
+
+## 2026-11-07 — 16 KiB test: ATM BAD_MAGIC diagnostic
+
+- The first hardware attempt stopped at ATM-local frame validation (DMA FAIL STAGE=1, validator status 01 = BAD_MAGIC), before E0 or DMA activation.
+- The validator receives C000h as frame pointer. The test buffer was placed at ORG #C000; actual bytes at that address were not yet captured, so a page-selection/overwrite cause is not assumed.
+- Added target trace to print the failing frame pointer and four actual bytes at that pointer. Next hardware run is diagnostic; do not claim 16 KiB DMA PASS or change the NeoGS DMA engine until the header bytes are known.

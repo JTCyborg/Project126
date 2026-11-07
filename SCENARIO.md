@@ -867,3 +867,11 @@ User-provided physical ATM/NeoGS target log at 09:52:27 confirms the corrected P
 - Контракт DMA не меняется: module 1, physical base 108000h, MPAGEX #10 / RRCA для WIN3, host aperture 0000h, без dummy write для forward и один dummy read для reverse. ABI 1.0 и рабочий DMA mapping не меняются.
 - Маркеры: [BOOT] DMA MAX FRAME TEST BEGIN, [NGS] DMA FRAME VALID, [BOOT] DMA MAX TX PASS, [ATM IPC] DMA RX 16K PATTERN PASS, [BOOT] DMA MAX RX PASS. Точные readback: 10C000h forward и 10C001h reverse.
 - Статус: IMPLEMENTED; BUILD и HARDWARE для 16 KiB размера pending до CI и нового физического лога. Успех прежнего 274-byte теста не переносится автоматически на максимальный размер.
+
+
+## 2026-11-07 — 16 KiB test fails ATM-local BAD_MAGIC; source trace added
+
+- Hardware log: DMA MAX FRAME TEST BEGIN, then FRAME VALIDATION FAILED, DMA FAIL STAGE=1, DMA VALIDATOR ERROR=01. This is P126_STATUS_BAD_MAGIC from ATM's local validator, before E0/READY or any DMA register programming. No conclusion about the 16 KiB DMA transport can be drawn from this run.
+- The 16 KiB test frame is assembled at C000h and passed to the validator at that address. The first four-byte magic comparison is failing. No DMA transaction has started.
+- Added temporary target diagnostics in atm_host/neogs_ipc.asm: on BAD_MAGIC print the validator's frame pointer and the four actual bytes at that address ([ATM IPC] BAD MAGIC PTR=... DATA=...). This distinguishes wrong page mapping or overwritten staging buffer from a malformed header.
+- No speculative DMA, NeoGS mapping, or ABI changes. Next hardware log must include the pointer/data trace; then correct the actual memory-page/staging issue based on observed bytes. BUILD and hardware test remain pending.
