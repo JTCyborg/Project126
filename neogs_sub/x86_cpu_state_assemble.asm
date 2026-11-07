@@ -57,6 +57,8 @@ p126_ngs_resident_start:
         ld      a,#01
         out     (#10),a                ; WIN3 -> physical page 02 until banked
         ld      sp,#7FFE
+        xor     a
+        ld      (p126_overlay_call_depth),a
 
         ld      hl,p126_ngs_resident_banner
         call    p126_ngs_resident_log
