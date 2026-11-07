@@ -801,6 +801,12 @@ Source commit: `aac9d7e60c391510150016d3b29906a7b2f90e3d`.
 - No CPU functional tests, BIOS POST, or guest programs have been run. Only assembler/linker/package checks are permitted until the complete Intel 8086 core has been ported and reviewed.
 
 
+## 2026-11-07 — SYSBIOS page-10 installation integrity
+
+- The NeoGS IMAGE fragment handler now performs a second pass after copying the 8192-byte SYSBIOS fragment from DMA page 42h into physical page 10h. It compares every destination byte against the preserved source fragment before setting `p126_ngs_image_received`.
+- A mismatch rejects the fragment and does not permit IMAGE FINISH to mark the BIOS ready. The production WIN3 mapping is restored to page 42h on both success and mismatch paths.
+- This closes the source-level gap between DMA-frame CRC validation and destination-copy integrity. Assembly/package CI and target hardware readback evidence are still pending; no CPU execution or BIOS POST is enabled by this change.
+
 ## 2026-11-07 — 8086 pre-test readiness checkpoint
 
 - PCem comparison corrected STI behavior: STI sets IF but does not arm the `noint` interrupt-inhibit latch; only MOV Sreg (8Eh) and POP SS arm it in the reviewed paths.
