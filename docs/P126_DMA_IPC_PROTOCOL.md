@@ -268,3 +268,8 @@ Diagnostic output adds timing overhead, especially around the DMA copy. It is in
 - **Следующий диагностический критерий:** сравнить в новом логе `CRC CALCULATED=FFFF`-формат и `FRAME CRC=FFFF`-формат. Если отличаются — локализовать вычисление/подготовку; если оба `FF5B`, но валидатор всё равно возвращает 04 — проверять саму последовательность сравнения/адресацию.
 - **Проверка диагностического патча:** GitHub Actions run [42352070894](https://github.com/JTCyborg/Project126/actions/runs/42352070894), commit `6cf8fd152fb492d2c5f6c7979386cb4bde643354`, completed with BUILD PASS (ATM/NeoGS assembly and TR-DOS image packaging). Аппаратное подтверждение значений CRC ожидается от следующего запуска пользователя.
 - **Статус:** исходная аппаратная ошибка подтверждена логом; вычисленный и сохранённый CRC ещё требуется сопоставить на реальном ATM. DMA аппаратный PASS не заявляется.
+
+
+## ATM validator correction — 2026-11-07
+
+The ATM frame validator must preserve the CRC accumulator in `HL` while switching from header traversal to payload traversal. The payload pointer saved on the stack is restored directly into `IX` (`pop ix`); restoring it through `HL` destroys the accumulated CRC. This is a local implementation constraint and does not change ABI 1.0: CRC still covers header bytes 00h..0Fh followed by exactly `payload_length` bytes, excluding CRC bytes 10h..11h. The zero-payload regression frame must validate to `FF5B`.
