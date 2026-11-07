@@ -61,7 +61,7 @@ try {
 
         Remove-Item -Force -ErrorAction SilentlyContinue $binary, $listing, $map
         if ($unit.Name -eq "NeoGS") {
-            Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $build "X86CORE.C"), (Join-Path $build "X86IO.C")
+            Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $build "X86CORE.C"), (Join-Path $build "X86IO.C"), (Join-Path $build "X86ALU.C")
         }
 
         Write-Host "[BUILD] Project126 $($unit.Name) assembly"
@@ -94,21 +94,27 @@ try {
         if ($unit.Name -eq "NeoGS") {
             $residentImage = Join-Path $build "X86CORE.C"
             $ioOverlay = Join-Path $build "X86IO.C"
-            foreach ($image in @($residentImage, $ioOverlay)) {
+            $aluOverlay = Join-Path $build "X86ALU.C"
+            foreach ($image in @($residentImage, $ioOverlay, $aluOverlay)) {
                 if (-not (Test-Path $image)) {
                     throw "Required split NeoGS image was not produced: $image"
                 }
             }
             $residentBytes = (Get-Item $residentImage).Length
             $overlayBytes = (Get-Item $ioOverlay).Length
+            $aluOverlayBytes = (Get-Item $aluOverlay).Length
             if ($residentBytes -lt 1 -or $residentBytes -gt 0x4000) {
                 throw "X86CORE.C size $residentBytes is outside the 1..16384-byte WIN0 limit."
             }
             if ($overlayBytes -lt 1 -or $overlayBytes -gt 0x1000) {
                 throw "X86IO.C size $overlayBytes is outside the 1..4096-byte page-04 overlay profile."
             }
+            if ($aluOverlayBytes -lt 1 -or $aluOverlayBytes -gt 0x1000) {
+                throw "X86ALU.C size $aluOverlayBytes is outside the 1..4096-byte page-05 overlay profile."
+            }
             Write-Host "[BUILD] X86CORE.C resident bytes=$residentBytes / 16384"
             Write-Host "[BUILD] X86IO.C overlay bytes=$overlayBytes / 4096"
+            Write-Host "[BUILD] X86ALU.C overlay bytes=$aluOverlayBytes / 4096"
         }
 
         Write-Host "[BUILD] $($unit.Version) audit-bytes=$size"
@@ -185,6 +191,7 @@ try {
         @{ Name = ($HostName.PadRight(8) + "C"); Label = "$HostName.C" },
         @{ Name = "X86CORE C"; Label = "X86CORE.C" },
         @{ Name = "X86IO   C"; Label = "X86IO.C" },
+        @{ Name = "X86ALU  C"; Label = "X86ALU.C" },
         @{ Name = "P126BOOTC"; Label = "P126BOOT.C" },
         @{ Name = "BIOS1   C"; Label = "BIOS1.C"; ExpectedLength = 8192; ExpectedSectors = 32 },
         @{ Name = "BIOS2   C"; Label = "BIOS2.C"; ExpectedLength = 8192; ExpectedSectors = 32 },
