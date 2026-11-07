@@ -66,7 +66,7 @@ p126_ngs_resident_start:
         ldir
         ld      hl,p126_overlay_alloc_state
         ld      de,p126_overlay_alloc_state+1
-        ld      bc,9
+        ld      bc,8
         ld      (hl),a
         ldir
         call    p126_overlay_allocator_selftest
@@ -98,13 +98,16 @@ p126_ngs_resident_main_loop:
         ld      hl,p126_ngs_resident_frame_ok
         call    p126_ngs_resident_log
 .check_bios_ready:
-        ; CPU execution calls the fixed-origin I/O overlay at 8000h.
-        ; Do not enter the BIOS until its page-04 image has been verified
-        ; and mapped into WIN2 by IMAGE_FINISH.
+        ; CPU execution calls X86IO/page04, which delegates DMA/PIT ports to
+        ; X86DEV/page06 through the resident nested overlay gate. BIOS waits
+        ; until all three overlay images have passed installation checks.
         ld      a,(p126_ngs_io_overlay_ready)
         or      a
         jr      z,p126_ngs_resident_main_loop
         ld      a,(p126_ngs_alu_overlay_ready)
+        or      a
+        jr      z,p126_ngs_resident_main_loop
+        ld      a,(p126_ngs_dev_overlay_ready)
         or      a
         jr      z,p126_ngs_resident_main_loop
         ld      a,(p126_ngs_bios_image_ready)
@@ -226,6 +229,12 @@ x86_alu_module_start:
         INCLUDE "neogs_sub/x86_alu.asm"
 x86_alu_module_end:
         SAVEBIN "build/X86ALU.C",x86_alu_module_start,x86_alu_module_end-x86_alu_module_start
+
+        ORG     #8000
+x86_dev_module_start:
+        INCLUDE "neogs_sub/x86_devices.asm"
+x86_dev_module_end:
+        SAVEBIN "build/X86DEV.C",x86_dev_module_start,x86_dev_module_end-x86_dev_module_start
 
 ; The stage-0 loader receives only X86CORE.C at logical origin 0000h.
         SAVEBIN "build/x86_cpu_state.bin",0,p126_ngs_ipc_module_end

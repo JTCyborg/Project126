@@ -81,11 +81,11 @@ p126_overlay_depth_rejected:
 
 ; -------------------------------------------------------------------------
 ; Physical overlay-page allocator.
-; Pool: physical pages 06h..0Fh. Pages 04h/05h remain pinned to X86IO/X86ALU;
+; Pool: physical pages 07h..0Fh. Pages 04h/05h/06h are pinned to X86IO/X86ALU/X86DEV;
 ; pages 00h..03h are never allocator-owned. WIN3 is not used here.
 ;
 ; p126_overlay_allocate_page:
-;   OUT A=physical page 06h..0Fh, carry clear; A=0/carry set if exhausted.
+;   OUT A=physical page 07h..0Fh, carry clear; A=0/carry set if exhausted.
 ;   Clobbers BC, IX.
 ;
 ; p126_overlay_release_page:
@@ -95,8 +95,8 @@ p126_overlay_depth_rejected:
 ; -------------------------------------------------------------------------
 p126_overlay_allocate_page:
         ld      ix,p126_overlay_alloc_state
-        ld      b,10
-        ld      c,6
+        ld      b,9
+        ld      c,7
 .allocate_scan:
         ld      a,(ix+0)
         or      a
@@ -115,7 +115,7 @@ p126_overlay_allocate_page:
         ret
 
 p126_overlay_release_page:
-        cp      6
+        cp      7
         jr      c,.release_range_error
         cp      16
         jr      nc,.release_range_error
@@ -139,7 +139,7 @@ p126_overlay_release_page:
         djnz    .release_active_scan
 .release_not_active:
         pop     af
-        sub     6
+        sub     7
         ld      e,a
         ld      d,0
         ld      hl,p126_overlay_alloc_state
@@ -161,9 +161,9 @@ p126_overlay_release_page:
         scf
         ret
 
-; Startup regression for the dynamic page allocator. It allocates all ten
+; Startup regression for the dynamic page allocator. It allocates all nine
 ; pages in ascending order, verifies exhaustion, releases in reverse order,
-; then confirms page06 can be allocated and released again.
+; then confirms page07 can be allocated and released again.
 ; OUT: carry clear on pass; carry set on failure. Startup halts on failure.
 p126_overlay_allocator_selftest:
         push    bc
@@ -171,8 +171,8 @@ p126_overlay_allocator_selftest:
         push    hl
         push    ix
         ld      hl,p126_overlay_allocator_test_pages
-        ld      b,10
-        ld      c,6
+        ld      b,9
+        ld      c,7
 .allocator_test_allocate:
         push    bc
         call    p126_overlay_allocate_page
@@ -185,7 +185,7 @@ p126_overlay_allocator_selftest:
         inc     c
         djnz    .allocator_test_allocate
 
-        ; All ten dynamic pages must now be reserved.
+        ; All nine dynamic pages must now be reserved.
         push    bc
         call    p126_overlay_allocate_page
         pop     bc
@@ -194,8 +194,8 @@ p126_overlay_allocator_selftest:
         jr      nz,.allocator_test_failed
 
         ; Release every page in reverse order.
-        ld      hl,p126_overlay_allocator_test_pages+9
-        ld      b,10
+        ld      hl,p126_overlay_allocator_test_pages+8
+        ld      b,9
 .allocator_test_release:
         ld      a,(hl)
         push    bc
@@ -207,12 +207,12 @@ p126_overlay_allocator_selftest:
         dec     hl
         djnz    .allocator_test_release
 
-        ; First-fit reuse must return page06 again.
+        ; First-fit reuse must return page07 again.
         push    bc
         call    p126_overlay_allocate_page
         pop     bc
         jr      c,.allocator_test_failed
-        cp      6
+        cp      7
         jr      nz,.allocator_test_failed
         call    p126_overlay_release_page
         jr      c,.allocator_test_failed
@@ -325,6 +325,34 @@ x86_io_log_access:
         pop     ix
         ret
 
+; One-shot BIOS watchdog memory dump through the fixed-origin X86IO overlay.
+x86_io_dump_bios_table:
+        push    af
+        push    ix
+        ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
+        ld      (p126_overlay_request_selector),a
+        pop     ix
+        pop     af
+        push    ix
+        ld      ix,x86_io_dump_bios_table_impl
+        call    p126_overlay_call
+        pop     ix
+        ret
+
+; Master-PIC interrupt acknowledge. A=vector, carry set if no PIC request.
+x86_io_pic_ack:
+        push    af
+        push    ix
+        ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
+        ld      (p126_overlay_request_selector),a
+        pop     ix
+        pop     af
+        push    ix
+        ld      ix,x86_io_pic_ack_impl
+        call    p126_overlay_call
+        pop     ix
+        ret
+
 ; Nested-call regression entry: page04 X86IO -> page05 X86ALU.
 ; Returns A=08h when the page05 ADD8 implementation returned correctly.
 x86_io_overlay_nested_gate_probe:
@@ -336,6 +364,49 @@ x86_io_overlay_nested_gate_probe:
         pop     af
         push    ix
         ld      ix,x86_io_overlay_nested_gate_probe_impl
+        call    p126_overlay_call
+        pop     ix
+        ret
+
+; DMA/PIT device overlay API; implementations live on physical page 06h.
+; The public wrappers preserve the guest port/value ABI across WIN2 switching.
+x86_dev_reset:
+        push    af
+        push    ix
+        ld      a,P126_NGS_X86DEV_OVERLAY_SELECTOR
+        ld      (p126_overlay_request_selector),a
+        pop     ix
+        pop     af
+        push    ix
+        ld      ix,x86_dev_reset_impl
+        call    p126_overlay_call
+        pop     ix
+        ret
+
+; IN: HL=guest port. OUT: A=value, carry set if X86DEV does not decode it.
+x86_dev_read8:
+        push    af
+        push    ix
+        ld      a,P126_NGS_X86DEV_OVERLAY_SELECTOR
+        ld      (p126_overlay_request_selector),a
+        pop     ix
+        pop     af
+        push    ix
+        ld      ix,x86_dev_read8_impl
+        call    p126_overlay_call
+        pop     ix
+        ret
+
+; IN: HL=guest port, A=value. OUT: carry set if X86DEV does not decode it.
+x86_dev_write8:
+        push    af
+        push    ix
+        ld      a,P126_NGS_X86DEV_OVERLAY_SELECTOR
+        ld      (p126_overlay_request_selector),a
+        pop     ix
+        pop     af
+        push    ix
+        ld      ix,x86_dev_write8_impl
         call    p126_overlay_call
         pop     ix
         ret
@@ -490,5 +561,5 @@ p126_overlay_request_selector: db #80
 p126_overlay_gate_entry:       dw 0
 p126_overlay_gate_saved_hl:    dw 0
 p126_overlay_call_pages:       defs P126_OVERLAY_MAX_CALL_DEPTH,0
-p126_overlay_alloc_state:      defs 10,0
-p126_overlay_allocator_test_pages: defs 10,0
+p126_overlay_alloc_state:      defs 9,0
+p126_overlay_allocator_test_pages: defs 9,0

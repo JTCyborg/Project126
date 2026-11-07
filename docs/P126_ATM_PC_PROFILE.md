@@ -1,7 +1,7 @@
 # Project126 — ATM-PC/XT hybrid machine profile
 
 **Profile ID:** P126-ATMPC-XT-HYBRID-0.1  
-**Status:** initial guest memory and I/O decode contract; device runtime is not yet implemented.
+**Status:** initial guest memory and I/O decode contract; PPI and PIC register-level slices are implemented, while IRQ delivery and other device models remain pending.
 
 ## 1. Selected compatibility model
 
@@ -57,18 +57,27 @@ The profile reserves the following PC/XT-style interfaces. They are guest-visibl
 
 | Port range | Model / purpose | Status |
 |---|---|---|
-| 0000–000F | 8237-compatible DMA controller | Reserved decode; implementation pending |
-| 0020–0021 | 8259-compatible master PIC | Reserved decode; implementation pending |
-| 0040–0043 | 8253-compatible PIT | Reserved decode; implementation pending |
-| 0060–0063 | 8255-compatible PPI / XT keyboard and system control | Reserved decode; keyboard events originate at ATM and arrive through IPC |
-| 0070–0071 | DS12887-compatible RTC/CMOS extension | Custom ATM-PC extension; time source is ATM |
-| 0080–0083 | DMA page registers | Reserved decode; implementation pending |
-| 01F0–01F7 | Primary ATA-compatible guest disk task file | Software device; requests forwarded to ATM/NEMO IDE through IPC |
-| 03B0–03DF | IBM VGA register interfaces | VGA implementation pending |
-| 03F0–03F5, 03F7 | 765-compatible floppy controller (3F7 status/direction) | Reserved; whether floppy service is enabled remains a separate device decision |
-| 03F6 | Primary ATA control register | Software device; requests forwarded to ATM through IPC |
+| 0000–000F | 8237-compatible DMA controller | X86DEV/page06 partial register model: address/count, command/status/request/mask/mode and byte flip-flop; transfer engine pending |
+| 0020–0021 | 8259-compatible master PIC | X86IO/page04 partial model: ICW/OCW, IMR/IRR/ISR, fixed-priority arbitration, keyboard IRQ1 and CPU acknowledge; PIT IRQ0 pending |
+| 0040–0043 | 8253-compatible PIT | X86DEV/page06 static register model: channel reload/latch, access modes and byte sequencing; clock/output/IRQ0 pending |
+| 0060–0063 | 8255-compatible PPI / XT keyboard and system control | X86IO/page04 initial XT model: keyboard FIFO, PPI mode 0, port B reset/ack; ATM keyboard event producer pending |
+| 0070–0071 | DS12887-compatible RTC/CMOS extension | Custom ATM-PC extension; time source is ATM; guest register model pending |
+| 0080–0083 | DMA page registers | X86DEV/page06 partial register model: channel page latches |
+| 00E0 | Project126 diagnostic latch | Implemented 16-bit read/write test latch; not a PC hardware device |
+| 00A0, 0213 | Generic Turbo XT BIOS board-control ports | X86DEV/page06 static latches: NMI gate state and expansion-unit enable state; no actual NMI delivery or expansion hardware |
+| 01F0–01F7, 03F6 | Primary ATA-compatible guest disk task file/control | Software device architecture reserved; task-file/IPC service pending |
+| 03B0–03DF | IBM VGA/CGA/MDA register interfaces | 03B8h/03D8h static mode latches implemented in X86DEV; CRTC registers, status/retrace and rendering pending |
+| 03F0–03F5, 03F7 | 765-compatible floppy controller (3F7 status/direction) | Reserved; floppy service remains a separate device decision |
+| 03F8–03FF, 02F8–02FF | 8250-compatible COM1/COM2 UARTs | BIOS2 source probes these UARTs; guest UART model/ATM serial bridge pending |
+| 03BC, 0378, 0278 | Parallel printer ports | BIOS2 source probes three possible LPT bases; guest printer service pending |
+| 00C0 | Legacy data-bus test latch | X86DEV/page06 read/write latch; does not emulate a physical bus |
+| 0201 | Game controller port | BIOS2 source probes joystick bits; guest model pending |
+| 0241, 0341 | Optional board timer probes | BIOS2 source probes optional BCD timers; behavior not modeled |
+| 03D8, 03B8 | CGA/MDA mode-control ports | X86DEV/page06 static mode latches; CGA/MDA rendering and retrace status pending |
 
 Port 03F6 is assigned to the ATA control register and is intentionally excluded from the floppy-controller register set (the legacy PC/XT decode shares this neighborhood). The RTC ports are a deliberate custom extension; the physical DS12887/time source remains on ATM. This does not grant NeoGS direct access to a physical RTC.
+
+The source file `bios/bios.txt` documents a Generic Turbo XT BIOS for 8088/V20 systems and is associated with the BIOS2 family, not proven byte-for-byte equivalent to the currently selected BIOS1 image. Its startup code is useful as a reference for the extra board-control, video, UART, printer, joystick and optional timer probes above; do not assume BIOS1 executes every one of these paths. The current BIOS1 watchdog trace at F000:E06E is a table-driven port/value writer with DX high byte E6h. Its actual DS:SI table contents still require the wired watchdog memory dump to be observed; the 16:46 spectrum_out.txt predates that diagnostic build.
 
 Unknown or unimplemented guest ports return FFh on reads and ignore writes in this initial profile. They must never be forwarded as physical NeoGS port operations.
 
@@ -95,12 +104,46 @@ VGA BIOS is a separate image and is not one of these three system BIOS choices. 
 
 - Runtime RAM/ROM/VGA read and write handlers.
 - VGA register/plane/latch implementation and renderer.
-- PIC/PIT/PPI/keyboard/RTC/IDE/FDC/DMA device emulation.
+- VGA/RTC/IDE/FDC device emulation; PIT clock decrement/output/IRQ0; DMA transfer engine and FDC/IDE request service; complete PPI/keyboard electrical behavior.
 - Guest BIOS banking for images larger than 8 KiB.
 - ATM-side physical I/O request service handlers.
 - BIOS POST/boot validation on NeoGS.
 
 A source-level address map and compile-time assertions are not BUILD/EMULATOR/HARDWARE PASS for those runtime components.
+
+
+
+### X86DEV overlay (physical page 06h)
+
+The 8237 DMA, 8253 PIT and XT board-control register models have been split from X86IO into a fixed-origin overlay on physical page06 (WIN2 selector03h). X86IO delegates ports through resident nested overlay wrappers. ATM loads `X86DEV.C` from TR-DOS after X86ALU; the NeoGS IMAGE service validates and reads back the image, calls its reset/self-test entry through the overlay gate, and publishes `X86DEV_READY` only after the signature and return mapping checks succeed. The board-control self-test covers 00A0h, 0213h, 00C0h, 03B8h and 03D8h latches. The resident CPU/BIOS readiness gate now requires X86IO, X86ALU, X86DEV and SYSBIOS.
+
+The dynamic page allocator now reserves page06 for X86DEV and allocates only pages07h–0Fh (nine pages). The allocator regression was updated to check all nine pages and page07 first-fit reuse.
+
+### PIT 8253 register-model status
+
+A static 8253 programming/readback slice is implemented for ports 0040h–0043h:
+- Three channel reload registers, LSB-only/MSB-only/LSB+MSB access modes, shared per-channel read/write sequencing, and count-latch commands.
+- Control-word channel selection, mode storage (including mode 6/7 aliases to 2/3), and BCD flag storage.
+- Reset-time self-test checks channel 0 reload=1234h, low/high readback and count-latch readback, plus channel 1 LSB-only programming/readback.
+- Still pending: decrementing counters, clock source/divisor timing, output pin states, speaker integration and IRQ0 generation. This is a register-file model, not a functioning timer.
+
+### DMA 8237 register-model status
+
+A register-level 8237-compatible controller slice is implemented in `neogs_sub/x86_io.asm`:
+- Ports 00h–07h: four channel address/count pairs with the shared low/high-byte flip-flop.
+- Ports 08h–0Fh: status/terminal-count read, command, software request, single-channel mask, mode, clear flip-flop, master clear, clear mask and all-mask write.
+- Ports 80h–83h: channel page registers.
+- Reset-time self-test checks channel 0 address=1234h and count=5678h low/high programming/readback, channel 1 page register 81h, channel 2 mask/unmask commands and master-clear state.
+- Still pending: DMA bus transfer engine, channel arbitration/DRQ from devices, terminal-count generation, auto-initialize, memory-to-memory mode, FDC/IDE integration and forwarding transfer requests through DMA/IPC. This is not yet a functioning disk DMA path.
+
+### PIC 8259A master register-model status
+
+The first master-PIC register slice is implemented in `neogs_sub/x86_io.asm` for ports 0020h–0021h:
+- Command port 20h: ICW1 initialization, OCW3 IRR/ISR read selection, non-specific EOI and specific EOI.
+- Data port 21h: ICW2 vector-base programming, ICW3/ICW4 sequence consumption, and IMR read/write.
+- Reset state: vector base 08h, IMR=FFh, IRR=00h, ISR=00h. A reset-time register self-test checks ICW1/2/4 sequencing, IMR readback, OCW3 IRR/ISR selection, and specific/non-specific EOI, then restores this reset state.
+- Implemented: fixed-priority IRR/IMR arbitration, keyboard FIFO IRQ1 request, CPU-boundary PIC acknowledge, ISR transition and EOI release. A reset-time self-test exercises ICW1/2/4, IMR readback, OCW3 IRR/ISR selection, IRQ1 vector/acknowledge and specific/non-specific EOI.
+- Still pending: PIT-driven IRQ0, ATM-side keyboard event producer over DMA/IPC, priority rotation, auto-EOI, full cascade and special-mask behavior. This is not a complete 8259A or BIOS POST pass.
 
 ### PPI / XT keyboard implementation status
 
@@ -110,4 +153,4 @@ The initial runtime slice is being added in neogs_sub/x86_io.asm for ports 0060h
 - 62h: PPI port C input/output composition; board configuration input is a deterministic profile value pending explicit ATM-PC switch definition.
 - 63h: PPI mode-set and bit-set/reset control register.
 - Initial BIOS mode-0 control word is 99h. PPI mode 1/2 handshake modes and board-specific port-C switch wiring are outside this first slice.
-- Keyboard scan-code production is exposed as a software API for the future DMA/IPC input service. It does not access NeoGS physical ports and does not claim a working ATM keyboard path or PIC IRQ1 delivery.
+- Keyboard scan-code production is exposed as a software API for the future DMA/IPC input service. Each accepted FIFO byte now raises virtual PIC IRQ1; the CPU interrupt boundary acknowledges it through the PIC and the handler can consume port 60h. The ATM-side keyboard event producer over DMA/IPC remains unimplemented.

@@ -1222,3 +1222,104 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 - IMAGE_FINISH runs the ALU probe through the gate, verifies A=A5 and that the previous page04 selector is restored, then publishes X86ALU_READY. BIOS now waits for X86IO_READY, X86ALU_READY and BIOS_IMAGE_READY.
 - TR-DOS packaging and CI artifact include X86ALU.C. BUILD PASS: run [42399458157](https://github.com/JTCyborg/Project126/actions/runs/42399458157), commit 705a0d5e41909a2cd42654f9095d7dfa43a57669. X86CORE 15,632/16,384 (752 free), X86IO 796/4,096, X86ALU 1,187/4,096; 0 errors, 0 warnings.
 - Physical X86ALU transfer, probe and arithmetic execution remain unverified. Dynamic allocator/manifest and generic module loading remain the next manager tasks.
+
+
+## 2026-11-07 — first 8259A master PIC register slice
+
+- Added a software register model for guest ports 0020h–0021h in `neogs_sub/x86_io.asm`. It is part of the existing X86IO overlay; no resident image limit or physical memory-map change was made.
+- Implemented reset state (vector base 08h, IMR=FFh, IRR/ISR=00h), ICW1 initialization, ICW2 vector-base programming, ICW3/ICW4 sequence consumption, IMR read/write, OCW3 IRR/ISR read selection, and specific/non-specific EOI.
+- The model is deliberately only a register-level slice. IRQ producers, IRQ0/IRQ1 sources, priority arbitration, CPU interrupt acknowledge/INTA integration, and full 8259A modes remain pending. No BIOS POST pass is inferred.
+- Code commits: `075eeaea08932a414d656f2f02d97ff0920e5138` (PIC model) and `8d1ece0b6ef70576177c1752416867f16a390034` (module header and relative-branch range correction).
+- **BUILD PASS:** GitHub Actions run [42404453625](https://github.com/JTCyborg/Project126/actions/runs/42404453625), source commit `8d1ece0b6ef70576177c1752416867f16a390034`. NeoGS/ATM/standalone IPC and TR-DOS packaging completed with 0 assembly errors and 0 warnings. X86CORE.C=16,145/16,384 bytes; X86IO.C=1,129/4,096 bytes; X86ALU.C=1,220/4,096 bytes; TR-DOS image=655,360 bytes. This is BUILD PASS only: no PIC register self-test or target execution has been performed.
+
+## 2026-11-07 — BIOS1-specific I/O trace clarification
+
+- Inspected the actual selected `BIOS1.C` source image `bios/27c64d.bin`. Its embedded identification string is `BIOS V1.11. Copyright 1986,87 Central Point Software, Inc.`, with date string `07/30/87`.
+- Important source distinction: `bios/bios.asm` is documented in the profile as the source family for `BIOS2.C`, not `BIOS1.C`. Its generic Turbo XT port list must not be treated as the exact BIOS1 I/O map.
+- The BIOS1 bytes at F000:E06E decode as a table-driven writer: `LODSB; CMP AL,FFh; JZ exit; MOV DL,AL; LODSB; OUT DX,AL; JMP loop`. It consumes port-low-byte/value pairs from DS:SI and terminates only when the port byte is FFh.
+- The latest BIOS1 watchdog snapshot has DS=F000h, SI=2978h and DX=E602h. The runtime log records 9,321 I/O operations, 382 distinct 16-bit port values, and 5,325 writes to E602h with value 00h. This is consistent with the BIOS repeatedly processing a table without finding its FFh terminator; it does not by itself prove whether the table pointer, high-memory contents, or an earlier BIOS setup step is wrong.
+- The high DX byte is preserved by the 8086 instruction sequence and is part of the observed 16-bit DX address. Do not mask/truncate it or invent E6xx device semantics until the BIOS caller, memory bytes at DS:SI and the selected machine decode are verified.
+- Next diagnostic priority: identify the caller that supplies DS:SI/DH for the E06E table routine; verify the first bytes at F000:2978 and whether SI advances through distinct RAM bytes. Device models must not be used to hide a missing table terminator.
+
+
+## 2026-11-07 — BIOS1 table-source diagnostic added
+
+- Added a one-shot watchdog diagnostic through the X86IO overlay gate. At the 65,535-instruction BIOS stop it prints the current guest DS:SI and reads 16 bytes through the normal `x86_cpu_calc_phys` + `x86_guest_mem_read8` path, starting at SI-1 (the byte consumed by the last LODSB) and continuing forward.
+- The diagnostic does not alter guest registers, does not write guest memory, does not change the custom memory map, and does not issue physical NeoGS I/O using guest port numbers. It runs only once on the terminal watchdog path, so it does not flood the I/O trace.
+- Code commits: `06b43df06fc382bbe3a028c65e2fcbf291de6c03` (overlay memory dump), `0943df075b5ca3dd587dbcb49862101bf4f2aa96` (resident overlay-gate wrapper), `8b58ae370093ce5afe68b1889d8585b46c9b3be3` (watchdog call site).
+- **BUILD PASS:** GitHub Actions run [42404671411](https://github.com/JTCyborg/Project126/actions/runs/42404671411), commit `8b58ae370093ce5afe68b1889d8585b46c9b3be3`. NeoGS/ATM/IPC/TR-DOS assembly and packaging completed with 0 assembly errors and 0 warnings. X86CORE.C=16,171/16,384 bytes; X86IO.C=1,270/4,096 bytes; X86ALU.C=1,220/4,096 bytes; TR-DOS image=655,360 bytes.
+- The diagnostic output has not yet been observed on target hardware. Until the 16-byte memory snapshot is available, the exact caller and validity of the BIOS1 DS:SI table pointer remain unresolved. No BIOS POST pass is claimed.
+- The currently checked-in `spectrum_out.txt` is from 2026-11-07 16:46 UTC (commit `568d662e39ac9ae13bbba98ade8a2d54c49f13f9`), while the watchdog memory-dump code was added at 19:07 UTC. Therefore the absence of `[BIOS TABLE]` bytes in that log is expected; it is not evidence that the new diagnostic failed.
+
+
+## 2026-11-07 — 8259A register self-test
+
+- Added a reset-time register-level regression to `x86_io_reset_impl`. It programs ICW1=13h, ICW2=20h and ICW4=01h; verifies IMR=A5h readback; selects ISR/IRR through OCW3 and verifies both empty; tests specific EOI for IRQ7 and non-specific EOI priority clearing for IRQ0.
+- The test restores the deterministic reset state (vector base 08h, IMR=FFh, IRR/ISR=00h) before returning. It emits exactly one `[NGS] X86 PIC REGISTER SELFTEST PASS` or `FAIL` line through the NeoGS debug channel. It does not synthesize an IRQ or claim CPU interrupt delivery.
+- Commits: `28a94aa5b214f598ff0ac017e1cadaf3aff5851e` (self-test) and `1f01c4fa731c9582f3618818e932ae0ffc989439` (long-branch safety).
+- **BUILD PASS:** GitHub Actions run [42404832812](https://github.com/JTCyborg/Project126/actions/runs/42404832812), commit `1f01c4fa731c9582f3618818e932ae0ffc989439`. All five assembly/package units completed with 0 errors and 0 warnings. X86CORE.C=16,171/16,384 bytes; X86IO.C=1,537/4,096 bytes; X86ALU.C=1,220/4,096 bytes; TR-DOS packaging succeeded.
+- The reset-time self-test has been assembled but not observed executing on target hardware. It is not an emulator-level or hardware PASS.
+
+
+## 2026-11-07 — virtual master PIC IRQ1 path
+
+- Extended the 8259A master model beyond register programming: software IRQ requests are latched in IRR, masked requests remain pending, fixed-priority arbitration respects the current ISR, and the CPU interrupt boundary now obtains the vector through the X86IO overlay acknowledge entry.
+- Every accepted XT keyboard FIFO byte raises virtual IRQ1. After the CPU acknowledges the request, IRQ1 moves IRR→ISR; reading port 60h consumes the scan code; EOI releases ISR. If more scan codes remain queued, EOI re-latches IRQ1 so the FIFO drains one byte per interrupt.
+- The reset-time PIC regression now exercises the real keyboard FIFO path: push scan code 1Eh, verify pending IRQ1/vector 21h, acknowledge, verify ISR=02h and IRR=00h, consume 1Eh, issue specific EOI, then verify the remaining command/EOI register tests. It restores the PIC and keyboard FIFO to reset state.
+- The CPU boundary retains a legacy direct-vector fallback if an external producer sets the pending latch without a PIC request. All intended hardware IRQ producers should use the PIC request API.
+- Still not implemented: ATM-side keyboard event producer over DMA/IPC, PIT-driven IRQ0, priority rotation, auto-EOI, cascade/special-mask modes, and target-level interrupt timing.
+- Code commits: `89267ae05c2863c4debfcdbd11c4ed3423822c3d` (IRQ request/arbitration/ack logic), `6f3dc5aa2e4df8fcbda1067890847fa70fd31753` (overlay-gated PIC ACK), `66316a3ccc0dc04696ce85315acb69cbf8eac778` (8086 interrupt-boundary integration), `079e13186707237d7ecc2a313193602beead85fe` (keyboard FIFO IRQ1 regression).
+- **BUILD PASS:** GitHub Actions run [42405147079](https://github.com/JTCyborg/Project126/actions/runs/42405147079), commit `079e13186707237d7ecc2a313193602beead85fe`. All assembly/package units completed with 0 errors and 0 warnings. X86CORE.C=16,202/16,384 bytes; X86IO.C=1,848/4,096 bytes; X86ALU.C=1,220/4,096 bytes.
+- This verifies assembly/package only. The reset-time PIC test output and actual interrupt entry/IRET behavior have not been observed on ATM/NeoGS hardware. No BIOS POST pass is claimed.
+
+
+## 2026-11-07 — 8237 DMA register model
+
+- Added exact 16-bit decode for guest ports 0000h–000Fh and page registers 0080h–0083h. The register file models four channel address/count pairs, the shared low/high-byte flip-flop, command, status/terminal-count latch, software request, single-channel mask, mode, clear-flip-flop, master-clear, clear-mask and all-mask write.
+- DMA status reads expose the request bits in bits 4–7 and clear terminal-count bits 0–3. Page registers 80h–83h map channels 0–3. Master clear resets controller command/status/request/mode/flip-flop and masks all channels without erasing address/count/page registers.
+- A reset-time DMA register self-test checks channel 0 address=1234h and count=5678h programming/readback, page register 81h, channel 2 mask/unmask, and master-clear reset state. It emits `[NGS] X86 DMA REGISTER SELFTEST PASS` or `FAIL` and restores the DMA register file.
+- This is not a transfer engine: DRQ arbitration, byte/word transfers, terminal-count generation, auto-init, memory-to-memory mode, device DMA requests, and FDC/IDE service remain pending. Guest DMA port addresses are not masked or truncated; high-byte decode remains exact, so this does not explain or consume BIOS1's observed E6xx writes.
+- Code commits: `54f0aebf36484e9300ec5b801b94199b9f304b2e` (register model), `3a7b3e88e443a5182da0a52783734ffab2b2f32b` (self-test branch-range correction), `aea658f1221b27f8f24642a361adba38f44f3594` (long dispatcher branch correction), and `d9164183cf7cc79b7e84694ac242149a9e92fd2b` (coverage comments).
+- **BUILD PASS:** GitHub Actions run [42405478965](https://github.com/JTCyborg/Project126/actions/runs/42405478965), code commit `aea658f1221b27f8f24642a361adba38f44f3594`. All assembly/package units completed with 0 errors and 0 warnings. X86CORE.C=16,202/16,384 bytes; X86IO.C=2,691/4,096 bytes; X86ALU.C=1,220/4,096 bytes.
+- This verifies assembly/package only. DMA self-test output and any transfer behavior have not been observed on target hardware.
+
+
+## 2026-11-07 — 8253 PIT register programming/readback
+
+- Added guest port decode for 0040h–0043h. The three channels have 16-bit reload and count-latch storage, LSB-only/MSB-only/LSB+MSB access modes, per-channel read/write byte sequencing, count-latch commands, mode storage with 6/7 aliases to 2/3, and BCD flag storage.
+- Reset-time PIT regression verifies channel 0 LSB/MSB programming to 1234h, byte-wise readback, count-latch snapshot/readback, and channel 1 LSB-only programming/readback. It emits `[NGS] X86 PIT REGISTER SELFTEST PASS` or `FAIL` and restores the PIT register file.
+- Deliberate limitation: counters do not decrement, no PIT clock/timebase or output pin is generated, speaker behavior is not modeled, and IRQ0 is not raised. This is not a functioning timer yet.
+- Code commits: `0b5effd61bd0a8080325152f316ac6d9366f9481` (PIT model), `a84ef5a12490722b837556546ee05f29ba7e24b8` (remove redundant control-word calculations), `f4afc71679793ef1c5c50970208752db398dbe03` (relative-branch range fix), `d1246b980c1d715907d9f28e403a910a22f33c91` (coverage comment).
+- **BUILD PASS:** GitHub Actions run [42405784457](https://github.com/JTCyborg/Project126/actions/runs/42405784457), code commit `f4afc71679793ef1c5c50970208752db398dbe03`. All assembly/package units completed with 0 errors and 0 warnings. X86CORE.C=16,202/16,384 bytes; X86IO.C=3,540/4,096 bytes; X86ALU.C=1,220/4,096 bytes.
+- X86IO now has only 556 bytes of free space. Further devices (VGA, RTC, FDC/IDE, full timer and DMA transfer engine) should not be crammed into this overlay; next architecture step is splitting device models into separate overlay modules using the existing overlay allocator/gate. No timer or BIOS POST pass is claimed.
+
+
+## 2026-11-07 — Split 8237 DMA / 8253 PIT into X86DEV overlay (page06)
+
+- Split the existing DMA and PIT register-model code out of `neogs_sub/x86_io.asm` into `neogs_sub/x86_devices.asm`. The new fixed-origin image is `X86DEV.C`, loaded at logical 8000h and installed on physical page06 through WIN2 selector03h. X86IO remains page04 and X86ALU page05.
+- X86IO now delegates reads/writes for DMA ports 0000h–000Fh, 0080h–0083h and PIT ports 0040h–0043h to resident `x86_dev_read8` / `x86_dev_write8` wrappers. The nested call gate restores page04 after every page06 call; the operational stack and guest WIN3 mapping remain unchanged. No guest port number is ever used as a physical NeoGS port.
+- Added IMAGE kind03 for X86DEV, 1..4096-byte validation, page06 installation, complete byte-for-byte readback, and a resident-gate return check. The X86DEV reset entry runs the DMA and PIT register self-tests and returns signature A=5Ah, HL=06D1h. X86DEV_READY is published only after the gate/signature test completes.
+- ATM startup now loads `X86IO.C`, `X86ALU.C`, then `X86DEV.C` from TR-DOS using the existing serialized ABI 1.0 IMAGE sender. The TR-DOS image includes `X86DEV.C` (1705 bytes, 7 sectors); the disk build reuses assembler PAGE 7 after X86ALU has already been saved, because the Spectrum 128K assembler supports PAGE 0..7 only.
+- Page06 is now pinned to X86DEV. The first-fit dynamic overlay allocator was narrowed to pages07h–0Fh (nine pages); its reset-time regression now allocates all nine, checks exhaustion, releases them in reverse order and verifies page07 first-fit reuse. The initial allocator-state clear was resized to the nine-byte table.
+- The resident BIOS execution gate now requires SYSBIOS, X86IO, X86ALU and X86DEV readiness. X86CORE remains within the hard 16 KiB resident limit, but has only four bytes of headroom; do not add resident code without first moving or reducing code.
+- Code commits include `1e6110c95c499821e997a81ba0f3232b1b02e034` (X86DEV source), `9f65926284507a46394f25f41c6218ae83ff79ac` (X86IO delegation), `3e09dc84f427eb2a17f967931ab542d8a8d44f1f` (resident gate wrappers), `48db78476341562d6fe384c544175dc1a485999e` (IMAGE kind), `386940f1394d3ed81f2f7d3a0ae8e2b9f3e04932` (ATM loader), `dbe140bf325ae51ffe8f20ce119c084039d90fed` (NeoGS install/readiness), `de1598493e2f4afa3fb7522810a9fb53ef280689` / `259fc88195410415e2b2a0c005501c1285c9517d` (allocator ownership/range), and `c8a0ebdea723728be494071eaf0bd1a1711625bd` (TR-DOS PAGE reuse fix).
+- **BUILD PASS:** GitHub Actions run [42407216342](https://github.com/JTCyborg/Project126/actions/runs/42407216342), head `c8a0ebdea723728be494071eaf0bd1a1711625bd`. All assembly and package steps completed with 0 errors and 0 warnings. X86CORE.C=16,380/16,384 bytes; X86IO.C=1,871/4,096 bytes; X86ALU.C=1,220/4,096 bytes; X86DEV.C=1,705/4,096 bytes. TR-DOS disk image=655,360 bytes.
+- This is assembly/package validation only. The X86DEV register self-test messages, nested overlay switching and BIOS execution have not been observed on physical ATM/NeoGS hardware. DMA transfer execution and PIT clock/IRQ0 remain unimplemented; no BIOS POST pass is claimed.
+
+
+## 2026-11-07 — XT motherboard control-port latches in X86DEV
+
+- Added software register latches in X86DEV/page06 for the generic Turbo XT BIOS board-control ports: 00A0h NMI gate state, 0213h expansion-unit enable, 00C0h legacy data-bus test latch, 03B8h MDA mode and 03D8h CGA mode. All accesses remain guest-side software emulation; no physical NeoGS I/O is issued.
+- The X86DEV read/write dispatcher now checks DMA, PIT, then these board-control registers. The X86DEV reset self-test writes/reads 00A0h, 0213h, 03B8h and 03D8h, logs PASS/FAIL, restores the latches and preserves the page06 signature returned to the installer.
+- Scope is intentionally limited: the NMI latch does not deliver an NMI, the expansion latch does not expose physical expansion hardware, the mode latches do not render CGA/MDA, and 00C0h is only a read/write test latch. VGA/CGA/MDA rendering and retrace status remain pending.
+- **BUILD PASS:** GitHub Actions run [42407604818](https://github.com/JTCyborg/Project126/actions/runs/42407604818), code commit `49865bc3130e3aadb81789a44a791f033a00f081`. All assembly/package units completed with 0 errors and 0 warnings. X86CORE.C=16,380/16,384 bytes; X86IO.C=1,871/4,096 bytes; X86ALU.C=1,220/4,096 bytes; X86DEV.C=2,110/4,096 bytes. TR-DOS image packaging succeeded; X86DEV.C is 2,110 bytes (9 sectors).
+- This is build/package validation only. The board-latch self-test output has not been observed on physical ATM/NeoGS hardware.
+
+
+## 2026-11-07 — Complete XT board-latch register self-test
+
+- Closed a coverage gap in `neogs_sub/x86_devices.asm`: port 00C0h (legacy data-bus test latch) was decoded for read/write but omitted from the X86DEV reset-time board-latch regression.
+- Added an independent 00C0h write/read round-trip using test value 5Ah. The check uses the same guest-device read/write handlers as the other board latches and fails the common board self-test on either an unhandled write or mismatched readback.
+- The board-latch self-test now covers 00A0h, 0213h, 00C0h, 03B8h and 03D8h. All test values are cleared by the existing restore path before the overlay reset entry returns its A=5Ah / HL=06D1h signature.
+- Source commit: `240f5e0a887560f7ecd1e2a24b2edf1384a34cbd`; profile documentation commit: `2d63195ef92bbdad6d6bb2c1e3cd09d95867a221`.
+- Build and target-hardware validation are pending. This change adds register self-test coverage only; it does not implement NMI delivery, expansion hardware, CGA/MDA rendering or retrace status.

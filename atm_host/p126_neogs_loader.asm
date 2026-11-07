@@ -228,6 +228,11 @@ p126_neogs_startup::
         call    p126_neogs_load_alu_overlay
         ret     c
 
+        ld      a,'D'
+        ld      (p126_neogs_startup_stage),a
+        call    p126_neogs_load_dev_overlay
+        ret     c
+
 .p126_neogs_startup_done:
         ld      a,'0'
         ld      (p126_neogs_startup_stage),a
@@ -254,6 +259,12 @@ p126_neogs_load_alu_overlay:
         ld      hl,p126_neogs_alu_name
         ld      a,P126_IMAGE_KIND_X86ALU
         ld      de,P126_IMAGE_X86ALU_MAX_SIZE
+        jp      p126_neogs_load_fixed_overlay
+
+p126_neogs_load_dev_overlay:
+        ld      hl,p126_neogs_dev_name
+        ld      a,P126_IMAGE_KIND_X86DEV
+        ld      de,P126_IMAGE_X86DEV_MAX_SIZE
         jp      p126_neogs_load_fixed_overlay
 
 ; Shared fixed-profile loader. IN: HL=TR-DOS 8-byte name, A=IMAGE kind,
@@ -342,11 +353,16 @@ p126_neogs_load_fixed_overlay:
         ld      (p126_bios_frame_flags),a
         ld      a,(p126_neogs_overlay_kind)
         cp      P126_IMAGE_KIND_X86IO
-        jr      nz,.fixed_overlay_log_alu_begin
+        jr      nz,.fixed_overlay_log_not_io
         ld      hl,p126_neogs_io_log_begin
         jr      .fixed_overlay_log_begin
-.fixed_overlay_log_alu_begin:
+.fixed_overlay_log_not_io:
+        cp      P126_IMAGE_KIND_X86ALU
+        jr      nz,.fixed_overlay_log_dev_begin
         ld      hl,p126_neogs_alu_log_begin
+        jr      .fixed_overlay_log_begin
+.fixed_overlay_log_dev_begin:
+        ld      hl,p126_neogs_dev_log_begin
 .fixed_overlay_log_begin:
         call    p126_neogs_log_text
         ld      bc,6
@@ -399,11 +415,16 @@ p126_neogs_load_fixed_overlay:
 
         ld      a,(p126_neogs_overlay_kind)
         cp      P126_IMAGE_KIND_X86IO
-        jr      nz,.fixed_overlay_log_alu_ready
+        jr      nz,.fixed_overlay_log_not_io_ready
         ld      hl,p126_neogs_io_log_ready
         jr      .fixed_overlay_log_ready
-.fixed_overlay_log_alu_ready:
+.fixed_overlay_log_not_io_ready:
+        cp      P126_IMAGE_KIND_X86ALU
+        jr      nz,.fixed_overlay_log_dev_ready
         ld      hl,p126_neogs_alu_log_ready
+        jr      .fixed_overlay_log_ready
+.fixed_overlay_log_dev_ready:
+        ld      hl,p126_neogs_dev_log_ready
 .fixed_overlay_log_ready:
         call    p126_neogs_log_text
         or      a
@@ -848,6 +869,7 @@ p126_neogs_boot_name: db "P126BOOT"
 p126_neogs_core_name: db "X86CORE "
 p126_neogs_io_name:   db "X86IO   "
 p126_neogs_alu_name:  db "X86ALU  "
+p126_neogs_dev_name:  db "X86DEV  "
 p126_neogs_overlay_size: dw 0
 p126_neogs_overlay_max_size: dw 0
 p126_neogs_overlay_kind: db 0
@@ -856,6 +878,8 @@ p126_neogs_io_log_begin: db "[NGS HOST] X86IO IMAGE BEGIN",13,10,0
 p126_neogs_io_log_ready: db "[NGS HOST] X86IO IMAGE TX COMPLETE",13,10,0
 p126_neogs_alu_log_begin: db "[NGS HOST] X86ALU IMAGE BEGIN",13,10,0
 p126_neogs_alu_log_ready: db "[NGS HOST] X86ALU IMAGE TX COMPLETE",13,10,0
+p126_neogs_dev_log_begin: db "[NGS HOST] X86DEV IMAGE BEGIN",13,10,0
+p126_neogs_dev_log_ready: db "[NGS HOST] X86DEV IMAGE TX COMPLETE",13,10,0
 p126_neogs_name_ptr: dw 0
 p126_neogs_file_length: dw 0
 p126_neogs_core_length: dw 0

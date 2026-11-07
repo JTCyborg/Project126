@@ -97,6 +97,12 @@ x86_cpu_step:
         jr      z,.boundary_halt_check
         xor     a
         ld      (x86_pending_irq),a
+        ; Resolve the vector through the virtual 8259A. If a future external
+        ; IRQ producer uses the legacy direct-vector latch, preserve fallback.
+        call    x86_io_pic_ack
+        jr      c,.boundary_irq_legacy_vector
+        ld      (x86_irq_vector),a
+.boundary_irq_legacy_vector:
         ld      a,(x86_irq_vector)
         jp      x86_exec_interrupt
 
