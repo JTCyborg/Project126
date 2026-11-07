@@ -109,7 +109,7 @@ A source-level address map and compile-time assertions are not BUILD/EMULATOR/HA
 The first master-PIC register slice is implemented in `neogs_sub/x86_io.asm` for ports 0020h–0021h:
 - Command port 20h: ICW1 initialization, OCW3 IRR/ISR read selection, non-specific EOI and specific EOI.
 - Data port 21h: ICW2 vector-base programming, ICW3/ICW4 sequence consumption, and IMR read/write.
-- Reset state: vector base 08h, IMR=FFh, IRR=00h, ISR=00h.
+- Reset state: vector base 08h, IMR=FFh, IRR=00h, ISR=00h. A reset-time register self-test checks ICW1/2/4 sequencing, IMR readback, OCW3 IRR/ISR selection, and specific/non-specific EOI, then restores this reset state.
 - Still pending: IRQ request producers, priority arbitration/rotation, CPU interrupt-acknowledge integration, IRQ0 timer and IRQ1 keyboard delivery, auto-EOI and full cascade/special-mask behavior. This is a register interface slice, not a complete 8259A or BIOS POST pass.
 
 ### PPI / XT keyboard implementation status
