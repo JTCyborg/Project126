@@ -23,9 +23,6 @@ x86_dev_reset_impl:
         call    x86_dev_dma_selftest_impl
         call    x86_dev_pit_reset_impl
         call    x86_dev_pit_selftest_impl
-        ret
-
-x86_dev_overlay_probe_impl:
         ld      a,#5A
         ld      hl,#06D1
         ret
