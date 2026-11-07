@@ -321,13 +321,8 @@ x86_io_ppi_read8:
 .ppi_pc_no_video_id:
         ld      a,#0D
 .ppi_pc_speaker:
-        ld      b,a
-        ld      a,(x86_io_ppi_pb)
-        and     3
-        cp      3
-        ld      a,b
-        jr      nz,.ppi_pc_return
-        or      #20
+        ; PCem's bit 5 is ppispeakon, driven by PIT channel-2 OUT,
+        ; not by PB0/PB1. The current static PIT profile has OUT low.
 .ppi_pc_return:
         or      a
         ret
