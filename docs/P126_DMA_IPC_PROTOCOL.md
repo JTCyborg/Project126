@@ -208,11 +208,11 @@ The first overlay is the fixed-origin XT I/O model, with image kind `01h` (`P126
 - IMAGE_FRAGMENT is exactly one fragment: index 0, count 1, total logical length u32 LE equal to the IMAGE_BEGIN size, followed by the complete X86IO image. The frame carries the normal ABI FRAGMENT flag and CRC.
 - ATM loads the TR-DOS file after the resident A2h acknowledgement. The first 256-byte sector is copied backwards from C000h to C01Ch so that the frame header remains intact despite overlap; subsequent sectors are read directly into the following data area.
 - NeoGS copies the validated fragment from DMA staging page 42h to physical kernel page 04h through WIN3 and compares every installed byte against the source still in page 42h.
-- IMAGE_FINISH runs a reversible WIN2 mapping/read-write test at logical BFFFh using physical pages 04h and 05h (saving/restoring both bytes), leaves page 04h mapped through MPAG port 00h selector 02h (ROR8(04h)), then publishes IO_OVERLAY_READY. The target log must show `[NGS] WIN2 PAGE04/05 TEST PASS`.
-- The resident CPU's I/O call sites are statically linked to the X86IO symbols in the same SjASMPlus translation unit. Page 04h is pinned in WIN2; no dynamic module call gate, allocator, unload, or nested overlay switching is implemented yet.
-- BIOS execution is gated until both IO_OVERLAY_READY and BIOS_IMAGE_READY are set.
+- IMAGE_FINISH runs a reversible WIN2 mapping/read/write test at BFFFh across pages04/05, then a temporary page05 test stub calls the resident X86IO wrapper on page04. The RET trampoline must restore page05 so the stub resumes; the original page05 bytes are restored, WIN2 is returned to page04, and only then IO_OVERLAY_READY is published. The combined target log is `[NGS] WIN2 MAP/GATE TEST PASS`.
+- CPU-facing X86IO entry points are resident wrappers through the WIN2 call gate; implementation code remains fixed at logical 8000h on page04. The gate saves/restores the prior selector on the WIN1 stack and supports stack-nested page switches, but has no dynamic module table/allocator or unload policy.
+- BIOS execution is gated until IO_OVERLAY_READY, X86ALU_READY and BIOS_IMAGE_READY are all set.
 
-The current X86IO profile is a single-fragment pinned overlay, not a generic image manifest/reassembly service. Its build and resident WIN2 mapping self-test code have passed CI, but the ATM/NeoGS transfer and physical WIN2 test result still require target verification.
+The X86IO and X86ALU profiles are separate single-fragment pinned images, not a generic manifest/reassembly service. The X86ALU profile uses image kind 02h, TR-DOS file X86ALU.C, logical origin 8000h, physical page05/selector82, maximum 4096 bytes and byte-for-byte readback. IMAGE_FINISH probes its entry through the resident gate and verifies restoration to page04 before setting X86ALU_READY. CI passes; ATM/NeoGS transfer and both gate tests still require target verification.
 
 ## 9. Compatibility and migration
 
@@ -241,11 +241,11 @@ The NeoGS IPC module exports `p126_ngs_ipc_dispatch_once`. It samples ZXSTAT/CBI
 
 The receiver restores the validated frame pointer and exact byte count after the validator returns (the validator clobbers BC/HL). A valid frame returns HL=C000h and BC=18+payload_length; errors return carry set and the ABI status in A. Version mismatches use the shared `BAD_VERSION` status.
 
-The IPC module is linked into `X86CORE.C` after the x86 state, execution, ModR/M and ALU modules. The resident startup maps WIN0/page 00 and WIN1/page 03, establishes the stack at 7FFEh, and repeatedly calls `p126_ngs_ipc_dispatch_once`. WIN2 is initialized to page 01 until the X86IO overlay is installed; WIN3 remains the guest-memory aperture.
+The IPC module is linked into `X86CORE.C` after x86 state, execution and ModR/M. The ALU implementation is a separate page05 overlay; resident wrappers link its public entry points to the call gate. The resident startup maps WIN0/page 00 and WIN1/page 03, establishes the stack at 7FFEh, and repeatedly calls `p126_ngs_ipc_dispatch_once`. WIN2 is initialized to page 01 until the X86IO overlay is installed; WIN3 remains the guest-memory aperture.
 
-After the resident A2h acknowledgement, the ATM host reads `X86IO.C` from TR-DOS and sends its IMAGE transaction through ABI 1.0 DMA. NeoGS validates the frame, installs the image at physical page 04 through WIN3, verifies the complete copy, then maps page 04 into WIN2. BIOS execution is gated until X86IO, X86ALU and SYSBIOS are all ready.
+After the resident A2h acknowledgement, ATM reads `X86IO.C` and `X86ALU.C` from TR-DOS and sends both IMAGE transactions through ABI 1.0 DMA. NeoGS installs them at physical pages04/05 through WIN3 and verifies every byte. The resident gate maps page04 or page05 into WIN2 on each public call. BIOS execution is gated until X86IO, X86ALU and SYSBIOS are all ready.
 
-Verification boundary: CI verifies assembly, split-image sizes, and TR-DOS packaging. Only target testing can verify the X86IO DMA transfer, page-04 readback, WIN2 mapping, ZXCMD/CBIT timing, DMA page-42 behavior, and subsequent BIOS I/O calls.
+Verification boundary: CI verifies assembly, split-image sizes, and TR-DOS packaging. Only target testing can verify both overlay DMA transfers/readbacks, the page04/page05 gate probes, ZXCMD/CBIT timing, DMA page42 behavior, and subsequent BIOS I/O/ALU execution.
 
 
 ## 12. Resident startup and GS105a bootstrap
@@ -261,7 +261,7 @@ Project126 now has a concrete startup chain:
 
 DBIT/GSDAT is used only for stock-ROM bootstrap compatibility. After A2h, application payloads use ABI 1.0 DMA; NeoGS does not perform direct physical host I/O. ATM startup file reads occur before ATM video initialization to preserve the established TR-DOS paging constraints.
 
-The resident `X86CORE.C` must fit within one 16 KiB WIN0 page; the current build is 15,750 bytes. `X86IO.C` is a separate 796-byte fixed-origin overlay loaded into physical page 04 and mapped in WIN2. The remaining kernel pages 05h–0Fh are still reserved for future dynamic overlays and are not yet managed by a general allocator. P126BOOT.C is limited to one 256-byte TR-DOS sector.
+The resident `X86CORE.C` must fit within one 16 KiB WIN0 page; the current build is 15,610 bytes. `X86IO.C` (796 bytes) is pinned to physical page04 and `X86ALU.C` (1,175 bytes) to page05; both use logical origin 8000h and resident wrappers. Pages06h–0Fh remain reserved for future dynamic overlays and are not yet managed by a general allocator. P126BOOT.C is limited to one 256-byte TR-DOS sector.
 
 Hardware verification remains outstanding: stock-ROM reset/probe timing, #14/#13 transfer, DBIT turnaround, RAM-over-ROM paging, stack page 03, A2 ready acknowledgement and the first E0/DMA/FF frame exchange must be exercised on target hardware.
 
