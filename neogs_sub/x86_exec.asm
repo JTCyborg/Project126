@@ -452,7 +452,8 @@ x86_exec_logic_family:
         call    x86_modrm_read_reg8
         ld      c,a
         ld      a,(x86_exec_alu_lhs8)
-        ld      b,(x86_exec_alu_operation)
+        ld      a,(x86_exec_alu_operation)
+        ld      b,a
         call    x86_alu_logic8
         jp      x86_modrm_write_rm8
 
@@ -464,7 +465,8 @@ x86_exec_logic_family:
         call    x86_modrm_read_rm8
         ld      c,a
         ld      a,(x86_exec_alu_lhs8)
-        ld      b,(x86_exec_alu_operation)
+        ld      a,(x86_exec_alu_operation)
+        ld      b,a
         call    x86_alu_logic8
         ld      c,a
         ld      a,(x86_modrm_reg)
@@ -480,7 +482,8 @@ x86_exec_logic_family:
         call    x86_modrm_read_reg16
         ex      de,hl
         ld      hl,(x86_exec_alu_lhs16)
-        ld      b,(x86_exec_alu_operation)
+        ld      a,(x86_exec_alu_operation)
+        ld      b,a
         call    x86_alu_logic16
         jp      x86_modrm_write_rm16
 
@@ -491,7 +494,8 @@ x86_exec_logic_family:
         call    x86_modrm_read_rm16
         ex      de,hl
         ld      hl,(x86_exec_alu_lhs16)
-        ld      b,(x86_exec_alu_operation)
+        ld      a,(x86_exec_alu_operation)
+        ld      b,a
         call    x86_alu_logic16
         jp      x86_modrm_write_reg16
 
@@ -529,7 +533,8 @@ x86_exec_logic_family:
         ret     c
         ld      c,a
         ld      a,(x86_reg_ax)
-        ld      b,(x86_exec_alu_operation)
+        ld      a,(x86_exec_alu_operation)
+        ld      b,a
         call    x86_alu_logic8
         ld      (x86_reg_ax),a
         or      a
@@ -539,7 +544,8 @@ x86_exec_logic_family:
         ret     c
         ex      de,hl
         ld      hl,(x86_reg_ax)
-        ld      b,(x86_exec_alu_operation)
+        ld      a,(x86_exec_alu_operation)
+        ld      b,a
         call    x86_alu_logic16
         ld      (x86_reg_ax),hl
         or      a
