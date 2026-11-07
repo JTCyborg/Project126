@@ -519,54 +519,76 @@
 347+  01C7
 348+  01C7              p126_ipc_dma_send_frame:
 348+  01C7
-349+  01C7 22 03 02             ld      (p126_ipc_dma_source),hl
-350+  01CA ED 43 05 02          ld      (p126_ipc_dma_size),bc
-351+  01CE CD 98 00             call    p126_ipc_validate_frame
-352+  01D1 D8                   ret     c
-353+  01D2 ED 4B 05 02          ld      bc,(p126_ipc_dma_size)
-354+  01D6 78                   ld      a,b
-355+  01D7 FE 40                cp      #40
-356+  01D9 38 0A                jr      c,.p126_dma_size_valid
-357+  01DB C2 FF 01             jp      nz,.p126_dma_bad_size
-358+  01DE 79                   ld      a,c
-359+  01DF B7                   or      a
-360+  01E0 28 03                jr      z,.p126_dma_size_valid
-361+  01E2 C3 FF 01             jp      .p126_dma_bad_size
-362+  01E5              .p126_dma_size_valid:
-363+  01E5 3E E0                ld      a,P126_CMD_HOST_FRAME
-364+  01E7 CD 51 00             call    p126_ipc_send_command
-365+  01EA D8                   ret     c
-366+  01EB 2A 03 02             ld      hl,(p126_ipc_dma_source)
-367+  01EE ED 4B 05 02          ld      bc,(p126_ipc_dma_size)
-368+  01F2 11 00 00             ld      de,P126_IPC_DMA_WINDOW
-369+  01F5 F3                   di
-370+  01F6 ED B0                ldir
-371+  01F8 3E FF                ld      a,P126_IPC_DMA_END
-372+  01FA D3 BB                out     (P126_GSCOM),a
-373+  01FC C3 06 00             jp      p126_ipc_wait_cbit_clear
-374+  01FF              .p126_dma_bad_size:
-375+  01FF 3E 03                ld      a,P126_STATUS_BAD_FRAME
-376+  0201 37                   scf
-377+  0202 C9                   ret
-378+  0203
-379+  0203 00 00        p126_ipc_dma_source: dw 0
-380+  0205 00 00        p126_ipc_dma_size:   dw 0
-381+  0207
+349+  01C7 3E 01                ld      a,1
+350+  01C9 32 26 02             ld      (p126_ipc_dma_stage),a
+351+  01CC 22 22 02             ld      (p126_ipc_dma_source),hl
+352+  01CF ED 43 24 02          ld      (p126_ipc_dma_size),bc
+353+  01D3 CD 98 00             call    p126_ipc_validate_frame
+354+  01D6 D8                   ret     c
+355+  01D7
+356+  01D7 3E 02                ld      a,2
+357+  01D9 32 26 02             ld      (p126_ipc_dma_stage),a
+358+  01DC ED 4B 24 02          ld      bc,(p126_ipc_dma_size)
+359+  01E0 78                   ld      a,b
+360+  01E1 FE 40                cp      #40
+361+  01E3 38 0A                jr      c,.p126_dma_size_valid
+362+  01E5 C2 1E 02             jp      nz,.p126_dma_bad_size
+363+  01E8 79                   ld      a,c
+364+  01E9 B7                   or      a
+365+  01EA 28 03                jr      z,.p126_dma_size_valid
+366+  01EC C3 1E 02             jp      .p126_dma_bad_size
+367+  01EF
+368+  01EF              .p126_dma_size_valid:
+369+  01EF 3E 03                ld      a,3
+370+  01F1 32 26 02             ld      (p126_ipc_dma_stage),a
+371+  01F4 3E E0                ld      a,P126_CMD_HOST_FRAME
+372+  01F6 CD 51 00             call    p126_ipc_send_command
+373+  01F9 D8                   ret     c
+374+  01FA
+375+  01FA 3E 04                ld      a,4
+376+  01FC 32 26 02             ld      (p126_ipc_dma_stage),a
+377+  01FF 2A 22 02             ld      hl,(p126_ipc_dma_source)
+378+  0202 ED 4B 24 02          ld      bc,(p126_ipc_dma_size)
+379+  0206 11 00 00             ld      de,P126_IPC_DMA_WINDOW
+380+  0209 F3                   di
+381+  020A ED B0                ldir
+382+  020C
+383+  020C 3E 05                ld      a,5
+384+  020E 32 26 02             ld      (p126_ipc_dma_stage),a
+385+  0211 3E FF                ld      a,P126_IPC_DMA_END
+386+  0213 D3 BB                out     (P126_GSCOM),a
+387+  0215 CD 06 00             call    p126_ipc_wait_cbit_clear
+388+  0218 D8                   ret     c
+389+  0219 AF                   xor     a
+390+  021A 32 26 02             ld      (p126_ipc_dma_stage),a
+391+  021D C9                   ret
+392+  021E
+393+  021E              .p126_dma_bad_size:
+394+  021E 3E 03                ld      a,P126_STATUS_BAD_FRAME
+395+  0220 37                   scf
+396+  0221 C9                   ret
+397+  0222
+398+  0222 00 00        p126_ipc_dma_source: dw 0
+399+  0224 00 00        p126_ipc_dma_size:   dw 0
+400+  0226              ; 0=success/not started, 1=local frame validation, 2=DMA size,
+401+  0226              ; 3=E0/READY handshake, 4=payload copy, 5=FF/completion acknowledgement.
+402+  0226 00           p126_ipc_dma_stage:  db 0
+403+  0227
 # file closed: neogs_ipc.asm
- 11   0207              p126_atm_ipc_module_end:
- 12   0207
- 13   0207                  DISPLAY "P126_ATM_IPC_START=", /H, p126_atm_ipc_module_start
- 14   0207                  DISPLAY "P126_ATM_IPC_END=", /H, p126_atm_ipc_module_end
- 15   0207                  DISPLAY "P126_ATM_IPC_SIZE=", /D, p126_atm_ipc_module_end-p126_atm_ipc_module_start
- 16   0207
- 17   0207                  ASSERT p126_atm_ipc_module_end > p126_atm_ipc_module_start
- 18   0207                  ASSERT p126_atm_ipc_module_end <= #10000
- 19   0207
+ 11   0227              p126_atm_ipc_module_end:
+ 12   0227
+ 13   0227                  DISPLAY "P126_ATM_IPC_START=", /H, p126_atm_ipc_module_start
+ 14   0227                  DISPLAY "P126_ATM_IPC_END=", /H, p126_atm_ipc_module_end
+ 15   0227                  DISPLAY "P126_ATM_IPC_SIZE=", /D, p126_atm_ipc_module_end-p126_atm_ipc_module_start
+ 16   0227
+ 17   0227                  ASSERT p126_atm_ipc_module_end > p126_atm_ipc_module_start
+ 18   0227                  ASSERT p126_atm_ipc_module_end <= #10000
+ 19   0227
 # file closed: neogs_ipc_assemble.asm
 
 Value    Label
 ------ - -----------------------------------------------------------
-0x0207   p126_atm_ipc_module_end
+0x0227   p126_atm_ipc_module_end
 0x0000   p126_atm_ipc_module_start
 0x0000   P126_CBIT
 0x00E3 X P126_CMD_CAPABILITIES
@@ -601,10 +623,11 @@ Value    Label
 0x0167   p126_ipc_crc_work
 0x00FF   P126_IPC_DMA_END
 0x01C7 X p126_ipc_dma_send_frame
-0x01FF   p126_ipc_dma_send_frame.p126_dma_bad_size
-0x01E5   p126_ipc_dma_send_frame.p126_dma_size_valid
-0x0205   p126_ipc_dma_size
-0x0203   p126_ipc_dma_source
+0x021E   p126_ipc_dma_send_frame.p126_dma_bad_size
+0x01EF   p126_ipc_dma_send_frame.p126_dma_size_valid
+0x0224   p126_ipc_dma_size
+0x0222   p126_ipc_dma_source
+0x0226   p126_ipc_dma_stage
 0x0000   P126_IPC_DMA_WINDOW
 0x0196 X p126_ipc_emit_version
 0x01A8   p126_ipc_emit_version.p126_version_done
