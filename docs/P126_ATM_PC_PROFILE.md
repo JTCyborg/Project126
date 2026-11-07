@@ -66,7 +66,7 @@ The profile reserves the following PC/XT-style interfaces. They are guest-visibl
 | 00E0 | Project126 diagnostic latch | Implemented 16-bit read/write test latch; not a PC hardware device |
 | 00A0, 0213 | Generic Turbo XT BIOS board-control ports | X86DEV/page06 static latches: NMI gate state and expansion-unit enable state; no actual NMI delivery or expansion hardware |
 | 01F0–01F7, 03F6 | Primary ATA-compatible guest disk task file/control | Software device architecture reserved; task-file/IPC service pending |
-| 03B0–03DF | IBM VGA/CGA/MDA register interfaces | VGA/CGA/MDA register and status behavior pending |
+| 03B0–03DF | IBM VGA/CGA/MDA register interfaces | 03B8h/03D8h static mode latches implemented in X86DEV; CRTC registers, status/retrace and rendering pending |
 | 03F0–03F5, 03F7 | 765-compatible floppy controller (3F7 status/direction) | Reserved; floppy service remains a separate device decision |
 | 03F8–03FF, 02F8–02FF | 8250-compatible COM1/COM2 UARTs | BIOS2 source probes these UARTs; guest UART model/ATM serial bridge pending |
 | 03BC, 0378, 0278 | Parallel printer ports | BIOS2 source probes three possible LPT bases; guest printer service pending |
