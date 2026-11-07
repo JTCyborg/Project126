@@ -1121,3 +1121,12 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 - Ограничения этого первого среза: ATM keyboard IPC producer ещё не подключён; IRQ1/PIC не реализован; PPI mode 1/2 не поддержан; чтение/запись port A пока ориентированы на XT keyboard input, а не на универсальный output latch. Port-C board input #0D — временный детерминированный XT/no-FPU default, не утверждённая аппаратная DIP-конфигурация.
 - CI BUILD PASS: commit 68ae8eed9036c7388b11a5f74d746ac8286d7625, workflow run 42394977284. NeoGS assembly: 0 errors / 0 warnings; x86 image end 3FFBh (5 bytes below 4000h resident limit); PPI/I/O module size 796 bytes. TR-DOS package built successfully.
 - Это только BUILD PASS. Регистровый self-test, эмуляторная проверка, аппаратная проверка PPI/клавиатуры и BIOS POST ещё не выполнены.
+
+### Обязательная инфраструктурная задача перед расширением набора устройств
+
+- [ ] Разработать и реализовать resident overlay/module manager для использования выделенного kernel pool pages 00h–0Fh (256 KiB), сохранив bootstrap entry и resident dispatcher, фиксированный стек WIN1/page 03h и эксклюзивное владение WIN3 memory backend. Текущий X86CORE.C ограничен одной 16 KiB страницей до появления overlay manager.
+- [ ] Определить формат/манифест overlay-модулей, загрузку дополнительных 16 KiB страниц через TR-DOS/ATM DMA/IPC, адресацию символов и ABI вызовов между resident core и overlay.
+- [ ] Добавить проверки размера/пересечений, page-switch restore, запрет вызова функции после выгрузки overlay, и тесты вложенных/повторных вызовов.
+- [ ] Перенести расширяемые device models (PIC/PIT/DMA/VGA/RTC/IDE) в отдельные overlay-модули после проверки менеджера. Не увеличивать лимит X86CORE.C и не менять физическую карту страниц без отдельного решения.
+
+Причина приоритета: после первого PPI/I/O среза X86CORE.C занимает 16379 из 16384 байт; осталось 5 байт. Следующий полноценный контроллер нельзя безопасно добавить в resident image до решения overlay/loading architecture.
