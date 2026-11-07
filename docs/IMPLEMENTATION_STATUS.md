@@ -779,10 +779,12 @@ Source commit: `aac9d7e60c391510150016d3b29906a7b2f90e3d`.
 
 - Detailed ledger: `docs/8086_PCEM_OPCODE_COVERAGE.md`.
 - Current implementation: `neogs_sub/x86_exec.asm` now covers NOP, HLT, three JMP encodings and MOV immediate to all eight 8-bit and eight 16-bit registers.
-- **Current raw opcode-byte coverage: 44 / 256 = 17.19%.** This is a dispatch-coverage metric only; ModR/M, prefix, flags, interrupt and semantic completeness are separately required before claiming 100%.
+- **Current raw opcode-byte coverage: 48 / 256 = 18.75%.** This is a dispatch-coverage metric only; ModR/M, prefix, flags, interrupt and semantic completeness are separately required before claiming 100%.
 - The 16 MOV-immediate encodings were added in commit `28575e385d5d2a66c5ca448e72f7b4e2f01d2391`.
 - CPU functional tests and BIOS execution remain blocked until the complete 8086 implementation is ported. Assembly-only build checks are permitted solely for syntax, linkage and image-size validation.
 
 - Added original 8086 register INC/DEC encodings `40–4F`; result flags are calculated by the 16-bit ALU path and CF is restored unchanged. Compile-only CI is pending; no CPU or BIOS functional tests were run.
 
 - Added `XCHG AX,r16` encodings `91–97`; swaps AX with CX, DX, BX, SP, BP, SI or DI without modifying FLAGS. No CPU functional tests were run.
+
+- Added `A0–A3` direct-offset MOV AL/AX transfers. Reads and writes route through `x86_guest_mem_read8/write8`; DS is used as the default segment until prefix handling is ported. No CPU functional tests were run.
