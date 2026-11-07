@@ -903,3 +903,11 @@ All device models execute as software on NeoGS. NeoGS must not issue guest IN/OU
 - The exact WIN2 selector register/encoding remains an implementation gate. The existing startup write OUT (#00),#80 proves only the current page-01 mapping; no page arithmetic is assumed.
 - Design specification: docs/P126_OVERLAY_MANAGER_DESIGN.md.
 - **STATUS:** design/source audit complete; runtime overlay manager, ATM module streaming, module service, call gate, CI and physical tests are NOT implemented. No device model was moved out of the resident image and no BIOS/CPU test status is changed.
+
+## 2026-11-07 — WIN2 MPAG encoding confirmed from Project125 reference
+
+- Inspected Project125 `neogs_sub/bank_gateways.asm`, `neogs_sub/main.asm`, `shared/neogs_io.inc` and `PROJECT125_MEMORY_LAYOUT.md`.
+- Confirmed the hardware contract: WIN2 uses MPAG port `#00`; its page selector is `ROR8(physical_page)` (one `RRCA`). Project125's bank-call gateways switch MPAG, call the overlay entry while WIN1 retains the stack, then restore the caller's bank before returning.
+- Project126's startup write `OUT (#00),#80` is consistent with WIN2→page 01h. Project126 candidate overlay pool remains pages 04h–0Fh; Project125 pages 68h/69h and its device/memory backend are not reused.
+- **STATUS:** register/encoding and bank-call pattern are source-confirmed from Project125. Project126 physical mapping test on at least two pages, resident gate, allocator, module receiver and ATM streaming loader remain pending.
+- Updated design: `docs/P126_OVERLAY_MANAGER_DESIGN.md`. No runtime source was changed in this checkpoint.
