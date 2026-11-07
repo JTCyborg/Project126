@@ -110,8 +110,13 @@ x86_exec_incdec_reg:
         ld      (x86_exec_saved_cf),a
         ld      a,(x86_exec_is_dec)
         or      a
-        call    nz,x86_alu_sub16
-        call    z,x86_alu_add16
+        jr      nz,.do_dec
+        call    x86_alu_add16
+        jr      .alu_done
+.do_dec:
+        call    x86_alu_sub16
+.alu_done:
+        ld      (x86_exec_result_word),hl
 
         ; Restore the original carry flag.
         ld      hl,(x86_reg_flags)
@@ -124,7 +129,6 @@ x86_exec_incdec_reg:
         ld      (x86_reg_flags),hl
 
         ; Commit the arithmetic result to the selected register.
-        ld      (x86_exec_result_word),hl
         ld      de,(x86_exec_reg_ptr)
         ex      de,hl
         ld      de,(x86_exec_result_word)
