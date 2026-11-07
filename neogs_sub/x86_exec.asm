@@ -2251,7 +2251,8 @@ x86_exec_mov_rm_reg:
 ; 8C MOV r/m16,Sreg; 8E MOV Sreg,r/m16.
 ; 8086 segment-register encoding: ES=0, CS=1, SS=2, DS=3.
 ; PCem's original 8086 path permits MOV CS,r/m16 (/1) as well as ES/SS/DS.
-; Loading SS arms the one-instruction maskable-interrupt inhibition latch.
+; Its 8E path arms the one-instruction maskable-IRQ inhibit latch for every
+; selector, including ignored /4-/7 encodings.
 x86_exec_mov_sreg_rm:
         ld      a,(x86_exec_opcode)
         ld      (x86_exec_sreg_opcode),a
@@ -2317,7 +2318,7 @@ x86_exec_sreg_get_pointer:
         ld      (x86_exec_sreg_ptr),de
         ret
 
-; 8F POP r/m16. Only ModR/M extension /0 is defined on the 8086.
+; 8F POP r/m16. PCem applies the operation for every ModR/M /n extension.
 ; Resolve EA before advancing SP, then commit the popped word.
 x86_exec_pop_rm16:
         call    x86_decode_modrm16
