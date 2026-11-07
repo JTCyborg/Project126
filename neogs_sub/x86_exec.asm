@@ -101,6 +101,10 @@ x86_cpu_step:
         cp      #98
         jp      c,x86_exec_xchg_ax_reg
 .not_xchg_ax_reg:
+        cp      #A8
+        jp      z,x86_exec_test_al_imm
+        cp      #A9
+        jp      z,x86_exec_test_ax_imm
         cp      #A0
         jp      c,.not_moffs
         cp      #A4
@@ -381,6 +385,82 @@ x86_exec_lahf:
         ld      hl,(x86_reg_flags)
         ld      a,l
         ld      (x86_reg_ax+1),a
+        or      a
+        ret
+
+; A8 TEST AL,imm8; A9 TEST AX,imm16.
+; TEST updates SF/ZF/PF and clears CF/OF/AF; operands are not modified.
+x86_exec_test_al_imm:
+        call    x86_cpu_fetch8
+        ret     c
+        ld      c,a
+        ld      a,(x86_reg_ax)
+        and     c
+        ld      (x86_exec_test_result),a
+        ld      hl,(x86_reg_flags)
+        ld      a,l
+        and     #2A
+        ld      l,a
+        ld      a,h
+        and     #F7
+        ld      h,a
+        set     1,l
+        ld      a,(x86_exec_test_result)
+        and     a
+        jr      nz,.test8_nonzero
+        set     6,l
+.test8_nonzero:
+        bit     7,a
+        jr      z,.test8_sign_done
+        set     7,l
+.test8_sign_done:
+        jp      po,.test8_parity_done
+        set     2,l
+.test8_parity_done:
+        ld      (x86_reg_flags),hl
+        or      a
+        ret
+
+x86_exec_test_ax_imm:
+        call    x86_cpu_fetch16
+        ret     c
+        ld      (x86_exec_test_immediate),hl
+        ld      hl,(x86_reg_ax)
+        ld      de,(x86_exec_test_immediate)
+        ld      a,l
+        and     e
+        ld      (x86_exec_test_result),a
+        ld      a,h
+        and     d
+        ld      (x86_exec_test_result+1),a
+
+        ld      hl,(x86_reg_flags)
+        ld      a,l
+        and     #2A
+        ld      l,a
+        ld      a,h
+        and     #F7
+        ld      h,a
+        set     1,l
+
+        ld      a,(x86_exec_test_result)
+        and     a
+        jp      po,.test16_no_parity
+        set     2,l
+.test16_no_parity:
+        ld      a,(x86_exec_test_result+1)
+        bit     7,a
+        jr      z,.test16_no_sign
+        set     7,l
+.test16_no_sign:
+        ld      a,(x86_exec_test_result)
+        ld      b,a
+        ld      a,(x86_exec_test_result+1)
+        or      b
+        jr      nz,.test16_no_zero
+        set     6,l
+.test16_no_zero:
+        ld      (x86_reg_flags),hl
         or      a
         ret
 
@@ -1017,6 +1097,8 @@ x86_exec_target_cs: dw 0
 x86_exec_ret_adjust: dw 0
 x86_exec_call_displacement: dw 0
 x86_exec_loop_opcode: db 0
+x86_exec_test_result: db 0,0
+x86_exec_test_immediate: dw 0
 x86_exec_jcc_condition: db 0
 x86_exec_jcc_displacement: db 0
 x86_exec_moffs_opcode: db 0
