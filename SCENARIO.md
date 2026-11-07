@@ -1314,3 +1314,12 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 - Scope is intentionally limited: the NMI latch does not deliver an NMI, the expansion latch does not expose physical expansion hardware, the mode latches do not render CGA/MDA, and 00C0h is only a read/write test latch. VGA/CGA/MDA rendering and retrace status remain pending.
 - **BUILD PASS:** GitHub Actions run [42407604818](https://github.com/JTCyborg/Project126/actions/runs/42407604818), code commit `49865bc3130e3aadb81789a44a791f033a00f081`. All assembly/package units completed with 0 errors and 0 warnings. X86CORE.C=16,380/16,384 bytes; X86IO.C=1,871/4,096 bytes; X86ALU.C=1,220/4,096 bytes; X86DEV.C=2,110/4,096 bytes. TR-DOS image packaging succeeded; X86DEV.C is 2,110 bytes (9 sectors).
 - This is build/package validation only. The board-latch self-test output has not been observed on physical ATM/NeoGS hardware.
+
+
+## 2026-11-07 — Complete XT board-latch register self-test
+
+- Closed a coverage gap in `neogs_sub/x86_devices.asm`: port 00C0h (legacy data-bus test latch) was decoded for read/write but omitted from the X86DEV reset-time board-latch regression.
+- Added an independent 00C0h write/read round-trip using test value 5Ah. The check uses the same guest-device read/write handlers as the other board latches and fails the common board self-test on either an unhandled write or mismatched readback.
+- The board-latch self-test now covers 00A0h, 0213h, 00C0h, 03B8h and 03D8h. All test values are cleared by the existing restore path before the overlay reset entry returns its A=5Ah / HL=06D1h signature.
+- Source commit: `240f5e0a887560f7ecd1e2a24b2edf1384a34cbd`; profile documentation commit: `2d63195ef92bbdad6d6bb2c1e3cd09d95867a221`.
+- Build and target-hardware validation are pending. This change adds register self-test coverage only; it does not implement NMI delivery, expansion hardware, CGA/MDA rendering or retrace status.
