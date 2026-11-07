@@ -461,22 +461,25 @@ p126_bios_read_next_sector:
 
 ; Restore the exact pre-video TR-DOS mapping used by initial startup.
 p126_bios_enter_trdos_mode:
-        ; ATM video initialization has already enabled the permanent DOSEN
-        ; state through the #3D2F trampoline and selected auto-TR-DOS ROM
-        ; mapping with #3FF7=#BF. Do NOT reset #EFF7 here: doing so after
-        ; DOSEN setup can disable the TR-DOS overlay required at #3D13.
-        ; Restore only the legacy ROM2 selection used by Project125 disk I/O.
-        ld      a,#10
+        ; ATM video initialization has already enabled permanent DOSEN
+        ; through the #3D2F trampoline and selected auto-TR-DOS ROM mapping
+        ; with #3FF7=#BF. Preserve that state while enabling ROM2 for the
+        ; Project125-compatible TR-DOS calls.
+        ;
+        ; IMPORTANT: keep BANKM D3 unchanged. D3 selects the alternate
+        ; video pages used by the active ATM high-resolution display. Writing
+        ; #10 here would silently switch back to the standard screen pages
+        ; while the console continues using pages 7/3.
+        ; Do not reset #EFF7 or repeat the #0177 trampoline: either can undo
+        ; the DOSEN state established by p126_atm_video_init.
+        ld      a,(#5C3B)
+        or      #10
         ld      bc,#7FFD
         out     (c),a
         ld      (#5C3B),a
 
-        ; Reassert the window-0 ROM page selector after restoring ROM2.
-        ; On ATM2+ #3FF7 is the independent WIN0 memory-manager port:
-        ; D7=1 enables #7FFD coupling and D0 is replaced by the permanent
-        ; DOSEN signal. With DOSEN held active via #0177, #BF selects the
-        ; automatic TR-DOS overlay when execution enters #3Dxx. Do not touch
-        ; #EFF7 or #0177 here: that would reset the permanent DOSEN state.
+        ; Reassert the WIN0 automatic TR-DOS selector without changing the
+        ; current video-page selection or permanent DOSEN state.
         ld      a,#BF
         ld      bc,#3FF7
         out     (c),a

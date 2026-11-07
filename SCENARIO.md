@@ -1062,3 +1062,12 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 - Updated `p126_bios_enter_trdos_mode` to reassert `#3FF7=#BF` immediately after restoring `#7FFD=#10` / BANKM. This explicitly restores the WIN0 ROM selector for the subsequent `CALL #3D13` while preserving permanent DOSEN: it does not write `#EFF7` or repeat the `#0177` trampoline.
 - This is a narrowly scoped mapping correction derived from the ATM2+ hardware documentation. It does not change the Project125 C=0Ah/C=08h TR-DOS ABI, filename fields, stack setup, disk reader, catalogue, DMA, IPC or IMAGE transfer.
 - **BUILD/HARDWARE STATUS:** CI assembly/package and a new physical target log are required. The correction is not yet hardware-proven. Required next evidence: `TRDOS OPEN C=0A RETURN`; if it still stops, retain the new log and continue investigating the ROM entry/runtime rather than assuming this selector write fixed it.
+
+
+## 2026-11-07 — Preserve high-resolution video page selection during TR-DOS access
+
+- The latest target trace still stopped inside the TR-DOS C=0Ah open call. The ATM video console is initialized before BIOS selection and uses the alternate video page pair selected by BANKM D3=1.
+- The BIOS loader previously wrote BANKM=#10 on entry to TR-DOS. That enabled ROM2 (D4=1) but also cleared D3, switching the page selection away from the active high-resolution video pages 7/3 while the console and renderer continued to assume those pages.
+- Changed p126_bios_enter_trdos_mode to read the current #5C3B value, set only D4 with OR #10, write the result to #7FFD, and update #5C3B. With the current display configuration this preserves BANKM=#18 instead of forcing #10.
+- The existing #3FF7=#BF WIN0 automatic TR-DOS selector remains reasserted. #EFF7, the permanent DOSEN setup, the #0177 trampoline, catalogue, keyboard, TR-DOS C=0Ah/C=08h ABI, sector reader, DMA, IPC and IMAGE protocol are unchanged.
+- This fixes an unintended video-page switch in the disk-entry path. It does not by itself prove that the ROM call now returns. Hardware verification still requires C=0Ah RETURN followed by C=08h CALL/RETURN; no BIOS read/transfer/install PASS is claimed.
