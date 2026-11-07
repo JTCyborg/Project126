@@ -434,9 +434,8 @@ p126_ngs_ipc_dma_send_test_frame::
         in      a,(P126_NGS_DMA_LAD)
         call    p126_ngs_ipc_log_hex_byte_inline
         call    p126_ngs_ipc_log_crlf
-        xor     a
-        out     (P126_NGS_CLRCBIT),a
-        ; One dummy aperture read plus exactly 4000h frame bytes.
+        ; One dummy aperture read plus exactly 4000h frame bytes. Do not
+        ; acknowledge FF until the counter confirms the complete transfer.
         in      a,(P126_NGS_DMA_HAD)
         cp      #10
         jr      nz,.ngs_reverse_length_bad
@@ -447,11 +446,17 @@ p126_ngs_ipc_dma_send_test_frame::
         cp      #01
         jr      nz,.ngs_reverse_length_bad
         xor     a
+        out     (P126_NGS_CLRCBIT),a
         ret
 .ngs_reverse_length_bad:
         ld      hl,p126_ngs_ipc_log_dma_rx_length_bad
         call    p126_ngs_ipc_log
         ld      a,P126_STATUS_BAD_FRAME
+        scf
+        push    af
+        xor     a
+        out     (P126_NGS_CLRCBIT),a
+        pop     af
         scf
         ret
 
