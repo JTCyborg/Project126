@@ -1,4 +1,8 @@
 ; PROJECT126 — virtual 8086 I/O port bus.
+
+; Diagnostic policy: normal builds suppress per-IN/OUT trace. Set to 1
+; temporarily when investigating a specific guest port sequence.
+P126_DEBUG_IO_TRACE EQU 0
 ; Guest I/O devices are software models on NeoGS. No guest port number is
 ; ever issued as a physical NeoGS/Z80 I/O operation.
 ;
@@ -887,6 +891,7 @@ x86_io_dump_bios_table_impl:
 ; Diagnostic output only: guest ports remain software-modeled.
 ; Format: [IO] IN8 P=03DA V=FF @F000:E05B
 x86_io_log_access_impl:
+IF P126_DEBUG_IO_TRACE
         push    af
         push    bc
         push    de
@@ -948,6 +953,9 @@ x86_io_log_access_impl:
         pop     bc
         pop     af
         ret
+ELSE
+        ret
+ENDIF
 
 ; Emit on the full 00EF diagnostic port, preserving BC and A.
 x86_io_log_char:
