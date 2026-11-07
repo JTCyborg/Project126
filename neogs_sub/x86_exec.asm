@@ -3536,9 +3536,9 @@ x86_exec_flag_control:
         res     1,h
         jr      .flag_store
 .flag_sti:
+        ; PCem's 8086 core does not set its noint latch for STI.
+        ; Only POP SS and MOV Sreg (8Eh) arm that latch.
         set     1,h
-        ld      a,1
-        ld      (x86_irq_inhibit),a
         jr      .flag_store
 .flag_cld:
         res     2,h
