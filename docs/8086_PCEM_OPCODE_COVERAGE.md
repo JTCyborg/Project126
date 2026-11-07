@@ -87,7 +87,7 @@ The 16 register INC/DEC opcodes were added in commits `75a3e69da4549ffe2f2346b86
 
 ## Decoder foundation
 
-Software interrupt instructions INT3/INT/INTO and IRET (`CCh`–`CFh`) were added in commit `d614503ad5e6cff3d15c957416a1036cabeb2ad8`. Interrupt entry pushes FLAGS|F000, CS and post-instruction IP, clears IF/TF, then loads IP:CS from the guest IVT; IRET restores IP, CS and the 8086 FLAGS image. Asynchronous IRQ/NMI boundary dispatch is still pending.
+Software interrupt instructions INT3/INT/INTO and IRET (`CCh`–`CFh`) were added in commit `d614503ad5e6cff3d15c957416a1036cabeb2ad8`. Interrupt entry pushes FLAGS|F000, CS and post-instruction IP, clears IF/TF, then loads IP:CS from the guest IVT; IRET restores IP, CS and the 8086 FLAGS image. Asynchronous NMI and maskable IRQ boundary checks are now present: NMI uses vector 2; IRQ requires IF and uses `x86_irq_vector` (reset default 8); HLT is released by accepted interrupts. MOV SS, POP SS and STI arm a one-instruction maskable-interrupt inhibit latch. The host/IPC event producer that sets pending IRQ/NMI and supplies the PIC vector is not yet connected.
 
 String opcodes A4h–A7h and AAh–AFh are implemented with SI/DI updates controlled by DF, ES-fixed destinations, and DS/segment-override sources. REP/REPE/REPNE loops decrement CX and apply ZF termination for CMPS/SCAS. Repetition currently runs within one interpreter step; interrupt servicing between individual repeated iterations remains pending.
 
@@ -103,7 +103,7 @@ All other original 8086 opcode families remain open, including:
 - remaining ModR/M operand forms and string-specific segment/REP handling;
 - remaining XCHG and MOV variants, segment override and interrupt-shadow edge cases;
 - remaining stack operations and interrupt-shadow handling at instruction boundaries;
-- asynchronous IRQ/NMI delivery and interrupt-shadow boundary handling;
+- host/IPC IRQ/NMI event delivery and remaining interrupt/exception edge cases;
 - string instructions and REP/REPE/REPNE;
 - IN/OUT as virtual guest ports, with no physical NeoGS device I/O;
 - REP string execution, ESC/8087 handling and remaining LOCK semantics;
