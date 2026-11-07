@@ -81,6 +81,16 @@ p126_x86alu_file_end:
         ASSERT p126_x86alu_file_end-p126_x86alu_file_start <= #1000
         SAVETRD "disk_A.trd", "X86ALU.C", #C000, p126_x86alu_file_end-p126_x86alu_file_start
 
+; Third fixed-origin overlay: 8237 DMA and 8253 PIT guest-device models.
+        PAGE 8
+        ORG #C000
+p126_x86dev_file_start:
+        INCBIN "build/X86DEV.C"
+p126_x86dev_file_end:
+        ASSERT p126_x86dev_file_end > p126_x86dev_file_start
+        ASSERT p126_x86dev_file_end-p126_x86dev_file_start <= #1000
+        SAVETRD "disk_A.trd", "X86DEV.C", #C000, p126_x86dev_file_end-p126_x86dev_file_start
+
 ; Three 8 KiB BIOS images, packaged under TR-DOS-compatible 8.3 names.
 ; The long Compaq source filename is represented on disk as COMPAQ.C.
 ; -------------------------------------------------------------------------
