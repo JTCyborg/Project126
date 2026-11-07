@@ -161,6 +161,77 @@ p126_overlay_release_page:
         scf
         ret
 
+; Startup regression for the dynamic page allocator. It allocates all ten
+; pages in ascending order, verifies exhaustion, releases in reverse order,
+; then confirms page06 can be allocated and released again.
+; OUT: carry clear on pass; carry set on failure. Startup halts on failure.
+p126_overlay_allocator_selftest:
+        push    bc
+        push    de
+        push    hl
+        push    ix
+        ld      hl,p126_overlay_allocator_test_pages
+        ld      b,10
+        ld      c,6
+.allocator_test_allocate:
+        push    bc
+        call    p126_overlay_allocate_page
+        pop     bc
+        jr      c,.allocator_test_failed
+        cp      c
+        jr      nz,.allocator_test_failed
+        ld      (hl),a
+        inc     hl
+        inc     c
+        djnz    .allocator_test_allocate
+
+        ; All ten dynamic pages must now be reserved.
+        push    bc
+        call    p126_overlay_allocate_page
+        pop     bc
+        jr      nc,.allocator_test_failed
+        or      a
+        jr      nz,.allocator_test_failed
+
+        ; Release every page in reverse order.
+        ld      hl,p126_overlay_allocator_test_pages+9
+        ld      b,10
+.allocator_test_release:
+        ld      a,(hl)
+        push    bc
+        push    hl
+        call    p126_overlay_release_page
+        pop     hl
+        pop     bc
+        jr      c,.allocator_test_failed
+        dec     hl
+        djnz    .allocator_test_release
+
+        ; First-fit reuse must return page06 again.
+        push    bc
+        call    p126_overlay_allocate_page
+        pop     bc
+        jr      c,.allocator_test_failed
+        cp      6
+        jr      nz,.allocator_test_failed
+        call    p126_overlay_release_page
+        jr      c,.allocator_test_failed
+
+        pop     ix
+        pop     hl
+        pop     de
+        pop     bc
+        xor     a
+        ret
+.allocator_test_failed:
+        pop     ix
+        pop     hl
+        pop     de
+        pop     bc
+        ld      a,P126_STATUS_BAD_FRAME
+        scf
+        ret
+
 ; Compatibility entry points for the existing X86IO ABI. All use the same
 ; gate, so X86IO remains callable while another overlay owns WIN2.
 x86_io_reset:
@@ -420,3 +491,4 @@ p126_overlay_gate_entry:       dw 0
 p126_overlay_gate_saved_hl:    dw 0
 p126_overlay_call_pages:       defs P126_OVERLAY_MAX_CALL_DEPTH,0
 p126_overlay_alloc_state:      defs 10,0
+p126_overlay_allocator_test_pages: defs 10,0
