@@ -34,9 +34,6 @@ x86_io_reset_impl:
         ld      (x86_io_keyboard_tail),a
         ld      (x86_io_keyboard_count),a
         ld      (x86_io_keyboard_last),a
-        ld      (x86_io_ppi_pc),a
-        ld      a,#9B
-        ld      (x86_io_ppi_control),a
         ; keyboard_xt.pb is zero-initialized separately from ppi.pb=40h.
         xor     a
         ld      (x86_io_ppi_pb),a
@@ -928,7 +925,6 @@ x86_io_word_low: db 0
 x86_io_word_high: db 0
 
 x86_io_ppi_pb: db 0
-x86_io_ppi_pc: db 0
 x86_io_ppi_write_value: db 0
 x86_io_write_value: db 0
 
