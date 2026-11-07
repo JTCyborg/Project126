@@ -114,6 +114,8 @@ x86_cpu_step:
         cp      #98
         jp      c,x86_exec_xchg_ax_reg
 .not_xchg_ax_reg:
+        cp      #8F
+        jp      z,x86_exec_pop_rm16
         cp      #86
         jp      z,x86_exec_xchg_rm_reg
         cp      #87
@@ -195,6 +197,37 @@ x86_exec_mov_rm_reg:
 .mov_r16_from_rm16:
         call    x86_modrm_read_rm16
         jp      x86_modrm_write_reg16
+
+; 8F POP r/m16. Only ModR/M extension /0 is defined on the 8086.
+; Resolve EA before advancing SP, then commit the popped word.
+x86_exec_pop_rm16:
+        call    x86_decode_modrm16
+        ret     c
+        ld      a,(x86_modrm_reg)
+        or      a
+        jr      nz,.pop_rm_invalid
+        ld      hl,(x86_reg_sp)
+        ld      (x86_exec_stack_offset),hl
+        call    x86_exec_stack_make_address
+        call    x86_guest_mem_read8
+        ret     c
+        ld      (x86_exec_stack_value),a
+        ld      hl,(x86_exec_stack_offset)
+        inc     hl
+        ld      (x86_exec_stack_offset),hl
+        call    x86_exec_stack_make_address
+        call    x86_guest_mem_read8
+        ret     c
+        ld      (x86_exec_stack_value+1),a
+        ld      hl,(x86_reg_sp)
+        inc     hl
+        inc     hl
+        ld      (x86_reg_sp),hl
+        ld      hl,(x86_exec_stack_value)
+        jp      x86_modrm_write_rm16
+.pop_rm_invalid:
+        scf
+        ret
 
 ; 86/87 XCHG r/m8/16,r8/16. FLAGS are not modified.
 ; Memory forms use the same guest-memory accessors as MOV.
