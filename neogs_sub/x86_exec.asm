@@ -2170,7 +2170,7 @@ x86_exec_lahf:
         or      a
         ret
 
-; D0-D3 Group 2 shifts/rotates. 8086 CL counts are used unmasked.
+; D0-D3 Group 2 shifts/rotates. 8086 CL counts are unmasked.
 ; /0 ROL, /1 ROR, /2 RCL, /3 RCR, /4-/6 SHL/SAL, /5 SHR, /7 SAR.
 x86_exec_shift_group:
         ld      a,(x86_exec_opcode)
@@ -2189,38 +2189,39 @@ x86_exec_shift_group:
 .shift_count_one:
         ld      a,1
 .shift_count_ready:
-        or      a
-        ret     z
         ld      (x86_exec_shift_count),a
         ld      a,(x86_exec_shift_opcode)
         bit     0,a
         jr      nz,.shift_word
+
         call    x86_modrm_read_rm8
-        ld      b,(x86_exec_shift_count)
-        ld      a,(x86_exec_shift_operation)
-        ld      c,a
+        ld      (x86_exec_shift_value8),a
         ld      a,(x86_exec_shift_count)
+        or      a
+        ret     z
         ld      b,a
         ld      a,(x86_exec_shift_operation)
         ld      c,a
         ld      a,(x86_exec_shift_value8)
-        ; The read operand is saved before setting helper parameters.
-        ; Re-read from the r/m accessor so A is the original byte.
-        call    x86_modrm_read_rm8
         call    x86_exec_shift8
         jp      x86_modrm_write_rm8
 
 .shift_word:
         call    x86_modrm_read_rm16
+        ld      (x86_exec_shift_value16),hl
         ld      a,(x86_exec_shift_count)
+        or      a
+        ret     z
         ld      b,a
         ld      a,(x86_exec_shift_operation)
         ld      c,a
+        ld      hl,(x86_exec_shift_value16)
         call    x86_exec_shift16
         jp      x86_modrm_write_rm16
 
 ; A=operand, B=count, C=operation. Returns A=result and updates FLAGS.
 x86_exec_shift8:
+        ld      (x86_exec_shift_original8),a
         ld      (x86_exec_shift_value8),a
         ld      a,b
         ld      (x86_exec_shift_count),a
@@ -2241,24 +2242,29 @@ x86_exec_shift8:
         cp      6
         jp      z,.shift8_shl
         jp      .shift8_sar
+
 .shift8_rol:
+        ld      a,(x86_exec_shift_count)
+        ld      b,a
         ld      a,(x86_exec_shift_value8)
-        ld      b,(x86_exec_shift_count)
 .shift8_rol_loop:
         rlca
         ld      (x86_exec_shift_value8),a
         dec     b
         jr      nz,.shift8_rol_loop
         jp      x86_exec_shift_merge8
+
 .shift8_ror:
+        ld      a,(x86_exec_shift_count)
+        ld      b,a
         ld      a,(x86_exec_shift_value8)
-        ld      b,(x86_exec_shift_count)
 .shift8_ror_loop:
         rrca
         ld      (x86_exec_shift_value8),a
         dec     b
         jr      nz,.shift8_ror_loop
         jp      x86_exec_shift_merge8
+
 .shift8_rcl:
         ld      hl,(x86_reg_flags)
         bit     0,l
@@ -2268,14 +2274,16 @@ x86_exec_shift8:
 .shift8_rcl_clear:
         or      a
 .shift8_rcl_start:
+        ld      a,(x86_exec_shift_count)
+        ld      b,a
         ld      a,(x86_exec_shift_value8)
-        ld      b,(x86_exec_shift_count)
 .shift8_rcl_loop:
         rl      a
         ld      (x86_exec_shift_value8),a
         dec     b
         jr      nz,.shift8_rcl_loop
         jp      x86_exec_shift_merge8
+
 .shift8_rcr:
         ld      hl,(x86_reg_flags)
         bit     0,l
@@ -2285,35 +2293,42 @@ x86_exec_shift8:
 .shift8_rcr_clear:
         or      a
 .shift8_rcr_start:
+        ld      a,(x86_exec_shift_count)
+        ld      b,a
         ld      a,(x86_exec_shift_value8)
-        ld      b,(x86_exec_shift_count)
 .shift8_rcr_loop:
         rr      a
         ld      (x86_exec_shift_value8),a
         dec     b
         jr      nz,.shift8_rcr_loop
         jp      x86_exec_shift_merge8
+
 .shift8_shl:
+        ld      a,(x86_exec_shift_count)
+        ld      b,a
         ld      a,(x86_exec_shift_value8)
-        ld      b,(x86_exec_shift_count)
 .shift8_shl_loop:
         sla     a
         ld      (x86_exec_shift_value8),a
         dec     b
         jr      nz,.shift8_shl_loop
         jp      x86_exec_shift_merge8
+
 .shift8_shr:
+        ld      a,(x86_exec_shift_count)
+        ld      b,a
         ld      a,(x86_exec_shift_value8)
-        ld      b,(x86_exec_shift_count)
 .shift8_shr_loop:
         srl     a
         ld      (x86_exec_shift_value8),a
         dec     b
         jr      nz,.shift8_shr_loop
         jp      x86_exec_shift_merge8
+
 .shift8_sar:
+        ld      a,(x86_exec_shift_count)
+        ld      b,a
         ld      a,(x86_exec_shift_value8)
-        ld      b,(x86_exec_shift_count)
 .shift8_sar_loop:
         sra     a
         ld      (x86_exec_shift_value8),a
@@ -2338,18 +2353,12 @@ x86_exec_shift_merge8:
         jr      z,.shift8_of_zero
         cp      5
         jr      z,.shift8_of_shr
-        ; SHL/SAL: OF = CF xor result MSB.
-        ld      a,(x86_exec_shift_value8)
-        bit     7,a
-        ld      a,(x86_exec_shift_cf)
-        jr      z,.shift8_of_shl_no_sign
-        xor     1
-.shift8_of_shl_no_sign:
-        jr      .shift8_store_of
+        jp      .shift8_of_left
 .shift8_of_shr:
         ld      a,(x86_exec_shift_original8)
-        rlca
-        and     1
+        bit     7,a
+        jr      z,.shift8_of_zero
+        ld      a,1
         jr      .shift8_store_of
 .shift8_of_zero:
         xor     a
@@ -2360,35 +2369,30 @@ x86_exec_shift_merge8:
         jr      z,.shift8_of_right
         cp      3
         jr      z,.shift8_of_right
-        ; ROL/RCL: OF = CF xor result MSB.
+.shift8_of_left:
         ld      a,(x86_exec_shift_value8)
         bit     7,a
         ld      a,(x86_exec_shift_cf)
-        jr      z,.shift8_of_rotate_left_no_sign
+        jr      z,.shift8_store_of
         xor     1
-.shift8_of_rotate_left_no_sign:
         jr      .shift8_store_of
 .shift8_of_right:
         ld      a,(x86_exec_shift_value8)
-        and     #C0
-        rrca
-        rrca
-        rrca
-        rrca
-        and     1
-        ld      b,a
-        ld      a,(x86_exec_shift_value8)
-        rlca
-        and     1
-        xor     b
+        bit     7,a
+        jr      z,.shift8_right_msb_zero
+        bit     6,a
+        jr      z,.shift8_of_one
+        jr      .shift8_of_zero
+.shift8_right_msb_zero:
+        bit     6,a
+        jr      z,.shift8_of_zero
+.shift8_of_one:
+        ld      a,1
         jr      .shift8_store_of
 .shift8_preserve_of:
         ld      a,#FF
-        ld      (x86_exec_shift_of),a
-        jr      .shift8_merge_flags
 .shift8_store_of:
         ld      (x86_exec_shift_of),a
-.shift8_merge_flags:
         ld      hl,(x86_reg_flags)
         ld      a,l
         and     #FE
@@ -2418,6 +2422,7 @@ x86_exec_shift_merge8:
 
 ; HL=operand, B=count, C=operation. Returns HL=result and updates FLAGS.
 x86_exec_shift16:
+        ld      (x86_exec_shift_original16),hl
         ld      (x86_exec_shift_value16),hl
         ld      a,b
         ld      (x86_exec_shift_count),a
@@ -2438,9 +2443,11 @@ x86_exec_shift16:
         cp      6
         jp      z,.shift16_shl
         jp      .shift16_sar
+
 .shift16_rol:
+        ld      a,(x86_exec_shift_count)
+        ld      b,a
         ld      hl,(x86_exec_shift_value16)
-        ld      b,(x86_exec_shift_count)
 .shift16_rol_loop:
         add     hl,hl
         jr      nc,.shift16_rol_no_bit
@@ -2450,9 +2457,11 @@ x86_exec_shift16:
         dec     b
         jr      nz,.shift16_rol_loop
         jp      x86_exec_shift_merge16
+
 .shift16_ror:
+        ld      a,(x86_exec_shift_count)
+        ld      b,a
         ld      hl,(x86_exec_shift_value16)
-        ld      b,(x86_exec_shift_count)
 .shift16_ror_loop:
         srl     h
         rr      l
@@ -2463,6 +2472,7 @@ x86_exec_shift16:
         dec     b
         jr      nz,.shift16_ror_loop
         jp      x86_exec_shift_merge16
+
 .shift16_rcl:
         ld      hl,(x86_reg_flags)
         bit     0,l
@@ -2472,8 +2482,9 @@ x86_exec_shift16:
 .shift16_rcl_clear:
         or      a
 .shift16_rcl_start:
+        ld      a,(x86_exec_shift_count)
+        ld      b,a
         ld      hl,(x86_exec_shift_value16)
-        ld      b,(x86_exec_shift_count)
 .shift16_rcl_loop:
         jr      nc,.shift16_rcl_no_bit
         add     hl,hl
@@ -2487,6 +2498,7 @@ x86_exec_shift16:
         dec     b
         jr      nz,.shift16_rcl_loop
         jp      x86_exec_shift_merge16
+
 .shift16_rcr:
         ld      hl,(x86_reg_flags)
         bit     0,l
@@ -2496,8 +2508,9 @@ x86_exec_shift16:
 .shift16_rcr_clear:
         or      a
 .shift16_rcr_start:
+        ld      a,(x86_exec_shift_count)
+        ld      b,a
         ld      hl,(x86_exec_shift_value16)
-        ld      b,(x86_exec_shift_count)
 .shift16_rcr_loop:
         jr      nc,.shift16_rcr_no_bit
         srl     h
@@ -2513,18 +2526,22 @@ x86_exec_shift16:
         dec     b
         jr      nz,.shift16_rcr_loop
         jp      x86_exec_shift_merge16
+
 .shift16_shl:
+        ld      a,(x86_exec_shift_count)
+        ld      b,a
         ld      hl,(x86_exec_shift_value16)
-        ld      b,(x86_exec_shift_count)
 .shift16_shl_loop:
         add     hl,hl
         ld      (x86_exec_shift_value16),hl
         dec     b
         jr      nz,.shift16_shl_loop
         jp      x86_exec_shift_merge16
+
 .shift16_shr:
+        ld      a,(x86_exec_shift_count)
+        ld      b,a
         ld      hl,(x86_exec_shift_value16)
-        ld      b,(x86_exec_shift_count)
 .shift16_shr_loop:
         srl     h
         rr      l
@@ -2532,9 +2549,11 @@ x86_exec_shift16:
         dec     b
         jr      nz,.shift16_shr_loop
         jp      x86_exec_shift_merge16
+
 .shift16_sar:
+        ld      a,(x86_exec_shift_count)
+        ld      b,a
         ld      hl,(x86_exec_shift_value16)
-        ld      b,(x86_exec_shift_count)
 .shift16_sar_loop:
         sra     h
         rr      l
@@ -2560,18 +2579,12 @@ x86_exec_shift_merge16:
         jr      z,.shift16_of_zero
         cp      5
         jr      z,.shift16_of_shr
-        ld      hl,(x86_exec_shift_value16)
-        bit     7,h
-        ld      a,(x86_exec_shift_cf)
-        jr      z,.shift16_of_shl_no_sign
-        xor     1
-.shift16_of_shl_no_sign:
-        jr      .shift16_store_of
+        jp      .shift16_of_left
 .shift16_of_shr:
         ld      hl,(x86_exec_shift_original16)
-        ld      a,h
-        rlca
-        and     1
+        bit     7,h
+        jr      z,.shift16_of_zero
+        ld      a,1
         jr      .shift16_store_of
 .shift16_of_zero:
         xor     a
@@ -2582,33 +2595,30 @@ x86_exec_shift_merge16:
         jr      z,.shift16_of_right
         cp      3
         jr      z,.shift16_of_right
+.shift16_of_left:
         ld      hl,(x86_exec_shift_value16)
         bit     7,h
         ld      a,(x86_exec_shift_cf)
-        jr      z,.shift16_of_rotate_left_no_sign
+        jr      z,.shift16_store_of
         xor     1
-.shift16_of_rotate_left_no_sign:
         jr      .shift16_store_of
 .shift16_of_right:
         ld      hl,(x86_exec_shift_value16)
-        ld      a,h
-        and     #C0
-        rlca
-        and     1
-        ld      b,a
-        ld      hl,(x86_exec_shift_value16)
-        ld      a,h
-        rlca
-        and     1
-        xor     b
+        bit     7,h
+        jr      z,.shift16_right_msb_zero
+        bit     6,h
+        jr      z,.shift16_of_one
+        jr      .shift16_of_zero
+.shift16_right_msb_zero:
+        bit     6,h
+        jr      z,.shift16_of_zero
+.shift16_of_one:
+        ld      a,1
         jr      .shift16_store_of
 .shift16_preserve_of:
         ld      a,#FF
-        ld      (x86_exec_shift_of),a
-        jr      .shift16_merge_flags
 .shift16_store_of:
         ld      (x86_exec_shift_of),a
-.shift16_merge_flags:
         ld      hl,(x86_reg_flags)
         ld      a,l
         and     #FE
@@ -2651,6 +2661,7 @@ x86_exec_update_szp16:
         jr      z,.szp16_no_pf
         set     2,l
 .szp16_no_pf:
+        ld      (x86_reg_flags),hl
         ld      hl,(x86_exec_shift_value16)
         bit     7,h
         jr      z,.szp16_no_sf
@@ -3772,6 +3783,15 @@ x86_exec_string_remaining: db 0
 x86_exec_string_value: db 0
 x86_exec_string_word: dw 0
 x86_exec_string_temp_offset: dw 0
+x86_exec_shift_opcode: db 0
+x86_exec_shift_operation: db 0
+x86_exec_shift_count: db 0
+x86_exec_shift_value8: db 0
+x86_exec_shift_original8: db 0
+x86_exec_shift_value16: dw 0
+x86_exec_shift_original16: dw 0
+x86_exec_shift_cf: db 0
+x86_exec_shift_of: db 0
 x86_exec_shift_opcode: db 0
 x86_exec_shift_operation: db 0
 x86_exec_shift_count: db 0
