@@ -48,6 +48,8 @@ p126_bios_load_selected::
         jp      nz,p126_bios_bad_file_type
         ld      hl,p126_bios_log_file_type_ok
         call    p126_catalog_log
+        ; Emit the exact selected 8.3 name into the diagnostic stream.
+        call    p126_bios_log_selected_filename
 
         ; Enter the same legacy mapping used before ATM video initialization.
         ; Disk reads must not run with the alternate ATM window mapping active.
@@ -209,6 +211,46 @@ p126_bios_load_selected::
         ld      hl,(p126_bios_saved_sp)
         ld      sp,hl
         or      a
+        ret
+
+
+; Log the selected TR-DOS 8.3 filename as one timestamped line.
+; The directory name is already copied to #5CDD and type C was validated.
+p126_bios_log_selected_filename:
+        push    af
+        push    bc
+        push    de
+        push    hl
+        call    p126_host_log_prefix
+        ld      bc,#00EF
+        ld      hl,p126_bios_log_filename_prefix
+.p126_bios_log_filename_prefix_loop:
+        ld      a,(hl)
+        inc     hl
+        or      a
+        jr      z,.p126_bios_log_filename_name
+        out     (c),a
+        jr      .p126_bios_log_filename_prefix_loop
+.p126_bios_log_filename_name:
+        ld      hl,#5CDD
+        ld      b,8
+.p126_bios_log_filename_name_loop:
+        ld      a,(hl)
+        inc     hl
+        out     (c),a
+        djnz    .p126_bios_log_filename_name_loop
+        ld      a,'.'
+        out     (c),a
+        ld      a,'C'
+        out     (c),a
+        ld      a,13
+        out     (c),a
+        ld      a,10
+        out     (c),a
+        pop     hl
+        pop     de
+        pop     bc
+        pop     af
         ret
 
 ; Build and send one ABI 1.0 IMAGE request.
@@ -422,6 +464,7 @@ p126_bios_sequence:        dw 0
 ; ATM-side progress markers for the selected BIOS load transaction.
 p126_bios_log_load_begin:       db "[CAT] BIOS LOAD BEGIN",13,10,0
 p126_bios_log_selection_resolved: db "[CAT] BIOS SELECTION RESOLVED",13,10,0
+p126_bios_log_filename_prefix:   db "[CAT] BIOS FILE SELECTED: ",0
 p126_bios_log_file_type_ok:      db "[CAT] BIOS FILE TYPE C OK",13,10,0
 p126_bios_log_trdos_map_begin:   db "[CAT] TRDOS MAP SWITCH BEGIN",13,10,0
 p126_bios_log_trdos_map_done:    db "[CAT] TRDOS MAP SWITCH DONE",13,10,0
