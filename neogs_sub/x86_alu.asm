@@ -207,6 +207,128 @@ x86_alu_merge_flags:
         ld      (x86_reg_flags),hl
         ret
 
+
+; Logical operations for the original 8086.
+; API: x86_alu_logic8: A=lhs, C=rhs, B=operation (0 OR, 1 AND, 2 XOR).
+;      Returns A=result and updates SF/ZF/PF; clears CF/AF/OF.
+;      x86_alu_logic16: HL=lhs, DE=rhs, B=operation; returns HL=result.
+; The AF bit is cleared, matching the existing Project126 logical-flag policy.
+
+x86_alu_logic8:
+        ld      (x86_alu_logic_lhs),a
+        ld      a,c
+        ld      (x86_alu_logic_rhs),a
+        ld      a,b
+        ld      (x86_alu_logic_op),a
+        ld      a,(x86_alu_logic_lhs)
+        ld      c,(x86_alu_logic_rhs)
+        call    x86_alu_logic_apply8
+        ld      (x86_alu_logic_result),a
+        or      a
+        push    af
+        pop     bc
+        ld      a,b
+        ld      (x86_alu_logic_z80_flags),a
+        call    x86_alu_logic_merge8
+        ld      a,(x86_alu_logic_result)
+        ret
+
+x86_alu_logic16:
+        ld      (x86_alu_logic_word_lhs),hl
+        ld      (x86_alu_logic_word_rhs),de
+        ld      a,b
+        ld      (x86_alu_logic_op),a
+        ld      a,l
+        ld      c,e
+        call    x86_alu_logic_apply8
+        ld      (x86_alu_logic_word_result),a
+        ld      a,h
+        ld      c,d
+        call    x86_alu_logic_apply8
+        ld      (x86_alu_logic_word_result+1),a
+
+        ld      a,(x86_alu_logic_word_result)
+        or      a
+        push    af
+        pop     bc
+        ld      a,b
+        ld      (x86_alu_logic_z80_flags),a
+
+        ld      hl,(x86_reg_flags)
+        ld      a,l
+        and     X86_ALU_KEEP_FLAGS_LO
+        ld      l,a
+        ld      a,h
+        and     X86_ALU_KEEP_FLAGS_HI
+        ld      h,a
+        set     1,l
+
+        ld      a,(x86_alu_logic_z80_flags)
+        bit     2,a
+        jr      z,.logic16_no_pf
+        set     2,l
+.logic16_no_pf:
+        ld      a,(x86_alu_logic_word_result+1)
+        bit     7,a
+        jr      z,.logic16_no_sf
+        set     7,l
+.logic16_no_sf:
+        ld      a,(x86_alu_logic_word_result)
+        ld      b,a
+        ld      a,(x86_alu_logic_word_result+1)
+        or      b
+        jr      nz,.logic16_no_zf
+        set     6,l
+.logic16_no_zf:
+        ld      (x86_reg_flags),hl
+        ld      hl,(x86_alu_logic_word_result)
+        ret
+
+; A=lhs, C=rhs, x86_alu_logic_op selects OR/AND/XOR.
+x86_alu_logic_apply8:
+        ld      b,a
+        ld      a,(x86_alu_logic_op)
+        cp      0
+        jr      z,.logic_or
+        cp      1
+        jr      z,.logic_and
+        ld      a,b
+        xor     c
+        ret
+.logic_or:
+        ld      a,b
+        or      c
+        ret
+.logic_and:
+        ld      a,b
+        and     c
+        ret
+
+x86_alu_logic_merge8:
+        ld      hl,(x86_reg_flags)
+        ld      a,l
+        and     X86_ALU_KEEP_FLAGS_LO
+        ld      l,a
+        ld      a,h
+        and     X86_ALU_KEEP_FLAGS_HI
+        ld      h,a
+        set     1,l
+        ld      a,(x86_alu_logic_z80_flags)
+        bit     2,a
+        jr      z,.logic8_no_pf
+        set     2,l
+.logic8_no_pf:
+        bit     6,a
+        jr      z,.logic8_no_zf
+        set     6,l
+.logic8_no_zf:
+        bit     7,a
+        jr      z,.logic8_no_sf
+        set     7,l
+.logic8_no_sf:
+        ld      (x86_reg_flags),hl
+        ret
+
 ; Regression vectors cover signed overflow, carry, auxiliary carry,
 ; zero, sign and even parity for both addition and subtraction.
 x86_alu_selftest:
