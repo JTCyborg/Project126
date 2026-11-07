@@ -20,7 +20,7 @@ $units = @(
         Listing = "NEOGS.lst"
         Map = "NEOGS.map"
         Version = "X86_STATE_ALU_MEMORY v0.8.0"
-        MaxBytes = 262144
+        MaxBytes = 16384
     },
     @{
         Name = "ATM IPC"
@@ -60,12 +60,22 @@ try {
         }
 
         Remove-Item -Force -ErrorAction SilentlyContinue $binary, $listing, $map
+        if ($unit.Name -eq "NeoGS") {
+            Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $build "X86CORE.C"), (Join-Path $build "X86IO.C")
+        }
 
         Write-Host "[BUILD] Project126 $($unit.Name) assembly"
         Write-Host "[DEBUG] Source: $($unit.Source)"
         Write-Host "[DEBUG] Listing: build/$($unit.Listing)"
         Write-Host "[DEBUG] Symbol map: build/$($unit.Map)"
-        & $assembler --msg=all "--lst=build/$($unit.Listing)" --lstlab=sort "--sym=build/$($unit.Map)" "--raw=build/$($unit.Binary)" $unit.Source
+        if ($unit.Name -eq "NeoGS") {
+            # The source exports the resident audit/core and X86IO overlay via
+            # SAVEBIN. Do not request a combined --raw image: ORG 8000h is a
+            # second address region and must not create a sparse audit binary.
+            & $assembler --msg=all "--lst=build/$($unit.Listing)" --lstlab=sort "--sym=build/$($unit.Map)" $unit.Source
+        } else {
+            & $assembler --msg=all "--lst=build/$($unit.Listing)" --lstlab=sort "--sym=build/$($unit.Map)" "--raw=build/$($unit.Binary)" $unit.Source
+        }
         if ($LASTEXITCODE -ne 0) {
             throw "SjASMPlus failed for $($unit.Name) with exit code $LASTEXITCODE"
         }
