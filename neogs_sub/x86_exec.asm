@@ -133,46 +133,46 @@ x86_exec_jcc_test:
         cp      0
         jr      nz,.jcc_check1
         bit     3,h
-        jr      nz,.jcc_yes
-        jr      .jcc_false
+        jp      nz .jcc_yes
+        jp      .jcc_false
 .jcc_check1:
         ld      a,(x86_exec_jcc_condition)
         cp      1
         jr      nz,.jcc_b
         bit     3,h
-        jr      z,.jcc_yes
+        jp      z .jcc_yes
         jr      .jcc_no
 .jcc_b:
         cp      2
         jr      nz,.jcc_ae
         bit     0,l
-        jr      nz,.jcc_yes
+        jp      nz .jcc_yes
         jr      .jcc_no
 .jcc_ae:
         cp      3
         jr      nz,.jcc_e
         bit     0,l
-        jr      z,.jcc_yes
+        jp      z .jcc_yes
         jr      .jcc_no
 .jcc_e:
         cp      4
         jr      nz,.jcc_ne
         bit     6,l
-        jr      nz,.jcc_yes
+        jp      nz .jcc_yes
         jr      .jcc_no
 .jcc_ne:
         cp      5
         jr      nz,.jcc_be
         bit     6,l
-        jr      z,.jcc_yes
+        jp      z .jcc_yes
         jr      .jcc_no
 .jcc_be:
         cp      6
         jr      nz,.jcc_a
         bit     0,l
-        jr      nz,.jcc_yes
+        jp      nz .jcc_yes
         bit     6,l
-        jr      nz,.jcc_yes
+        jp      nz .jcc_yes
         jr      .jcc_no
 .jcc_a:
         cp      7
@@ -180,31 +180,31 @@ x86_exec_jcc_test:
         bit     0,l
         jr      nz,.jcc_no
         bit     6,l
-        jr      z,.jcc_yes
+        jp      z .jcc_yes
         jr      .jcc_no
 .jcc_s:
         cp      8
         jr      nz,.jcc_ns
         bit     7,l
-        jr      nz,.jcc_yes
+        jp      nz .jcc_yes
         jr      .jcc_no
 .jcc_ns:
         cp      9
         jr      nz,.jcc_p
         bit     7,l
-        jr      z,.jcc_yes
+        jp      z .jcc_yes
         jr      .jcc_no
 .jcc_p:
         cp      10
         jr      nz,.jcc_np
         bit     2,l
-        jr      nz,.jcc_yes
+        jp      nz .jcc_yes
         jr      .jcc_no
 .jcc_np:
         cp      11
         jr      nz,.jcc_l
         bit     2,l
-        jr      z,.jcc_yes
+        jp      z .jcc_yes
         jr      .jcc_no
 .jcc_l:
         cp      12
@@ -212,11 +212,11 @@ x86_exec_jcc_test:
         bit     7,l
         jr      nz,.jcc_l_sf1
         bit     3,h
-        jr      nz,.jcc_yes
+        jp      nz .jcc_yes
         jr      .jcc_no
 .jcc_l_sf1:
         bit     3,h
-        jr      z,.jcc_yes
+        jp      z .jcc_yes
         jr      .jcc_no
 .jcc_ge:
         cp      13
@@ -224,25 +224,25 @@ x86_exec_jcc_test:
         bit     7,l
         jr      nz,.jcc_ge_sf1
         bit     3,h
-        jr      z,.jcc_yes
+        jp      z .jcc_yes
         jr      .jcc_no
 .jcc_ge_sf1:
         bit     3,h
-        jr      nz,.jcc_yes
+        jp      nz .jcc_yes
         jr      .jcc_no
 .jcc_le:
         cp      14
         jr      nz,.jcc_g
         bit     6,l
-        jr      nz,.jcc_yes
+        jp      nz .jcc_yes
         bit     7,l
         jr      nz,.jcc_le_sf1
         bit     3,h
-        jr      nz,.jcc_yes
+        jp      nz .jcc_yes
         jr      .jcc_no
 .jcc_le_sf1:
         bit     3,h
-        jr      z,.jcc_yes
+        jp      z .jcc_yes
         jr      .jcc_no
 .jcc_g:
         ; JG = !ZF && (SF == OF).
@@ -251,11 +251,11 @@ x86_exec_jcc_test:
         bit     7,l
         jr      nz,.jcc_g_sf1
         bit     3,h
-        jr      z,.jcc_yes
+        jp      z .jcc_yes
         jr      .jcc_no
 .jcc_g_sf1:
         bit     3,h
-        jr      nz,.jcc_yes
+        jp      nz .jcc_yes
 .jcc_false:
         xor     a
         ret
