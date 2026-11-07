@@ -131,6 +131,150 @@ x86_io_log_access:
         pop     ix
         ret
 
+; X86ALU public entry points; implementations live on physical page 05h.
+x86_alu_add8:
+        push    af
+        push    ix
+        ld      a,P126_NGS_ALU_OVERLAY_SELECTOR
+        ld      (p126_overlay_request_selector),a
+        pop     ix
+        pop     af
+        push    ix
+        ld      ix,x86_alu_add8_impl
+        call    p126_overlay_call
+        pop     ix
+        ret
+
+x86_alu_sub8:
+        push    af
+        push    ix
+        ld      a,P126_NGS_ALU_OVERLAY_SELECTOR
+        ld      (p126_overlay_request_selector),a
+        pop     ix
+        pop     af
+        push    ix
+        ld      ix,x86_alu_sub8_impl
+        call    p126_overlay_call
+        pop     ix
+        ret
+
+x86_alu_add16:
+        push    af
+        push    ix
+        ld      a,P126_NGS_ALU_OVERLAY_SELECTOR
+        ld      (p126_overlay_request_selector),a
+        pop     ix
+        pop     af
+        push    ix
+        ld      ix,x86_alu_add16_impl
+        call    p126_overlay_call
+        pop     ix
+        ret
+
+x86_alu_sub16:
+        push    af
+        push    ix
+        ld      a,P126_NGS_ALU_OVERLAY_SELECTOR
+        ld      (p126_overlay_request_selector),a
+        pop     ix
+        pop     af
+        push    ix
+        ld      ix,x86_alu_sub16_impl
+        call    p126_overlay_call
+        pop     ix
+        ret
+
+x86_alu_adc8:
+        push    af
+        push    ix
+        ld      a,P126_NGS_ALU_OVERLAY_SELECTOR
+        ld      (p126_overlay_request_selector),a
+        pop     ix
+        pop     af
+        push    ix
+        ld      ix,x86_alu_adc8_impl
+        call    p126_overlay_call
+        pop     ix
+        ret
+
+x86_alu_sbb8:
+        push    af
+        push    ix
+        ld      a,P126_NGS_ALU_OVERLAY_SELECTOR
+        ld      (p126_overlay_request_selector),a
+        pop     ix
+        pop     af
+        push    ix
+        ld      ix,x86_alu_sbb8_impl
+        call    p126_overlay_call
+        pop     ix
+        ret
+
+x86_alu_adc16:
+        push    af
+        push    ix
+        ld      a,P126_NGS_ALU_OVERLAY_SELECTOR
+        ld      (p126_overlay_request_selector),a
+        pop     ix
+        pop     af
+        push    ix
+        ld      ix,x86_alu_adc16_impl
+        call    p126_overlay_call
+        pop     ix
+        ret
+
+x86_alu_sbb16:
+        push    af
+        push    ix
+        ld      a,P126_NGS_ALU_OVERLAY_SELECTOR
+        ld      (p126_overlay_request_selector),a
+        pop     ix
+        pop     af
+        push    ix
+        ld      ix,x86_alu_sbb16_impl
+        call    p126_overlay_call
+        pop     ix
+        ret
+
+x86_alu_logic8:
+        push    af
+        push    ix
+        ld      a,P126_NGS_ALU_OVERLAY_SELECTOR
+        ld      (p126_overlay_request_selector),a
+        pop     ix
+        pop     af
+        push    ix
+        ld      ix,x86_alu_logic8_impl
+        call    p126_overlay_call
+        pop     ix
+        ret
+
+x86_alu_logic16:
+        push    af
+        push    ix
+        ld      a,P126_NGS_ALU_OVERLAY_SELECTOR
+        ld      (p126_overlay_request_selector),a
+        pop     ix
+        pop     af
+        push    ix
+        ld      ix,x86_alu_logic16_impl
+        call    p126_overlay_call
+        pop     ix
+        ret
+
+x86_alu_overlay_probe:
+        push    af
+        push    ix
+        ld      a,P126_NGS_ALU_OVERLAY_SELECTOR
+        ld      (p126_overlay_request_selector),a
+        pop     ix
+        pop     af
+        push    ix
+        ld      ix,x86_alu_overlay_probe_impl
+        call    p126_overlay_call
+        pop     ix
+        ret
+
 p126_overlay_current_selector: db #80
 p126_overlay_request_selector: db #80
 p126_overlay_gate_entry:       dw 0
