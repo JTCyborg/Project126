@@ -1012,6 +1012,14 @@ x86_exec_group3:
         jp      z,x86_exec_group3_not
         cp      3
         jp      z,x86_exec_group3_neg
+        cp      4
+        jp      z,x86_exec_group3_muldiv
+        cp      5
+        jp      z,x86_exec_group3_muldiv
+        cp      6
+        jp      z,x86_exec_group3_muldiv
+        cp      7
+        jp      z,x86_exec_group3_muldiv
         scf
         ret
 
@@ -1074,6 +1082,275 @@ x86_exec_group3_neg:
         ld      hl,0
         call    x86_alu_sub16
         jp      x86_modrm_write_rm16
+
+; F6 byte Group 3 arithmetic. F7 word forms are implemented in the next
+; tranche; this path deliberately rejects them rather than using wrong width.
+x86_exec_group3_muldiv:
+        ld      a,(x86_exec_group3_opcode)
+        bit     0,a
+        jr      nz,.group3_word_pending
+        ld      a,(x86_exec_group3_ext)
+        cp      4
+        jp      z,x86_exec_group3_mul8
+        cp      5
+        jp      z,x86_exec_group3_imul8
+        cp      6
+        jp      z,x86_exec_group3_div8
+        jp      x86_exec_group3_idiv8
+.group3_word_pending:
+        scf
+        ret
+
+x86_exec_group3_mul8:
+        call    x86_modrm_read_rm8
+        ld      (x86_exec_group3_operand8),a
+        ld      a,(x86_reg_ax)
+        ld      (x86_exec_group3_original_al),a
+        ld      c,a
+        ld      a,(x86_exec_group3_operand8)
+        ex      af,af'
+        ld      a,c
+        ld      c,a
+        ex      af,af'
+        ld      a,(x86_exec_group3_operand8)
+        ld      c,a
+        ld      a,(x86_exec_group3_original_al)
+        call    x86_exec_mul8_unsigned
+        ld      (x86_reg_ax),hl
+        jp      x86_exec_group3_mul8_flags
+
+x86_exec_group3_imul8:
+        call    x86_modrm_read_rm8
+        ld      (x86_exec_group3_operand8),a
+        ld      a,(x86_reg_ax)
+        ld      (x86_exec_group3_original_al),a
+        xor     a
+        ld      (x86_exec_group3_sign_quotient),a
+        ld      a,(x86_reg_ax)
+        bit     7,a
+        jr      z,.imul8_al_positive
+        neg     a
+        ld      (x86_exec_group3_abs_al),a
+        ld      a,1
+        ld      (x86_exec_group3_sign_quotient),a
+        jr      .imul8_operand
+.imul8_al_positive:
+        ld      (x86_exec_group3_abs_al),a
+.imul8_operand:
+        ld      a,(x86_exec_group3_operand8)
+        bit     7,a
+        jr      z,.imul8_operand_positive
+        neg     a
+        ld      (x86_exec_group3_operand8),a
+        ld      a,(x86_exec_group3_sign_quotient)
+        xor     1
+        ld      (x86_exec_group3_sign_quotient),a
+        jr      .imul8_multiply
+.imul8_operand_positive:
+        ld      a,(x86_exec_group3_operand8)
+        ld      (x86_exec_group3_operand8),a
+.imul8_multiply:
+        ld      a,(x86_exec_group3_abs_al)
+        ld      c,a
+        ld      a,(x86_exec_group3_operand8)
+        ex      af,af'
+        ld      a,c
+        ld      c,a
+        ex      af,af'
+        ld      a,(x86_exec_group3_abs_al)
+        ld      c,a
+        ld      a,(x86_exec_group3_operand8)
+        ld      c,a
+        ld      a,(x86_exec_group3_abs_al)
+        call    x86_exec_mul8_unsigned
+        ld      a,(x86_exec_group3_sign_quotient)
+        or      a
+        jr      z,.imul8_store
+        push    de
+        ld      de,0
+        or      a
+        sbc     de,hl
+        ex      de,hl
+        pop     de
+.imul8_store:
+        ld      (x86_reg_ax),hl
+        jp      x86_exec_group3_mul8_flags
+
+; A=left unsigned byte, C=right unsigned byte; returns HL=product.
+x86_exec_mul8_unsigned:
+        ld      (x86_exec_mul8_lhs),a
+        ld      a,c
+        ld      (x86_exec_mul8_multiplier),a
+        ld      a,(x86_exec_mul8_lhs)
+        ld      l,a
+        ld      h,0
+        ld      (x86_exec_mul8_multiplicand),hl
+        ld      hl,0
+        ld      (x86_exec_mul8_product),hl
+        ld      b,8
+.mul8_loop:
+        ld      a,(x86_exec_mul8_multiplier)
+        bit     0,a
+        jr      z,.mul8_no_add
+        ld      hl,(x86_exec_mul8_product)
+        ld      de,(x86_exec_mul8_multiplicand)
+        add     hl,de
+        ld      (x86_exec_mul8_product),hl
+.mul8_no_add:
+        ld      hl,(x86_exec_mul8_multiplicand)
+        add     hl,hl
+        ld      (x86_exec_mul8_multiplicand),hl
+        ld      a,(x86_exec_mul8_multiplier)
+        srl     a
+        ld      (x86_exec_mul8_multiplier),a
+        djnz    .mul8_loop
+        ld      hl,(x86_exec_mul8_product)
+        ret
+
+; PCem F6 MUL/IMUL: SF/PF are from original AL, ZF from AX,
+; CF/OF are set when AH is nonzero.
+x86_exec_group3_mul8_flags:
+        ld      a,(x86_exec_group3_original_al)
+        call    x86_exec_update_szp8
+        ld      hl,(x86_reg_ax)
+        ld      a,h
+        or      l
+        jr      nz,.mul8_nonzero
+        ld      hl,(x86_reg_flags)
+        set     6,l
+        ld      (x86_reg_flags),hl
+        jr      .mul8_test_ah
+.mul8_nonzero:
+        ld      hl,(x86_reg_flags)
+        res     6,l
+        ld      (x86_reg_flags),hl
+.mul8_test_ah:
+        ld      a,(x86_reg_ax+1)
+        or      a
+        jr      z,.mul8_no_overflow
+        ld      hl,(x86_reg_flags)
+        set     0,l
+        set     3,h
+        ld      (x86_reg_flags),hl
+        or      a
+        ret
+.mul8_no_overflow:
+        ld      hl,(x86_reg_flags)
+        res     0,l
+        res     3,h
+        ld      (x86_reg_flags),hl
+        or      a
+        ret
+
+x86_exec_group3_div8:
+        call    x86_modrm_read_rm8
+        or      a
+        jp      z,x86_exec_group3_divide_error
+        ld      c,a
+        ld      hl,(x86_reg_ax)
+        call    x86_exec_div16_by8
+        ld      a,l
+        ld      (x86_reg_ax),a
+        ld      a,e
+        ld      (x86_reg_ax+1),a
+        or      a
+        ret
+
+x86_exec_group3_idiv8:
+        call    x86_modrm_read_rm8
+        or      a
+        jp      z,x86_exec_group3_divide_error
+        ld      (x86_exec_group3_operand8),a
+        xor     a
+        ld      (x86_exec_group3_sign_dividend),a
+        ld      (x86_exec_group3_sign_quotient),a
+        ld      hl,(x86_reg_ax)
+        bit     7,h
+        jr      z,.idiv8_dividend_positive
+        ld      a,1
+        ld      (x86_exec_group3_sign_dividend),a
+        ld      (x86_exec_group3_sign_quotient),a
+        ld      de,0
+        or      a
+        sbc     de,hl
+        ex      de,hl
+.idiv8_dividend_positive:
+        ld      a,(x86_exec_group3_operand8)
+        bit     7,a
+        jr      z,.idiv8_divisor_positive
+        neg     a
+        ld      (x86_exec_group3_operand8),a
+        ld      a,(x86_exec_group3_sign_quotient)
+        xor     1
+        ld      (x86_exec_group3_sign_quotient),a
+.idiv8_divisor_positive:
+        ld      a,(x86_exec_group3_operand8)
+        ld      c,a
+        call    x86_exec_div16_by8
+        ld      a,(x86_exec_group3_sign_quotient)
+        or      a
+        jr      z,.idiv8_quotient_sign_done
+        push    de
+        ld      de,0
+        or      a
+        sbc     de,hl
+        ex      de,hl
+        pop     de
+.idiv8_quotient_sign_done:
+        ld      a,(x86_exec_group3_sign_dividend)
+        or      a
+        jr      z,.idiv8_remainder_sign_done
+        push    hl
+        ld      hl,0
+        or      a
+        sbc     hl,de
+        ex      de,hl
+        pop     hl
+.idiv8_remainder_sign_done:
+        ld      a,l
+        ld      (x86_reg_ax),a
+        ld      a,e
+        ld      (x86_reg_ax+1),a
+        or      a
+        ret
+
+; HL=unsigned 16-bit dividend, C=unsigned 8-bit divisor.
+; Returns HL=quotient, DE=remainder. Division is restoring, 16 iterations.
+x86_exec_div16_by8:
+        ld      (x86_exec_dividend16),hl
+        ld      a,c
+        ld      (x86_exec_divisor8),a
+        ld      hl,0
+        ld      (x86_exec_remainder16),hl
+        ld      a,(x86_exec_divisor8)
+        ld      l,a
+        ld      h,0
+        ld      (x86_exec_divisor16),hl
+        ld      b,16
+.div16_by8_loop:
+        ld      hl,(x86_exec_dividend16)
+        add     hl,hl
+        ld      (x86_exec_dividend16),hl
+        ld      hl,(x86_exec_remainder16)
+        adc     hl,hl
+        ld      (x86_exec_remainder16),hl
+        ld      de,(x86_exec_divisor16)
+        or      a
+        sbc     hl,de
+        jr      c,.div16_by8_no_subtract
+        ld      (x86_exec_remainder16),hl
+        ld      hl,(x86_exec_dividend16)
+        set     0,l
+        ld      (x86_exec_dividend16),hl
+.div16_by8_no_subtract:
+        djnz    .div16_by8_loop
+        ld      hl,(x86_exec_dividend16)
+        ld      de,(x86_exec_remainder16)
+        ret
+
+x86_exec_group3_divide_error:
+        xor     a
+        jp      x86_exec_interrupt
 
 ; FE Group 4: INC/DEC r/m8.
 ; FF Group 5: INC/DEC, near/far CALL/JMP and PUSH r/m16.
@@ -3951,6 +4228,19 @@ x86_exec_shift_original16: dw 0
 x86_exec_shift_cf: db 0
 x86_exec_shift_of: db 0
 x86_exec_group3_opcode: db 0
+x86_exec_group3_operand8: db 0
+x86_exec_group3_original_al: db 0
+x86_exec_group3_abs_al: db 0
+x86_exec_group3_sign_dividend: db 0
+x86_exec_group3_sign_quotient: db 0
+x86_exec_mul8_lhs: db 0
+x86_exec_mul8_multiplier: db 0
+x86_exec_mul8_multiplicand: dw 0
+x86_exec_mul8_product: dw 0
+x86_exec_dividend16: dw 0
+x86_exec_divisor8: db 0
+x86_exec_divisor16: dw 0
+x86_exec_remainder16: dw 0
 x86_exec_group3_ext: db 0
 x86_exec_group3_imm8: db 0
 x86_exec_group3_imm16: dw 0
