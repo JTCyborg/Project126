@@ -133,6 +133,21 @@ x86_io_log_access:
         pop     ix
         ret
 
+; Nested-call regression entry: page04 X86IO -> page05 X86ALU.
+; Returns A=08h when the page05 ADD8 implementation returned correctly.
+x86_io_overlay_nested_gate_probe:
+        push    af
+        push    ix
+        ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
+        ld      (p126_overlay_request_selector),a
+        pop     ix
+        pop     af
+        push    ix
+        ld      ix,x86_io_overlay_nested_gate_probe_impl
+        call    p126_overlay_call
+        pop     ix
+        ret
+
 ; X86ALU public entry points; implementations live on physical page 05h.
 x86_alu_add8:
         push    af
