@@ -668,3 +668,13 @@ This is diagnostic instrumentation; the next ATM log must report the letter afte
 - Added an ATM-local validator status capture and hexadecimal diagnostic `[BOOT] DMA VALIDATOR ERROR=xx`. The code is the ABI validator return status (BAD_MAGIC, BAD_VERSION, BAD_FRAME, or CRC_ERROR); it is not a DMA receiver response.
 - This instrumentation identifies which local validation condition rejects the smoke frame before changes are made to the NeoGS DMA endpoint.
 - Build and target verification are pending.
+
+
+## DMA/IPC end-to-end trace instrumentation (2026-11-07)
+
+- Added ATM-local #EF markers around DMA sender entry, local frame validation, E0 issue/acknowledgement, DMA-window copy, FF issue, and final acknowledgement. E0 and FF timeout paths now emit distinct ATM diagnostics.
+- Added independent NeoGS #EF markers around E0 dispatch, DMA register setup/arming, READY/CBIT release, host-end detection, DMA stop, page-42 mapping, frame validation, and timeout/length-error paths. NeoGS frame rejection includes the ABI status byte in hexadecimal.
+- The two streams remain physically independent; ATM messages are not forwarded or re-labelled as NeoGS messages.
+- Fixed the NeoGS CRC validator's frame-pointer clobber (the same class of defect previously fixed in ATM) and corrected both validators to start payload CRC at frame offset 18 rather than offset 16.
+- Logging is at transaction boundaries, not inside polling loops. It still adds latency around DMA copy; timing-sensitive behavior must be checked on target hardware.
+- **Verification:** source changes committed; CI/assembly and target hardware trace correlation pending. Do not infer DMA PASS until ATM reports final completion and NeoGS independently reports FRAME VALID.
