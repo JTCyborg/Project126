@@ -196,7 +196,7 @@ x86_bios_startup_trace:
         call    x86_cpu_step
         jr      c,.trace_fault
         call    x86_bios_trace_capture_instruction
-        call    x86_bios_trace_marker_arm
+        ; BIOS table-exit marker disabled: allow RAM initialization to execute.
         ; OBSOLETE: first-32 register dump disabled; terminal fault snapshot remains active.
         ld      hl,(x86_bios_trace_executed)
         inc     hl
