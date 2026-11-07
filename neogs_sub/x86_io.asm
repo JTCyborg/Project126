@@ -891,7 +891,7 @@ x86_io_dump_bios_table_impl:
 ; Diagnostic output only: guest ports remain software-modeled.
 ; Format: [IO] IN8 P=03DA V=FF @F000:E05B
 x86_io_log_access_impl:
-IF P126_DEBUG_IO_TRACE
+IF (P126_DEBUG_IO_TRACE != 0)
         push    af
         push    bc
         push    de
