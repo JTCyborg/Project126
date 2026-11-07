@@ -59,7 +59,7 @@ p126_x86_core_file_end:
 
 ; -------------------------------------------------------------------------
 ; First fixed-origin overlay. ATM streams this file after the resident A2h
-; acknowledgement; NeoGS installs it at physical page 04h and maps WIN2.
+; acknowledgement; NeoGS installs it at physical page 04h.
 ; -------------------------------------------------------------------------
         PAGE 6
         ORG #C000
