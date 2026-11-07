@@ -116,6 +116,7 @@ x86_bios_startup_trace:
 .trace_loop:
         call    x86_cpu_step
         jr      c,.trace_fault
+        call    x86_bios_trace_capture_instruction
         ld      hl,(x86_bios_trace_executed)
         inc     hl
         ld      (x86_bios_trace_executed),hl
@@ -137,6 +138,8 @@ x86_bios_startup_trace:
         call    p126_ngs_resident_log
         call    x86_bios_trace_log_cs_ip
         call    x86_bios_trace_log_registers
+        call    x86_bios_trace_log_io_counts
+        call    x86_bios_trace_log_history
         scf
         ret
 .trace_fault:
@@ -146,6 +149,8 @@ x86_bios_startup_trace:
         call    p126_ngs_resident_log
         call    x86_bios_trace_log_cs_ip
         call    x86_bios_trace_log_registers
+        call    x86_bios_trace_log_io_counts
+        call    x86_bios_trace_log_history
         scf
         ret
 .trace_halted:
@@ -155,7 +160,186 @@ x86_bios_startup_trace:
         call    p126_ngs_resident_log
         call    x86_bios_trace_log_cs_ip
         call    x86_bios_trace_log_registers
+        call    x86_bios_trace_log_io_counts
+        call    x86_bios_trace_log_history
         or      a
+        ret
+
+; Capture one completed instruction in a 16-entry circular history.
+; Record layout: CS(2), IP(2), physical address(3), memory region(1), opcode(1).
+x86_bios_trace_capture_instruction:
+        push    af
+        push    bc
+        push    de
+        push    hl
+        ld      hl,(x86_exec_instruction_start_cs)
+        ld      de,(x86_exec_instruction_start_ip)
+        call    x86_cpu_calc_phys
+        ld      a,(x86_phys_addr)
+        ld      (x86_bios_trace_record_phys),a
+        ld      a,(x86_phys_addr+1)
+        ld      (x86_bios_trace_record_phys+1),a
+        ld      a,(x86_phys_addr+2)
+        ld      (x86_bios_trace_record_phys+2),a
+        call    x86_mem_classify
+        ld      (x86_bios_trace_record_region),a
+
+        ld      a,(x86_bios_trace_history_index)
+        ld      d,a
+        add     a,a
+        add     a,a
+        add     a,a
+        add     a,d                    ; nine-byte record stride
+        ld      l,a
+        ld      h,0
+        ld      de,x86_bios_trace_history
+        add     hl,de
+        ld      (x86_bios_trace_record_ptr),hl
+
+        ld      hl,(x86_bios_trace_record_ptr)
+        ld      de,(x86_exec_instruction_start_cs)
+        ld      (hl),e
+        inc     hl
+        ld      (hl),d
+        inc     hl
+        ld      de,(x86_exec_instruction_start_ip)
+        ld      (hl),e
+        inc     hl
+        ld      (hl),d
+        inc     hl
+        ld      a,(x86_bios_trace_record_phys)
+        ld      (hl),a
+        inc     hl
+        ld      a,(x86_bios_trace_record_phys+1)
+        ld      (hl),a
+        inc     hl
+        ld      a,(x86_bios_trace_record_phys+2)
+        ld      (hl),a
+        inc     hl
+        ld      a,(x86_bios_trace_record_region)
+        ld      (hl),a
+        inc     hl
+        ld      a,(x86_exec_opcode)
+        ld      (hl),a
+
+        ld      a,(x86_bios_trace_history_index)
+        inc     a
+        and     #0F
+        ld      (x86_bios_trace_history_index),a
+        pop     hl
+        pop     de
+        pop     bc
+        pop     af
+        ret
+
+; I/O totals are reported even if no per-access line is present.
+x86_bios_trace_log_io_counts:
+        push    af
+        push    hl
+        ld      hl,x86_bios_trace_io_prefix
+        call    p126_ngs_resident_log
+        ld      hl,(x86_io_count_in)
+        call    x86_bios_trace_emit_hex16
+        ld      hl,x86_bios_trace_io_out_text
+        call    p126_ngs_resident_log
+        ld      hl,(x86_io_count_out)
+        call    x86_bios_trace_emit_hex16
+        ld      a,13
+        call    x86_bios_trace_emit_char
+        ld      a,10
+        call    x86_bios_trace_emit_char
+        pop     hl
+        pop     af
+        ret
+
+; Dump all 16 records, oldest first. At the watchdog the ring is full.
+x86_bios_trace_log_history:
+        push    af
+        push    bc
+        push    de
+        push    hl
+        ld      hl,x86_bios_trace_history_title
+        call    p126_ngs_resident_log
+        ld      a,(x86_bios_trace_history_index)
+        ld      (x86_bios_trace_dump_index),a
+        ld      b,16
+.history_loop:
+        ld      a,(x86_bios_trace_dump_index)
+        ld      d,a
+        add     a,a
+        add     a,a
+        add     a,a
+        add     a,d                    ; nine-byte record stride
+        ld      l,a
+        ld      h,0
+        ld      de,x86_bios_trace_history
+        add     hl,de
+        ld      a,(hl)
+        ld      (x86_bios_trace_dump_cs),a
+        inc     hl
+        ld      a,(hl)
+        ld      (x86_bios_trace_dump_cs+1),a
+        inc     hl
+        ld      a,(hl)
+        ld      (x86_bios_trace_dump_ip),a
+        inc     hl
+        ld      a,(hl)
+        ld      (x86_bios_trace_dump_ip+1),a
+        inc     hl
+        ld      a,(hl)
+        ld      (x86_bios_trace_dump_phys),a
+        inc     hl
+        ld      a,(hl)
+        ld      (x86_bios_trace_dump_phys+1),a
+        inc     hl
+        ld      a,(hl)
+        ld      (x86_bios_trace_dump_phys+2),a
+        inc     hl
+        ld      a,(hl)
+        ld      (x86_bios_trace_dump_region),a
+        inc     hl
+        ld      a,(hl)
+        ld      (x86_bios_trace_dump_opcode),a
+
+        ld      hl,x86_bios_trace_history_prefix
+        call    p126_ngs_resident_log
+        ld      hl,(x86_bios_trace_dump_cs)
+        call    x86_bios_trace_emit_hex16
+        ld      a,':'
+        call    x86_bios_trace_emit_char
+        ld      hl,(x86_bios_trace_dump_ip)
+        call    x86_bios_trace_emit_hex16
+        ld      hl,x86_bios_trace_history_phys_text
+        call    p126_ngs_resident_log
+        ld      a,(x86_bios_trace_dump_phys+2)
+        call    x86_bios_trace_emit_hex8
+        ld      a,(x86_bios_trace_dump_phys+1)
+        call    x86_bios_trace_emit_hex8
+        ld      a,(x86_bios_trace_dump_phys)
+        call    x86_bios_trace_emit_hex8
+        ld      hl,x86_bios_trace_history_region_text
+        call    p126_ngs_resident_log
+        ld      a,(x86_bios_trace_dump_region)
+        call    x86_bios_trace_emit_hex8
+        ld      hl,x86_bios_trace_history_opcode_text
+        call    p126_ngs_resident_log
+        ld      a,(x86_bios_trace_dump_opcode)
+        call    x86_bios_trace_emit_hex8
+        ld      a,13
+        call    x86_bios_trace_emit_char
+        ld      a,10
+        call    x86_bios_trace_emit_char
+
+        ld      a,(x86_bios_trace_dump_index)
+        inc     a
+        and     #0F
+        ld      (x86_bios_trace_dump_index),a
+        dec     b
+        jp      nz,.history_loop
+        pop     hl
+        pop     de
+        pop     bc
+        pop     af
         ret
 
 ; Capture a compact stop event for the DMA diagnostics response.
@@ -181,13 +365,13 @@ x86_bios_trace_log_cs_ip:
         ld      hl,(x86_reg_cs)
         call    x86_bios_trace_emit_hex16
         ld      a,':'
-        out     (#EF),a
+        call    x86_bios_trace_emit_char
         ld      hl,(x86_reg_ip)
         call    x86_bios_trace_emit_hex16
         ld      a,13
-        out     (#EF),a
+        call    x86_bios_trace_emit_char
         ld      a,10
-        out     (#EF),a
+        call    x86_bios_trace_emit_char
         pop     hl
         pop     af
         ret
@@ -271,13 +455,22 @@ x86_bios_trace_log_registers:
         ld      a,(x86_exec_opcode)
         call    x86_bios_trace_emit_hex8
         ld      a,13
-        out     (#EF),a
+        call    x86_bios_trace_emit_char
         ld      a,10
-        out     (#EF),a
+        call    x86_bios_trace_emit_char
         pop     hl
         pop     de
         pop     bc
         pop     af
+        ret
+
+; Use the same full 00EF diagnostic port as the resident logger.
+; Preserve BC because callers may be maintaining loop counters.
+x86_bios_trace_emit_char:
+        push    bc
+        ld      bc,#00EF
+        out     (c),a
+        pop     bc
         ret
 
 x86_bios_trace_emit_nibble:
@@ -287,8 +480,27 @@ x86_bios_trace_emit_nibble:
         jr      c,.hex_digit
         add     a,7
 .hex_digit:
-        out     (#EF),a
+        call    x86_bios_trace_emit_char
         ret
+
+x86_bios_trace_history_index: db 0
+x86_bios_trace_dump_index: db 0
+x86_bios_trace_record_ptr: dw 0
+x86_bios_trace_record_phys: db 0,0,0
+x86_bios_trace_record_region: db 0
+x86_bios_trace_dump_cs: dw 0
+x86_bios_trace_dump_ip: dw 0
+x86_bios_trace_dump_phys: db 0,0,0
+x86_bios_trace_dump_region: db 0
+x86_bios_trace_dump_opcode: db 0
+x86_bios_trace_io_prefix: db "[IO COUNT] IN=",0
+x86_bios_trace_io_out_text: db " OUT=",0
+x86_bios_trace_history_title: db "[X86 HIST] LAST 16 INSTRUCTIONS (OLDEST FIRST)",13,10,0
+x86_bios_trace_history_prefix: db "[X86 HIST] ",0
+x86_bios_trace_history_phys_text: db " P=",0
+x86_bios_trace_history_region_text: db " R=",0
+x86_bios_trace_history_opcode_text: db " OP=",0
+x86_bios_trace_history: BLOCK 16*9,0
 
 x86_bios_trace_remaining: dw 0
 x86_bios_trace_executed:  dw 0
@@ -591,7 +803,7 @@ x86_cpu_emit_version:
         ld      a,(hl)
         or      a
         jr      z,.done
-        out     (#EF),a
+        call    x86_bios_trace_emit_char
         inc     hl
         jr      .loop
 .done:

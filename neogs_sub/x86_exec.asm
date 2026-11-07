@@ -121,6 +121,8 @@ x86_cpu_step:
 
         ; Keep the address of the first prefix byte so REP can yield after
         ; each iteration and re-enter at the complete instruction boundary.
+        ld      hl,(x86_reg_cs)
+        ld      (x86_exec_instruction_start_cs),hl
         ld      hl,(x86_reg_ip)
         ld      (x86_exec_instruction_start_ip),hl
         xor     a
@@ -4631,6 +4633,7 @@ x86_exec_hlt:
         or      a
         ret
 
+x86_exec_instruction_start_cs: dw 0
 x86_exec_instruction_start_ip: dw 0
 x86_exec_prefix_seg: db 0
 x86_exec_prefix_rep: db 0

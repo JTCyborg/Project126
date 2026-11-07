@@ -8,6 +8,9 @@
 ; Guest FLAGS and CPU registers are never changed by the backend.
 
 x86_io_read8:
+        ld      hl,(x86_io_count_in)
+        inc     hl
+        ld      (x86_io_count_in),hl
         ld      hl,(x86_io_port)
         ld      de,#00E0
         or      a
@@ -20,6 +23,9 @@ x86_io_read8:
         ret
 
 x86_io_read16:
+        ld      hl,(x86_io_count_in)
+        inc     hl
+        ld      (x86_io_count_in),hl
         ld      hl,(x86_io_port)
         ld      de,#00E0
         or      a
@@ -33,6 +39,9 @@ x86_io_read16:
 
 ; A=value. Byte write updates only the low lane of port 00E0h.
 x86_io_write8:
+        ld      hl,(x86_io_count_out)
+        inc     hl
+        ld      (x86_io_count_out),hl
         ld      hl,(x86_io_port)
         ld      de,#00E0
         or      a
@@ -44,6 +53,9 @@ x86_io_write8:
 ; HL=value. Word write updates the complete 16-bit test latch.
 x86_io_write16:
         ld      (x86_io_value),hl
+        ld      hl,(x86_io_count_out)
+        inc     hl
+        ld      (x86_io_count_out),hl
         ld      hl,(x86_io_port)
         ld      de,#00E0
         or      a
@@ -78,13 +90,13 @@ x86_io_log_access:
         or      a
         jr      nz,.log_word_width
         ld      a,'8'
-        out     (#EF),a
+        call    x86_io_log_char
         jr      .log_port
 .log_word_width:
         ld      a,'1'
-        out     (#EF),a
+        call    x86_io_log_char
         ld      a,'6'
-        out     (#EF),a
+        call    x86_io_log_char
 .log_port:
         ld      hl,x86_io_log_port_text
         call    x86_io_log_string
@@ -107,17 +119,25 @@ x86_io_log_access:
         ld      hl,(x86_reg_cs)
         call    x86_io_log_hex16
         ld      a,':'
-        out     (#EF),a
+        call    x86_io_log_char
         ld      hl,(x86_exec_instruction_start_ip)
         call    x86_io_log_hex16
         ld      a,13
-        out     (#EF),a
+        call    x86_io_log_char
         ld      a,10
-        out     (#EF),a
+        call    x86_io_log_char
         pop     hl
         pop     de
         pop     bc
         pop     af
+        ret
+
+; Emit on the full 00EF diagnostic port, preserving BC and A.
+x86_io_log_char:
+        push    bc
+        ld      bc,#00EF
+        out     (c),a
+        pop     bc
         ret
 
 ; HL points to a zero-terminated diagnostic string.
@@ -125,7 +145,7 @@ x86_io_log_string:
         ld      a,(hl)
         or      a
         ret     z
-        out     (#EF),a
+        call    x86_io_log_char
         inc     hl
         jr      x86_io_log_string
 
@@ -155,7 +175,7 @@ x86_io_log_nibble:
         jr      c,.log_hex_emit
         add     a,7
 .log_hex_emit:
-        out     (#EF),a
+        call    x86_io_log_char
         ret
 
 x86_io_log_prefix:    db "[IO] ",0
@@ -171,3 +191,6 @@ x86_io_test_latch: dw 0
 x86_io_log_value: dw 0
 x86_io_log_direction: db 0
 x86_io_log_width: db 0
+
+x86_io_count_in:  dw 0
+x86_io_count_out: dw 0
