@@ -319,11 +319,11 @@ p126_host_ngs_ready: db 0
 p126_log_ngs_begin: db "[BOOT] NEOGS RESIDENT START BEGIN",13,10,0
 p126_log_ngs_ready: db "[BOOT] NEOGS RESIDENT READY",13,10,0
 p126_log_ngs_failed: db "[BOOT] NEOGS RESIDENT START FAILED",13,10,0
-p126_log_dma_test_begin: db "[BOOT] DMA SMOKE TEST BEGIN",13,10,0
-p126_log_dma_test_sent: db "[BOOT] DMA SMOKE FRAME SENT",13,10,0
-p126_log_dma_test_failed: db "[BOOT] DMA SMOKE TEST FAILED",13,10,0
-p126_log_dma_rx_test_pass: db "[BOOT] DMA REVERSE TEST PASS",13,10,0
-p126_log_dma_rx_test_failed: db "[BOOT] DMA REVERSE TEST FAILED",13,10,0
+p126_log_dma_test_begin: db "[BOOT] DMA MAX FRAME TEST BEGIN",13,10,0
+p126_log_dma_test_sent: db "[BOOT] DMA MAX TX PASS",13,10,0
+p126_log_dma_test_failed: db "[BOOT] DMA MAX TX FAILED",13,10,0
+p126_log_dma_rx_test_pass: db "[BOOT] DMA MAX RX PASS",13,10,0
+p126_log_dma_rx_test_failed: db "[BOOT] DMA MAX RX FAILED",13,10,0
 p126_log_dma_stage_prefix: db "[BOOT] DMA FAIL STAGE=",0
 p126_log_dma_error_prefix: db "[BOOT] DMA VALIDATOR ERROR=",0
 p126_log_trdos_begin:   db "[BOOT] TRDOS DIRECTORY READ BEGIN",13,10,0
