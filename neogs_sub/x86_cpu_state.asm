@@ -128,8 +128,8 @@ x86_bios_image_diag:
         call    x86_bios_trace_emit_hex8
         ld      hl,x86_bios_diag_run_msg
         call    x86_bios_trace_emit_string
-        ld      hl,#E05B
-        ld      de,#F000
+        ld      hl,#F000
+        ld      de,#E05B
         call    x86_cpu_calc_phys
         call    x86_guest_mem_read8
         call    x86_bios_trace_emit_hex8
