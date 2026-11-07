@@ -83,9 +83,9 @@ p126_ngs_ipc_validate_frame::
         sbc     hl,de
         jp      nz,.p126_ngs_frame_bad
         ; CRC header and payload in one pass.
+        ; Keep DE as the frame pointer while HL is the CRC accumulator.
         push    ix
         pop     de
-        ex      de,hl
         ld      hl,#FFFF
         ld      b,16
 .p126_ngs_frame_crc_head:
@@ -93,6 +93,9 @@ p126_ngs_ipc_validate_frame::
         inc     de
         call    p126_ngs_ipc_crc16_update
         djnz    .p126_ngs_frame_crc_head
+        ; DE currently points at frame+16; skip the two stored CRC bytes.
+        inc     de
+        inc     de
         push    de
         ld      ix,(p126_ngs_ipc_frame_ptr)
         ld      e,(ix+12)
@@ -163,6 +166,8 @@ P126_NGS_DMA_TARGET_PAGE     EQU #42
 P126_NGS_DMA_TIMEOUT  EQU #FFFF
 
 p126_ngs_ipc_dma_receive_frame::
+        ld      hl,p126_ngs_ipc_log_dma_cfg_begin
+        call    p126_ngs_ipc_log
         ld      a,1
         out     (P126_NGS_DMA_MOD),a
         ld      a,#10
@@ -173,10 +178,12 @@ p126_ngs_ipc_dma_receive_frame::
         out     (P126_NGS_DMA_LAD),a
         ld      a,#80
         out     (P126_NGS_DMA_CST),a
-        ld      hl,p126_ngs_ipc_log_dma_ready
+        ld      hl,p126_ngs_ipc_log_dma_armed
         call    p126_ngs_ipc_log
         xor     a
         out     (P126_NGS_CLRCBIT),a
+        ld      hl,p126_ngs_ipc_log_dma_ready
+        call    p126_ngs_ipc_log
 
         ld      bc,P126_NGS_DMA_TIMEOUT
 .p126_ngs_dma_wait_end:
@@ -188,6 +195,8 @@ p126_ngs_ipc_dma_receive_frame::
         or      c
         jr      nz,.p126_ngs_dma_wait_end
         ; Always stop DMA before releasing the command on timeout.
+        ld      hl,p126_ngs_ipc_log_dma_timeout
+        call    p126_ngs_ipc_log
         xor     a
         out     (P126_NGS_DMA_CST),a
         out     (P126_NGS_CLRCBIT),a
@@ -198,10 +207,16 @@ p126_ngs_ipc_dma_receive_frame::
 .p126_ngs_dma_host_end:
         ; FFh/CBIT marks the end of the host write. Stop DMA and map the
         ; staging page, but keep CBIT asserted until validation is complete.
+        ld      hl,p126_ngs_ipc_log_dma_host_end
+        call    p126_ngs_ipc_log
         xor     a
         out     (P126_NGS_DMA_CST),a
+        ld      hl,p126_ngs_ipc_log_dma_stopped
+        call    p126_ngs_ipc_log
         ld      a,P126_NGS_DMA_TARGET_PAGE
         out     (P126_NGS_WIN3_PORT),a
+        ld      hl,p126_ngs_ipc_log_dma_page_mapped
+        call    p126_ngs_ipc_log
         ld      hl,p126_ngs_ipc_log_dma_end
         call    p126_ngs_ipc_log
 
@@ -227,6 +242,8 @@ p126_ngs_ipc_dma_receive_frame::
         ld      hl,#C000
         call    p126_ngs_ipc_validate_frame
         jr      c,.p126_ngs_dma_validation_failed
+        ld      hl,p126_ngs_ipc_log_frame_valid
+        call    p126_ngs_ipc_log
 
         ; Validation succeeded: only now acknowledge completion to ATM.
         xor     a
@@ -239,6 +256,11 @@ p126_ngs_ipc_dma_receive_frame::
 .p126_ngs_dma_validation_failed:
         ; Preserve the ABI status and carry while releasing the host.
         push    af
+        ld      hl,p126_ngs_ipc_log_frame_rejected
+        call    p126_ngs_ipc_log
+        pop     af
+        call    p126_ngs_ipc_log_hex_byte
+        push    af
         xor     a
         out     (P126_NGS_CLRCBIT),a
         pop     af
@@ -246,6 +268,8 @@ p126_ngs_ipc_dma_receive_frame::
         ret
 
 .p126_ngs_dma_bad_length:
+        ld      hl,p126_ngs_ipc_log_bad_length
+        call    p126_ngs_ipc_log
         ld      a,P126_STATUS_BAD_FRAME
         scf
         push    af
@@ -330,9 +354,55 @@ p126_ngs_ipc_crc16_test_vector:
         db "123456789"
 
 ; Independent NeoGS #EF diagnostics for the DMA transaction lifecycle.
-p126_ngs_ipc_log_dma_e0:    db "[NGS] DMA E0 RECEIVED",13,10,0
-p126_ngs_ipc_log_dma_ready: db "[NGS] DMA READY",13,10,0
-p126_ngs_ipc_log_dma_end:   db "[NGS] DMA END RECEIVED",13,10,0
+p126_ngs_ipc_log_dma_e0:          db "[NGS] DMA E0 RECEIVED",13,10,0
+p126_ngs_ipc_log_dma_cfg_begin:   db "[NGS] DMA CONFIG BEGIN",13,10,0
+p126_ngs_ipc_log_dma_armed:       db "[NGS] DMA ARMED",13,10,0
+p126_ngs_ipc_log_dma_ready:       db "[NGS] DMA READY / CBIT RELEASED",13,10,0
+p126_ngs_ipc_log_dma_host_end:    db "[NGS] DMA HOST END DETECTED",13,10,0
+p126_ngs_ipc_log_dma_timeout:     db "[NGS] DMA WAIT TIMEOUT",13,10,0
+p126_ngs_ipc_log_bad_length:      db "[NGS] DMA FRAME LENGTH INVALID",13,10,0
+p126_ngs_ipc_log_dma_stopped:     db "[NGS] DMA STOPPED",13,10,0
+p126_ngs_ipc_log_dma_page_mapped: db "[NGS] DMA PAGE 42 MAPPED",13,10,0
+p126_ngs_ipc_log_dma_end:         db "[NGS] DMA END RECEIVED",13,10,0
+p126_ngs_ipc_log_frame_valid:     db "[NGS] DMA FRAME VALID",13,10,0
+p126_ngs_ipc_log_frame_rejected:  db "[NGS] DMA FRAME REJECTED STATUS=",0
+
+; Print a status byte as two hex digits followed by CR/LF. Preserves AF/BC.
+p126_ngs_ipc_log_hex_byte:
+        push    af
+        push    bc
+        rrca
+        rrca
+        rrca
+        rrca
+        call    p126_ngs_ipc_log_hex_nibble
+        pop     bc
+        pop     af
+        push    af
+        and     #0F
+        call    p126_ngs_ipc_log_hex_nibble
+        pop     af
+        push    bc
+        ld      bc,#00EF
+        ld      a,13
+        out     (c),a
+        ld      a,10
+        out     (c),a
+        pop     bc
+        ret
+
+p126_ngs_ipc_log_hex_nibble:
+        and     #0F
+        add     a,'0'
+        cp      '9'+1
+        jr      c,.p126_ngs_hex_emit
+        add     a,7
+.p126_ngs_hex_emit:
+        push    bc
+        ld      bc,#00EF
+        out     (c),a
+        pop     bc
+        ret
 
 ; This IPC module is assembled both standalone and into the resident image.
 ; Keep its diagnostics self-contained instead of importing the resident logger.

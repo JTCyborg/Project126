@@ -173,6 +173,15 @@ p126_host_dma_test_failed:
         out     (c),a
         ld      a,10
         out     (c),a
+        ld      hl,p126_log_dma_error_prefix
+        call    p126_host_debug_string
+        ld      a,(p126_ipc_dma_error)
+        call    p126_host_debug_hex_byte
+        ld      a,13
+        ld      bc,#00EF
+        out     (c),a
+        ld      a,10
+        out     (c),a
 
 p126_host_idle:
         call    p126_catalog_poll_keyboard
@@ -272,6 +281,30 @@ p126_host_log_prefix:
         pop     af
         ret
 
+; Print A as two hexadecimal digits to ATM's independent #EF stream.
+p126_host_debug_hex_byte:
+        push    af
+        rrca
+        rrca
+        rrca
+        rrca
+        call    p126_host_debug_hex_nibble
+        pop     af
+        jp      p126_host_debug_hex_nibble
+
+p126_host_debug_hex_nibble:
+        and     #0F
+        add     a,'0'
+        cp      '9'+1
+        jr      c,.p126_host_hex_emit
+        add     a,7
+.p126_host_hex_emit:
+        push    bc
+        ld      bc,#00EF
+        out     (c),a
+        pop     bc
+        ret
+
 p126_host_ngs_ready: db 0
 
 p126_log_ngs_begin: db "[BOOT] NEOGS RESIDENT START BEGIN",13,10,0
@@ -281,6 +314,7 @@ p126_log_dma_test_begin: db "[BOOT] DMA SMOKE TEST BEGIN",13,10,0
 p126_log_dma_test_sent: db "[BOOT] DMA SMOKE FRAME SENT",13,10,0
 p126_log_dma_test_failed: db "[BOOT] DMA SMOKE TEST FAILED",13,10,0
 p126_log_dma_stage_prefix: db "[BOOT] DMA FAIL STAGE=",0
+p126_log_dma_error_prefix: db "[BOOT] DMA VALIDATOR ERROR=",0
 p126_log_trdos_begin:   db "[BOOT] TRDOS DIRECTORY READ BEGIN",13,10,0
 p126_log_trdos_done:    db "[BOOT] TRDOS DIRECTORY READ RETURN",13,10,0
 p126_log_video_begin:   db "[BOOT] ATM VIDEO INIT BEGIN",13,10,0

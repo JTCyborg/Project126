@@ -660,3 +660,21 @@ This is diagnostic instrumentation; the next ATM log must report the letter afte
 - Source inspection found that `p126_ipc_validate_frame` loaded the frame pointer into DE, then executed `EX DE,HL` immediately before initializing HL to `FFFFh`. This discarded the pointer and left DE=0000h, so the CRC loop read from address 0000h rather than from the frame buffer.
 - Removed the unnecessary register exchange. DE now retains the frame pointer while HL is initialized as the CRC accumulator; the CRC update routine preserves DE as specified.
 - The fix addresses the observed local validation failure. It does not establish that the E0h/READY/DMA/FF transaction works; that remains the next hardware test after this stage passes.
+
+
+## DMA stage-1 validator error reporting (2026-11-07)
+
+- The repeated target log still reports `DMA FAIL STAGE=1`, so the sender returns from local ATM frame validation before issuing E0h.
+- Added an ATM-local validator status capture and hexadecimal diagnostic `[BOOT] DMA VALIDATOR ERROR=xx`. The code is the ABI validator return status (BAD_MAGIC, BAD_VERSION, BAD_FRAME, or CRC_ERROR); it is not a DMA receiver response.
+- This instrumentation identifies which local validation condition rejects the smoke frame before changes are made to the NeoGS DMA endpoint.
+- Build and target verification are pending.
+
+
+## DMA/IPC end-to-end trace instrumentation (2026-11-07)
+
+- Added ATM-local #EF markers around DMA sender entry, local frame validation, E0 issue/acknowledgement, DMA-window copy, FF issue, and final acknowledgement. E0 and FF timeout paths now emit distinct ATM diagnostics.
+- Added independent NeoGS #EF markers around E0 dispatch, DMA register setup/arming, READY/CBIT release, host-end detection, DMA stop, page-42 mapping, frame validation, and timeout/length-error paths. NeoGS frame rejection includes the ABI status byte in hexadecimal.
+- The two streams remain physically independent; ATM messages are not forwarded or re-labelled as NeoGS messages.
+- Fixed the NeoGS CRC validator's frame-pointer clobber (the same class of defect previously fixed in ATM) and corrected both validators to start payload CRC at frame offset 18 rather than offset 16.
+- Logging is at transaction boundaries, not inside polling loops. It still adds latency around DMA copy; timing-sensitive behavior must be checked on target hardware.
+- **Verification:** GitHub Actions run [42351776510](https://github.com/JTCyborg/Project126/actions/runs/42351776510), commit `d9b2a391ddaf0bbf4ccd918b34a58cbecc17f40e`, completed successfully. ATM IPC and NeoGS assembly, including the new trace code, passed; TR-DOS image packaging and artifact publication also completed. This is BUILD PASS only. No hardware trace or DMA runtime PASS is claimed.
