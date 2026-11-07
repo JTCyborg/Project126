@@ -3,9 +3,9 @@
 ; PCem reference: PCem/808x.c setadd8(), setsub8() and related helpers.
 ;
 ; API:
-;   x86_alu_add8: A=left operand, C=right operand.
+;   x86_alu_add8_impl: A=left operand, C=right operand.
 ;                A=result; updates x86_reg_flags arithmetic flags.
-;   x86_alu_sub8: A=left operand, C=right operand.
+;   x86_alu_sub8_impl: A=left operand, C=right operand.
 ;                A=result; updates x86_reg_flags arithmetic flags.
 ;   x86_alu_selftest: Carry clear=pass, set=fail.
 ;
@@ -36,7 +36,7 @@ x86_alu_emit_version:
 x86_alu_version_text:
         defb    "[P126 X86_ALU v0.2.0]",13,10,0
 
-x86_alu_add8:
+x86_alu_add8_impl:
         ld      (x86_alu_lhs),a
         ld      a,c
         ld      (x86_alu_rhs),a
@@ -53,7 +53,7 @@ x86_alu_add8:
         ld      a,(x86_alu_result)
         ret
 
-x86_alu_sub8:
+x86_alu_sub8_impl:
         ld      (x86_alu_lhs),a
         ld      a,c
         ld      (x86_alu_rhs),a
@@ -74,7 +74,7 @@ x86_alu_sub8:
 ; high-byte ADC/SBC to capture full-word CF, SF and OF. Guest PF is the
 ; parity of the low result byte, as on the 8086.
 
-x86_alu_add16:
+x86_alu_add16_impl:
         ld      (x86_alu_word_lhs),hl
         ld      (x86_alu_word_rhs),de
         ld      a,l
@@ -97,7 +97,7 @@ x86_alu_add16:
         call    x86_alu_merge_word_flags
         ret
 
-x86_alu_sub16:
+x86_alu_sub16_impl:
         ld      (x86_alu_word_lhs),hl
         ld      (x86_alu_word_rhs),de
         ld      a,l
@@ -212,7 +212,7 @@ x86_alu_merge_flags:
 ; ADC/SBB helpers. Carry/borrow input is B bit 0; result and arithmetic
 ; flags are returned exactly like ADD/SUB. The 16-bit variants propagate the
 ; low-byte carry/borrow into the high-byte operation.
-x86_alu_adc8:
+x86_alu_adc8_impl:
         ld      (x86_alu_lhs),a
         ld      a,c
         ld      (x86_alu_rhs),a
@@ -240,7 +240,7 @@ x86_alu_adc8:
         ld      a,(x86_alu_result)
         ret
 
-x86_alu_sbb8:
+x86_alu_sbb8_impl:
         ld      (x86_alu_lhs),a
         ld      a,c
         ld      (x86_alu_rhs),a
@@ -268,7 +268,7 @@ x86_alu_sbb8:
         ld      a,(x86_alu_result)
         ret
 
-x86_alu_adc16:
+x86_alu_adc16_impl:
         ld      (x86_alu_word_lhs),hl
         ld      (x86_alu_word_rhs),de
         ld      a,b
@@ -302,7 +302,7 @@ x86_alu_adc16:
         call    x86_alu_merge_word_flags
         ret
 
-x86_alu_sbb16:
+x86_alu_sbb16_impl:
         ld      (x86_alu_word_lhs),hl
         ld      (x86_alu_word_rhs),de
         ld      a,b
@@ -337,12 +337,12 @@ x86_alu_sbb16:
         ret
 
 ; Logical operations for the original 8086.
-; API: x86_alu_logic8: A=lhs, C=rhs, B=operation (0 OR, 1 AND, 2 XOR).
+; API: x86_alu_logic8_impl: A=lhs, C=rhs, B=operation (0 OR, 1 AND, 2 XOR).
 ;      Returns A=result and updates SF/ZF/PF; clears CF/AF/OF.
-;      x86_alu_logic16: HL=lhs, DE=rhs, B=operation; returns HL=result.
+;      x86_alu_logic16_impl: HL=lhs, DE=rhs, B=operation; returns HL=result.
 ; The AF bit is cleared, matching the existing Project126 logical-flag policy.
 
-x86_alu_logic8:
+x86_alu_logic8_impl:
         ld      (x86_alu_logic_lhs),a
         ld      a,c
         ld      (x86_alu_logic_rhs),a
@@ -362,7 +362,7 @@ x86_alu_logic8:
         ld      a,(x86_alu_logic_result)
         ret
 
-x86_alu_logic16:
+x86_alu_logic16_impl:
         ld      (x86_alu_logic_word_lhs),hl
         ld      (x86_alu_logic_word_rhs),de
         ld      a,b
@@ -473,7 +473,7 @@ x86_alu_selftest:
         ld      (x86_reg_flags),hl
         ld      a,#01
         ld      c,#01
-        call    x86_alu_add8
+        call    x86_alu_add8_impl
         ld      hl,(x86_reg_flags)
         bit     0,h
         jp      z,.fail
@@ -487,7 +487,7 @@ x86_alu_selftest:
         ; 7F + 01 = 80: OF,SF,AF set; CF,ZF,PF clear.
         ld      a,#7F
         ld      c,#01
-        call    x86_alu_add8
+        call    x86_alu_add8_impl
         cp      #80
         jp      nz,.fail
         ld      hl,(x86_reg_flags)
@@ -507,7 +507,7 @@ x86_alu_selftest:
         ; FF + 01 = 00: CF,AF,ZF,PF set; OF,SF clear.
         ld      a,#FF
         ld      c,#01
-        call    x86_alu_add8
+        call    x86_alu_add8_impl
         or      a
         jp      nz,.fail
         ld      hl,(x86_reg_flags)
@@ -527,7 +527,7 @@ x86_alu_selftest:
         ; 80 - 01 = 7F: OF,AF set; CF,SF,ZF,PF clear.
         ld      a,#80
         ld      c,#01
-        call    x86_alu_sub8
+        call    x86_alu_sub8_impl
         cp      #7F
         jp      nz,.fail
         ld      hl,(x86_reg_flags)
@@ -547,7 +547,7 @@ x86_alu_selftest:
         ; 00 - 01 = FF: CF,AF,SF,PF set; OF,ZF clear.
         ld      a,#00
         ld      c,#01
-        call    x86_alu_sub8
+        call    x86_alu_sub8_impl
         cp      #FF
         jp      nz,.fail
         ld      hl,(x86_reg_flags)
@@ -567,7 +567,7 @@ x86_alu_selftest:
         ; 7FFF + 0001 = 8000: 16-bit signed overflow.
         ld      hl,#7FFF
         ld      de,#0001
-        call    x86_alu_add16
+        call    x86_alu_add16_impl
         ld      de,#8000
         or      a
         sbc     hl,de
@@ -589,7 +589,7 @@ x86_alu_selftest:
         ; FFFF + 0001 = 0000: carry, AF, ZF and PF.
         ld      hl,#FFFF
         ld      de,#0001
-        call    x86_alu_add16
+        call    x86_alu_add16_impl
         ld      a,h
         or      l
         jp      nz,.fail
@@ -610,7 +610,7 @@ x86_alu_selftest:
         ; 8000 - 0001 = 7FFF: signed overflow and auxiliary borrow.
         ld      hl,#8000
         ld      de,#0001
-        call    x86_alu_sub16
+        call    x86_alu_sub16_impl
         ld      de,#7FFF
         or      a
         sbc     hl,de
@@ -632,7 +632,7 @@ x86_alu_selftest:
         ; 0000 - 0001 = FFFF: borrow, sign, AF and even parity.
         ld      hl,#0000
         ld      de,#0001
-        call    x86_alu_sub16
+        call    x86_alu_sub16_impl
         ld      de,#FFFF
         or      a
         sbc     hl,de
@@ -689,3 +689,8 @@ x86_alu_word_rhs:    dw 0
 x86_alu_word_result: dw 0
 x86_alu_low_flags:   db 0
 x86_alu_high_flags:  db 0
+
+; Fixed-origin probe used by IMAGE_FINISH to validate the page-05 gate path.
+x86_alu_overlay_probe_impl:
+        ld      a,#A5
+        ret
