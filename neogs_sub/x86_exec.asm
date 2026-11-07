@@ -49,6 +49,8 @@ x86_cpu_step:
         ret     c
         ld      (x86_exec_opcode),a
 
+        cp      #06
+        jp      c,x86_exec_add_family
         cp      #D7
         jp      z,x86_exec_xlat
         cp      #F5
@@ -172,6 +174,89 @@ x86_cpu_step:
         jp      x86_exec_mov_imm_reg
 .not_mov_imm_reg:
         scf
+        ret
+
+; 00-03 ADD r/m,r and r,r/m; 04-05 ADD AL/AX,immediate.
+; Uses the PCem-compatible arithmetic flag helpers in x86_alu.asm.
+x86_exec_add_family:
+        ld      a,(x86_exec_opcode)
+        ld      (x86_exec_alu_opcode),a
+        cp      #04
+        jr      nc,.add_accumulator
+
+        call    x86_decode_modrm16
+        ret     c
+        ld      a,(x86_exec_alu_opcode)
+        bit     0,a
+        jr      nz,.add_word
+        bit     1,a
+        jr      nz,.add_r8_from_rm8
+
+        ; ADD r/m8,r8
+        call    x86_modrm_read_rm8
+        ld      (x86_exec_alu_lhs8),a
+        ld      a,(x86_modrm_reg)
+        call    x86_modrm_read_reg8
+        ld      c,a
+        ld      a,(x86_exec_alu_lhs8)
+        call    x86_alu_add8
+        jp      x86_modrm_write_rm8
+
+.add_r8_from_rm8:
+        ; ADD r8,r/m8
+        ld      a,(x86_modrm_reg)
+        call    x86_modrm_read_reg8
+        ld      (x86_exec_alu_lhs8),a
+        call    x86_modrm_read_rm8
+        ld      c,a
+        ld      a,(x86_exec_alu_lhs8)
+        call    x86_alu_add8
+        ld      c,a
+        ld      a,(x86_modrm_reg)
+        jp      x86_modrm_write_reg8
+
+.add_word:
+        bit     1,a
+        jr      nz,.add_r16_from_rm16
+
+        ; ADD r/m16,r16
+        call    x86_modrm_read_rm16
+        ld      (x86_exec_alu_lhs16),hl
+        call    x86_modrm_read_reg16
+        ex      de,hl
+        ld      hl,(x86_exec_alu_lhs16)
+        call    x86_alu_add16
+        jp      x86_modrm_write_rm16
+
+.add_r16_from_rm16:
+        ; ADD r16,r/m16
+        call    x86_modrm_read_reg16
+        ld      (x86_exec_alu_lhs16),hl
+        call    x86_modrm_read_rm16
+        ex      de,hl
+        ld      hl,(x86_exec_alu_lhs16)
+        call    x86_alu_add16
+        jp      x86_modrm_write_reg16
+
+.add_accumulator:
+        bit     0,a
+        jr      nz,.add_ax_immediate
+        call    x86_cpu_fetch8
+        ret     c
+        ld      c,a
+        ld      a,(x86_reg_ax)
+        call    x86_alu_add8
+        ld      (x86_reg_ax),a
+        or      a
+        ret
+.add_ax_immediate:
+        call    x86_cpu_fetch16
+        ret     c
+        ex      de,hl
+        ld      hl,(x86_reg_ax)
+        call    x86_alu_add16
+        ld      (x86_reg_ax),hl
+        or      a
         ret
 
 ; 88/89 MOV r/m8/16,r8/16; 8A/8B MOV r8/16,r/m8/16.
@@ -1437,6 +1522,9 @@ x86_exec_loop_opcode: db 0
 x86_exec_test_result: db 0,0
 x86_exec_test_immediate: dw 0
 x86_exec_mov_opcode: db 0
+x86_exec_alu_opcode: db 0
+x86_exec_alu_lhs8: db 0
+x86_exec_alu_lhs16: dw 0
 x86_exec_mov_byte: db 0
 x86_exec_sreg_opcode: db 0
 x86_exec_sreg_index: db 0
