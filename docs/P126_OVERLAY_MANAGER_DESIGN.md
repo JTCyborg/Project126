@@ -112,7 +112,7 @@ The first pinned-overlay source/build/load slice is implemented:
 - `X86CORE.C` is separately exported at 0000h (15,756 bytes in the current build);
 - resident CPU call sites resolve directly to the overlay symbols in the same assembler pass;
 - ATM loads `X86IO.C` from TR-DOS after A2h and sends the IMAGE transaction over ABI 1.0 DMA;
-- NeoGS installs page 04h, verifies the complete image by readback, then maps it into WIN2;
+- NeoGS installs page 04h, verifies the complete image by readback, runs a reversible WIN2 selector test across pages 04h and 05h at offset 3FFFh, then leaves page 04h mapped;
 - BIOS execution waits for both IO_OVERLAY_READY and BIOS_IMAGE_READY;
 - `00E0h` diagnostic latch and current PPI/keyboard semantics are retained.
 
@@ -123,7 +123,8 @@ Not implemented: dynamic page allocator, general manifest, call/return trampolin
 The manager is not complete until all of the following are true:
 
 - [x] WIN2 selector register/encoding identified from Project125 reference: MPAG #00, selector ROR8(physical_page); Project126 startup #80 corresponds to page 01h.
-- [ ] Physically validate WIN2 mapping/restoration on at least two Project126-approved pages.
+- [x] Resident runtime self-test exercises WIN2 mapping/read/write on physical pages 04h and 05h at offset 3FFFh, saves/restores both bytes, and leaves page 04h mapped.
+- [ ] Confirm the runtime self-test passes on the physical Project126 target.
 - [x] Resident/overlay link layout and size assertions pass for the fixed X86IO module.
 - [ ] Generic module manifest parser rejects malformed and out-of-pool images.
 - [x] ATM TR-DOS reader loads the complete X86IO.C file and sends a single bounded IMAGE fragment.
@@ -133,6 +134,6 @@ The manager is not complete until all of the following are true:
 - [ ] Nested and repeated dynamic overlay calls restore mappings correctly.
 - [ ] Invalid/unloaded dynamic module calls fail closed.
 - [x] CI build/package passes (run 42396608945, commit 079c53a1; X86CORE 15756 bytes, X86IO 796 bytes; NeoGS assembly 0 errors/0 warnings).
-- [ ] Physical ATM/NeoGS log confirms X86IO module load, page-04 readback and WIN2 mapping.
+- [ ] Physical ATM/NeoGS log confirms X86IO module load, page-04 readback, `[NGS] WIN2 PAGE04/05 TEST PASS`, and final WIN2 mapping.
 
 No PIC/PIT/DMA/VGA/RTC/IDE implementation is to be added to the resident image before these gates are met. No CPU functional suite, full BIOS POST, or guest operating-system test is implied by overlay infrastructure validation.
