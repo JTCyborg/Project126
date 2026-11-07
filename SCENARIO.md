@@ -784,3 +784,27 @@ The test is diagnostic only. BUILD PASS and hardware PASS are tracked separately
 DMA mapping, DMA registers, направления, Project125 handshake и ABI layout не менялись.
 
 Проверка: source correction. Требуется BUILD/CI и новый аппаратный запуск. Критерий прямого направления — NeoGS принимает кадр с status 00h; обратного — ATM сообщает FRAME CRC VALID и PATTERN PASS. До этого DMA hardware PASS не заявляется.
+
+
+## 2026-11-07 — двусторонний DMA smoke test: HARDWARE PASS
+
+Аппаратный лог ATM пользователя подтверждает успешное выполнение обеих диагностических DMA-транзакций после исправления CRC validator и reverse-frame header.
+
+**ATM → NeoGS (E0h / REQUEST):**
+- ATM локально проверил исходный кадр: CRC CALCULATED=FF5B FRAME CRC=FF5B; результат FRAME VALID.
+- NeoGS получил E0h, настроил DMA module 1, сообщил READY/освободил CBIT; ATM получил E0 ACK / READY.
+- ATM завершил запись payload через DMA aperture и отправил FFh.
+- NeoGS обнаружил конец передачи, остановил DMA; readback 00D012 соответствует 18-байтовому заголовку.
+- NeoGS прочитал заголовок P126 ABI 1.0 и дважды сообщил DMA FRAME VALID. Отказов CRC или формата нет.
+
+**NeoGS → ATM (E1h / NGS_FRAME):**
+- NeoGS сообщил, что reverse DMA test запрошен и DMA armed.
+- ATM завершил чтение кадра, отправил host-end; NeoGS подтвердил конец теста.
+- ATM вычислил CRC CALCULATED=D867 FRAME CRC=D867, сообщил DMA RX FRAME CRC VALID и DMA RX PATTERN PASS.
+- Проверка полного детерминированного payload 00h..FFh прошла.
+
+**Подтверждённый результат:** оба направления DMA работают на реальном ATM/NeoGS с диагностической конфигурацией Project125 parity: module 1, физическая страница 03h, ATM→NeoGS через D000h и NeoGS→ATM через E000h; WIN1/PG1 mapping и Project125 dummy-read правило для обратного направления сохранены. ABI frame validation и CRC подтверждены на обоих концах.
+
+**Граница доказательства:** это HARDWARE PASS для двустороннего DMA smoke test и целостности тестовых кадров. Это не подтверждает ещё производственную staging page 42h (108000h), большие/фрагментированные кадры, устойчивую потоковую передачу, полный сервисный IPC, VGA frame transport или x86 BIOS загрузку. Диагностические carve-outs D000h..D111h и E000h..E111h в page 03h остаются временными; производственную карту памяти не менять на основании этого теста.
+
+**Следующий этап:** оставить проверенный DMA транспорт неизменным и перейти к отдельной проверке production page 42h/ABI fragmentation по сценарию. Для стресс-теста требуется проверить полный payload и CRC каждого кадра, а не только счётчик переданных байтов.
