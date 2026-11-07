@@ -17,6 +17,9 @@ p126_ngs_ipc_module_end:
 x86_bios_trace_event_status: db 0
 x86_bios_trace_event_cs:     dw 0
 x86_bios_trace_event_ip:     dw 0
+x86_bios_image_diag:
+        ret
+
 x86_bios_startup_trace:
         ret
 
