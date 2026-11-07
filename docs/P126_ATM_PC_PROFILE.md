@@ -57,18 +57,26 @@ The profile reserves the following PC/XT-style interfaces. They are guest-visibl
 
 | Port range | Model / purpose | Status |
 |---|---|---|
-| 0000–000F | 8237-compatible DMA controller | Reserved decode; implementation pending |
-| 0020–0021 | 8259-compatible master PIC | Partial: register model, fixed-priority arbitration, keyboard IRQ1 request and CPU acknowledge; PIT IRQ0 and external keyboard producer pending |
-| 0040–0043 | 8253-compatible PIT | Reserved decode; implementation pending |
-| 0060–0063 | 8255-compatible PPI / XT keyboard and system control | Reserved decode; keyboard events originate at ATM and arrive through IPC |
-| 0070–0071 | DS12887-compatible RTC/CMOS extension | Custom ATM-PC extension; time source is ATM |
-| 0080–0083 | DMA page registers | Reserved decode; implementation pending |
-| 01F0–01F7 | Primary ATA-compatible guest disk task file | Software device; requests forwarded to ATM/NEMO IDE through IPC |
-| 03B0–03DF | IBM VGA register interfaces | VGA implementation pending |
-| 03F0–03F5, 03F7 | 765-compatible floppy controller (3F7 status/direction) | Reserved; whether floppy service is enabled remains a separate device decision |
-| 03F6 | Primary ATA control register | Software device; requests forwarded to ATM through IPC |
+| 0000–000F | 8237-compatible DMA controller | X86DEV/page06 partial register model: address/count, command/status/request/mask/mode and byte flip-flop; transfer engine pending |
+| 0020–0021 | 8259-compatible master PIC | X86IO/page04 partial model: ICW/OCW, IMR/IRR/ISR, fixed-priority arbitration, keyboard IRQ1 and CPU acknowledge; PIT IRQ0 pending |
+| 0040–0043 | 8253-compatible PIT | X86DEV/page06 static register model: channel reload/latch, access modes and byte sequencing; clock/output/IRQ0 pending |
+| 0060–0063 | 8255-compatible PPI / XT keyboard and system control | X86IO/page04 initial XT model: keyboard FIFO, PPI mode 0, port B reset/ack; ATM keyboard event producer pending |
+| 0070–0071 | DS12887-compatible RTC/CMOS extension | Custom ATM-PC extension; time source is ATM; guest register model pending |
+| 0080–0083 | DMA page registers | X86DEV/page06 partial register model: channel page latches |
+| 00E0 | Project126 diagnostic latch | Implemented 16-bit read/write test latch; not a PC hardware device |
+| 00A0, 0213 | Generic Turbo XT BIOS board-control ports | Not yet modeled; BIOS2 source describes NMI control (00A0) and expansion-unit enable (0213) |
+| 01F0–01F7, 03F6 | Primary ATA-compatible guest disk task file/control | Software device architecture reserved; task-file/IPC service pending |
+| 03B0–03DF | IBM VGA/CGA/MDA register interfaces | VGA/CGA/MDA register and status behavior pending |
+| 03F0–03F5, 03F7 | 765-compatible floppy controller (3F7 status/direction) | Reserved; floppy service remains a separate device decision |
+| 03F8–03FF, 02F8–02FF | 8250-compatible COM1/COM2 UARTs | BIOS2 source probes these UARTs; guest UART model/ATM serial bridge pending |
+| 03BC, 0378, 0278 | Parallel printer ports | BIOS2 source probes three possible LPT bases; guest printer service pending |
+| 0201 | Game controller port | BIOS2 source probes joystick bits; guest model pending |
+| 0241, 0341 | Optional board timer probes | BIOS2 source probes optional BCD timers; behavior not modeled |
+| 03D8, 03B8 | CGA/MDA mode-control ports | BIOS2 source uses these to blank the display; video register model pending |
 
 Port 03F6 is assigned to the ATA control register and is intentionally excluded from the floppy-controller register set (the legacy PC/XT decode shares this neighborhood). The RTC ports are a deliberate custom extension; the physical DS12887/time source remains on ATM. This does not grant NeoGS direct access to a physical RTC.
+
+The source file `bios/bios.txt` documents a Generic Turbo XT BIOS for 8088/V20 systems and is associated with the BIOS2 family, not proven byte-for-byte equivalent to the currently selected BIOS1 image. Its startup code is useful as a reference for the extra board-control, video, UART, printer, joystick and optional timer probes above; do not assume BIOS1 executes every one of these paths. The current BIOS1 watchdog trace at F000:E06E is a table-driven port/value writer with DX high byte E6h. Its actual DS:SI table contents still require the wired watchdog memory dump to be observed; the 16:46 spectrum_out.txt predates that diagnostic build.
 
 Unknown or unimplemented guest ports return FFh on reads and ignore writes in this initial profile. They must never be forwarded as physical NeoGS port operations.
 
