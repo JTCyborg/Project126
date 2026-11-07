@@ -32,7 +32,8 @@
 
 ; =========================================================================
 ; Project126 resident Z80 entry. Stage-0 copies this image to physical page
-; 00. WIN1/page 03 owns the resident stack; WIN3 is the banked aperture.
+; 00. WIN1/page 03 owns the resident stack; WIN2 is the overlay aperture;
+; WIN3 is the dedicated guest-memory aperture.
 ; =========================================================================
 p126_ngs_resident_entry_vector:
         jp      p126_ngs_resident_start
@@ -51,7 +52,7 @@ p126_ngs_resident_start:
         ld      bc,#0021
         out     (c),a                  ; WIN1 -> physical page 03
         ld      a,#80
-        out     (#00),a                ; WIN2 -> physical page 01
+        out     (P126_NGS_OVERLAY_WINDOW_PORT),a ; WIN2 placeholder -> page 01
         ld      a,#01
         out     (#10),a                ; WIN3 -> physical page 02 until banked
         ld      sp,#7FFE
