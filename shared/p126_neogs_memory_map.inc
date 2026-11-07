@@ -30,11 +30,12 @@ P126_NGS_RESERVED_PAGES      EQU #7C
 ; Project126 resident execution contract, revision 0.2:
 ; WIN0..WIN2 are reserved for resident code/data/stack.
 ; WIN3 (C000-FFFF) is the dedicated banked physical-RAM aperture.
-; x86 memory helpers switch WIN3 by writing the physical page to port 23h.
+; x86 memory helpers select WIN3 through MPAGEX port 10h. The physical page
+; number is encoded with RRCA before OUT; port 23h is PG3, not MPAGEX.
 ; Callers and interrupt handlers must not place code/stack in WIN3.
 P126_NGS_BANK_WINDOW_INDEX     EQU 3
 P126_NGS_BANK_WINDOW_BASE      EQU #C000
-P126_NGS_BANK_WINDOW_PORT      EQU #23
+P126_NGS_BANK_WINDOW_PORT      EQU #10
 P126_NGS_GUEST_RAM_PAGE_BASE   EQU P126_NGS_GUEST_RAM_PAGE
 
 ; Guest memory backend page-bias constants for the WIN3 selector.
@@ -83,7 +84,7 @@ P126_NGS_RESERVED_LIMIT      EQU (P126_NGS_RESERVED_PAGE+P126_NGS_RESERVED_PAGES
         ASSERT P126_NGS_GUEST_RAM_PAGES*P126_NGS_PAGE_SIZE = #100000
         ASSERT P126_NGS_BANK_WINDOW_INDEX = 3
         ASSERT P126_NGS_BANK_WINDOW_BASE = #C000
-        ASSERT P126_NGS_BANK_WINDOW_PORT = #23
+        ASSERT P126_NGS_BANK_WINDOW_PORT = #10
         ASSERT P126_NGS_GUEST_RAM_PAGE_BASE = #44
         ASSERT P126_NGS_GUEST_VRAM_PAGE_BIAS = #08
         ASSERT P126_NGS_GUEST_VGABIOS_PAGE_BIAS = #F0
