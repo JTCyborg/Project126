@@ -163,6 +163,16 @@ p126_host_ngs_start_done:
 p126_host_dma_test_failed:
         ld      hl,p126_log_dma_test_failed
         call    p126_host_debug_string
+        ld      hl,p126_log_dma_stage_prefix
+        call    p126_host_debug_string
+        ld      bc,#00EF
+        ld      a,(p126_ipc_dma_stage)
+        add     a,'0'
+        out     (c),a
+        ld      a,13
+        out     (c),a
+        ld      a,10
+        out     (c),a
 
 p126_host_idle:
         call    p126_catalog_poll_keyboard
@@ -270,6 +280,7 @@ p126_log_ngs_failed: db "[BOOT] NEOGS RESIDENT START FAILED",13,10,0
 p126_log_dma_test_begin: db "[BOOT] DMA SMOKE TEST BEGIN",13,10,0
 p126_log_dma_test_sent: db "[BOOT] DMA SMOKE FRAME SENT",13,10,0
 p126_log_dma_test_failed: db "[BOOT] DMA SMOKE TEST FAILED",13,10,0
+p126_log_dma_stage_prefix: db "[BOOT] DMA FAIL STAGE=",0
 p126_log_trdos_begin:   db "[BOOT] TRDOS DIRECTORY READ BEGIN",13,10,0
 p126_log_trdos_done:    db "[BOOT] TRDOS DIRECTORY READ RETURN",13,10,0
 p126_log_video_begin:   db "[BOOT] ATM VIDEO INIT BEGIN",13,10,0
