@@ -33,6 +33,19 @@ x86_io_reset_impl:
         ld      (x86_io_ppi_control),a
         ld      a,#40
         ld      (x86_io_ppi_pb),a
+        ; 8259A master PIC reset state: no pending/in-service IRQs,
+        ; all lines masked, XT vector base 08h.
+        xor     a
+        ld      (x86_io_pic_irr),a
+        ld      (x86_io_pic_isr),a
+        ld      (x86_io_pic_init_state),a
+        ld      (x86_io_pic_need_icw4),a
+        ld      (x86_io_pic_single),a
+        ld      (x86_io_pic_read_isr),a
+        ld      a,#FF
+        ld      (x86_io_pic_imr),a
+        ld      a,#08
+        ld      (x86_io_pic_vector_base),a
         ret
 
 ; A=XT keyboard scan-code byte. Carry set means FIFO full (byte rejected).
@@ -130,6 +143,8 @@ x86_io_read8_impl_device:
         ld      a,(x86_io_test_latch)
         ret
 .io_read8_ppi:
+        call    x86_io_pic_read8
+        ret     nc
         call    x86_io_ppi_read8
         ret     nc
         ld      a,#FF
@@ -187,6 +202,177 @@ x86_io_ppi_read8:
         or      a
         ret
 
+; -------------------------------------------------------------------------
+; 8259A master PIC register interface (ports 0020h/0021h).
+; This is a register-level model: ICW1..4 sequencing, IMR, IRR/ISR reads,
+; OCW3 read selection and EOI. IRQ producers and CPU INTA/acknowledge are
+; deliberately separate; no timer/keyboard IRQ is claimed at this stage.
+; Carry clear means the port was handled; carry set means not PIC decode.
+; -------------------------------------------------------------------------
+x86_io_pic_decode:
+        ld      hl,(x86_io_port)
+        ld      de,#0020
+        or      a
+        sbc     hl,de
+        ld      a,h
+        or      a
+        jr      nz,.pic_decode_bad
+        ld      a,l
+        cp      2
+        jr      nc,.pic_decode_bad
+        or      a
+        ret
+.pic_decode_bad:
+        scf
+        ret
+
+x86_io_pic_read8:
+        call    x86_io_pic_decode
+        ret     c
+        or      a
+        jr      nz,.pic_read_imr
+        ld      a,(x86_io_pic_read_isr)
+        or      a
+        jr      nz,.pic_read_isr
+        ld      a,(x86_io_pic_irr)
+        or      a
+        ret
+.pic_read_isr:
+        ld      a,(x86_io_pic_isr)
+        or      a
+        ret
+.pic_read_imr:
+        ld      a,(x86_io_pic_imr)
+        or      a
+        ret
+
+; A=value. The original byte is retained because decode helpers return offset.
+x86_io_pic_write8:
+        ld      (x86_io_pic_write_value),a
+        call    x86_io_pic_decode
+        ret     c
+        or      a
+        jr      nz,.pic_write_data
+        ld      a,(x86_io_pic_write_value)
+        bit     4,a
+        jr      z,.pic_write_command
+        ; ICW1 starts a fresh initialization sequence.
+        xor     a
+        ld      (x86_io_pic_irr),a
+        ld      (x86_io_pic_isr),a
+        ld      a,(x86_io_pic_write_value)
+        and     1
+        ld      (x86_io_pic_need_icw4),a
+        ld      a,(x86_io_pic_write_value)
+        and     2
+        ld      (x86_io_pic_single),a
+        ld      a,1
+        ld      (x86_io_pic_init_state),a
+        or      a
+        ret
+.pic_write_command:
+        ld      a,(x86_io_pic_write_value)
+        bit     3,a
+        jr      z,.pic_write_ocw2
+        ; OCW3: 0Bh selects ISR, 0Ah selects IRR for command-port reads.
+        bit     1,a
+        jr      z,.pic_write_command_done
+        ld      a,(x86_io_pic_write_value)
+        and     1
+        ld      (x86_io_pic_read_isr),a
+.pic_write_command_done:
+        or      a
+        ret
+.pic_write_ocw2:
+        ld      a,(x86_io_pic_write_value)
+        bit     5,a
+        jr      z,.pic_write_command_done
+        ; EOI. Specific EOI uses bits 2..0; non-specific EOI clears
+        ; the highest-priority in-service bit (IRQ0 before IRQ1..IRQ7).
+        bit     6,a
+        jr      nz,.pic_specific_eoi
+        ld      a,(x86_io_pic_isr)
+        or      a
+        jr      z,.pic_write_command_done
+        ld      b,a
+        ld      c,0
+.pic_eoi_find:
+        srl     b
+        jr      c,.pic_eoi_clear
+        inc     c
+        jr      .pic_eoi_find
+.pic_eoi_clear:
+        ld      a,c
+        jr      .pic_eoi_mask
+.pic_specific_eoi:
+        ld      a,(x86_io_pic_write_value)
+        and     7
+.pic_eoi_mask:
+        ld      e,a
+        ld      d,0
+        ld      hl,x86_io_pic_bit_masks
+        add     hl,de
+        ld      a,(hl)
+        cpl
+        ld      b,a
+        ld      a,(x86_io_pic_isr)
+        and     b
+        ld      (x86_io_pic_isr),a
+        or      a
+        ret
+
+.pic_write_data:
+        ld      a,(x86_io_pic_init_state)
+        or      a
+        jr      z,.pic_write_imr
+        cp      1
+        jr      z,.pic_write_icw2
+        cp      2
+        jr      z,.pic_write_icw3
+        ; ICW4 is accepted for state 3; mode bits are not otherwise needed
+        ; by the current XT master-PIC profile.
+        xor     a
+        ld      (x86_io_pic_init_state),a
+        or      a
+        ret
+.pic_write_icw2:
+        ld      a,(x86_io_pic_write_value)
+        and     #F8
+        ld      (x86_io_pic_vector_base),a
+        ld      a,(x86_io_pic_single)
+        or      a
+        jr      nz,.pic_icw2_after
+        ld      a,2
+        ld      (x86_io_pic_init_state),a
+        or      a
+        ret
+.pic_icw2_after:
+        ld      a,(x86_io_pic_need_icw4)
+        or      a
+        jr      z,.pic_init_done
+        ld      a,3
+        ld      (x86_io_pic_init_state),a
+        or      a
+        ret
+.pic_write_icw3:
+        ld      a,(x86_io_pic_need_icw4)
+        or      a
+        jr      z,.pic_init_done
+        ld      a,3
+        ld      (x86_io_pic_init_state),a
+        or      a
+        ret
+.pic_init_done:
+        xor     a
+        ld      (x86_io_pic_init_state),a
+        or      a
+        ret
+.pic_write_imr:
+        ld      a,(x86_io_pic_write_value)
+        ld      (x86_io_pic_imr),a
+        or      a
+        ret
+
 ; Decode ports 0060h..0063h. Returns A=offset 0..3, carry if unmatched.
 x86_io_ppi_decode:
         ld      hl,(x86_io_port)
@@ -223,6 +409,10 @@ x86_io_write8_impl_device:
         ld      (x86_io_test_latch),a
         ret
 .io_write8_ppi:
+        ld      (x86_io_write_value),a
+        call    x86_io_pic_write8
+        ret     nc
+        ld      a,(x86_io_write_value)
         jp      x86_io_ppi_write8
 
 ; Write one byte to PPI 8255. Carry set means port is not in PPI decode.
@@ -501,6 +691,20 @@ x86_io_ppi_pb: db #40
 x86_io_ppi_pc: db 0
 x86_io_ppi_control: db #9B
 x86_io_ppi_write_value: db 0
+x86_io_write_value: db 0
+
+; 8259A master PIC state. IRQ generation/CPU acknowledge are separate tasks.
+x86_io_pic_irr: db 0
+x86_io_pic_isr: db 0
+x86_io_pic_imr: db #FF
+x86_io_pic_vector_base: db #08
+x86_io_pic_init_state: db 0
+x86_io_pic_need_icw4: db 0
+x86_io_pic_single: db 0
+x86_io_pic_read_isr: db 0
+x86_io_pic_write_value: db 0
+x86_io_pic_bit_masks: db #01,#02,#04,#08,#10,#20,#40,#80
+
 ; Deterministic XT profile switch input (generic XT/no-FPU default). This
 ; value remains a profile parameter until the ATM-PC board switches are set.
 x86_io_ppi_port_c_input: db #0D
