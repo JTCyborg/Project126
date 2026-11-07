@@ -131,11 +131,11 @@ x86_exec_jcc_test:
         ld      hl,(x86_reg_flags)
         ld      a,(x86_exec_jcc_condition)
         cp      0
-        jr      nz,.jcc_no
+        jr      nz,.jcc_check1
         bit     3,h
         jr      nz,.jcc_yes
-        jr      .jcc_no
-.jcc_no:
+        jr      .jcc_false
+.jcc_check1:
         ld      a,(x86_exec_jcc_condition)
         cp      1
         jr      nz,.jcc_b
@@ -256,7 +256,7 @@ x86_exec_jcc_test:
 .jcc_g_sf1:
         bit     3,h
         jr      nz,.jcc_yes
-.jcc_no:
+.jcc_false:
         xor     a
         ret
 .jcc_yes:
