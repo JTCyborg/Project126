@@ -2215,6 +2215,8 @@ x86_exec_flag_control:
         jr      .flag_store
 .flag_sti:
         set     1,h
+        ld      a,1
+        ld      (x86_irq_inhibit),a
         jr      .flag_store
 .flag_cld:
         res     2,h
