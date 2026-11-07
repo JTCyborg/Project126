@@ -31,9 +31,11 @@ p126_overlay_call:
         jp      (ix)
 
 p126_overlay_gate_return:
-        pop     af
+        ex      af,af'                   ; preserve module return AF
+        pop     af                       ; restore previous WIN2 selector
         ld      (p126_overlay_current_selector),a
         out     (P126_NGS_OVERLAY_WINDOW_PORT),a
+        ex      af,af'                   ; restore module return AF
         ret
 
 ; Compatibility entry points for the existing X86IO ABI. All use the same
