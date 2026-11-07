@@ -69,9 +69,17 @@ p126_ngs_resident_main_loop:
         call    p126_ngs_ipc_dispatch_once
         jr      c,p126_ngs_resident_frame_error
         or      a
-        jr      z,p126_ngs_resident_main_loop
+        jr      z,.check_bios_ready
         ld      hl,p126_ngs_resident_frame_ok
         call    p126_ngs_resident_log
+.check_bios_ready:
+        ld      a,(p126_ngs_bios_image_ready)
+        or      a
+        jr      z,p126_ngs_resident_main_loop
+        ; Consume the installation event before probing: one-shot transition.
+        xor     a
+        ld      (p126_ngs_bios_image_ready),a
+        call    x86_bios_reset_vector_probe
         jr      p126_ngs_resident_main_loop
 
 p126_ngs_resident_frame_error:
