@@ -110,11 +110,13 @@ A committed source file is not automatically a successful runtime or hardware te
 ## ATM TR-DOS catalogue and BIOS file staging
 
 - Sources: `atm_host/p126_disk_catalog.asm`, `atm_host/project126_main.asm`, and `atm_host/project126_disk.asm`.
-- Implemented: early TR-DOS directory read before ATM video/shadow-port initialization; eight individual one-sector reads (`C=5, B=1)); directory buffer at `#C800..#CFFF`; directory parsing (up to 128 descriptors); filtering of supported TR-DOS file types (`B/C/D/#`); nine visible rows; selected-entry tracking and scrolling with CAPS SHIFT+7 / CAPS SHIFT+6.
+- Implemented: early TR-DOS directory read before ATM video/shadow-port initialization; eight individual one-sector reads (`C=5, B=1`); directory buffer at `#C800..#CFFF`; directory parsing (up to 128 descriptors); filtering of supported TR-DOS file types (`B/C/D/#`); nine visible rows; selected-entry tracking and scrolling with CAPS SHIFT+7 / CAPS SHIFT+6.
 - The TR-DOS image contains three 8 KiB BIOS images under TR-DOS names: `BIOS1.C` (from `bios/27c64d.bin`), `BIOS2.C` (from `bios/Bios.bin`), and `COMPAQ.C` (from `bios/Compaq Portable Plus 100666-001 Rev C.bin`).
-- **BUILD PASS:** GitHub Actions run [42302005699](https://github.com/JTCyborg/Project126/actions/runs/42302005699), commit `94c7436a258ccab48182f72446609738ec7e80ca`; assembly/package workflow completed successfully, including ATM/NeoGS assembly and TR-DOS disk creation, and published binaries, listings, maps and disk image.
-- **HARDWARE PASS (catalogue stage):** the user explicitly confirmed that this part works on the target ATM. This confirmation covers the working directory/catalogue path and the currently implemented list interaction; it does not validate BIOS transfer or x86 execution.
-- BIOS selection confirmation and transfer to NeoGS are **NOT IMPLEMENTED**. ENTER was proposed as the confirmation/start key, but has not yet been bound in code.
+- Implemented source: ENTER confirms the selected descriptor; ATM temporarily restores the initial TR-DOS mapping, opens the selected `.C` through Project125 ROM calls `C=#0A/#08`, requires exactly 8192 bytes / 32 sectors, and reads the image using `C=5, B=1`. ATM video mapping is reinitialized after disk I/O.
+- Implemented source: BIOS image is sent as ABI 1.0 `IMAGE_BEGIN`, one `IMAGE_FRAGMENT` (standard 10-byte extension, index 0/count 1, 8192 data bytes), and `IMAGE_FINISH`. NeoGS validates each frame, installs the payload at physical SYSBIOS page 10h / offset 0000h, and marks the resident BIOS-ready state. CBIT is released only after the service handler completes.
+- **BUILD PASS:** GitHub Actions run [42360319486](https://github.com/JTCyborg/Project126/actions/runs/42360319486), commit `e905e205f40f122af20a336c397974a69300ba9d`; NeoGS, ATM IPC, standalone NeoGS IPC, ATM host and TR-DOS image assembly/package completed successfully. Existing generated-path backslash warning remains.
+- **HARDWARE:** BIOS selection/transfer/slot installation are pending a fresh ATM/NeoGS target log. Existing catalogue hardware confirmation does not validate BIOS loading.
+- **NOT IMPLEMENTED:** 8086 reset-vector execution, VGA register model/initialization through BIOS, NeoGS scanout/framebuffer generation, and NeoGS→ATM frame transport. BIOS image installation is not a BIOS boot PASS.
 
 ## ATM startup and TR-DOS catalogue diagnostics
 
@@ -133,10 +135,10 @@ A committed source file is not automatically a successful runtime or hardware te
 | Unified DMA/IPC ABI 1.0 | IN PROGRESS; BUILD PASS for CRC primitives | Contract, common constants and ATM/NeoGS CRC routines assembled; frame codec, DMA endpoints, session/sequence handling and hardware tests remain. |
 | Directory filtering, rendering and scrolling | HARDWARE PASS | Nine-row catalogue and CAPS SHIFT+7/6 navigation confirmed by user. |
 | BIOS images in TR-DOS disk | BUILD PASS | BIOS1.C, BIOS2.C and COMPAQ.C, each 8192 bytes; included in successful disk build. |
-| BIOS choice on ENTER | PLANNED | ENTER is the proposed confirmation key only; no selection/confirmation handler implemented yet. |
-| BIOS file transfer ATM → NeoGS | PLANNED | Transfer mechanism and buffer/address contract must be checked against the approved IPC/DMA architecture before implementation. |
-| NeoGS BIOS receive, validation and x86 handoff | PLANNED | Receiver, integrity check, BIOS placement in the custom 1 MiB guest memory map, and execution entry remain unimplemented. |
-| Full x86 BIOS boot | PLANNED | Not demonstrated by this catalogue milestone. |
+| BIOS choice on ENTER | SOURCE IMPLEMENTED; BUILD PASS | ENTER confirms the selected descriptor; the one-shot catalogue is disabled and the ATM text UI is cleared after successful transfer. Hardware test pending. |
+| BIOS file transfer ATM → NeoGS | SOURCE IMPLEMENTED; BUILD PASS | Project125 TR-DOS file-open/sector-read sequence; ABI IMAGE BEGIN/one FRAGMENT/FINISH; page-42 DMA staging. Hardware test pending. |
+| NeoGS BIOS receive and placement | SOURCE IMPLEMENTED; BUILD PASS | Validated image fragment is copied to physical SYSBIOS page 10h; IMAGE_FINISH sets BIOS-ready state. Hardware page-10 readback pending. 8086 execution entry is separate and not implemented. |
+| Full x86 BIOS boot | PLANNED | 8086 execution/reset-vector loop, VGA model/BIOS integration and guest boot are not implemented or demonstrated. |
 
 
 

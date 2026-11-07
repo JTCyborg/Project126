@@ -62,6 +62,31 @@ p126_ipc_wait_dbit_clear::
         or      a
         ret
 
+; Long completion watchdog for DMA frames whose service handler performs
+; post-receive work (for example installing an 8 KiB BIOS image).
+; Matches Project125's eight independent #FFFF polling windows.
+p126_ipc_wait_cbit_clear_dma::
+        ld      d,8
+.p126_dma_cbit_outer:
+        ld      bc,#FFFF
+.p126_dma_cbit_inner:
+        call    p126_ipc_read_status
+        bit     P126_CBIT,a
+        jr      z,.p126_dma_cbit_ready
+        dec     bc
+        ld      a,b
+        or      c
+        jr      nz,.p126_dma_cbit_inner
+        dec     d
+        jr      nz,.p126_dma_cbit_outer
+        ld      a,(p126_ipc_last_status)
+        scf
+        ret
+.p126_dma_cbit_ready:
+        ld      a,(p126_ipc_last_status)
+        or      a
+        ret
+
 p126_ipc_wait_dbit_set::
         ld      bc, P126_IPC_TIMEOUT
 .p126_dbit_set_loop:
@@ -556,7 +581,7 @@ p126_ipc_dma_send_frame::
         call    p126_ipc_debug_string
         ld      a,P126_IPC_DMA_END
         out     (P126_GSCOM),a
-        call    p126_ipc_wait_cbit_clear
+        call    p126_ipc_wait_cbit_clear_dma
         jr      nc,.p126_dma_ff_ack
         push    af
         ld      hl,p126_ipc_log_dma_tx_ff_timeout

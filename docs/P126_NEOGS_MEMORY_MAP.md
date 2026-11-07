@@ -49,7 +49,7 @@ This is a logical execution contract, not a claim that the whole resident kernel
 4. ABI 1.0 uses a maximum 16 KiB DMA frame. Page 42 is the NeoGS-side DMA backing page. Larger payloads use ABI fragmentation.
 5. The IPC scratch page is reserved RAM and must not be exposed as a second concurrent DMA transaction.
 6. Guest RAM backing is a full 1 MiB allocation. The guest 8086 decoder may map RAM, ROM overlays, VGA apertures and devices differently; this does not imply the conventional IBM PC 640 KiB + UMA layout.
-7. The banked guest-RAM helper accesses the guest backing linearly at physical offset 110000h + guest physical address. VGA/ROM overlays are dispatched before this helper; it deliberately rejects those regions. ATM-side DMA source/destination placement remains open. ATM paging and the actual DMA aperture must be verified before assigning an address.
+7. The banked guest-RAM helper accesses the guest backing linearly at physical offset 110000h + guest physical address. VGA/ROM overlays are dispatched before this helper; it deliberately rejects those regions. ATM BIOS-image staging uses page 0 at C000h..FFFFh; DMA transfers use physical page 42h.
 8. Physical page numbers are allocation identifiers only. Actual NeoGS logical windows and DMA register programming must follow hardware documentation; do not infer a direct Z80 address from a physical page number.
 
 ## Build enforcement
@@ -61,7 +61,7 @@ The build can prove internal consistency and fit within 4 MiB. It cannot prove p
 ## Deliberately unresolved
 
 - Guest x86 logical 1 MiB address map: RAM/ROM overlays, VGA apertures, option ROM and device windows.
-- WIN3 is assigned as the banked memory aperture (page selected through port 23h); final resident kernel placement and WIN0–WIN2 paging policy remain to be linked and hardware-validated.
+- WIN3 is assigned as the banked memory aperture through MPAGEX port 10h using the Project125 RRCA selector encoding. Final resident kernel placement and WIN0–WIN2 paging policy remain to be hardware-validated.
 - DMA register address encoding and exact DMA transaction setup.
 - ATM host staging-buffer addresses and host paging state.
 - Guest-visible system-board profile, I/O ports, PIC/PIT/keyboard/RTC.
@@ -131,3 +131,12 @@ The production page-42 DMA test initially wrote the raw physical page number 42h
 ## Production page-42 DMA hardware validation — 2026-11-07
 
 The corrected WIN3 selector (LD A,42h / RRCA / OUT (#10),A) has now passed a physical ATM/NeoGS test. The ATM→NeoGS frame was visible at logical C000h with signature 50313236 and full header 50313236010001050000010000010000; NeoGS validated it and reported DMA FRAME VALID. The reverse transfer returned CRC D867 and the complete 00h..FFh payload pattern passed at ATM. DMA destination/source physical base remains 108000h. This validates page 42h mapping and the 274-byte bidirectional smoke frame only; it does not validate maximum-size transfers or streaming/fragmentation.
+
+
+## Initial SYSBIOS image installation
+
+The first ABI IMAGE implementation accepts exactly one 8192-byte SYSBIOS image. ATM stages the complete ABI frame in RAM page 0 at C000h..FFFFh and sends it through the production DMA page 42h. After frame validation, the resident handler copies the 8192-byte fragment to physical page 10h, offset 0000h. The copy alternates WIN3 between page 42h (MPAGEX selector 21h) and page 10h (selector 08h), leaving resident code and stack outside WIN3.
+
+The guest-visible BIOS window remains FE000h..FFFFFh. Its reset vector FFFF0h maps to offset 1FF0h in the 8 KiB image. The remaining 248 KiB of the physical system BIOS slot are reserved capacity and are not exposed by this initial guest mapping.
+
+This is a source/build implementation only. Physical page-10 installation, readback and subsequent 8086 execution require separate target evidence.

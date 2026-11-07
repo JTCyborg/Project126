@@ -912,3 +912,38 @@ User-provided physical ATM/NeoGS target log at 09:52:27 confirms the corrected P
 - This is a direct timing/timeout parity correction from Project125. The page-42 destination remains Project126-specific because its resident stack/code allocation differs from Project125's page-03 layout.
 - Next target run must show `DMA HOST END DETECTED` (forward) and `DMA RX MAX FRAME HOST END` (reverse), followed by full CRC and payload checks. ATM-side TX completion must not be considered a PASS unless NeoGS reports a valid frame.
 - Verification status: source commit recorded; CI and hardware retest pending. No 16 KiB DMA HARDWARE PASS is claimed.
+
+
+## 2026-11-07 — выбранный BIOS: ATM → NeoGS IMAGE service
+
+После отображения каталога ATM остаётся загрузочным интерфейсом. Клавиша ENTER подтверждает текущую запись; после успешной установки BIOS каталог отключается и больше не участвует в работе гостевой машины.
+
+### Контракт выбранного образа
+
+- Допускается TR-DOS файл типа `C` размером ровно 8192 байта / 32 сектора. В текущем дисковом образе это `BIOS1.C`, `BIOS2.C` и `COMPAQ.C`.
+- Используется проверенный Project125 ROM API: `C=#0A` — поиск имени 8.3, `C=#08` — получение полного дескриптора, `C=5, B=1` — чтение сектора. Начальный track/sector и длина берутся из стандартных TR-DOS system variables.
+- Поскольку выбор выполняется уже после включения ATM-видеорежима, перед дисковым чтением ATM временно возвращает начальную TR-DOS mapping (`7FFD=#10`, `5C3B=#10`, `EFF7=0`), затем после чтения повторно выполняет `p126_atm_video_init`. Это source implementation; аппаратная корректность повторного переключения режима ещё требует проверки.
+- BIOS читается в RAM page 0, начиная с `C01Ch`. Весь образ остаётся в ATM staging RAM до передачи.
+
+### ABI 1.0 IMAGE операции первой ревизии
+
+Один 8 KiB BIOS помещается в один ABI frame; используется стандартное 10-байтовое fragment extension, фрагментация на несколько кадров не требуется.
+
+1. `IMAGE_BEGIN`: payload 6 байт — message ID (16-bit, 0001h), image kind (00h = SYSBIOS), reserved (00h), image size (2000h).
+2. `IMAGE_FRAGMENT`: flag FRAGMENT; payload содержит стандартное 10-байтовое extension (message ID, fragment index 0, fragment count 1, total logical length 2000h), затем ровно 8192 байта BIOS.
+3. `IMAGE_FINISH`: payload 2 байта — message ID 0001h.
+
+Каждый кадр проходит существующую ABI 1.0 frame validation. NeoGS держит CBIT до завершения соответствующего service handler, поэтому ATM completion wait охватывает не только DMA-приём, но и обработку IMAGE операции.
+
+### Размещение и владение
+
+- ATM → NeoGS DMA staging остаётся на физической странице 42h (108000h), через MPAGEX #10 / RRCA selector 21h.
+- После валидации fragment NeoGS копирует 8192 байта в начало системного BIOS slot: физическая страница 10h (040000h), offset 0000h. Для копирования WIN3 переключается между страницей 42h (selector 21h) и страницей 10h (selector 08h); resident code и stack не перемещаются.
+- Гостевое окно системной BIOS остаётся FE000h–FFFFFh; reset-vector FFFF0h соответствует offset 1FF0h в установленном 8 KiB образе.
+- `IMAGE_FINISH` устанавливает resident SYSBIOS-ready state. ATM отключает каталог после завершения всех трёх операций.
+
+### Граница текущего этапа
+
+- Реализованы ENTER, TR-DOS file open/read, построение ABI IMAGE кадров, DMA передача и NeoGS установка образа в page 10h.
+- Это не запуск BIOS и не аппаратное подтверждение содержимого слота. Требуется target log с `SYSBIOS IMAGE BEGIN`, `SYSBIOS IMAGE FRAGMENT`, `SYSBIOS IMAGE INSTALLED AT PAGE 10`.
+- 8086 reset-vector execution ещё не подключён. VGA инициализируется только последующим исполнением BIOS; регистровая модель VGA, scanout и NeoGS→ATM framebuffer transport остаются отдельными этапами.

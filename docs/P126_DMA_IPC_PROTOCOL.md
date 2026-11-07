@@ -180,12 +180,24 @@ Response status codes:
 | Protocol/session | 01h | bidirectional | capability exchange |
 | Protocol/session | 02h | bidirectional | resynchronize |
 | Diagnostics | 00h | NeoGS to ATM | structured diagnostic record |
-| Firmware/BIOS | 00h | ATM to NeoGS | begin image transfer (metadata) |
-| Firmware/BIOS | 01h | ATM to NeoGS | image data fragment |
-| Firmware/BIOS | 02h | ATM to NeoGS | finish and verify image |
-| Firmware/BIOS | 03h | NeoGS to ATM | image transfer result |
+| IMAGE | 00h | ATM to NeoGS | begin image transfer (metadata) |
+| IMAGE | 01h | ATM to NeoGS | image data fragment |
+| IMAGE | 02h | ATM to NeoGS | finish and verify image |
+| IMAGE | 03h | NeoGS to ATM | image transfer result (reserved; response frame not yet implemented) |
 
-BIOS destination addresses, guest ROM mapping, NeoGS image staging addresses, final service ABIs and maximum reassembly buffers are intentionally not defined here; they depend on separate Project126 memory-map and runtime integration decisions.
+### Initial SYSBIOS transfer profile
+
+The first implemented image profile is an 8 KiB system BIOS:
+
+- `IMAGE_BEGIN` payload is exactly 6 bytes: message ID (u16 LE), image kind (u8; 00h = SYSBIOS), reserved byte (00h), image size (u16 LE; 2000h).
+- `IMAGE_FRAGMENT` must set the ABI FRAGMENT flag. Its payload begins with the standard 10-byte extension from section 5: message ID, fragment index, fragment count, total logical data length. The initial profile accepts exactly one fragment: index 0, count 1, total length 2000h; the remaining 8192 payload bytes are the image.
+- `IMAGE_FINISH` payload is exactly the 2-byte message ID. It succeeds only after the expected fragment has been installed.
+- Message ID for the initial single-image boot transaction is 0001h. Normal ABI frame sequence values are 0001h, 0002h and 0003h for BEGIN, FRAGMENT and FINISH.
+- SYSBIOS destination is physical NeoGS page 10h (base 040000h), offset 0000h. The guest-visible ROM overlay remains FE000h–FFFFFh; reset vector FFFF0h is image offset 1FF0h.
+- DMA staging remains physical page 42h (108000h). The resident handler copies the validated fragment to page 10h through WIN3 MPAGEX #10 selectors 21h (page 42h) and 08h (page 10h). No DBIT/GSDAT application payload is used.
+- The receiver keeps CBIT asserted until the IMAGE service handler has completed; the host DMA completion wait uses eight independent #FFFF windows for the post-receive copy.
+
+This is the initial fixed-size SYSBIOS profile, not a general image reassembly implementation. IMAGE_RESULT (03h), multi-fragment images, VGA BIOS image installation, and service-level response frames remain unimplemented. Source build success does not prove physical page-10 installation; that requires a target log.
 
 ## 9. Compatibility and migration
 

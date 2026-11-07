@@ -73,10 +73,34 @@ p126_catalog_poll_keyboard::
         call    p126_catalog_wait_release
 
         ld      a, (p126_catalog_key)
+        bit     4, a
+        jr      nz,.catalog_confirm
         bit     0, a
         jr      nz, .catalog_move_up
         bit     1, a
         jr      nz, .catalog_move_down
+        ret
+
+.catalog_confirm:
+        ld      hl,p126_log_enter_confirmed
+        call    p126_catalog_log
+        call    p126_bios_load_selected
+        jr      c,.catalog_bios_load_failed
+        xor     a
+        ld      (p126_catalog_enabled),a
+        ld      a,1
+        ld      (p126_catalog_bios_loaded),a
+        ; The catalogue is a one-shot boot UI. Leave the ATM display clear
+        ; for the later guest VGA frame presenter.
+        call    BIOS_DebugConsole_Clear
+        ld      hl,p126_log_bios_loaded
+        call    p126_catalog_log
+        ret
+
+.catalog_bios_load_failed:
+        ld      hl,p126_log_bios_failed
+        call    p126_catalog_log
+        call    p126_catalog_draw
         ret
 
 .catalog_move_up:
@@ -138,7 +162,16 @@ p126_catalog_scan_keys:
         xor     a
         ld      (p126_catalog_scan_result), a
 
-        ; CAPS SHIFT is bit 0 in the #FE row.
+        ; ENTER is bit 0 of row #BFFE and is accepted without CAPS SHIFT.
+        ld      bc,#BFFE
+        in      a,(c)
+        bit     0,a
+        jr      nz,.catalog_check_caps
+        ld      a,16
+        ld      (p126_catalog_scan_result),a
+
+.catalog_check_caps:
+        ; CAPS SHIFT is bit 0 in the #FE row for cursor combinations.
         ld      bc, #FEFE
         in      a, (c)
         bit     0, a
@@ -509,6 +542,9 @@ p126_log_count_done:           db "[CAT] directory COUNT DONE",13,10,0
 p126_log_draw_begin:           db "[CAT] DRAW BEGIN",13,10,0
 p126_log_draw_done:            db "[CAT] DRAW DONE",13,10,0
 p126_log_key_seen:             db "[CAT] CURSOR KEY DETECTED",13,10,0
+p126_log_enter_confirmed:      db "[CAT] ENTER CONFIRMED",13,10,0
+p126_log_bios_loaded:          db "[CAT] SYSBIOS IMAGE TRANSFER COMPLETE",13,10,0
+p126_log_bios_failed:          db "[CAT] SYSBIOS IMAGE TRANSFER FAILED",13,10,0
 
 p126_catalog_enabled:  db 0
 p126_catalog_selected: db 0
@@ -518,6 +554,7 @@ p126_catalog_target:   db 0
 p126_catalog_row:      db 0
 p126_catalog_key:      db 0
 p126_catalog_scan_result: db 0
+p126_catalog_bios_loaded: db 0
 p126_catalog_io_result: db 0
 p126_catalog_preloaded: db 0
 p126_catalog_sector_index: db 0
