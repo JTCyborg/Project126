@@ -1080,3 +1080,33 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 - Added p126_atm_restore_dosen in p126_screen_console.asm. After native RTC gate closure it re-enters the documented #3Dxx ROM trampoline and writes #C6 to #0177. This re-establishes permanent DOSEN/shadow-port access and restores the project's fixed RG=6 ATM 80x25 text mode.
 - DS12887_CLOSE now invokes that helper after its #EFF7=0 write on the native ATM RTC backend. SMUC backend behavior is unchanged. The existing ROM2/BANKM D3 preservation and WIN0 #3FF7=#BF selection are unchanged.
 - This correction addresses a concrete destructive #EFF7 write in the RTC path. Hardware verification is still required: after RTC PROBE and timestamped logging, the next BIOS selection must show TR-DOS C=0Ah RETURN and then C=08h CALL/RETURN. BIOS sector read, IMAGE transfer and BIOS execution remain unverified.
+
+## 2026-11-07 — переход к реализации гостевой системной I/O-платы
+
+Зафиксирована граница работ после BIOS bring-up checkpoint. Наличие BIOS I/O trace не означает, что устройства уже реализованы; полный BIOS POST и запуск гостевых программ по-прежнему не объявляются пройденными.
+
+### Обязательные задачи этапа 4
+
+- [ ] Единый программный I/O dispatch: полный 16-битный номер порта, IN/OUT 8/16 бит; word-доступ 8-битных устройств по соседним портам согласно PCem.
+- [ ] Сохранить 00E0h как тестовый регистр до завершения регрессионных проверок.
+- [ ] PPI 8255 / XT system board: 60h–63h, reset state, mode control, bit set/reset, направления портов, системный port B и входы port C.
+- [ ] XT keyboard: FIFO scan-code make/break, reset/BAT response, acknowledge/clear, overflow; ATM→NeoGS события через общий DMA/IPC ABI.
+- [ ] PIC 8259: command/data, ICW/OCW, masks, priority, IRR/ISR, acknowledge/vector, EOI и связь с x86 IRQ delivery.
+- [ ] PIT 8253: три канала, latch/read semantics, режимы/счётчики, gate/out, виртуальное время и IRQ0.
+- [ ] DMA 8237: address/count, command/status/request/mask/mode, flip-flop, page registers и программные DMA-транзакции.
+- [ ] VGA I/O: Attribute Controller flip-flop, Sequencer, Graphics Controller, CRTC mono/color, Misc Output, Status 1, DAC.
+- [ ] RTC/CMOS: 70h–71h, BCD/binary, 12/24h, UIP/update semantics, источник времени через ATM IPC.
+- [ ] IDE/FDC: отдельные регистровые модели, статусы/ошибки/тайм-ауты и ATM DMA/IPC backend.
+- [ ] Неизвестные порты: детерминированный open-bus и игнорирование записи; никогда не пробрасывать guest port на физические порты NeoGS.
+- [ ] Для каждого устройства: изолированные reset/read/write/side-effect/byte-word/boundary/error тесты; фиксировать PCem reference path.
+- [ ] Возобновлять BIOS bring-up после самостоятельных тестов минимального набора платы; watchdog stop не считать POST PASS.
+
+### Порядок реализации
+1. PPI 8255 / XT system board и API очереди клавиатурных scan-code.
+2. PIC 8259 и связка IRQ1/IRQ0 с CPU interrupt delivery.
+3. PIT 8253 и виртуальное время.
+4. DMA 8237 и page registers.
+5. VGA register I/O и VRAM/aperture.
+6. RTC/CMOS, затем IDE/FDC по готовности IPC services.
+
+Все устройства являются программными моделями на NeoGS. Любой внешний ввод или доступ к физическому ресурсу проходит только через общий DMA/IPC ABI 1.0. Реализация регистра или прохождение unit-теста не является аппаратным подтверждением.
