@@ -165,3 +165,219 @@ x86_ea_is_reg: db 0
 x86_ea_reg: db 0
 x86_ea_offset: dw 0
 x86_ea_segment: dw 0
+
+; -------------------------------------------------------------------------
+; Operand access helpers for the decoded ModR/M byte.
+;
+; x86_modrm_read_reg8:  input A=register code (0..7), output A=byte.
+; x86_modrm_write_reg8: input A=register code, C=value.
+; x86_modrm_read_rm8:   output A=byte from r/m operand.
+; x86_modrm_write_rm8:  input A=value, writes r/m operand.
+; x86_modrm_read_reg16: output HL=word from ModR/M reg field.
+; x86_modrm_write_reg16: input HL=word, writes ModR/M reg field.
+; x86_modrm_read_rm16: output HL=word from r/m operand.
+; x86_modrm_write_rm16: input HL=word, writes r/m operand.
+;
+; Guest memory word accesses are two byte transactions, with 16-bit offset
+; wrap and the same Project126 physical mapper used by the fetch path.
+
+x86_modrm_read_reg8:
+        and     7
+        ld      (x86_modrm_operand_index),a
+        and     3
+        add     a,a
+        ld      e,a
+        ld      d,0
+        ld      hl,x86_modrm_reg16_table
+        add     hl,de
+        ld      e,(hl)
+        inc     hl
+        ld      d,(hl)
+        ld      a,(x86_modrm_operand_index)
+        cp      4
+        jr      c,.read_reg8_ptr_ready
+        inc     de
+.read_reg8_ptr_ready:
+        ld      a,(de)
+        or      a
+        ret
+
+x86_modrm_write_reg8:
+        ld      (x86_modrm_operand_value),c
+        and     7
+        ld      (x86_modrm_operand_index),a
+        and     3
+        add     a,a
+        ld      e,a
+        ld      d,0
+        ld      hl,x86_modrm_reg16_table
+        add     hl,de
+        ld      e,(hl)
+        inc     hl
+        ld      d,(hl)
+        ld      a,(x86_modrm_operand_index)
+        cp      4
+        jr      c,.write_reg8_ptr_ready
+        inc     de
+.write_reg8_ptr_ready:
+        ld      a,(x86_modrm_operand_value)
+        ld      (de),a
+        or      a
+        ret
+
+x86_modrm_read_reg16:
+        ld      a,(x86_modrm_reg)
+        jr      x86_modrm_read_reg16_index
+x86_modrm_read_reg16_index:
+        and     7
+        add     a,a
+        ld      e,a
+        ld      d,0
+        ld      hl,x86_modrm_reg16_table
+        add     hl,de
+        ld      e,(hl)
+        inc     hl
+        ld      d,(hl)
+        ex      de,hl
+        ld      e,(hl)
+        inc     hl
+        ld      d,(hl)
+        ex      de,hl
+        or      a
+        ret
+
+x86_modrm_write_reg16:
+        ld      (x86_modrm_operand_word),hl
+        ld      a,(x86_modrm_reg)
+        and     7
+        add     a,a
+        ld      e,a
+        ld      d,0
+        ld      hl,x86_modrm_reg16_table
+        add     hl,de
+        ld      e,(hl)
+        inc     hl
+        ld      d,(hl)
+        ex      de,hl
+        ld      de,(x86_modrm_operand_word)
+        ld      (hl),e
+        inc     hl
+        ld      (hl),d
+        or      a
+        ret
+
+x86_modrm_read_rm8:
+        ld      a,(x86_ea_is_reg)
+        or      a
+        jr      z,.read_rm8_memory
+        ld      a,(x86_ea_reg)
+        jp      x86_modrm_read_reg8
+.read_rm8_memory:
+        call    x86_modrm_make_ea_address
+        call    x86_guest_mem_read8
+        ret
+
+x86_modrm_write_rm8:
+        ld      (x86_modrm_operand_value),a
+        ld      a,(x86_ea_is_reg)
+        or      a
+        jr      z,.write_rm8_memory
+        ld      a,(x86_ea_reg)
+        ld      c,(x86_modrm_operand_value)
+        jp      x86_modrm_write_reg8
+.write_rm8_memory:
+        call    x86_modrm_make_ea_address
+        ld      a,(x86_modrm_operand_value)
+        call    x86_guest_mem_write8
+        ret
+
+x86_modrm_read_rm16:
+        ld      a,(x86_ea_is_reg)
+        or      a
+        jr      z,.read_rm16_memory
+        ld      a,(x86_ea_reg)
+        and     7
+        add     a,a
+        ld      e,a
+        ld      d,0
+        ld      hl,x86_modrm_reg16_table
+        add     hl,de
+        ld      e,(hl)
+        inc     hl
+        ld      d,(hl)
+        ex      de,hl
+        ld      e,(hl)
+        inc     hl
+        ld      d,(hl)
+        ex      de,hl
+        or      a
+        ret
+.read_rm16_memory:
+        call    x86_modrm_make_ea_address
+        call    x86_guest_mem_read8
+        ret     c
+        ld      (x86_modrm_operand_word),a
+        ld      hl,(x86_ea_offset)
+        inc     hl
+        ld      (x86_modrm_temp_offset),hl
+        call    x86_modrm_make_temp_ea_address
+        call    x86_guest_mem_read8
+        ret     c
+        ld      (x86_modrm_operand_word+1),a
+        ld      hl,(x86_modrm_operand_word)
+        or      a
+        ret
+
+x86_modrm_write_rm16:
+        ld      (x86_modrm_operand_word),hl
+        ld      a,(x86_ea_is_reg)
+        or      a
+        jr      z,.write_rm16_memory
+        ld      a,(x86_ea_reg)
+        and     7
+        add     a,a
+        ld      e,a
+        ld      d,0
+        ld      hl,x86_modrm_reg16_table
+        add     hl,de
+        ld      e,(hl)
+        inc     hl
+        ld      d,(hl)
+        ex      de,hl
+        ld      de,(x86_modrm_operand_word)
+        ld      (hl),e
+        inc     hl
+        ld      (hl),d
+        or      a
+        ret
+.write_rm16_memory:
+        call    x86_modrm_make_ea_address
+        ld      a,(x86_modrm_operand_word)
+        call    x86_guest_mem_write8
+        ret     c
+        ld      hl,(x86_ea_offset)
+        inc     hl
+        ld      (x86_modrm_temp_offset),hl
+        call    x86_modrm_make_temp_ea_address
+        ld      a,(x86_modrm_operand_word+1)
+        call    x86_guest_mem_write8
+        ret
+
+x86_modrm_make_ea_address:
+        ld      hl,(x86_ea_segment)
+        ld      de,(x86_ea_offset)
+        jp      x86_cpu_calc_phys
+
+x86_modrm_make_temp_ea_address:
+        ld      hl,(x86_ea_segment)
+        ld      de,(x86_modrm_temp_offset)
+        jp      x86_cpu_calc_phys
+
+x86_modrm_reg16_table:
+        dw x86_reg_ax,x86_reg_cx,x86_reg_dx,x86_reg_bx
+        dw x86_reg_sp,x86_reg_bp,x86_reg_si,x86_reg_di
+
+x86_modrm_operand_index: db 0
+x86_modrm_operand_value: db 0
+x86_modrm_operand_word: dw 0
+x86_modrm_temp_offset: dw 0
