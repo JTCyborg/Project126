@@ -190,6 +190,8 @@ x86_cpu_step_fetch_opcode:
         jp      x86_cpu_step_fetch_opcode
 
 .dispatch_opcode:
+        call    x86_exec_charge_guest_cycles
+        ld      a,(x86_exec_opcode)
         cp      #06
         jp      c,x86_exec_add_family
         cp      #27
@@ -4650,6 +4652,82 @@ x86_exec_hlt:
         ld      a,1
         ld      (x86_halted),a
         or      a
+        ret
+
+
+; Minimal 8086 cycle accounting for the BIOS PIT polling path.
+; B receives the estimated guest cycles and advances the 8253 timebase.
+x86_exec_charge_guest_cycles:
+        ld      b,4
+        ld      a,(x86_exec_opcode)
+        cp      #E4
+        jr      z,.charge_in_imm8
+        cp      #EC
+        jr      z,.charge_in_dx
+        cp      #E6
+        jr      z,.charge_out_imm8
+        cp      #EE
+        jr      z,.charge_out_dx
+        cp      #A8
+        jr      z,.charge_test_imm8
+        cp      #E0
+        jr      z,.charge_loop_cond
+        cp      #E1
+        jr      z,.charge_loop_cond
+        cp      #E2
+        jr      z,.charge_loop_cond
+        cp      #E3
+        jr      z,.charge_jcxz
+        jr      .charge_done
+.charge_in_imm8:
+.charge_out_imm8:
+        ld      b,10
+        jr      .charge_done
+.charge_in_dx:
+.charge_out_dx:
+        ld      b,8
+        jr      .charge_done
+.charge_test_imm8:
+        ld      b,4
+        jr      .charge_done
+.charge_loop_cond:
+        ld      hl,(x86_reg_cx)
+        dec     hl
+        ld      a,h
+        or      l
+        jr      z,.charge_branch_not_taken
+        ld      a,(x86_exec_opcode)
+        cp      #E0
+        jr      z,.charge_loopnz
+        cp      #E1
+        jr      z,.charge_loopz
+        jr      .charge_branch_taken
+.charge_loopnz:
+        ld      hl,(x86_reg_flags)
+        bit     6,l
+        jr      nz,.charge_branch_not_taken
+        jr      .charge_branch_taken
+.charge_loopz:
+        ld      hl,(x86_reg_flags)
+        bit     6,l
+        jr      z,.charge_branch_not_taken
+.charge_branch_taken:
+        ld      b,17
+        jr      .charge_done
+.charge_branch_not_taken:
+        ld      b,5
+        jr      .charge_done
+.charge_jcxz:
+        ld      hl,(x86_reg_cx)
+        ld      a,h
+        or      l
+        jr      z,.charge_jcxz_taken
+        ld      b,6
+        jr      .charge_done
+.charge_jcxz_taken:
+        ld      b,18
+.charge_done:
+        call    x86_dev_pit_advance_cycles
         ret
 
 x86_exec_instruction_start_cs: dw 0
