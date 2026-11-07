@@ -3180,32 +3180,56 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
 645++ 7626              ; emits DMA FRAME VALID / DMA FRAME REJECTED on its own #EF channel.
 646++ 7626              p126_neogs_dma_smoke_test:
 646++ 7626
-647++ 7626 21 FF FF             ld      hl,#FFFF
-648++ 7629 11 41 76             ld      de,p126_neogs_dma_test_frame
-649++ 762C 06 10                ld      b,16
-650++ 762E              .p126_neogs_dma_crc_loop:
-651++ 762E 1A                   ld      a,(de)
-652++ 762F 13                   inc     de
-653++ 7630 CD 56 67             call    p126_ipc_crc16_update
-654++ 7633 10 F9                djnz    .p126_neogs_dma_crc_loop
-655++ 7635 22 51 76             ld      (p126_neogs_dma_test_frame+16),hl
-656++ 7638 21 41 76             ld      hl,p126_neogs_dma_test_frame
-657++ 763B 01 12 00             ld      bc,18
-658++ 763E C3 CF 68             jp      p126_ipc_dma_send_frame
-659++ 7641
-660++ 7641              p126_neogs_dma_test_frame:
-661++ 7641 50 31 32 36          db      'P','1','2','6',1,0,1,5,0,0,1,0,0,0,0,0,0,0
-661++ 7645 01 00 01 05
-661++ 7649 00 00 01 00
-661++ 764D 00 00 00 00
-661++ 7651 00 00
-662++ 7653
+647++ 7626                      ; Build a 274-byte deterministic request in ATM RAM: 18-byte ABI
+648++ 7626                      ; header plus payload 00h..FFh. This validates page-42 delivery with
+649++ 7626                      ; a complete payload and CRC, not merely a header-sized DMA write.
+650++ 7626 21 69 76             ld      hl,p126_neogs_dma_test_frame+P126_IPC_HEADER_SIZE
+651++ 7629 AF                   xor     a
+652++ 762A 06 00                ld      b,0
+653++ 762C              .p126_neogs_dma_fill:
+654++ 762C 77                   ld      (hl),a
+655++ 762D 23                   inc     hl
+656++ 762E 3C                   inc     a
+657++ 762F 10 FB                djnz    .p126_neogs_dma_fill
+658++ 7631
+659++ 7631                      ; CRC-16/CCITT-FALSE over header[0..15] and payload[18..273].
+660++ 7631 21 FF FF             ld      hl,#FFFF
+661++ 7634 11 57 76             ld      de,p126_neogs_dma_test_frame
+662++ 7637 06 10                ld      b,16
+663++ 7639              .p126_neogs_dma_crc_header:
+664++ 7639 1A                   ld      a,(de)
+665++ 763A 13                   inc     de
+666++ 763B CD 56 67             call    p126_ipc_crc16_update
+667++ 763E 10 F9                djnz    .p126_neogs_dma_crc_header
+668++ 7640 13                   inc     de
+669++ 7641 13                   inc     de
+670++ 7642 06 00                ld      b,0
+671++ 7644              .p126_neogs_dma_crc_payload:
+672++ 7644 1A                   ld      a,(de)
+673++ 7645 13                   inc     de
+674++ 7646 CD 56 67             call    p126_ipc_crc16_update
+675++ 7649 10 F9                djnz    .p126_neogs_dma_crc_payload
+676++ 764B 22 67 76             ld      (p126_neogs_dma_test_frame+P126_IPC_OFF_CRC),hl
+677++ 764E 21 57 76             ld      hl,p126_neogs_dma_test_frame
+678++ 7651 01 12 01             ld      bc,P126_IPC_HEADER_SIZE+256
+679++ 7654 C3 CF 68             jp      p126_ipc_dma_send_frame
+680++ 7657
+681++ 7657              p126_neogs_dma_test_frame:
+682++ 7657 50 31 32 36          db      'P','1','2','6',1,0,1,5,0,0
+682++ 765B 01 00 01 05
+682++ 765F 00 00
+683++ 7661 01 00                db      #01,#00              ; sequence = 1
+684++ 7663 00 01                db      #00,#01              ; payload length = 0100h (256 bytes)
+685++ 7665 00 00                db      #00,#00              ; status = OK
+686++ 7667 00 00                db      #00,#00              ; CRC, filled at runtime
+687++ 7669 00 00 00...          defs    256,0
+688++ 7769
 # file closed: p126_neogs_loader.asm
-345+  7653
-346+  7653              ; Project125-derived ATM-native text console, relocated to window 2.
-347+  7653              ; Its renderer maps video pages only for each write and restores host pages.
-348+  7653                      PAGE 0
-349+  7653                      ORG #A000
+345+  7769
+346+  7769              ; Project125-derived ATM-native text console, relocated to window 2.
+347+  7769              ; Its renderer maps video pages only for each write and restores host pages.
+348+  7769                      PAGE 0
+349+  7769                      ORG #A000
 350+  A000                      INCLUDE "atm_host/p126_screen_console.asm"
 # file opened: p126_screen_console.asm
   1++ A000              ; =========================================================================
@@ -4135,17 +4159,17 @@ warning[backslash]: File name contains \, use / instead (\ fails on most of the 
  51   C100                      ORG #C000
  52   C000              p126_x86_core_file_start:
  53   C000                      INCBIN "build/x86_cpu_state.bin"
- 54   CCD4              p126_x86_core_file_end:
- 55   CCD4                      ASSERT p126_x86_core_file_end > p126_x86_core_file_start
- 56   CCD4                      ASSERT p126_x86_core_file_end-p126_x86_core_file_start <= #4000
- 57   CCD4                      SAVETRD "disk_A.trd", "X86CORE.C", #C000, p126_x86_core_file_end-p126_x86_core_file_start
- 58   CCD4
- 59   CCD4              ; -------------------------------------------------------------------------
- 60   CCD4              ; Three 8 KiB BIOS images, packaged under TR-DOS-compatible 8.3 names.
- 61   CCD4              ; The long Compaq source filename is represented on disk as COMPAQ.C.
- 62   CCD4              ; -------------------------------------------------------------------------
- 63   CCD4                      PAGE 2
- 64   CCD4                      ORG #C000
+ 54   CD16              p126_x86_core_file_end:
+ 55   CD16                      ASSERT p126_x86_core_file_end > p126_x86_core_file_start
+ 56   CD16                      ASSERT p126_x86_core_file_end-p126_x86_core_file_start <= #4000
+ 57   CD16                      SAVETRD "disk_A.trd", "X86CORE.C", #C000, p126_x86_core_file_end-p126_x86_core_file_start
+ 58   CD16
+ 59   CD16              ; -------------------------------------------------------------------------
+ 60   CD16              ; Three 8 KiB BIOS images, packaged under TR-DOS-compatible 8.3 names.
+ 61   CD16              ; The long Compaq source filename is represented on disk as COMPAQ.C.
+ 62   CD16              ; -------------------------------------------------------------------------
+ 63   CD16                      PAGE 2
+ 64   CD16                      ORG #C000
  65   C000              p126_bios1_file_start:
  66   C000                      INCBIN "bios/27c64d.bin"
  67   E000              p126_bios1_file_end:
@@ -4468,7 +4492,7 @@ Value    Label
 0x4000   P126_IPC_MAX_FRAME_SIZE
 0x3FEE   P126_IPC_MAX_PAYLOAD
 0x0000   P126_IPC_MINOR
-0x0010 X P126_IPC_OFF_CRC
+0x0010   P126_IPC_OFF_CRC
 0x0009 X P126_IPC_OFF_FLAGS
 0x000C X P126_IPC_OFF_LENGTH
 0x0000 X P126_IPC_OFF_MAGIC
@@ -4555,8 +4579,10 @@ Value    Label
 0x7601   p126_neogs_core_length
 0x75F5   p126_neogs_core_name
 0x7626   p126_neogs_dma_smoke_test
-0x762E   p126_neogs_dma_smoke_test.p126_neogs_dma_crc_loop
-0x7641   p126_neogs_dma_test_frame
+0x7639   p126_neogs_dma_smoke_test.p126_neogs_dma_crc_header
+0x7644   p126_neogs_dma_smoke_test.p126_neogs_dma_crc_payload
+0x762C   p126_neogs_dma_smoke_test.p126_neogs_dma_fill
+0x7657   p126_neogs_dma_test_frame
 0x75FF   p126_neogs_file_length
 0x7620   p126_neogs_file_sector
 0x761F   p126_neogs_file_sectors_left
@@ -4687,7 +4713,7 @@ Value    Label
 0xA435   p126_ui_line11_ready
 0x007C   P126_VIDEO_PAGE3
 0x0078   P126_VIDEO_PAGE7
-0xCCD4   p126_x86_core_file_end
+0xCD16   p126_x86_core_file_end
 0xC000   p126_x86_core_file_start
 0x00F9   RANDOMIZE
 0x6508   READ_CURRENT_TIME
