@@ -741,3 +741,25 @@ Source commit: `aac9d7e60c391510150016d3b29906a7b2f90e3d`.
 - Fixed the ATM BIOS sender to increment DE twice after the 16-byte header loop, so CRC calculation resumes at frame+18 and covers exactly payload_length bytes. CRC storage remains little-endian at offsets 16..17.
 - No DMA registers, page mapping, frame lengths, ABI fields, handshake, NeoGS receiver or TR-DOS logic changed.
 - **STATUS:** source commit dffe64f88b501d485f167a459973bc99cc7fef81. CI run 42368829749 pending at documentation update time. Hardware CRC acceptance and SYSBIOS installation remain unverified; next target log must show NeoGS frame validation PASS for all three frames and the IMAGE service's install result.
+
+
+## 2026-11-07 12:36 — SYSBIOS IMAGE transfer and installation hardware PASS
+
+- Physical ATM/NeoGS run completed the complete BIOS image transaction after the ATM CRC payload-offset correction.
+- ATM successfully opened BIOS1.C through TR-DOS, read all 32 sectors (8192 bytes), and restored the ATM video mode before IPC.
+- All three ABI 1.0 frames passed ATM structural preflight, completed E0/READY/DMA/FF/completion handshake, and were accepted by the NeoGS frame validator:
+  - IMAGE_BEGIN: 24 bytes; DMA end address 108018h; DMA FRAME VALID; SYSBIOS IMAGE BEGIN.
+  - IMAGE_FRAGMENT: 8220 bytes; DMA end address 10A01Ch; DMA FRAME VALID; SYSBIOS IMAGE FRAGMENT.
+  - IMAGE_FINISH: 20 bytes; DMA end address 108014h; DMA FRAME VALID; SYSBIOS IMAGE FINISH.
+- NeoGS explicitly reported SYSBIOS IMAGE INSTALLED AT PAGE 10. This is hardware confirmation of frame CRC acceptance and installation into physical page 10h (base 040000h).
+- HARDWARE PASS: TR-DOS BIOS file read; ATM-to-NeoGS DMA transport for all three IMAGE frames; ABI frame validation/CRC; SYSBIOS image installation at page 10h.
+- NOT YET VERIFIED: execution from the 8086 reset vector FFFF0h, BIOS initialization, virtual VGA initialization, framebuffer presentation and guest boot. Installation must not be described as successful x86 BIOS execution.
+
+
+## 2026-11-07 — BIOS reset-vector fetch/decode gate added
+
+- The resident NeoGS main loop now consumes `p126_ngs_bios_image_ready` once after a validated IMAGE_FINISH event and invokes a dedicated reset-vector probe. The ready flag is cleared before the probe, preventing repeated reset attempts.
+- The probe initializes the 8086 architectural reset state (`CS:IP=FFFF:0000`, `FLAGS=0002h`), computes the reset physical address through `x86_cpu_calc_phys`, and reads five bytes through the production `x86_guest_mem_read8` backend. It therefore exercises the SYSBIOS overlay and WIN3 page selector, not a hard-coded physical-page peek.
+- The expected BIOS1 vector is verified byte-for-byte as `EA 5B E0 00 F0`. On match, the immediate FAR JMP operands are decoded and stored as `CS:IP=F000:E05B`; success/failure is emitted on NeoGS debug port EFh.
+- This is a reset-vector memory-fetch and FAR JMP decode gate only. It does **not** execute the JMP, implement the 8086 instruction loop, run BIOS POST, or establish VGA operation. Those remain separate stages.
+- **VERIFICATION REQUIRED:** CI assembly and physical hardware log must show `X86 BIOS RESET VECTOR FETCH PASS` followed by `X86 FAR JMP DECODED F000:E05B`. No hardware PASS is claimed by this source change.

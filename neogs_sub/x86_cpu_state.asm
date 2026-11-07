@@ -46,6 +46,79 @@ x86_cpu_reset:
         ld      (x86_pending_nmi),a
         ret
 
+; -------------------------------------------------------------------------
+; BIOS reset-vector fetch/decode gate.
+; This is deliberately NOT an instruction execution loop. It proves that
+; the installed SYSBIOS overlay is readable through the production guest
+; memory backend, validates the five-byte 8086 reset-vector FAR JMP, and
+; seeds CS:IP with its decoded target. The next stage supplies the decoder.
+; Entry: called once after IMAGE_FINISH has set BIOS_IMAGE_READY.
+; -------------------------------------------------------------------------
+x86_bios_reset_vector_probe:
+        call    x86_cpu_reset
+        ld      hl,#FFFF
+        ld      de,0
+        call    x86_cpu_calc_phys
+        ld      ix,x86_bios_reset_vector_bytes
+        ld      a,5
+        ld      (x86_bios_probe_remaining),a
+.read_loop:
+        call    x86_guest_mem_read8
+        jr      c,.read_failed
+        ld      (ix+0),a
+        inc     ix
+        ld      a,(x86_phys_addr)
+        inc     a
+        ld      (x86_phys_addr),a
+        jr      nz,.address_ready
+        ld      a,(x86_phys_addr+1)
+        inc     a
+        ld      (x86_phys_addr+1),a
+        jr      nz,.address_ready
+        ld      a,(x86_phys_addr+2)
+        inc     a
+        and     #0F
+        ld      (x86_phys_addr+2),a
+.address_ready:
+        ld      a,(x86_bios_probe_remaining)
+        dec     a
+        ld      (x86_bios_probe_remaining),a
+        jr      nz,.read_loop
+
+        ld      hl,x86_bios_reset_vector_bytes
+        ld      de,x86_bios_reset_vector_expected
+        ld      b,5
+.compare_loop:
+        ld      a,(de)
+        cp      (hl)
+        jr      nz,.vector_mismatch
+        inc     de
+        inc     hl
+        djnz    .compare_loop
+
+        ; BIOS1 reset vector is EA 5B E0 00 F0:
+        ; JMP FAR F000:E05B. Decode the immediate operands into CPU state.
+        ld      hl,#E05B
+        ld      (x86_reg_ip),hl
+        ld      hl,#F000
+        ld      (x86_reg_cs),hl
+        ld      hl,x86_bios_reset_vector_pass_log
+        call    p126_ngs_resident_log
+        ld      hl,x86_bios_reset_target_log
+        call    p126_ngs_resident_log
+        or      a
+        ret
+.read_failed:
+        ld      hl,x86_bios_reset_read_fail_log
+        call    p126_ngs_resident_log
+        scf
+        ret
+.vector_mismatch:
+        ld      hl,x86_bios_reset_vector_bad_log
+        call    p126_ngs_resident_log
+        scf
+        ret
+
 ; physical = ((segment << 4) + offset) & 0FFFFFh
 x86_cpu_calc_phys:
         push    bc
@@ -528,6 +601,18 @@ x86_pending_irq: db 0
 x86_pending_nmi: db 0
 x86_phys_addr: db 0,0,0
 x86_mem_data:  db 0
+
+x86_bios_probe_remaining: db 0
+x86_bios_reset_vector_bytes: db 0,0,0,0,0
+x86_bios_reset_vector_expected: db #EA,#5B,#E0,#00,#F0
+x86_bios_reset_vector_pass_log:
+        db "[NGS] X86 BIOS RESET VECTOR FETCH PASS",13,10,0
+x86_bios_reset_target_log:
+        db "[NGS] X86 FAR JMP DECODED F000:E05B",13,10,0
+x86_bios_reset_read_fail_log:
+        db "[NGS] X86 BIOS RESET VECTOR READ FAILED",13,10,0
+x86_bios_reset_vector_bad_log:
+        db "[NGS] X86 BIOS RESET VECTOR MISMATCH",13,10,0
 
 x86_expected_zero:  db 0,0,0
 x86_expected_fffff: db #FF,#FF,#0F
