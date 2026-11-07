@@ -104,6 +104,12 @@ A source-level address map and compile-time assertions are not BUILD/EMULATOR/HA
 
 
 
+### X86DEV overlay (physical page 06h)
+
+The 8237 DMA and 8253 PIT register models have been split from X86IO into a fixed-origin overlay on physical page06 (WIN2 selector03h). X86IO delegates ports through resident nested overlay wrappers. ATM loads `X86DEV.C` from TR-DOS after X86ALU; the NeoGS IMAGE service validates and reads back the image, calls its reset/self-test entry through the overlay gate, and publishes `X86DEV_READY` only after the signature and return mapping checks succeed. The resident CPU/BIOS readiness gate now requires X86IO, X86ALU, X86DEV and SYSBIOS.
+
+The dynamic page allocator now reserves page06 for X86DEV and allocates only pages07h–0Fh (nine pages). The allocator regression was updated to check all nine pages and page07 first-fit reuse.
+
 ### PIT 8253 register-model status
 
 A static 8253 programming/readback slice is implemented for ports 0040h–0043h:
