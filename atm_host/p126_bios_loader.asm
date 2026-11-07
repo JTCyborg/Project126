@@ -403,8 +403,9 @@ p126_bios_send_frame:
         jr      .p126_bios_crc_payload
 .p126_bios_crc_done:
         ld      (P126_BIOS_FRAME+16),hl
-        ld      hl,P126_BIOS_FRAME
-        ld      bc,(p126_bios_payload_length)
+        ; DMA API expects the exact frame byte count, not the absolute
+        ; address of the end of the frame. Compute 18-byte header + payload.
+        ld      hl,(p126_bios_payload_length)
         ld      de,P126_IPC_HEADER_SIZE
         add     hl,de
         ld      b,h
