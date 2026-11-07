@@ -451,9 +451,9 @@ x86_exec_logic_family:
         ld      a,(x86_modrm_reg)
         call    x86_modrm_read_reg8
         ld      c,a
-        ld      a,(x86_exec_alu_lhs8)
         ld      a,(x86_exec_alu_operation)
         ld      b,a
+        ld      a,(x86_exec_alu_lhs8)
         call    x86_alu_logic8
         jp      x86_modrm_write_rm8
 
@@ -532,9 +532,9 @@ x86_exec_logic_family:
         call    x86_cpu_fetch8
         ret     c
         ld      c,a
-        ld      a,(x86_reg_ax)
         ld      a,(x86_exec_alu_operation)
         ld      b,a
+        ld      a,(x86_reg_ax)
         call    x86_alu_logic8
         ld      (x86_reg_ax),a
         or      a
