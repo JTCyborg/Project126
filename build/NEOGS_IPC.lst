@@ -491,14 +491,11 @@
 376+  022A                      ; Payload[0] = stop reason, [1..2] = CS, [3..4] = IP.
 377+  022A                      ; The remainder is zero-filled; the complete fixed-size DMA frame
 378+  022A                      ; remains protected by the shared ABI CRC.
-p126_ipc.asm(379): error: Label not found: x86_bios_trace_event_status
-379+  022A 3A 00 00             ld      a,(x86_bios_trace_event_status)
+379+  022A 3A 08 09             ld      a,(x86_bios_trace_event_status)
 380+  022D 32 12 C0             ld      (#C012),a
-p126_ipc.asm(381): error: Label not found: x86_bios_trace_event_cs
-381+  0230 2A 00 00             ld      hl,(x86_bios_trace_event_cs)
+381+  0230 2A 09 09             ld      hl,(x86_bios_trace_event_cs)
 382+  0233 22 13 C0             ld      (#C013),hl
-p126_ipc.asm(383): error: Label not found: x86_bios_trace_event_ip
-383+  0236 2A 00 00             ld      hl,(x86_bios_trace_event_ip)
+383+  0236 2A 0B 09             ld      hl,(x86_bios_trace_event_ip)
 384+  0239 22 15 C0             ld      (#C015),hl
 385+  023C
 386+  023C                      ; CRC covers header[0..15] followed by all 16366 payload bytes.
@@ -675,8 +672,7 @@ p126_ipc.asm(383): error: Label not found: x86_bios_trace_event_ip
 556+  0344 28 07                jr      z,.ngs_frame_trace_ready
 557+  0346 AF                   xor     a
 558+  0347 32 E2 04             ld      (p126_ngs_bios_image_ready),a
-p126_ipc.asm(559): error: Label not found: x86_bios_startup_trace
-559+  034A CD 00 00             call    x86_bios_startup_trace
+559+  034A CD 0D 09             call    x86_bios_startup_trace
 560+  034D              .ngs_frame_trace_ready:
 561+  034D 21 D9 07             ld      hl,p126_ngs_ipc_log_dma_rx_request
 562+  0350 CD F7 08             call    p126_ngs_ipc_log
@@ -1266,13 +1262,23 @@ p126_ipc.asm(559): error: Label not found: x86_bios_startup_trace
 # file closed: p126_ipc.asm
  11   0908              p126_ngs_ipc_module_end:
  12   0908
- 13   0908                  DISPLAY "P126_NGS_IPC_START=", /H, p126_ngs_ipc_module_start
- 14   0908                  DISPLAY "P126_NGS_IPC_END=", /H, p126_ngs_ipc_module_end
- 15   0908                  DISPLAY "P126_NGS_IPC_SIZE=", /D, p126_ngs_ipc_module_end-p126_ngs_ipc_module_start
- 16   0908
- 17   0908                  ASSERT p126_ngs_ipc_module_end > p126_ngs_ipc_module_start
- 18   0908                  ASSERT p126_ngs_ipc_module_end <= #10000
- 19   0908
+ 13   0908              ; Standalone IPC audit unit: the production image links these symbols from
+ 14   0908              ; x86_cpu_state.asm. Keep local audit-only storage and a no-op trace entry so
+ 15   0908              ; this translation unit can be assembled independently without duplicating
+ 16   0908              ; or replacing the production CPU implementation.
+ 17   0908 00           x86_bios_trace_event_status: db 0
+ 18   0909 00 00        x86_bios_trace_event_cs:     dw 0
+ 19   090B 00 00        x86_bios_trace_event_ip:     dw 0
+ 20   090D              x86_bios_startup_trace:
+ 21   090D C9                   ret
+ 22   090E
+ 23   090E                  DISPLAY "P126_NGS_IPC_START=", /H, p126_ngs_ipc_module_start
+ 24   090E                  DISPLAY "P126_NGS_IPC_END=", /H, p126_ngs_ipc_module_end
+ 25   090E                  DISPLAY "P126_NGS_IPC_SIZE=", /D, p126_ngs_ipc_module_end-p126_ngs_ipc_module_start
+ 26   090E
+ 27   090E                  ASSERT p126_ngs_ipc_module_end > p126_ngs_ipc_module_start
+ 28   090E                  ASSERT p126_ngs_ipc_module_end <= #10000
+ 29   090E
 # file closed: p126_ipc_assemble.asm
 
 Value    Label
@@ -1462,3 +1468,7 @@ Value    Label
 0x000E X P126_STATUS_RESET_REQUIRED
 0x0005 X P126_STATUS_SEQUENCE
 0x000A   P126_STATUS_TIMEOUT
+0x090D   x86_bios_startup_trace
+0x0909   x86_bios_trace_event_cs
+0x090B   x86_bios_trace_event_ip
+0x0908   x86_bios_trace_event_status
