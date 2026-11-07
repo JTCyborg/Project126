@@ -537,12 +537,7 @@ x86_io_pit_write8:
         rrca
         and     3
         jr      z,.pit_latch_command
-        ld      e,a
-        ld      a,(x86_io_pit_channel)
-        ld      d,0
-        ld      hl,x86_io_pit_access
-        add     hl,de
-        ; The index is the selected channel, not the access value.
+        ; Store the selected channel's access mode.
         ld      a,(x86_io_pit_channel)
         ld      e,a
         ld      d,0
@@ -555,19 +550,7 @@ x86_io_pit_write8:
         rrca
         and     3
         ld      (hl),a
-        ; Normalize modes 6/7 to aliases 2/3.
-        ld      a,(x86_io_pit_write_value)
-        rrca
-        and     7
-        cp      6
-        jr      c,.pit_mode_ready
-        sub     4
-.pit_mode_ready:
-        ld      e,a
-        ld      a,(x86_io_pit_channel)
-        ld      d,0
-        ld      hl,x86_io_pit_mode
-        add     hl,de
+        ; Normalize modes 6/7 to aliases 2/3 and store per channel.
         ld      a,(x86_io_pit_channel)
         ld      e,a
         ld      d,0
