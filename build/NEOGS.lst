@@ -625,9 +625,9 @@
  185+ 0271 32 4C 05             ld      (x86_bios_trace_first_count),a
  186+ 0274 21 B9 06             ld      hl,x86_bios_trace_start_log
  187+ 0277 CD C0 00             call    p126_ngs_resident_log
- 188+ 027A                      ; Temporary diagnostic window: retain the first BIOS table traversal
- 189+ 027A                      ; in the 16-entry instruction history instead of a later SI wrap.
- 190+ 027A 21 00 01             ld      hl,#0100
+ 188+ 027A                      ; Temporary diagnostic window: allow both BIOS port tables to finish
+ 189+ 027A                      ; and capture the first post-table initialization instructions.
+ 190+ 027A 21 00 02             ld      hl,#0200
  191+ 027D 22 B5 06             ld      (x86_bios_trace_remaining),hl
  192+ 0280 21 00 00             ld      hl,0
  193+ 0283 22 B7 06             ld      (x86_bios_trace_executed),hl
@@ -1290,7 +1290,7 @@
  774+ 0746 42 59 20 47
  774+ 074A 55 45 53 54
  774+ 074E 0D 0A 00
- 775+ 0751 5B 4E 47 53  x86_bios_trace_watchdog_log: db "[NGS] X86 BIOS DIAGNOSTIC STOP: 256 INSTRUCTIONS",13,10,0
+ 775+ 0751 5B 4E 47 53  x86_bios_trace_watchdog_log: db "[NGS] X86 BIOS DIAGNOSTIC STOP: 512 INSTRUCTIONS",13,10,0
  775+ 0755 5D 20 58 38
  775+ 0759 36 20 42 49
  775+ 075D 4F 53 20 44
@@ -1298,7 +1298,7 @@
  775+ 0765 4F 53 54 49
  775+ 0769 43 20 53 54
  775+ 076D 4F 50 3A 20
- 775+ 0771 32 35 36 20
+ 775+ 0771 35 31 32 20
  775+ 0775 49 4E 53 54
  775+ 0779 52 55 43 54
  775+ 077D 49 4F 4E 53
@@ -11286,7 +11286,7 @@
    5+ 8000              ; Register models only: DMA transfer execution and PIT clock/IRQ0 pending.
    6+ 8000
    7+ 8000              x86_dev_read8_impl:
-   8+ 8000 22 E6 88             ld      (x86_dev_port),hl
+   8+ 8000 22 E8 88             ld      (x86_dev_port),hl
    9+ 8003 CD 80 84             call    x86_dev_dma_read8
   10+ 8006 D0                   ret     nc
   11+ 8007 CD 9B 81             call    x86_dev_pit_read8
@@ -11294,19 +11294,19 @@
   13+ 800B C3 3D 80             jp      x86_dev_board_read8
   14+ 800E
   15+ 800E              x86_dev_write8_impl:
-  16+ 800E 22 E6 88             ld      (x86_dev_port),hl
-  17+ 8011 32 E8 88             ld      (x86_dev_write_value),a
-  18+ 8014 CD E2 84             call    x86_dev_dma_write8
+  16+ 800E 22 E8 88             ld      (x86_dev_port),hl
+  17+ 8011 32 EA 88             ld      (x86_dev_write_value),a
+  18+ 8014 CD E4 84             call    x86_dev_dma_write8
   19+ 8017 D0                   ret     nc
-  20+ 8018 3A E8 88             ld      a,(x86_dev_write_value)
+  20+ 8018 3A EA 88             ld      a,(x86_dev_write_value)
   21+ 801B CD 32 82             call    x86_dev_pit_write8
   22+ 801E D0                   ret     nc
-  23+ 801F 3A E8 88             ld      a,(x86_dev_write_value)
+  23+ 801F 3A EA 88             ld      a,(x86_dev_write_value)
   24+ 8022 C3 8F 80             jp      x86_dev_board_write8
   25+ 8025
   26+ 8025              x86_dev_reset_impl:
-  27+ 8025 CD EE 85             call    x86_dev_dma_reset_impl
-  28+ 8028 CD 34 86             call    x86_dev_dma_selftest_impl
+  27+ 8025 CD F0 85             call    x86_dev_dma_reset_impl
+  28+ 8028 CD 36 86             call    x86_dev_dma_selftest_impl
   29+ 802B CD 38 83             call    x86_dev_pit_reset_impl
   30+ 802E CD A9 83             call    x86_dev_pit_selftest_impl
   31+ 8031 CD F3 80             call    x86_dev_board_reset_impl
@@ -11323,27 +11323,27 @@
   42+ 803D              ; Video rendering, retrace timing and actual NMI delivery remain separate.
   43+ 803D              ; -------------------------------------------------------------------------
   44+ 803D              x86_dev_board_read8:
-  45+ 803D 2A E6 88             ld      hl,(x86_dev_port)
+  45+ 803D 2A E8 88             ld      hl,(x86_dev_port)
   46+ 8040 11 A0 00             ld      de,#00A0
   47+ 8043 B7                   or      a
   48+ 8044 ED 52                sbc     hl,de
   49+ 8046 28 2E                jr      z,.board_read_nmi
-  50+ 8048 2A E6 88             ld      hl,(x86_dev_port)
+  50+ 8048 2A E8 88             ld      hl,(x86_dev_port)
   51+ 804B 11 13 02             ld      de,#0213
   52+ 804E B7                   or      a
   53+ 804F ED 52                sbc     hl,de
   54+ 8051 28 28                jr      z,.board_read_expansion
-  55+ 8053 2A E6 88             ld      hl,(x86_dev_port)
+  55+ 8053 2A E8 88             ld      hl,(x86_dev_port)
   56+ 8056 11 C0 00             ld      de,#00C0
   57+ 8059 B7                   or      a
   58+ 805A ED 52                sbc     hl,de
   59+ 805C 28 22                jr      z,.board_read_bus
-  60+ 805E 2A E6 88             ld      hl,(x86_dev_port)
+  60+ 805E 2A E8 88             ld      hl,(x86_dev_port)
   61+ 8061 11 B8 03             ld      de,#03B8
   62+ 8064 B7                   or      a
   63+ 8065 ED 52                sbc     hl,de
   64+ 8067 28 1C                jr      z,.board_read_mda
-  65+ 8069 2A E6 88             ld      hl,(x86_dev_port)
+  65+ 8069 2A E8 88             ld      hl,(x86_dev_port)
   66+ 806C 11 D8 03             ld      de,#03D8
   67+ 806F B7                   or      a
   68+ 8070 ED 52                sbc     hl,de
@@ -11351,49 +11351,49 @@
   70+ 8074 37                   scf
   71+ 8075 C9                   ret
   72+ 8076              .board_read_nmi:
-  73+ 8076 3A EA 88             ld      a,(x86_dev_board_nmi)
+  73+ 8076 3A EC 88             ld      a,(x86_dev_board_nmi)
   74+ 8079 B7                   or      a
   75+ 807A C9                   ret
   76+ 807B              .board_read_expansion:
-  77+ 807B 3A EB 88             ld      a,(x86_dev_board_expansion)
+  77+ 807B 3A ED 88             ld      a,(x86_dev_board_expansion)
   78+ 807E B7                   or      a
   79+ 807F C9                   ret
   80+ 8080              .board_read_bus:
-  81+ 8080 3A EC 88             ld      a,(x86_dev_board_bus)
+  81+ 8080 3A EE 88             ld      a,(x86_dev_board_bus)
   82+ 8083 B7                   or      a
   83+ 8084 C9                   ret
   84+ 8085              .board_read_mda:
-  85+ 8085 3A ED 88             ld      a,(x86_dev_board_mda)
+  85+ 8085 3A EF 88             ld      a,(x86_dev_board_mda)
   86+ 8088 B7                   or      a
   87+ 8089 C9                   ret
   88+ 808A              .board_read_cga:
-  89+ 808A 3A EE 88             ld      a,(x86_dev_board_cga)
+  89+ 808A 3A F0 88             ld      a,(x86_dev_board_cga)
   90+ 808D B7                   or      a
   91+ 808E C9                   ret
   92+ 808F
   93+ 808F              x86_dev_board_write8:
-  94+ 808F 32 E9 88             ld      (x86_dev_board_write_value),a
-  95+ 8092 2A E6 88             ld      hl,(x86_dev_port)
+  94+ 808F 32 EB 88             ld      (x86_dev_board_write_value),a
+  95+ 8092 2A E8 88             ld      hl,(x86_dev_port)
   96+ 8095 11 A0 00             ld      de,#00A0
   97+ 8098 B7                   or      a
   98+ 8099 ED 52                sbc     hl,de
   99+ 809B 28 2E                jr      z,.board_write_nmi
- 100+ 809D 2A E6 88             ld      hl,(x86_dev_port)
+ 100+ 809D 2A E8 88             ld      hl,(x86_dev_port)
  101+ 80A0 11 13 02             ld      de,#0213
  102+ 80A3 B7                   or      a
  103+ 80A4 ED 52                sbc     hl,de
  104+ 80A6 28 2B                jr      z,.board_write_expansion
- 105+ 80A8 2A E6 88             ld      hl,(x86_dev_port)
+ 105+ 80A8 2A E8 88             ld      hl,(x86_dev_port)
  106+ 80AB 11 C0 00             ld      de,#00C0
  107+ 80AE B7                   or      a
  108+ 80AF ED 52                sbc     hl,de
  109+ 80B1 28 28                jr      z,.board_write_bus
- 110+ 80B3 2A E6 88             ld      hl,(x86_dev_port)
+ 110+ 80B3 2A E8 88             ld      hl,(x86_dev_port)
  111+ 80B6 11 B8 03             ld      de,#03B8
  112+ 80B9 B7                   or      a
  113+ 80BA ED 52                sbc     hl,de
  114+ 80BC 28 25                jr      z,.board_write_mda
- 115+ 80BE 2A E6 88             ld      hl,(x86_dev_port)
+ 115+ 80BE 2A E8 88             ld      hl,(x86_dev_port)
  116+ 80C1 11 D8 03             ld      de,#03D8
  117+ 80C4 B7                   or      a
  118+ 80C5 ED 52                sbc     hl,de
@@ -11401,44 +11401,44 @@
  120+ 80C9 37                   scf
  121+ 80CA C9                   ret
  122+ 80CB              .board_write_nmi:
- 123+ 80CB 3A E9 88             ld      a,(x86_dev_board_write_value)
- 124+ 80CE 32 EA 88             ld      (x86_dev_board_nmi),a
+ 123+ 80CB 3A EB 88             ld      a,(x86_dev_board_write_value)
+ 124+ 80CE 32 EC 88             ld      (x86_dev_board_nmi),a
  125+ 80D1 B7                   or      a
  126+ 80D2 C9                   ret
  127+ 80D3              .board_write_expansion:
- 128+ 80D3 3A E9 88             ld      a,(x86_dev_board_write_value)
- 129+ 80D6 32 EB 88             ld      (x86_dev_board_expansion),a
+ 128+ 80D3 3A EB 88             ld      a,(x86_dev_board_write_value)
+ 129+ 80D6 32 ED 88             ld      (x86_dev_board_expansion),a
  130+ 80D9 B7                   or      a
  131+ 80DA C9                   ret
  132+ 80DB              .board_write_bus:
- 133+ 80DB 3A E9 88             ld      a,(x86_dev_board_write_value)
- 134+ 80DE 32 EC 88             ld      (x86_dev_board_bus),a
+ 133+ 80DB 3A EB 88             ld      a,(x86_dev_board_write_value)
+ 134+ 80DE 32 EE 88             ld      (x86_dev_board_bus),a
  135+ 80E1 B7                   or      a
  136+ 80E2 C9                   ret
  137+ 80E3              .board_write_mda:
- 138+ 80E3 3A E9 88             ld      a,(x86_dev_board_write_value)
- 139+ 80E6 32 ED 88             ld      (x86_dev_board_mda),a
+ 138+ 80E3 3A EB 88             ld      a,(x86_dev_board_write_value)
+ 139+ 80E6 32 EF 88             ld      (x86_dev_board_mda),a
  140+ 80E9 B7                   or      a
  141+ 80EA C9                   ret
  142+ 80EB              .board_write_cga:
- 143+ 80EB 3A E9 88             ld      a,(x86_dev_board_write_value)
- 144+ 80EE 32 EE 88             ld      (x86_dev_board_cga),a
+ 143+ 80EB 3A EB 88             ld      a,(x86_dev_board_write_value)
+ 144+ 80EE 32 F0 88             ld      (x86_dev_board_cga),a
  145+ 80F1 B7                   or      a
  146+ 80F2 C9                   ret
  147+ 80F3
  148+ 80F3              x86_dev_board_reset_impl:
  149+ 80F3 AF                   xor     a
- 150+ 80F4 32 EA 88             ld      (x86_dev_board_nmi),a
- 151+ 80F7 32 EB 88             ld      (x86_dev_board_expansion),a
- 152+ 80FA 32 EC 88             ld      (x86_dev_board_bus),a
- 153+ 80FD 32 ED 88             ld      (x86_dev_board_mda),a
- 154+ 8100 32 EE 88             ld      (x86_dev_board_cga),a
- 155+ 8103 32 E9 88             ld      (x86_dev_board_write_value),a
+ 150+ 80F4 32 EC 88             ld      (x86_dev_board_nmi),a
+ 151+ 80F7 32 ED 88             ld      (x86_dev_board_expansion),a
+ 152+ 80FA 32 EE 88             ld      (x86_dev_board_bus),a
+ 153+ 80FD 32 EF 88             ld      (x86_dev_board_mda),a
+ 154+ 8100 32 F0 88             ld      (x86_dev_board_cga),a
+ 155+ 8103 32 EB 88             ld      (x86_dev_board_write_value),a
  156+ 8106 C9                   ret
  157+ 8107
  158+ 8107              x86_dev_board_selftest_impl:
  159+ 8107 21 A0 00             ld      hl,#00A0
- 160+ 810A 22 E6 88             ld      (x86_dev_port),hl
+ 160+ 810A 22 E8 88             ld      (x86_dev_port),hl
  161+ 810D 3E 80                ld      a,#80
  162+ 810F CD 8F 80             call    x86_dev_board_write8
  163+ 8112 DA 7A 81             jp      c,.board_selftest_fail
@@ -11446,7 +11446,7 @@
  165+ 8118 FE 80                cp      #80
  166+ 811A C2 7A 81             jp      nz,.board_selftest_fail
  167+ 811D 21 13 02             ld      hl,#0213
- 168+ 8120 22 E6 88             ld      (x86_dev_port),hl
+ 168+ 8120 22 E8 88             ld      (x86_dev_port),hl
  169+ 8123 3E 01                ld      a,1
  170+ 8125 CD 8F 80             call    x86_dev_board_write8
  171+ 8128 DA 7A 81             jp      c,.board_selftest_fail
@@ -11455,7 +11455,7 @@
  174+ 8130 C2 7A 81             jp      nz,.board_selftest_fail
  175+ 8133                      ; Legacy data-bus test latch (00C0h) must round-trip independently.
  176+ 8133 21 C0 00             ld      hl,#00C0
- 177+ 8136 22 E6 88             ld      (x86_dev_port),hl
+ 177+ 8136 22 E8 88             ld      (x86_dev_port),hl
  178+ 8139 3E 5A                ld      a,#5A
  179+ 813B CD 8F 80             call    x86_dev_board_write8
  180+ 813E DA 7A 81             jp      c,.board_selftest_fail
@@ -11463,7 +11463,7 @@
  182+ 8144 FE 5A                cp      #5A
  183+ 8146 C2 7A 81             jp      nz,.board_selftest_fail
  184+ 8149 21 B8 03             ld      hl,#03B8
- 185+ 814C 22 E6 88             ld      (x86_dev_port),hl
+ 185+ 814C 22 E8 88             ld      (x86_dev_port),hl
  186+ 814F 3E 29                ld      a,#29
  187+ 8151 CD 8F 80             call    x86_dev_board_write8
  188+ 8154 DA 7A 81             jp      c,.board_selftest_fail
@@ -11471,17 +11471,17 @@
  190+ 815A FE 29                cp      #29
  191+ 815C C2 7A 81             jp      nz,.board_selftest_fail
  192+ 815F 21 D8 03             ld      hl,#03D8
- 193+ 8162 22 E6 88             ld      (x86_dev_port),hl
+ 193+ 8162 22 E8 88             ld      (x86_dev_port),hl
  194+ 8165 3E 0A                ld      a,#0A
  195+ 8167 CD 8F 80             call    x86_dev_board_write8
  196+ 816A DA 7A 81             jp      c,.board_selftest_fail
  197+ 816D CD 3D 80             call    x86_dev_board_read8
  198+ 8170 FE 0A                cp      #0A
  199+ 8172 C2 7A 81             jp      nz,.board_selftest_fail
- 200+ 8175 21 EF 88             ld      hl,x86_dev_board_selftest_pass
+ 200+ 8175 21 F1 88             ld      hl,x86_dev_board_selftest_pass
  201+ 8178 18 03                jr      .board_selftest_restore
  202+ 817A              .board_selftest_fail:
- 203+ 817A 21 15 89             ld      hl,x86_dev_board_selftest_fail
+ 203+ 817A 21 17 89             ld      hl,x86_dev_board_selftest_fail
  204+ 817D              .board_selftest_restore:
  205+ 817D E5                   push    hl
  206+ 817E CD F3 80             call    x86_dev_board_reset_impl
@@ -11493,7 +11493,7 @@
  212+ 8185              ; output pin, speaker waveform or IRQ0 generation is claimed.
  213+ 8185              ; -------------------------------------------------------------------------
  214+ 8185              x86_dev_pit_decode:
- 215+ 8185 2A E6 88             ld      hl,(x86_dev_port)
+ 215+ 8185 2A E8 88             ld      hl,(x86_dev_port)
  216+ 8188 11 40 00             ld      de,#0040
  217+ 818B B7                   or      a
  218+ 818C ED 52                sbc     hl,de
@@ -11514,10 +11514,10 @@
  233+ 819E D8                   ret     c
  234+ 819F FE 03                cp      3
  235+ 81A1 CA 2E 82             jp      z,.pit_read_open_bus
- 236+ 81A4 32 9F 87             ld      (x86_dev_pit_channel),a
+ 236+ 81A4 32 A1 87             ld      (x86_dev_pit_channel),a
  237+ 81A7 5F                   ld      e,a
  238+ 81A8 16 00                ld      d,0
- 239+ 81AA 21 8D 87             ld      hl,x86_dev_pit_access
+ 239+ 81AA 21 8F 87             ld      hl,x86_dev_pit_access
  240+ 81AD 19                   add     hl,de
  241+ 81AE 7E                   ld      a,(hl)
  242+ 81AF FE 01                cp      1
@@ -11526,58 +11526,58 @@
  245+ 81B5 28 1A                jr      z,.pit_read_msb
  246+ 81B7 FE 03                cp      3
  247+ 81B9 20 73                jr      nz,.pit_read_open_bus
- 248+ 81BB 3A 9F 87             ld      a,(x86_dev_pit_channel)
+ 248+ 81BB 3A A1 87             ld      a,(x86_dev_pit_channel)
  249+ 81BE 5F                   ld      e,a
  250+ 81BF 16 00                ld      d,0
- 251+ 81C1 21 96 87             ld      hl,x86_dev_pit_read_ff
+ 251+ 81C1 21 98 87             ld      hl,x86_dev_pit_read_ff
  252+ 81C4 19                   add     hl,de
  253+ 81C5 7E                   ld      a,(hl)
- 254+ 81C6 32 A0 87             ld      (x86_dev_pit_byte_select),a
+ 254+ 81C6 32 A2 87             ld      (x86_dev_pit_byte_select),a
  255+ 81C9 18 0B                jr      .pit_read_byte
  256+ 81CB              .pit_read_lsb:
  257+ 81CB AF                   xor     a
- 258+ 81CC 32 A0 87             ld      (x86_dev_pit_byte_select),a
+ 258+ 81CC 32 A2 87             ld      (x86_dev_pit_byte_select),a
  259+ 81CF 18 05                jr      .pit_read_byte
  260+ 81D1              .pit_read_msb:
  261+ 81D1 3E 01                ld      a,1
- 262+ 81D3 32 A0 87             ld      (x86_dev_pit_byte_select),a
+ 262+ 81D3 32 A2 87             ld      (x86_dev_pit_byte_select),a
  263+ 81D6              .pit_read_byte:
- 264+ 81D6 3A 9F 87             ld      a,(x86_dev_pit_channel)
+ 264+ 81D6 3A A1 87             ld      a,(x86_dev_pit_channel)
  265+ 81D9 5F                   ld      e,a
  266+ 81DA 16 00                ld      d,0
- 267+ 81DC 21 9C 87             ld      hl,x86_dev_pit_latch_valid
+ 267+ 81DC 21 9E 87             ld      hl,x86_dev_pit_latch_valid
  268+ 81DF 19                   add     hl,de
  269+ 81E0 7E                   ld      a,(hl)
  270+ 81E1 B7                   or      a
  271+ 81E2 28 05                jr      z,.pit_read_reload
- 272+ 81E4 21 87 87             ld      hl,x86_dev_pit_latch
+ 272+ 81E4 21 89 87             ld      hl,x86_dev_pit_latch
  273+ 81E7 18 03                jr      .pit_read_base
  274+ 81E9              .pit_read_reload:
- 275+ 81E9 21 81 87             ld      hl,x86_dev_pit_reload
+ 275+ 81E9 21 83 87             ld      hl,x86_dev_pit_reload
  276+ 81EC              .pit_read_base:
- 277+ 81EC 3A 9F 87             ld      a,(x86_dev_pit_channel)
+ 277+ 81EC 3A A1 87             ld      a,(x86_dev_pit_channel)
  278+ 81EF 87                   add     a,a
  279+ 81F0 5F                   ld      e,a
- 280+ 81F1 3A A0 87             ld      a,(x86_dev_pit_byte_select)
+ 280+ 81F1 3A A2 87             ld      a,(x86_dev_pit_byte_select)
  281+ 81F4 83                   add     a,e
  282+ 81F5 5F                   ld      e,a
  283+ 81F6 16 00                ld      d,0
  284+ 81F8 19                   add     hl,de
  285+ 81F9 7E                   ld      a,(hl)
- 286+ 81FA 32 A1 87             ld      (x86_dev_pit_read_value),a
+ 286+ 81FA 32 A3 87             ld      (x86_dev_pit_read_value),a
  287+ 81FD                      ; LSB/MSB mode toggles after each byte; a complete pair releases latch.
- 288+ 81FD 3A 9F 87             ld      a,(x86_dev_pit_channel)
+ 288+ 81FD 3A A1 87             ld      a,(x86_dev_pit_channel)
  289+ 8200 5F                   ld      e,a
  290+ 8201 16 00                ld      d,0
- 291+ 8203 21 8D 87             ld      hl,x86_dev_pit_access
+ 291+ 8203 21 8F 87             ld      hl,x86_dev_pit_access
  292+ 8206 19                   add     hl,de
  293+ 8207 7E                   ld      a,(hl)
  294+ 8208 FE 03                cp      3
  295+ 820A 20 11                jr      nz,.pit_read_clear_latch
- 296+ 820C 3A 9F 87             ld      a,(x86_dev_pit_channel)
+ 296+ 820C 3A A1 87             ld      a,(x86_dev_pit_channel)
  297+ 820F 5F                   ld      e,a
  298+ 8210 16 00                ld      d,0
- 299+ 8212 21 96 87             ld      hl,x86_dev_pit_read_ff
+ 299+ 8212 21 98 87             ld      hl,x86_dev_pit_read_ff
  300+ 8215 19                   add     hl,de
  301+ 8216 7E                   ld      a,(hl)
  302+ 8217 EE 01                xor     1
@@ -11585,15 +11585,15 @@
  304+ 821A B7                   or      a
  305+ 821B 20 0C                jr      nz,.pit_read_done
  306+ 821D              .pit_read_clear_latch:
- 307+ 821D 3A 9F 87             ld      a,(x86_dev_pit_channel)
+ 307+ 821D 3A A1 87             ld      a,(x86_dev_pit_channel)
  308+ 8220 5F                   ld      e,a
  309+ 8221 16 00                ld      d,0
- 310+ 8223 21 9C 87             ld      hl,x86_dev_pit_latch_valid
+ 310+ 8223 21 9E 87             ld      hl,x86_dev_pit_latch_valid
  311+ 8226 19                   add     hl,de
  312+ 8227 AF                   xor     a
  313+ 8228 77                   ld      (hl),a
  314+ 8229              .pit_read_done:
- 315+ 8229 3A A1 87             ld      a,(x86_dev_pit_read_value)
+ 315+ 8229 3A A3 87             ld      a,(x86_dev_pit_read_value)
  316+ 822C B7                   or      a
  317+ 822D C9                   ret
  318+ 822E              .pit_read_open_bus:
@@ -11602,15 +11602,15 @@
  321+ 8231 C9                   ret
  322+ 8232
  323+ 8232              x86_dev_pit_write8:
- 324+ 8232 32 A2 87             ld      (x86_dev_pit_write_value),a
+ 324+ 8232 32 A4 87             ld      (x86_dev_pit_write_value),a
  325+ 8235 CD 85 81             call    x86_dev_pit_decode
  326+ 8238 D8                   ret     c
  327+ 8239 FE 03                cp      3
  328+ 823B 28 65                jr      z,.pit_write_control
- 329+ 823D 32 9F 87             ld      (x86_dev_pit_channel),a
+ 329+ 823D 32 A1 87             ld      (x86_dev_pit_channel),a
  330+ 8240 5F                   ld      e,a
  331+ 8241 16 00                ld      d,0
- 332+ 8243 21 8D 87             ld      hl,x86_dev_pit_access
+ 332+ 8243 21 8F 87             ld      hl,x86_dev_pit_access
  333+ 8246 19                   add     hl,de
  334+ 8247 7E                   ld      a,(hl)
  335+ 8248 FE 01                cp      1
@@ -11619,45 +11619,45 @@
  338+ 824E 28 1A                jr      z,.pit_write_msb
  339+ 8250 FE 03                cp      3
  340+ 8252 20 4C                jr      nz,.pit_write_done
- 341+ 8254 3A 9F 87             ld      a,(x86_dev_pit_channel)
+ 341+ 8254 3A A1 87             ld      a,(x86_dev_pit_channel)
  342+ 8257 5F                   ld      e,a
  343+ 8258 16 00                ld      d,0
- 344+ 825A 21 99 87             ld      hl,x86_dev_pit_write_ff
+ 344+ 825A 21 9B 87             ld      hl,x86_dev_pit_write_ff
  345+ 825D 19                   add     hl,de
  346+ 825E 7E                   ld      a,(hl)
- 347+ 825F 32 A0 87             ld      (x86_dev_pit_byte_select),a
+ 347+ 825F 32 A2 87             ld      (x86_dev_pit_byte_select),a
  348+ 8262 18 0B                jr      .pit_write_byte
  349+ 8264              .pit_write_lsb:
  350+ 8264 AF                   xor     a
- 351+ 8265 32 A0 87             ld      (x86_dev_pit_byte_select),a
+ 351+ 8265 32 A2 87             ld      (x86_dev_pit_byte_select),a
  352+ 8268 18 05                jr      .pit_write_byte
  353+ 826A              .pit_write_msb:
  354+ 826A 3E 01                ld      a,1
- 355+ 826C 32 A0 87             ld      (x86_dev_pit_byte_select),a
+ 355+ 826C 32 A2 87             ld      (x86_dev_pit_byte_select),a
  356+ 826F              .pit_write_byte:
- 357+ 826F 3A 9F 87             ld      a,(x86_dev_pit_channel)
+ 357+ 826F 3A A1 87             ld      a,(x86_dev_pit_channel)
  358+ 8272 87                   add     a,a
  359+ 8273 5F                   ld      e,a
- 360+ 8274 3A A0 87             ld      a,(x86_dev_pit_byte_select)
+ 360+ 8274 3A A2 87             ld      a,(x86_dev_pit_byte_select)
  361+ 8277 83                   add     a,e
  362+ 8278 5F                   ld      e,a
  363+ 8279 16 00                ld      d,0
- 364+ 827B 21 81 87             ld      hl,x86_dev_pit_reload
+ 364+ 827B 21 83 87             ld      hl,x86_dev_pit_reload
  365+ 827E 19                   add     hl,de
- 366+ 827F 3A A2 87             ld      a,(x86_dev_pit_write_value)
+ 366+ 827F 3A A4 87             ld      a,(x86_dev_pit_write_value)
  367+ 8282 77                   ld      (hl),a
- 368+ 8283 3A 9F 87             ld      a,(x86_dev_pit_channel)
+ 368+ 8283 3A A1 87             ld      a,(x86_dev_pit_channel)
  369+ 8286 5F                   ld      e,a
  370+ 8287 16 00                ld      d,0
- 371+ 8289 21 8D 87             ld      hl,x86_dev_pit_access
+ 371+ 8289 21 8F 87             ld      hl,x86_dev_pit_access
  372+ 828C 19                   add     hl,de
  373+ 828D 7E                   ld      a,(hl)
  374+ 828E FE 03                cp      3
  375+ 8290 20 0E                jr      nz,.pit_write_done
- 376+ 8292 3A 9F 87             ld      a,(x86_dev_pit_channel)
+ 376+ 8292 3A A1 87             ld      a,(x86_dev_pit_channel)
  377+ 8295 5F                   ld      e,a
  378+ 8296 16 00                ld      d,0
- 379+ 8298 21 99 87             ld      hl,x86_dev_pit_write_ff
+ 379+ 8298 21 9B 87             ld      hl,x86_dev_pit_write_ff
  380+ 829B 19                   add     hl,de
  381+ 829C 7E                   ld      a,(hl)
  382+ 829D EE 01                xor     1
@@ -11666,7 +11666,7 @@
  385+ 82A0 B7                   or      a
  386+ 82A1 C9                   ret
  387+ 82A2              .pit_write_control:
- 388+ 82A2 3A A2 87             ld      a,(x86_dev_pit_write_value)
+ 388+ 82A2 3A A4 87             ld      a,(x86_dev_pit_write_value)
  389+ 82A5 0F                   rrca
  390+ 82A6 0F                   rrca
  391+ 82A7 0F                   rrca
@@ -11676,9 +11676,9 @@
  395+ 82AB E6 03                and     3
  396+ 82AD FE 03                cp      3
  397+ 82AF 28 EF                jr      z,.pit_write_done
- 398+ 82B1 32 9F 87             ld      (x86_dev_pit_channel),a
+ 398+ 82B1 32 A1 87             ld      (x86_dev_pit_channel),a
  399+ 82B4                      ; Access mode 00 is a count latch command; it does not reprogram mode.
- 400+ 82B4 3A A2 87             ld      a,(x86_dev_pit_write_value)
+ 400+ 82B4 3A A4 87             ld      a,(x86_dev_pit_write_value)
  401+ 82B7 0F                   rrca
  402+ 82B8 0F                   rrca
  403+ 82B9 0F                   rrca
@@ -11686,12 +11686,12 @@
  405+ 82BB E6 03                and     3
  406+ 82BD 28 53                jr      z,.pit_latch_command
  407+ 82BF                      ; Store the selected channel's access mode.
- 408+ 82BF 3A 9F 87             ld      a,(x86_dev_pit_channel)
+ 408+ 82BF 3A A1 87             ld      a,(x86_dev_pit_channel)
  409+ 82C2 5F                   ld      e,a
  410+ 82C3 16 00                ld      d,0
- 411+ 82C5 21 8D 87             ld      hl,x86_dev_pit_access
+ 411+ 82C5 21 8F 87             ld      hl,x86_dev_pit_access
  412+ 82C8 19                   add     hl,de
- 413+ 82C9 3A A2 87             ld      a,(x86_dev_pit_write_value)
+ 413+ 82C9 3A A4 87             ld      a,(x86_dev_pit_write_value)
  414+ 82CC 0F                   rrca
  415+ 82CD 0F                   rrca
  416+ 82CE 0F                   rrca
@@ -11699,12 +11699,12 @@
  418+ 82D0 E6 03                and     3
  419+ 82D2 77                   ld      (hl),a
  420+ 82D3                      ; Normalize modes 6/7 to aliases 2/3 and store per channel.
- 421+ 82D3 3A 9F 87             ld      a,(x86_dev_pit_channel)
+ 421+ 82D3 3A A1 87             ld      a,(x86_dev_pit_channel)
  422+ 82D6 5F                   ld      e,a
  423+ 82D7 16 00                ld      d,0
- 424+ 82D9 21 90 87             ld      hl,x86_dev_pit_mode
+ 424+ 82D9 21 92 87             ld      hl,x86_dev_pit_mode
  425+ 82DC 19                   add     hl,de
- 426+ 82DD 3A A2 87             ld      a,(x86_dev_pit_write_value)
+ 426+ 82DD 3A A4 87             ld      a,(x86_dev_pit_write_value)
  427+ 82E0 0F                   rrca
  428+ 82E1 E6 07                and     7
  429+ 82E3 FE 06                cp      6
@@ -11712,48 +11712,48 @@
  431+ 82E7 D6 04                sub     4
  432+ 82E9              .pit_mode_store:
  433+ 82E9 77                   ld      (hl),a
- 434+ 82EA 3A 9F 87             ld      a,(x86_dev_pit_channel)
+ 434+ 82EA 3A A1 87             ld      a,(x86_dev_pit_channel)
  435+ 82ED 5F                   ld      e,a
  436+ 82EE 16 00                ld      d,0
- 437+ 82F0 21 93 87             ld      hl,x86_dev_pit_bcd
+ 437+ 82F0 21 95 87             ld      hl,x86_dev_pit_bcd
  438+ 82F3 19                   add     hl,de
- 439+ 82F4 3A A2 87             ld      a,(x86_dev_pit_write_value)
+ 439+ 82F4 3A A4 87             ld      a,(x86_dev_pit_write_value)
  440+ 82F7 E6 01                and     1
  441+ 82F9 77                   ld      (hl),a
- 442+ 82FA 3A 9F 87             ld      a,(x86_dev_pit_channel)
+ 442+ 82FA 3A A1 87             ld      a,(x86_dev_pit_channel)
  443+ 82FD 5F                   ld      e,a
  444+ 82FE 16 00                ld      d,0
- 445+ 8300 21 96 87             ld      hl,x86_dev_pit_read_ff
+ 445+ 8300 21 98 87             ld      hl,x86_dev_pit_read_ff
  446+ 8303 19                   add     hl,de
  447+ 8304 AF                   xor     a
  448+ 8305 77                   ld      (hl),a
- 449+ 8306 21 99 87             ld      hl,x86_dev_pit_write_ff
+ 449+ 8306 21 9B 87             ld      hl,x86_dev_pit_write_ff
  450+ 8309 19                   add     hl,de
  451+ 830A 77                   ld      (hl),a
- 452+ 830B 21 9C 87             ld      hl,x86_dev_pit_latch_valid
+ 452+ 830B 21 9E 87             ld      hl,x86_dev_pit_latch_valid
  453+ 830E 19                   add     hl,de
  454+ 830F 77                   ld      (hl),a
  455+ 8310 B7                   or      a
  456+ 8311 C9                   ret
  457+ 8312              .pit_latch_command:
  458+ 8312                      ; Copy the selected 16-bit reload value into its read latch.
- 459+ 8312 3A 9F 87             ld      a,(x86_dev_pit_channel)
+ 459+ 8312 3A A1 87             ld      a,(x86_dev_pit_channel)
  460+ 8315 87                   add     a,a
  461+ 8316 5F                   ld      e,a
  462+ 8317 16 00                ld      d,0
- 463+ 8319 21 81 87             ld      hl,x86_dev_pit_reload
+ 463+ 8319 21 83 87             ld      hl,x86_dev_pit_reload
  464+ 831C 19                   add     hl,de
  465+ 831D E5                   push    hl
- 466+ 831E 21 87 87             ld      hl,x86_dev_pit_latch
+ 466+ 831E 21 89 87             ld      hl,x86_dev_pit_latch
  467+ 8321 19                   add     hl,de
  468+ 8322 EB                   ex      de,hl
  469+ 8323 E1                   pop     hl
  470+ 8324 01 02 00             ld      bc,2
  471+ 8327 ED B0                ldir
- 472+ 8329 3A 9F 87             ld      a,(x86_dev_pit_channel)
+ 472+ 8329 3A A1 87             ld      a,(x86_dev_pit_channel)
  473+ 832C 5F                   ld      e,a
  474+ 832D 16 00                ld      d,0
- 475+ 832F 21 9C 87             ld      hl,x86_dev_pit_latch_valid
+ 475+ 832F 21 9E 87             ld      hl,x86_dev_pit_latch_valid
  476+ 8332 19                   add     hl,de
  477+ 8333 3E 01                ld      a,1
  478+ 8335 77                   ld      (hl),a
@@ -11762,74 +11762,74 @@
  481+ 8338
  482+ 8338              x86_dev_pit_reset_impl:
  483+ 8338 AF                   xor     a
- 484+ 8339 21 81 87             ld      hl,x86_dev_pit_reload
- 485+ 833C 11 82 87             ld      de,x86_dev_pit_reload+1
+ 484+ 8339 21 83 87             ld      hl,x86_dev_pit_reload
+ 485+ 833C 11 84 87             ld      de,x86_dev_pit_reload+1
  486+ 833F 01 05 00             ld      bc,5
  487+ 8342 77                   ld      (hl),a
  488+ 8343 ED B0                ldir
- 489+ 8345 21 87 87             ld      hl,x86_dev_pit_latch
- 490+ 8348 11 88 87             ld      de,x86_dev_pit_latch+1
+ 489+ 8345 21 89 87             ld      hl,x86_dev_pit_latch
+ 490+ 8348 11 8A 87             ld      de,x86_dev_pit_latch+1
  491+ 834B 01 05 00             ld      bc,5
  492+ 834E 77                   ld      (hl),a
  493+ 834F ED B0                ldir
- 494+ 8351 21 8D 87             ld      hl,x86_dev_pit_access
- 495+ 8354 11 8E 87             ld      de,x86_dev_pit_access+1
+ 494+ 8351 21 8F 87             ld      hl,x86_dev_pit_access
+ 495+ 8354 11 90 87             ld      de,x86_dev_pit_access+1
  496+ 8357 01 02 00             ld      bc,2
  497+ 835A 3E 03                ld      a,3
  498+ 835C 77                   ld      (hl),a
  499+ 835D ED B0                ldir
  500+ 835F AF                   xor     a
- 501+ 8360 21 90 87             ld      hl,x86_dev_pit_mode
- 502+ 8363 11 91 87             ld      de,x86_dev_pit_mode+1
+ 501+ 8360 21 92 87             ld      hl,x86_dev_pit_mode
+ 502+ 8363 11 93 87             ld      de,x86_dev_pit_mode+1
  503+ 8366 01 02 00             ld      bc,2
  504+ 8369 77                   ld      (hl),a
  505+ 836A ED B0                ldir
- 506+ 836C 21 93 87             ld      hl,x86_dev_pit_bcd
- 507+ 836F 11 94 87             ld      de,x86_dev_pit_bcd+1
+ 506+ 836C 21 95 87             ld      hl,x86_dev_pit_bcd
+ 507+ 836F 11 96 87             ld      de,x86_dev_pit_bcd+1
  508+ 8372 01 02 00             ld      bc,2
  509+ 8375 77                   ld      (hl),a
  510+ 8376 ED B0                ldir
- 511+ 8378 21 96 87             ld      hl,x86_dev_pit_read_ff
- 512+ 837B 11 97 87             ld      de,x86_dev_pit_read_ff+1
+ 511+ 8378 21 98 87             ld      hl,x86_dev_pit_read_ff
+ 512+ 837B 11 99 87             ld      de,x86_dev_pit_read_ff+1
  513+ 837E 01 02 00             ld      bc,2
  514+ 8381 77                   ld      (hl),a
  515+ 8382 ED B0                ldir
- 516+ 8384 21 99 87             ld      hl,x86_dev_pit_write_ff
- 517+ 8387 11 9A 87             ld      de,x86_dev_pit_write_ff+1
+ 516+ 8384 21 9B 87             ld      hl,x86_dev_pit_write_ff
+ 517+ 8387 11 9C 87             ld      de,x86_dev_pit_write_ff+1
  518+ 838A 01 02 00             ld      bc,2
  519+ 838D 77                   ld      (hl),a
  520+ 838E ED B0                ldir
- 521+ 8390 21 9C 87             ld      hl,x86_dev_pit_latch_valid
- 522+ 8393 11 9D 87             ld      de,x86_dev_pit_latch_valid+1
+ 521+ 8390 21 9E 87             ld      hl,x86_dev_pit_latch_valid
+ 522+ 8393 11 9F 87             ld      de,x86_dev_pit_latch_valid+1
  523+ 8396 01 02 00             ld      bc,2
  524+ 8399 77                   ld      (hl),a
  525+ 839A ED B0                ldir
- 526+ 839C 32 9F 87             ld      (x86_dev_pit_channel),a
- 527+ 839F 32 A0 87             ld      (x86_dev_pit_byte_select),a
- 528+ 83A2 32 A1 87             ld      (x86_dev_pit_read_value),a
- 529+ 83A5 32 A2 87             ld      (x86_dev_pit_write_value),a
+ 526+ 839C 32 A1 87             ld      (x86_dev_pit_channel),a
+ 527+ 839F 32 A2 87             ld      (x86_dev_pit_byte_select),a
+ 528+ 83A2 32 A3 87             ld      (x86_dev_pit_read_value),a
+ 529+ 83A5 32 A4 87             ld      (x86_dev_pit_write_value),a
  530+ 83A8 C9                   ret
  531+ 83A9
  532+ 83A9              ; Reset-time regression for channel 0 LSB/MSB, latch/readback and channel 1 LSB.
  533+ 83A9              x86_dev_pit_selftest_impl:
  534+ 83A9 CD 38 83             call    x86_dev_pit_reset_impl
  535+ 83AC 21 43 00             ld      hl,#0043
- 536+ 83AF 22 E6 88             ld      (x86_dev_port),hl
+ 536+ 83AF 22 E8 88             ld      (x86_dev_port),hl
  537+ 83B2 3E 36                ld      a,#36
  538+ 83B4 CD 32 82             call    x86_dev_pit_write8
  539+ 83B7 DA 44 84             jp      c,.pit_selftest_fail
  540+ 83BA 21 40 00             ld      hl,#0040
- 541+ 83BD 22 E6 88             ld      (x86_dev_port),hl
+ 541+ 83BD 22 E8 88             ld      (x86_dev_port),hl
  542+ 83C0 3E 34                ld      a,#34
  543+ 83C2 CD 32 82             call    x86_dev_pit_write8
  544+ 83C5 DA 44 84             jp      c,.pit_selftest_fail
  545+ 83C8 3E 12                ld      a,#12
  546+ 83CA CD 32 82             call    x86_dev_pit_write8
  547+ 83CD DA 44 84             jp      c,.pit_selftest_fail
- 548+ 83D0 3A 81 87             ld      a,(x86_dev_pit_reload)
+ 548+ 83D0 3A 83 87             ld      a,(x86_dev_pit_reload)
  549+ 83D3 FE 34                cp      #34
  550+ 83D5 C2 44 84             jp      nz,.pit_selftest_fail
- 551+ 83D8 3A 82 87             ld      a,(x86_dev_pit_reload+1)
+ 551+ 83D8 3A 84 87             ld      a,(x86_dev_pit_reload+1)
  552+ 83DB FE 12                cp      #12
  553+ 83DD C2 44 84             jp      nz,.pit_selftest_fail
  554+ 83E0 CD 9B 81             call    x86_dev_pit_read8
@@ -11840,12 +11840,12 @@
  559+ 83ED C2 44 84             jp      nz,.pit_selftest_fail
  560+ 83F0                      ; Latch command 00h snapshots the count without changing access mode.
  561+ 83F0 21 43 00             ld      hl,#0043
- 562+ 83F3 22 E6 88             ld      (x86_dev_port),hl
+ 562+ 83F3 22 E8 88             ld      (x86_dev_port),hl
  563+ 83F6 AF                   xor     a
  564+ 83F7 CD 32 82             call    x86_dev_pit_write8
  565+ 83FA DA 44 84             jp      c,.pit_selftest_fail
  566+ 83FD 21 40 00             ld      hl,#0040
- 567+ 8400 22 E6 88             ld      (x86_dev_port),hl
+ 567+ 8400 22 E8 88             ld      (x86_dev_port),hl
  568+ 8403 CD 9B 81             call    x86_dev_pit_read8
  569+ 8406 FE 34                cp      #34
  570+ 8408 C2 44 84             jp      nz,.pit_selftest_fail
@@ -11854,30 +11854,30 @@
  573+ 8410 C2 44 84             jp      nz,.pit_selftest_fail
  574+ 8413                      ; Channel 1 LSB-only mode.
  575+ 8413 21 43 00             ld      hl,#0043
- 576+ 8416 22 E6 88             ld      (x86_dev_port),hl
+ 576+ 8416 22 E8 88             ld      (x86_dev_port),hl
  577+ 8419 3E 50                ld      a,#50
  578+ 841B CD 32 82             call    x86_dev_pit_write8
  579+ 841E DA 44 84             jp      c,.pit_selftest_fail
  580+ 8421 21 41 00             ld      hl,#0041
- 581+ 8424 22 E6 88             ld      (x86_dev_port),hl
+ 581+ 8424 22 E8 88             ld      (x86_dev_port),hl
  582+ 8427 3E AB                ld      a,#AB
  583+ 8429 CD 32 82             call    x86_dev_pit_write8
  584+ 842C DA 44 84             jp      c,.pit_selftest_fail
- 585+ 842F 3A 83 87             ld      a,(x86_dev_pit_reload+2)
+ 585+ 842F 3A 85 87             ld      a,(x86_dev_pit_reload+2)
  586+ 8432 FE AB                cp      #AB
  587+ 8434 C2 44 84             jp      nz,.pit_selftest_fail
  588+ 8437 CD 9B 81             call    x86_dev_pit_read8
  589+ 843A FE AB                cp      #AB
  590+ 843C C2 44 84             jp      nz,.pit_selftest_fail
- 591+ 843F 21 A3 87             ld      hl,x86_dev_pit_selftest_pass
+ 591+ 843F 21 A5 87             ld      hl,x86_dev_pit_selftest_pass
  592+ 8442 18 03                jr      .pit_selftest_restore
  593+ 8444              .pit_selftest_fail:
- 594+ 8444 21 CA 87             ld      hl,x86_dev_pit_selftest_fail
+ 594+ 8444 21 CC 87             ld      hl,x86_dev_pit_selftest_fail
  595+ 8447              .pit_selftest_restore:
  596+ 8447 E5                   push    hl
  597+ 8448 CD 38 83             call    x86_dev_pit_reset_impl
  598+ 844B 21 00 00             ld      hl,0
- 599+ 844E 22 E6 88             ld      (x86_dev_port),hl
+ 599+ 844E 22 E8 88             ld      (x86_dev_port),hl
  600+ 8451 E1                   pop     hl
  601+ 8452 C3 64 3C             jp      p126_ngs_ipc_log
  602+ 8455
@@ -11887,7 +11887,7 @@
  606+ 8455              ; guest-visible address/count/mode/mask/request/status programming only.
  607+ 8455              ; -------------------------------------------------------------------------
  608+ 8455              x86_dev_dma_decode:
- 609+ 8455 2A E6 88             ld      hl,(x86_dev_port)
+ 609+ 8455 2A E8 88             ld      hl,(x86_dev_port)
  610+ 8458 7C                   ld      a,h
  611+ 8459 B7                   or      a
  612+ 845A 20 22                jr      nz,.dma_decode_bad
@@ -11899,15 +11899,15 @@
  618+ 8465 FE 84                cp      #84
  619+ 8467 30 15                jr      nc,.dma_decode_bad
  620+ 8469 D6 80                sub     #80
- 621+ 846B 32 53 87             ld      (x86_dev_dma_page_index),a
+ 621+ 846B 32 55 87             ld      (x86_dev_dma_page_index),a
  622+ 846E 3E 01                ld      a,1
- 623+ 8470 32 52 87             ld      (x86_dev_dma_page_select),a
+ 623+ 8470 32 54 87             ld      (x86_dev_dma_page_select),a
  624+ 8473 B7                   or      a
  625+ 8474 C9                   ret
  626+ 8475              .dma_decode_controller:
- 627+ 8475 32 54 87             ld      (x86_dev_dma_port_offset),a
+ 627+ 8475 32 56 87             ld      (x86_dev_dma_port_offset),a
  628+ 8478 AF                   xor     a
- 629+ 8479 32 52 87             ld      (x86_dev_dma_page_select),a
+ 629+ 8479 32 54 87             ld      (x86_dev_dma_page_select),a
  630+ 847C B7                   or      a
  631+ 847D C9                   ret
  632+ 847E              .dma_decode_bad:
@@ -11917,579 +11917,583 @@
  636+ 8480              x86_dev_dma_read8:
  637+ 8480 CD 55 84             call    x86_dev_dma_decode
  638+ 8483 D8                   ret     c
- 639+ 8484 3A 52 87             ld      a,(x86_dev_dma_page_select)
+ 639+ 8484 3A 54 87             ld      a,(x86_dev_dma_page_select)
  640+ 8487 B7                   or      a
- 641+ 8488 20 4B                jr      nz,.dma_read_page
- 642+ 848A 3A 54 87             ld      a,(x86_dev_dma_port_offset)
+ 641+ 8488 20 4D                jr      nz,.dma_read_page
+ 642+ 848A 3A 56 87             ld      a,(x86_dev_dma_port_offset)
  643+ 848D FE 08                cp      8
- 644+ 848F 28 28                jr      z,.dma_read_status
+ 644+ 848F 28 2A                jr      z,.dma_read_status
  645+ 8491 FE 08                cp      8
- 646+ 8493 30 3C                jr      nc,.dma_read_open_bus
+ 646+ 8493 30 3E                jr      nc,.dma_read_open_bus
  647+ 8495                      ; 00h..07h alternate address/count registers; one shared byte pointer.
- 648+ 8495 3A 54 87             ld      a,(x86_dev_dma_port_offset)
+ 648+ 8495 3A 56 87             ld      a,(x86_dev_dma_port_offset)
  649+ 8498 CB 3F                srl     a
  650+ 849A 87                   add     a,a
  651+ 849B 5F                   ld      e,a
- 652+ 849C 3A 51 87             ld      a,(x86_dev_dma_flipflop)
+ 652+ 849C 3A 53 87             ld      a,(x86_dev_dma_flipflop)
  653+ 849F 83                   add     a,e
  654+ 84A0 5F                   ld      e,a
  655+ 84A1 16 00                ld      d,0
- 656+ 84A3 3A 54 87             ld      a,(x86_dev_dma_port_offset)
+ 656+ 84A3 3A 56 87             ld      a,(x86_dev_dma_port_offset)
  657+ 84A6 CB 47                bit     0,a
  658+ 84A8 20 05                jr      nz,.dma_read_count
- 659+ 84AA 21 37 87             ld      hl,x86_dev_dma_address
+ 659+ 84AA 21 39 87             ld      hl,x86_dev_dma_address
  660+ 84AD 18 03                jr      .dma_read_channel
  661+ 84AF              .dma_read_count:
- 662+ 84AF 21 3F 87             ld      hl,x86_dev_dma_count
+ 662+ 84AF 21 41 87             ld      hl,x86_dev_dma_count
  663+ 84B2              .dma_read_channel:
  664+ 84B2 19                   add     hl,de
  665+ 84B3 7E                   ld      a,(hl)
- 666+ 84B4 CD E5 85             call    x86_dev_dma_toggle_flipflop
- 667+ 84B7 B7                   or      a
- 668+ 84B8 C9                   ret
- 669+ 84B9              .dma_read_status:
- 670+ 84B9                      ; Bits 0..3 are terminal-count flags; bits 4..7 are request flags.
- 671+ 84B9 3A 4C 87             ld      a,(x86_dev_dma_status)
- 672+ 84BC E6 0F                and     #0F
- 673+ 84BE 47                   ld      b,a
- 674+ 84BF 3A 4D 87             ld      a,(x86_dev_dma_request)
- 675+ 84C2 E6 0F                and     #0F
- 676+ 84C4 07                   rlca
- 677+ 84C5 07                   rlca
- 678+ 84C6 07                   rlca
- 679+ 84C7 07                   rlca
- 680+ 84C8 B0                   or      b
- 681+ 84C9 47                   ld      b,a
- 682+ 84CA AF                   xor     a
- 683+ 84CB 32 4C 87             ld      (x86_dev_dma_status),a
- 684+ 84CE 78                   ld      a,b
- 685+ 84CF B7                   or      a
- 686+ 84D0 C9                   ret
- 687+ 84D1              .dma_read_open_bus:
- 688+ 84D1 3E FF                ld      a,#FF
- 689+ 84D3 B7                   or      a
- 690+ 84D4 C9                   ret
- 691+ 84D5              .dma_read_page:
- 692+ 84D5 3A 53 87             ld      a,(x86_dev_dma_page_index)
- 693+ 84D8 5F                   ld      e,a
- 694+ 84D9 16 00                ld      d,0
- 695+ 84DB 21 47 87             ld      hl,x86_dev_dma_page
- 696+ 84DE 19                   add     hl,de
- 697+ 84DF 7E                   ld      a,(hl)
- 698+ 84E0 B7                   or      a
- 699+ 84E1 C9                   ret
- 700+ 84E2
- 701+ 84E2              x86_dev_dma_write8:
- 702+ 84E2 32 55 87             ld      (x86_dev_dma_write_value),a
- 703+ 84E5 CD 55 84             call    x86_dev_dma_decode
- 704+ 84E8 D8                   ret     c
- 705+ 84E9 3A 52 87             ld      a,(x86_dev_dma_page_select)
- 706+ 84EC B7                   or      a
- 707+ 84ED C2 D5 85             jp      nz,.dma_write_page
- 708+ 84F0 3A 54 87             ld      a,(x86_dev_dma_port_offset)
- 709+ 84F3 FE 08                cp      8
- 710+ 84F5 38 2D                jr      c,.dma_write_channel
- 711+ 84F7 FE 08                cp      8
- 712+ 84F9 CA 4B 85             jp      z,.dma_write_command
- 713+ 84FC FE 09                cp      9
- 714+ 84FE CA 53 85             jp      z,.dma_write_request
- 715+ 8501 FE 0A                cp      #0A
- 716+ 8503 CA 7D 85             jp      z,.dma_write_single_mask
- 717+ 8506 FE 0B                cp      #0B
- 718+ 8508 CA A7 85             jp      z,.dma_write_mode
- 719+ 850B FE 0C                cp      #0C
- 720+ 850D CA AF 85             jp      z,.dma_write_clear_flipflop
- 721+ 8510 FE 0D                cp      #0D
- 722+ 8512 CA B5 85             jp      z,.dma_write_master_clear
- 723+ 8515 FE 0E                cp      #0E
- 724+ 8517 CA CF 85             jp      z,.dma_write_clear_mask
- 725+ 851A                      ; 0Fh: write all four channel mask bits.
- 726+ 851A 3A 55 87             ld      a,(x86_dev_dma_write_value)
- 727+ 851D E6 0F                and     #0F
- 728+ 851F 32 4E 87             ld      (x86_dev_dma_mask),a
- 729+ 8522 B7                   or      a
- 730+ 8523 C9                   ret
- 731+ 8524              .dma_write_channel:
- 732+ 8524 3A 54 87             ld      a,(x86_dev_dma_port_offset)
- 733+ 8527 CB 3F                srl     a
- 734+ 8529 87                   add     a,a
- 735+ 852A 5F                   ld      e,a
- 736+ 852B 3A 51 87             ld      a,(x86_dev_dma_flipflop)
- 737+ 852E 83                   add     a,e
- 738+ 852F 5F                   ld      e,a
- 739+ 8530 16 00                ld      d,0
- 740+ 8532 3A 54 87             ld      a,(x86_dev_dma_port_offset)
- 741+ 8535 CB 47                bit     0,a
- 742+ 8537 20 05                jr      nz,.dma_write_count
- 743+ 8539 21 37 87             ld      hl,x86_dev_dma_address
- 744+ 853C 18 03                jr      .dma_write_channel_store
- 745+ 853E              .dma_write_count:
- 746+ 853E 21 3F 87             ld      hl,x86_dev_dma_count
- 747+ 8541              .dma_write_channel_store:
- 748+ 8541 19                   add     hl,de
- 749+ 8542 3A 55 87             ld      a,(x86_dev_dma_write_value)
- 750+ 8545 77                   ld      (hl),a
- 751+ 8546 CD E5 85             call    x86_dev_dma_toggle_flipflop
- 752+ 8549 B7                   or      a
- 753+ 854A C9                   ret
- 754+ 854B              .dma_write_command:
- 755+ 854B 3A 55 87             ld      a,(x86_dev_dma_write_value)
- 756+ 854E 32 4B 87             ld      (x86_dev_dma_command),a
- 757+ 8551 B7                   or      a
- 758+ 8552 C9                   ret
- 759+ 8553              .dma_write_request:
- 760+ 8553 3A 55 87             ld      a,(x86_dev_dma_write_value)
- 761+ 8556 E6 03                and     3
- 762+ 8558 5F                   ld      e,a
- 763+ 8559 16 00                ld      d,0
- 764+ 855B 21 56 87             ld      hl,x86_dev_dma_bit_masks
- 765+ 855E 19                   add     hl,de
- 766+ 855F 7E                   ld      a,(hl)
- 767+ 8560 47                   ld      b,a
- 768+ 8561 3A 55 87             ld      a,(x86_dev_dma_write_value)
- 769+ 8564 CB 57                bit     2,a
- 770+ 8566 28 09                jr      z,.dma_request_clear
- 771+ 8568 3A 4D 87             ld      a,(x86_dev_dma_request)
- 772+ 856B B0                   or      b
- 773+ 856C 32 4D 87             ld      (x86_dev_dma_request),a
- 774+ 856F B7                   or      a
- 775+ 8570 C9                   ret
- 776+ 8571              .dma_request_clear:
- 777+ 8571 78                   ld      a,b
- 778+ 8572 2F                   cpl
- 779+ 8573 47                   ld      b,a
- 780+ 8574 3A 4D 87             ld      a,(x86_dev_dma_request)
- 781+ 8577 A0                   and     b
- 782+ 8578 32 4D 87             ld      (x86_dev_dma_request),a
- 783+ 857B B7                   or      a
- 784+ 857C C9                   ret
- 785+ 857D              .dma_write_single_mask:
- 786+ 857D 3A 55 87             ld      a,(x86_dev_dma_write_value)
- 787+ 8580 E6 03                and     3
- 788+ 8582 5F                   ld      e,a
- 789+ 8583 16 00                ld      d,0
- 790+ 8585 21 56 87             ld      hl,x86_dev_dma_bit_masks
- 791+ 8588 19                   add     hl,de
- 792+ 8589 7E                   ld      a,(hl)
- 793+ 858A 47                   ld      b,a
- 794+ 858B 3A 55 87             ld      a,(x86_dev_dma_write_value)
- 795+ 858E CB 57                bit     2,a
- 796+ 8590 28 09                jr      z,.dma_unmask_channel
- 797+ 8592 3A 4E 87             ld      a,(x86_dev_dma_mask)
- 798+ 8595 B0                   or      b
- 799+ 8596 32 4E 87             ld      (x86_dev_dma_mask),a
- 800+ 8599 B7                   or      a
- 801+ 859A C9                   ret
- 802+ 859B              .dma_unmask_channel:
- 803+ 859B 78                   ld      a,b
- 804+ 859C 2F                   cpl
- 805+ 859D 47                   ld      b,a
- 806+ 859E 3A 4E 87             ld      a,(x86_dev_dma_mask)
- 807+ 85A1 A0                   and     b
- 808+ 85A2 32 4E 87             ld      (x86_dev_dma_mask),a
- 809+ 85A5 B7                   or      a
- 810+ 85A6 C9                   ret
- 811+ 85A7              .dma_write_mode:
- 812+ 85A7 3A 55 87             ld      a,(x86_dev_dma_write_value)
- 813+ 85AA 32 4F 87             ld      (x86_dev_dma_mode),a
- 814+ 85AD B7                   or      a
- 815+ 85AE C9                   ret
- 816+ 85AF              .dma_write_clear_flipflop:
- 817+ 85AF AF                   xor     a
- 818+ 85B0 32 51 87             ld      (x86_dev_dma_flipflop),a
- 819+ 85B3 B7                   or      a
- 820+ 85B4 C9                   ret
- 821+ 85B5              .dma_write_master_clear:
- 822+ 85B5 AF                   xor     a
- 823+ 85B6 32 4B 87             ld      (x86_dev_dma_command),a
- 824+ 85B9 32 4C 87             ld      (x86_dev_dma_status),a
- 825+ 85BC 32 4D 87             ld      (x86_dev_dma_request),a
- 826+ 85BF 32 4F 87             ld      (x86_dev_dma_mode),a
- 827+ 85C2 32 50 87             ld      (x86_dev_dma_temporary),a
- 828+ 85C5 32 51 87             ld      (x86_dev_dma_flipflop),a
- 829+ 85C8 3E 0F                ld      a,#0F
- 830+ 85CA 32 4E 87             ld      (x86_dev_dma_mask),a
- 831+ 85CD B7                   or      a
- 832+ 85CE C9                   ret
- 833+ 85CF              .dma_write_clear_mask:
- 834+ 85CF AF                   xor     a
- 835+ 85D0 32 4E 87             ld      (x86_dev_dma_mask),a
- 836+ 85D3 B7                   or      a
- 837+ 85D4 C9                   ret
- 838+ 85D5              .dma_write_page:
- 839+ 85D5 3A 53 87             ld      a,(x86_dev_dma_page_index)
- 840+ 85D8 5F                   ld      e,a
- 841+ 85D9 16 00                ld      d,0
- 842+ 85DB 21 47 87             ld      hl,x86_dev_dma_page
- 843+ 85DE 19                   add     hl,de
- 844+ 85DF 3A 55 87             ld      a,(x86_dev_dma_write_value)
- 845+ 85E2 77                   ld      (hl),a
- 846+ 85E3 B7                   or      a
- 847+ 85E4 C9                   ret
- 848+ 85E5
- 849+ 85E5              x86_dev_dma_toggle_flipflop:
- 850+ 85E5 3A 51 87             ld      a,(x86_dev_dma_flipflop)
- 851+ 85E8 EE 01                xor     1
- 852+ 85EA 32 51 87             ld      (x86_dev_dma_flipflop),a
- 853+ 85ED C9                   ret
- 854+ 85EE
- 855+ 85EE              ; CPU reset clears the entire guest-visible 8237 register file and page latches.
- 856+ 85EE              x86_dev_dma_reset_impl:
- 857+ 85EE AF                   xor     a
- 858+ 85EF 21 37 87             ld      hl,x86_dev_dma_address
- 859+ 85F2 11 38 87             ld      de,x86_dev_dma_address+1
- 860+ 85F5 01 07 00             ld      bc,7
- 861+ 85F8 77                   ld      (hl),a
- 862+ 85F9 ED B0                ldir
- 863+ 85FB 21 3F 87             ld      hl,x86_dev_dma_count
- 864+ 85FE 11 40 87             ld      de,x86_dev_dma_count+1
- 865+ 8601 01 07 00             ld      bc,7
- 866+ 8604 77                   ld      (hl),a
- 867+ 8605 ED B0                ldir
- 868+ 8607 21 47 87             ld      hl,x86_dev_dma_page
- 869+ 860A 11 48 87             ld      de,x86_dev_dma_page+1
- 870+ 860D 01 03 00             ld      bc,3
- 871+ 8610 77                   ld      (hl),a
- 872+ 8611 ED B0                ldir
- 873+ 8613 32 4B 87             ld      (x86_dev_dma_command),a
- 874+ 8616 32 4C 87             ld      (x86_dev_dma_status),a
- 875+ 8619 32 4D 87             ld      (x86_dev_dma_request),a
- 876+ 861C 32 4F 87             ld      (x86_dev_dma_mode),a
- 877+ 861F 32 50 87             ld      (x86_dev_dma_temporary),a
- 878+ 8622 32 51 87             ld      (x86_dev_dma_flipflop),a
- 879+ 8625 32 52 87             ld      (x86_dev_dma_page_select),a
- 880+ 8628 32 53 87             ld      (x86_dev_dma_page_index),a
- 881+ 862B 32 54 87             ld      (x86_dev_dma_port_offset),a
- 882+ 862E 3E 0F                ld      a,#0F
- 883+ 8630 32 4E 87             ld      (x86_dev_dma_mask),a
- 884+ 8633 C9                   ret
- 885+ 8634
- 886+ 8634              ; Register-file regression: address/count low-high flip-flop, page registers,
- 887+ 8634              ; single-channel mask commands and master-clear reset behavior.
- 888+ 8634              x86_dev_dma_selftest_impl:
- 889+ 8634                      ; Clear byte pointer, then program channel 0 address=1234h.
- 890+ 8634 21 0C 00             ld      hl,#000C
- 891+ 8637 22 E6 88             ld      (x86_dev_port),hl
- 892+ 863A AF                   xor     a
- 893+ 863B CD E2 84             call    x86_dev_dma_write8
- 894+ 863E DA 0D 87             jp      c,.dma_selftest_fail_address_write
- 895+ 8641 21 00 00             ld      hl,#0000
- 896+ 8644 22 E6 88             ld      (x86_dev_port),hl
- 897+ 8647 3E 34                ld      a,#34
- 898+ 8649 CD E2 84             call    x86_dev_dma_write8
- 899+ 864C DA 0D 87             jp      c,.dma_selftest_fail_address_write
- 900+ 864F 3E 12                ld      a,#12
- 901+ 8651 CD E2 84             call    x86_dev_dma_write8
- 902+ 8654 DA 0D 87             jp      c,.dma_selftest_fail_address_write
- 903+ 8657 3A 37 87             ld      a,(x86_dev_dma_address)
- 904+ 865A FE 34                cp      #34
- 905+ 865C C2 0D 87             jp      nz,.dma_selftest_fail_address_write
- 906+ 865F 3A 38 87             ld      a,(x86_dev_dma_address+1)
- 907+ 8662 FE 12                cp      #12
- 908+ 8664 C2 0D 87             jp      nz,.dma_selftest_fail_address_write
- 909+ 8667                      ; Read back the same low/high sequence.
- 910+ 8667 3A 51 87             ld      a,(x86_dev_dma_flipflop)
- 911+ 866A B7                   or      a
- 912+ 866B C2 12 87             jp      nz,.dma_selftest_fail_address_read
- 913+ 866E CD 80 84             call    x86_dev_dma_read8
- 914+ 8671 FE 34                cp      #34
- 915+ 8673 C2 12 87             jp      nz,.dma_selftest_fail_address_read
- 916+ 8676 CD 80 84             call    x86_dev_dma_read8
- 917+ 8679 FE 12                cp      #12
- 918+ 867B C2 12 87             jp      nz,.dma_selftest_fail_address_read
- 919+ 867E                      ; Channel 0 count=5678h.
- 920+ 867E 21 01 00             ld      hl,#0001
- 921+ 8681 22 E6 88             ld      (x86_dev_port),hl
- 922+ 8684 3E 78                ld      a,#78
- 923+ 8686 CD E2 84             call    x86_dev_dma_write8
- 924+ 8689 DA 17 87             jp      c,.dma_selftest_fail_count
- 925+ 868C 3E 56                ld      a,#56
- 926+ 868E CD E2 84             call    x86_dev_dma_write8
- 927+ 8691 DA 17 87             jp      c,.dma_selftest_fail_count
- 928+ 8694 3A 3F 87             ld      a,(x86_dev_dma_count)
- 929+ 8697 FE 78                cp      #78
- 930+ 8699 C2 17 87             jp      nz,.dma_selftest_fail_count
- 931+ 869C 3A 40 87             ld      a,(x86_dev_dma_count+1)
- 932+ 869F FE 56                cp      #56
- 933+ 86A1 C2 17 87             jp      nz,.dma_selftest_fail_count
- 934+ 86A4                      ; DMA page register for channel 1 is port 81h.
- 935+ 86A4 21 81 00             ld      hl,#0081
- 936+ 86A7 22 E6 88             ld      (x86_dev_port),hl
- 937+ 86AA 3E A5                ld      a,#A5
- 938+ 86AC CD E2 84             call    x86_dev_dma_write8
- 939+ 86AF DA 1C 87             jp      c,.dma_selftest_fail_page
- 940+ 86B2 CD 80 84             call    x86_dev_dma_read8
- 941+ 86B5 FE A5                cp      #A5
- 942+ 86B7 C2 1C 87             jp      nz,.dma_selftest_fail_page
- 943+ 86BA                      ; Clear all masks, mask channel 2, then unmask channel 2.
- 944+ 86BA 21 0E 00             ld      hl,#000E
- 945+ 86BD 22 E6 88             ld      (x86_dev_port),hl
- 946+ 86C0 AF                   xor     a
- 947+ 86C1 CD E2 84             call    x86_dev_dma_write8
- 948+ 86C4 DA 21 87             jp      c,.dma_selftest_fail_mask
- 949+ 86C7 21 0A 00             ld      hl,#000A
- 950+ 86CA 22 E6 88             ld      (x86_dev_port),hl
- 951+ 86CD 3E 06                ld      a,#06
- 952+ 86CF CD E2 84             call    x86_dev_dma_write8
- 953+ 86D2 DA 21 87             jp      c,.dma_selftest_fail_mask
- 954+ 86D5 3A 4E 87             ld      a,(x86_dev_dma_mask)
- 955+ 86D8 FE 04                cp      4
- 956+ 86DA C2 21 87             jp      nz,.dma_selftest_fail_mask
- 957+ 86DD 3E 02                ld      a,#02
- 958+ 86DF CD E2 84             call    x86_dev_dma_write8
- 959+ 86E2 DA 21 87             jp      c,.dma_selftest_fail_mask
- 960+ 86E5 3A 4E 87             ld      a,(x86_dev_dma_mask)
- 961+ 86E8 B7                   or      a
- 962+ 86E9 C2 21 87             jp      nz,.dma_selftest_fail_mask
- 963+ 86EC                      ; Master clear restores mask=0Fh and byte pointer=0.
- 964+ 86EC 21 0D 00             ld      hl,#000D
- 965+ 86EF 22 E6 88             ld      (x86_dev_port),hl
- 966+ 86F2 AF                   xor     a
- 967+ 86F3 CD E2 84             call    x86_dev_dma_write8
- 968+ 86F6 DA 26 87             jp      c,.dma_selftest_fail_master
- 969+ 86F9 3A 4E 87             ld      a,(x86_dev_dma_mask)
- 970+ 86FC FE 0F                cp      #0F
- 971+ 86FE C2 26 87             jp      nz,.dma_selftest_fail_master
- 972+ 8701 3A 51 87             ld      a,(x86_dev_dma_flipflop)
- 973+ 8704 B7                   or      a
- 974+ 8705 C2 26 87             jp      nz,.dma_selftest_fail_master
- 975+ 8708 21 5A 87             ld      hl,x86_dev_dma_selftest_pass
- 976+ 870B 18 1C                jr      .dma_selftest_restore
- 977+ 870D              .dma_selftest_fail_address_write:
- 978+ 870D 21 18 88             ld      hl,x86_dev_dma_fail_address_write
- 979+ 8710 18 17                jr      .dma_selftest_restore
- 980+ 8712              .dma_selftest_fail_address_read:
- 981+ 8712 21 3C 88             ld      hl,x86_dev_dma_fail_address_read
- 982+ 8715 18 12                jr      .dma_selftest_restore
- 983+ 8717              .dma_selftest_fail_count:
- 984+ 8717 21 68 88             ld      hl,x86_dev_dma_fail_count
- 985+ 871A 18 0D                jr      .dma_selftest_restore
- 986+ 871C              .dma_selftest_fail_page:
- 987+ 871C 21 84 88             ld      hl,x86_dev_dma_fail_page
- 988+ 871F 18 08                jr      .dma_selftest_restore
- 989+ 8721              .dma_selftest_fail_mask:
- 990+ 8721 21 A8 88             ld      hl,x86_dev_dma_fail_mask
- 991+ 8724 18 03                jr      .dma_selftest_restore
- 992+ 8726              .dma_selftest_fail_master:
- 993+ 8726 21 C3 88             ld      hl,x86_dev_dma_fail_master
- 994+ 8729              .dma_selftest_restore:
- 995+ 8729 E5                   push    hl
- 996+ 872A CD EE 85             call    x86_dev_dma_reset_impl
- 997+ 872D 21 00 00             ld      hl,0
- 998+ 8730 22 E6 88             ld      (x86_dev_port),hl
- 999+ 8733 E1                   pop     hl
-1000+ 8734 C3 64 3C             jp      p126_ngs_ipc_log
-1001+ 8737
-1002+ 8737              ; -------------------------------------------------------------------------
-1003+ 8737
-1004+ 8737 00 00 00...  x86_dev_dma_address: defs 8,0
-1005+ 873F 00 00 00...  x86_dev_dma_count: defs 8,0
-1006+ 8747 00 00 00 00  x86_dev_dma_page: defs 4,0
-1007+ 874B 00           x86_dev_dma_command: db 0
-1008+ 874C 00           x86_dev_dma_status: db 0
-1009+ 874D 00           x86_dev_dma_request: db 0
-1010+ 874E 0F           x86_dev_dma_mask: db #0F
-1011+ 874F 00           x86_dev_dma_mode: db 0
-1012+ 8750 00           x86_dev_dma_temporary: db 0
-1013+ 8751 00           x86_dev_dma_flipflop: db 0
-1014+ 8752 00           x86_dev_dma_page_select: db 0
-1015+ 8753 00           x86_dev_dma_page_index: db 0
-1016+ 8754 00           x86_dev_dma_port_offset: db 0
-1017+ 8755 00           x86_dev_dma_write_value: db 0
-1018+ 8756 01 02 04 08  x86_dev_dma_bit_masks: db #01,#02,#04,#08
-1019+ 875A 5B 4E 47 53  x86_dev_dma_selftest_pass: db "[NGS] X86 DMA REGISTER SELFTEST PASS",13,10,0
-1019+ 875E 5D 20 58 38
-1019+ 8762 36 20 44 4D
-1019+ 8766 41 20 52 45
-1019+ 876A 47 49 53 54
-1019+ 876E 45 52 20 53
-1019+ 8772 45 4C 46 54
-1019+ 8776 45 53 54 20
-1019+ 877A 50 41 53 53
-1019+ 877E 0D 0A 00
-1020+ 8781 00 00 00...  x86_dev_pit_reload: defs 6,0
-1021+ 8787 00 00 00...  x86_dev_pit_latch: defs 6,0
-1022+ 878D 03 03 03     x86_dev_pit_access: db 3,3,3
-1023+ 8790 00 00 00     x86_dev_pit_mode: db 0,0,0
-1024+ 8793 00 00 00     x86_dev_pit_bcd: db 0,0,0
-1025+ 8796 00 00 00     x86_dev_pit_read_ff: db 0,0,0
-1026+ 8799 00 00 00     x86_dev_pit_write_ff: db 0,0,0
-1027+ 879C 00 00 00     x86_dev_pit_latch_valid: db 0,0,0
-1028+ 879F 00           x86_dev_pit_channel: db 0
-1029+ 87A0 00           x86_dev_pit_byte_select: db 0
-1030+ 87A1 00           x86_dev_pit_read_value: db 0
-1031+ 87A2 00           x86_dev_pit_write_value: db 0
-1032+ 87A3 5B 4E 47 53  x86_dev_pit_selftest_pass: db "[NGS] X86 PIT REGISTER SELFTEST PASS",13,10,0
-1032+ 87A7 5D 20 58 38
-1032+ 87AB 36 20 50 49
-1032+ 87AF 54 20 52 45
-1032+ 87B3 47 49 53 54
-1032+ 87B7 45 52 20 53
-1032+ 87BB 45 4C 46 54
-1032+ 87BF 45 53 54 20
-1032+ 87C3 50 41 53 53
-1032+ 87C7 0D 0A 00
-1033+ 87CA 5B 4E 47 53  x86_dev_pit_selftest_fail: db "[NGS] X86 PIT REGISTER SELFTEST FAIL",13,10,0
-1033+ 87CE 5D 20 58 38
-1033+ 87D2 36 20 50 49
-1033+ 87D6 54 20 52 45
-1033+ 87DA 47 49 53 54
-1033+ 87DE 45 52 20 53
-1033+ 87E2 45 4C 46 54
-1033+ 87E6 45 53 54 20
-1033+ 87EA 46 41 49 4C
-1033+ 87EE 0D 0A 00
-1034+ 87F1 5B 4E 47 53  x86_dev_dma_selftest_fail: db "[NGS] X86 DMA REGISTER SELFTEST FAIL",13,10,0
-1034+ 87F5 5D 20 58 38
-1034+ 87F9 36 20 44 4D
-1034+ 87FD 41 20 52 45
-1034+ 8801 47 49 53 54
-1034+ 8805 45 52 20 53
-1034+ 8809 45 4C 46 54
-1034+ 880D 45 53 54 20
-1034+ 8811 46 41 49 4C
-1034+ 8815 0D 0A 00
-1035+ 8818 5B 4E 47 53  x86_dev_dma_fail_address_write: db "[NGS] X86 DMA FAIL: ADDRESS WRITE",13,10,0
-1035+ 881C 5D 20 58 38
-1035+ 8820 36 20 44 4D
-1035+ 8824 41 20 46 41
-1035+ 8828 49 4C 3A 20
-1035+ 882C 41 44 44 52
-1035+ 8830 45 53 53 20
-1035+ 8834 57 52 49 54
-1035+ 8838 45 0D 0A 00
-1036+ 883C 5B 4E 47 53  x86_dev_dma_fail_address_read: db "[NGS] X86 DMA FAIL: ADDRESS READ/FLIPFLOP",13,10,0
-1036+ 8840 5D 20 58 38
-1036+ 8844 36 20 44 4D
-1036+ 8848 41 20 46 41
-1036+ 884C 49 4C 3A 20
-1036+ 8850 41 44 44 52
-1036+ 8854 45 53 53 20
-1036+ 8858 52 45 41 44
-1036+ 885C 2F 46 4C 49
-1036+ 8860 50 46 4C 4F
-1036+ 8864 50 0D 0A 00
-1037+ 8868 5B 4E 47 53  x86_dev_dma_fail_count: db "[NGS] X86 DMA FAIL: COUNT",13,10,0
-1037+ 886C 5D 20 58 38
-1037+ 8870 36 20 44 4D
-1037+ 8874 41 20 46 41
-1037+ 8878 49 4C 3A 20
-1037+ 887C 43 4F 55 4E
-1037+ 8880 54 0D 0A 00
-1038+ 8884 5B 4E 47 53  x86_dev_dma_fail_page: db "[NGS] X86 DMA FAIL: PAGE REGISTER",13,10,0
-1038+ 8888 5D 20 58 38
-1038+ 888C 36 20 44 4D
-1038+ 8890 41 20 46 41
-1038+ 8894 49 4C 3A 20
-1038+ 8898 50 41 47 45
-1038+ 889C 20 52 45 47
-1038+ 88A0 49 53 54 45
-1038+ 88A4 52 0D 0A 00
-1039+ 88A8 5B 4E 47 53  x86_dev_dma_fail_mask: db "[NGS] X86 DMA FAIL: MASK",13,10,0
-1039+ 88AC 5D 20 58 38
-1039+ 88B0 36 20 44 4D
-1039+ 88B4 41 20 46 41
-1039+ 88B8 49 4C 3A 20
-1039+ 88BC 4D 41 53 4B
-1039+ 88C0 0D 0A 00
-1040+ 88C3 5B 4E 47 53  x86_dev_dma_fail_master: db "[NGS] X86 DMA FAIL: MASTER CLEAR",13,10,0
-1040+ 88C7 5D 20 58 38
-1040+ 88CB 36 20 44 4D
-1040+ 88CF 41 20 46 41
-1040+ 88D3 49 4C 3A 20
-1040+ 88D7 4D 41 53 54
-1040+ 88DB 45 52 20 43
-1040+ 88DF 4C 45 41 52
-1040+ 88E3 0D 0A 00
-1041+ 88E6
-1042+ 88E6
-1043+ 88E6 00 00        x86_dev_port: dw 0
-1044+ 88E8 00           x86_dev_write_value: db 0
-1045+ 88E9 00           x86_dev_board_write_value: db 0
-1046+ 88EA 00           x86_dev_board_nmi: db 0
-1047+ 88EB 00           x86_dev_board_expansion: db 0
-1048+ 88EC 00           x86_dev_board_bus: db 0
-1049+ 88ED 00           x86_dev_board_mda: db 0
-1050+ 88EE 00           x86_dev_board_cga: db 0
-1051+ 88EF 5B 4E 47 53  x86_dev_board_selftest_pass: db "[NGS] X86 BOARD LATCH SELFTEST PASS",13,10,0
-1051+ 88F3 5D 20 58 38
-1051+ 88F7 36 20 42 4F
-1051+ 88FB 41 52 44 20
-1051+ 88FF 4C 41 54 43
-1051+ 8903 48 20 53 45
-1051+ 8907 4C 46 54 45
-1051+ 890B 53 54 20 50
-1051+ 890F 41 53 53 0D
-1051+ 8913 0A 00
-1052+ 8915 5B 4E 47 53  x86_dev_board_selftest_fail: db "[NGS] X86 BOARD LATCH SELFTEST FAIL",13,10,0
-1052+ 8919 5D 20 58 38
-1052+ 891D 36 20 42 4F
-1052+ 8921 41 52 44 20
-1052+ 8925 4C 41 54 43
-1052+ 8929 48 20 53 45
-1052+ 892D 4C 46 54 45
-1052+ 8931 53 54 20 46
-1052+ 8935 41 49 4C 0D
-1052+ 8939 0A 00
-1053+ 893B
+ 666+ 84B4                      ; The flip-flop helper uses A as scratch. Preserve the byte read
+ 667+ 84B4                      ; from the guest register so IN returns the actual low/high byte.
+ 668+ 84B4 F5                   push    af
+ 669+ 84B5 CD E7 85             call    x86_dev_dma_toggle_flipflop
+ 670+ 84B8 F1                   pop     af
+ 671+ 84B9 B7                   or      a
+ 672+ 84BA C9                   ret
+ 673+ 84BB              .dma_read_status:
+ 674+ 84BB                      ; Bits 0..3 are terminal-count flags; bits 4..7 are request flags.
+ 675+ 84BB 3A 4E 87             ld      a,(x86_dev_dma_status)
+ 676+ 84BE E6 0F                and     #0F
+ 677+ 84C0 47                   ld      b,a
+ 678+ 84C1 3A 4F 87             ld      a,(x86_dev_dma_request)
+ 679+ 84C4 E6 0F                and     #0F
+ 680+ 84C6 07                   rlca
+ 681+ 84C7 07                   rlca
+ 682+ 84C8 07                   rlca
+ 683+ 84C9 07                   rlca
+ 684+ 84CA B0                   or      b
+ 685+ 84CB 47                   ld      b,a
+ 686+ 84CC AF                   xor     a
+ 687+ 84CD 32 4E 87             ld      (x86_dev_dma_status),a
+ 688+ 84D0 78                   ld      a,b
+ 689+ 84D1 B7                   or      a
+ 690+ 84D2 C9                   ret
+ 691+ 84D3              .dma_read_open_bus:
+ 692+ 84D3 3E FF                ld      a,#FF
+ 693+ 84D5 B7                   or      a
+ 694+ 84D6 C9                   ret
+ 695+ 84D7              .dma_read_page:
+ 696+ 84D7 3A 55 87             ld      a,(x86_dev_dma_page_index)
+ 697+ 84DA 5F                   ld      e,a
+ 698+ 84DB 16 00                ld      d,0
+ 699+ 84DD 21 49 87             ld      hl,x86_dev_dma_page
+ 700+ 84E0 19                   add     hl,de
+ 701+ 84E1 7E                   ld      a,(hl)
+ 702+ 84E2 B7                   or      a
+ 703+ 84E3 C9                   ret
+ 704+ 84E4
+ 705+ 84E4              x86_dev_dma_write8:
+ 706+ 84E4 32 57 87             ld      (x86_dev_dma_write_value),a
+ 707+ 84E7 CD 55 84             call    x86_dev_dma_decode
+ 708+ 84EA D8                   ret     c
+ 709+ 84EB 3A 54 87             ld      a,(x86_dev_dma_page_select)
+ 710+ 84EE B7                   or      a
+ 711+ 84EF C2 D7 85             jp      nz,.dma_write_page
+ 712+ 84F2 3A 56 87             ld      a,(x86_dev_dma_port_offset)
+ 713+ 84F5 FE 08                cp      8
+ 714+ 84F7 38 2D                jr      c,.dma_write_channel
+ 715+ 84F9 FE 08                cp      8
+ 716+ 84FB CA 4D 85             jp      z,.dma_write_command
+ 717+ 84FE FE 09                cp      9
+ 718+ 8500 CA 55 85             jp      z,.dma_write_request
+ 719+ 8503 FE 0A                cp      #0A
+ 720+ 8505 CA 7F 85             jp      z,.dma_write_single_mask
+ 721+ 8508 FE 0B                cp      #0B
+ 722+ 850A CA A9 85             jp      z,.dma_write_mode
+ 723+ 850D FE 0C                cp      #0C
+ 724+ 850F CA B1 85             jp      z,.dma_write_clear_flipflop
+ 725+ 8512 FE 0D                cp      #0D
+ 726+ 8514 CA B7 85             jp      z,.dma_write_master_clear
+ 727+ 8517 FE 0E                cp      #0E
+ 728+ 8519 CA D1 85             jp      z,.dma_write_clear_mask
+ 729+ 851C                      ; 0Fh: write all four channel mask bits.
+ 730+ 851C 3A 57 87             ld      a,(x86_dev_dma_write_value)
+ 731+ 851F E6 0F                and     #0F
+ 732+ 8521 32 50 87             ld      (x86_dev_dma_mask),a
+ 733+ 8524 B7                   or      a
+ 734+ 8525 C9                   ret
+ 735+ 8526              .dma_write_channel:
+ 736+ 8526 3A 56 87             ld      a,(x86_dev_dma_port_offset)
+ 737+ 8529 CB 3F                srl     a
+ 738+ 852B 87                   add     a,a
+ 739+ 852C 5F                   ld      e,a
+ 740+ 852D 3A 53 87             ld      a,(x86_dev_dma_flipflop)
+ 741+ 8530 83                   add     a,e
+ 742+ 8531 5F                   ld      e,a
+ 743+ 8532 16 00                ld      d,0
+ 744+ 8534 3A 56 87             ld      a,(x86_dev_dma_port_offset)
+ 745+ 8537 CB 47                bit     0,a
+ 746+ 8539 20 05                jr      nz,.dma_write_count
+ 747+ 853B 21 39 87             ld      hl,x86_dev_dma_address
+ 748+ 853E 18 03                jr      .dma_write_channel_store
+ 749+ 8540              .dma_write_count:
+ 750+ 8540 21 41 87             ld      hl,x86_dev_dma_count
+ 751+ 8543              .dma_write_channel_store:
+ 752+ 8543 19                   add     hl,de
+ 753+ 8544 3A 57 87             ld      a,(x86_dev_dma_write_value)
+ 754+ 8547 77                   ld      (hl),a
+ 755+ 8548 CD E7 85             call    x86_dev_dma_toggle_flipflop
+ 756+ 854B B7                   or      a
+ 757+ 854C C9                   ret
+ 758+ 854D              .dma_write_command:
+ 759+ 854D 3A 57 87             ld      a,(x86_dev_dma_write_value)
+ 760+ 8550 32 4D 87             ld      (x86_dev_dma_command),a
+ 761+ 8553 B7                   or      a
+ 762+ 8554 C9                   ret
+ 763+ 8555              .dma_write_request:
+ 764+ 8555 3A 57 87             ld      a,(x86_dev_dma_write_value)
+ 765+ 8558 E6 03                and     3
+ 766+ 855A 5F                   ld      e,a
+ 767+ 855B 16 00                ld      d,0
+ 768+ 855D 21 58 87             ld      hl,x86_dev_dma_bit_masks
+ 769+ 8560 19                   add     hl,de
+ 770+ 8561 7E                   ld      a,(hl)
+ 771+ 8562 47                   ld      b,a
+ 772+ 8563 3A 57 87             ld      a,(x86_dev_dma_write_value)
+ 773+ 8566 CB 57                bit     2,a
+ 774+ 8568 28 09                jr      z,.dma_request_clear
+ 775+ 856A 3A 4F 87             ld      a,(x86_dev_dma_request)
+ 776+ 856D B0                   or      b
+ 777+ 856E 32 4F 87             ld      (x86_dev_dma_request),a
+ 778+ 8571 B7                   or      a
+ 779+ 8572 C9                   ret
+ 780+ 8573              .dma_request_clear:
+ 781+ 8573 78                   ld      a,b
+ 782+ 8574 2F                   cpl
+ 783+ 8575 47                   ld      b,a
+ 784+ 8576 3A 4F 87             ld      a,(x86_dev_dma_request)
+ 785+ 8579 A0                   and     b
+ 786+ 857A 32 4F 87             ld      (x86_dev_dma_request),a
+ 787+ 857D B7                   or      a
+ 788+ 857E C9                   ret
+ 789+ 857F              .dma_write_single_mask:
+ 790+ 857F 3A 57 87             ld      a,(x86_dev_dma_write_value)
+ 791+ 8582 E6 03                and     3
+ 792+ 8584 5F                   ld      e,a
+ 793+ 8585 16 00                ld      d,0
+ 794+ 8587 21 58 87             ld      hl,x86_dev_dma_bit_masks
+ 795+ 858A 19                   add     hl,de
+ 796+ 858B 7E                   ld      a,(hl)
+ 797+ 858C 47                   ld      b,a
+ 798+ 858D 3A 57 87             ld      a,(x86_dev_dma_write_value)
+ 799+ 8590 CB 57                bit     2,a
+ 800+ 8592 28 09                jr      z,.dma_unmask_channel
+ 801+ 8594 3A 50 87             ld      a,(x86_dev_dma_mask)
+ 802+ 8597 B0                   or      b
+ 803+ 8598 32 50 87             ld      (x86_dev_dma_mask),a
+ 804+ 859B B7                   or      a
+ 805+ 859C C9                   ret
+ 806+ 859D              .dma_unmask_channel:
+ 807+ 859D 78                   ld      a,b
+ 808+ 859E 2F                   cpl
+ 809+ 859F 47                   ld      b,a
+ 810+ 85A0 3A 50 87             ld      a,(x86_dev_dma_mask)
+ 811+ 85A3 A0                   and     b
+ 812+ 85A4 32 50 87             ld      (x86_dev_dma_mask),a
+ 813+ 85A7 B7                   or      a
+ 814+ 85A8 C9                   ret
+ 815+ 85A9              .dma_write_mode:
+ 816+ 85A9 3A 57 87             ld      a,(x86_dev_dma_write_value)
+ 817+ 85AC 32 51 87             ld      (x86_dev_dma_mode),a
+ 818+ 85AF B7                   or      a
+ 819+ 85B0 C9                   ret
+ 820+ 85B1              .dma_write_clear_flipflop:
+ 821+ 85B1 AF                   xor     a
+ 822+ 85B2 32 53 87             ld      (x86_dev_dma_flipflop),a
+ 823+ 85B5 B7                   or      a
+ 824+ 85B6 C9                   ret
+ 825+ 85B7              .dma_write_master_clear:
+ 826+ 85B7 AF                   xor     a
+ 827+ 85B8 32 4D 87             ld      (x86_dev_dma_command),a
+ 828+ 85BB 32 4E 87             ld      (x86_dev_dma_status),a
+ 829+ 85BE 32 4F 87             ld      (x86_dev_dma_request),a
+ 830+ 85C1 32 51 87             ld      (x86_dev_dma_mode),a
+ 831+ 85C4 32 52 87             ld      (x86_dev_dma_temporary),a
+ 832+ 85C7 32 53 87             ld      (x86_dev_dma_flipflop),a
+ 833+ 85CA 3E 0F                ld      a,#0F
+ 834+ 85CC 32 50 87             ld      (x86_dev_dma_mask),a
+ 835+ 85CF B7                   or      a
+ 836+ 85D0 C9                   ret
+ 837+ 85D1              .dma_write_clear_mask:
+ 838+ 85D1 AF                   xor     a
+ 839+ 85D2 32 50 87             ld      (x86_dev_dma_mask),a
+ 840+ 85D5 B7                   or      a
+ 841+ 85D6 C9                   ret
+ 842+ 85D7              .dma_write_page:
+ 843+ 85D7 3A 55 87             ld      a,(x86_dev_dma_page_index)
+ 844+ 85DA 5F                   ld      e,a
+ 845+ 85DB 16 00                ld      d,0
+ 846+ 85DD 21 49 87             ld      hl,x86_dev_dma_page
+ 847+ 85E0 19                   add     hl,de
+ 848+ 85E1 3A 57 87             ld      a,(x86_dev_dma_write_value)
+ 849+ 85E4 77                   ld      (hl),a
+ 850+ 85E5 B7                   or      a
+ 851+ 85E6 C9                   ret
+ 852+ 85E7
+ 853+ 85E7              x86_dev_dma_toggle_flipflop:
+ 854+ 85E7 3A 53 87             ld      a,(x86_dev_dma_flipflop)
+ 855+ 85EA EE 01                xor     1
+ 856+ 85EC 32 53 87             ld      (x86_dev_dma_flipflop),a
+ 857+ 85EF C9                   ret
+ 858+ 85F0
+ 859+ 85F0              ; CPU reset clears the entire guest-visible 8237 register file and page latches.
+ 860+ 85F0              x86_dev_dma_reset_impl:
+ 861+ 85F0 AF                   xor     a
+ 862+ 85F1 21 39 87             ld      hl,x86_dev_dma_address
+ 863+ 85F4 11 3A 87             ld      de,x86_dev_dma_address+1
+ 864+ 85F7 01 07 00             ld      bc,7
+ 865+ 85FA 77                   ld      (hl),a
+ 866+ 85FB ED B0                ldir
+ 867+ 85FD 21 41 87             ld      hl,x86_dev_dma_count
+ 868+ 8600 11 42 87             ld      de,x86_dev_dma_count+1
+ 869+ 8603 01 07 00             ld      bc,7
+ 870+ 8606 77                   ld      (hl),a
+ 871+ 8607 ED B0                ldir
+ 872+ 8609 21 49 87             ld      hl,x86_dev_dma_page
+ 873+ 860C 11 4A 87             ld      de,x86_dev_dma_page+1
+ 874+ 860F 01 03 00             ld      bc,3
+ 875+ 8612 77                   ld      (hl),a
+ 876+ 8613 ED B0                ldir
+ 877+ 8615 32 4D 87             ld      (x86_dev_dma_command),a
+ 878+ 8618 32 4E 87             ld      (x86_dev_dma_status),a
+ 879+ 861B 32 4F 87             ld      (x86_dev_dma_request),a
+ 880+ 861E 32 51 87             ld      (x86_dev_dma_mode),a
+ 881+ 8621 32 52 87             ld      (x86_dev_dma_temporary),a
+ 882+ 8624 32 53 87             ld      (x86_dev_dma_flipflop),a
+ 883+ 8627 32 54 87             ld      (x86_dev_dma_page_select),a
+ 884+ 862A 32 55 87             ld      (x86_dev_dma_page_index),a
+ 885+ 862D 32 56 87             ld      (x86_dev_dma_port_offset),a
+ 886+ 8630 3E 0F                ld      a,#0F
+ 887+ 8632 32 50 87             ld      (x86_dev_dma_mask),a
+ 888+ 8635 C9                   ret
+ 889+ 8636
+ 890+ 8636              ; Register-file regression: address/count low-high flip-flop, page registers,
+ 891+ 8636              ; single-channel mask commands and master-clear reset behavior.
+ 892+ 8636              x86_dev_dma_selftest_impl:
+ 893+ 8636                      ; Clear byte pointer, then program channel 0 address=1234h.
+ 894+ 8636 21 0C 00             ld      hl,#000C
+ 895+ 8639 22 E8 88             ld      (x86_dev_port),hl
+ 896+ 863C AF                   xor     a
+ 897+ 863D CD E4 84             call    x86_dev_dma_write8
+ 898+ 8640 DA 0F 87             jp      c,.dma_selftest_fail_address_write
+ 899+ 8643 21 00 00             ld      hl,#0000
+ 900+ 8646 22 E8 88             ld      (x86_dev_port),hl
+ 901+ 8649 3E 34                ld      a,#34
+ 902+ 864B CD E4 84             call    x86_dev_dma_write8
+ 903+ 864E DA 0F 87             jp      c,.dma_selftest_fail_address_write
+ 904+ 8651 3E 12                ld      a,#12
+ 905+ 8653 CD E4 84             call    x86_dev_dma_write8
+ 906+ 8656 DA 0F 87             jp      c,.dma_selftest_fail_address_write
+ 907+ 8659 3A 39 87             ld      a,(x86_dev_dma_address)
+ 908+ 865C FE 34                cp      #34
+ 909+ 865E C2 0F 87             jp      nz,.dma_selftest_fail_address_write
+ 910+ 8661 3A 3A 87             ld      a,(x86_dev_dma_address+1)
+ 911+ 8664 FE 12                cp      #12
+ 912+ 8666 C2 0F 87             jp      nz,.dma_selftest_fail_address_write
+ 913+ 8669                      ; Read back the same low/high sequence.
+ 914+ 8669 3A 53 87             ld      a,(x86_dev_dma_flipflop)
+ 915+ 866C B7                   or      a
+ 916+ 866D C2 14 87             jp      nz,.dma_selftest_fail_address_read
+ 917+ 8670 CD 80 84             call    x86_dev_dma_read8
+ 918+ 8673 FE 34                cp      #34
+ 919+ 8675 C2 14 87             jp      nz,.dma_selftest_fail_address_read
+ 920+ 8678 CD 80 84             call    x86_dev_dma_read8
+ 921+ 867B FE 12                cp      #12
+ 922+ 867D C2 14 87             jp      nz,.dma_selftest_fail_address_read
+ 923+ 8680                      ; Channel 0 count=5678h.
+ 924+ 8680 21 01 00             ld      hl,#0001
+ 925+ 8683 22 E8 88             ld      (x86_dev_port),hl
+ 926+ 8686 3E 78                ld      a,#78
+ 927+ 8688 CD E4 84             call    x86_dev_dma_write8
+ 928+ 868B DA 19 87             jp      c,.dma_selftest_fail_count
+ 929+ 868E 3E 56                ld      a,#56
+ 930+ 8690 CD E4 84             call    x86_dev_dma_write8
+ 931+ 8693 DA 19 87             jp      c,.dma_selftest_fail_count
+ 932+ 8696 3A 41 87             ld      a,(x86_dev_dma_count)
+ 933+ 8699 FE 78                cp      #78
+ 934+ 869B C2 19 87             jp      nz,.dma_selftest_fail_count
+ 935+ 869E 3A 42 87             ld      a,(x86_dev_dma_count+1)
+ 936+ 86A1 FE 56                cp      #56
+ 937+ 86A3 C2 19 87             jp      nz,.dma_selftest_fail_count
+ 938+ 86A6                      ; DMA page register for channel 1 is port 81h.
+ 939+ 86A6 21 81 00             ld      hl,#0081
+ 940+ 86A9 22 E8 88             ld      (x86_dev_port),hl
+ 941+ 86AC 3E A5                ld      a,#A5
+ 942+ 86AE CD E4 84             call    x86_dev_dma_write8
+ 943+ 86B1 DA 1E 87             jp      c,.dma_selftest_fail_page
+ 944+ 86B4 CD 80 84             call    x86_dev_dma_read8
+ 945+ 86B7 FE A5                cp      #A5
+ 946+ 86B9 C2 1E 87             jp      nz,.dma_selftest_fail_page
+ 947+ 86BC                      ; Clear all masks, mask channel 2, then unmask channel 2.
+ 948+ 86BC 21 0E 00             ld      hl,#000E
+ 949+ 86BF 22 E8 88             ld      (x86_dev_port),hl
+ 950+ 86C2 AF                   xor     a
+ 951+ 86C3 CD E4 84             call    x86_dev_dma_write8
+ 952+ 86C6 DA 23 87             jp      c,.dma_selftest_fail_mask
+ 953+ 86C9 21 0A 00             ld      hl,#000A
+ 954+ 86CC 22 E8 88             ld      (x86_dev_port),hl
+ 955+ 86CF 3E 06                ld      a,#06
+ 956+ 86D1 CD E4 84             call    x86_dev_dma_write8
+ 957+ 86D4 DA 23 87             jp      c,.dma_selftest_fail_mask
+ 958+ 86D7 3A 50 87             ld      a,(x86_dev_dma_mask)
+ 959+ 86DA FE 04                cp      4
+ 960+ 86DC C2 23 87             jp      nz,.dma_selftest_fail_mask
+ 961+ 86DF 3E 02                ld      a,#02
+ 962+ 86E1 CD E4 84             call    x86_dev_dma_write8
+ 963+ 86E4 DA 23 87             jp      c,.dma_selftest_fail_mask
+ 964+ 86E7 3A 50 87             ld      a,(x86_dev_dma_mask)
+ 965+ 86EA B7                   or      a
+ 966+ 86EB C2 23 87             jp      nz,.dma_selftest_fail_mask
+ 967+ 86EE                      ; Master clear restores mask=0Fh and byte pointer=0.
+ 968+ 86EE 21 0D 00             ld      hl,#000D
+ 969+ 86F1 22 E8 88             ld      (x86_dev_port),hl
+ 970+ 86F4 AF                   xor     a
+ 971+ 86F5 CD E4 84             call    x86_dev_dma_write8
+ 972+ 86F8 DA 28 87             jp      c,.dma_selftest_fail_master
+ 973+ 86FB 3A 50 87             ld      a,(x86_dev_dma_mask)
+ 974+ 86FE FE 0F                cp      #0F
+ 975+ 8700 C2 28 87             jp      nz,.dma_selftest_fail_master
+ 976+ 8703 3A 53 87             ld      a,(x86_dev_dma_flipflop)
+ 977+ 8706 B7                   or      a
+ 978+ 8707 C2 28 87             jp      nz,.dma_selftest_fail_master
+ 979+ 870A 21 5C 87             ld      hl,x86_dev_dma_selftest_pass
+ 980+ 870D 18 1C                jr      .dma_selftest_restore
+ 981+ 870F              .dma_selftest_fail_address_write:
+ 982+ 870F 21 1A 88             ld      hl,x86_dev_dma_fail_address_write
+ 983+ 8712 18 17                jr      .dma_selftest_restore
+ 984+ 8714              .dma_selftest_fail_address_read:
+ 985+ 8714 21 3E 88             ld      hl,x86_dev_dma_fail_address_read
+ 986+ 8717 18 12                jr      .dma_selftest_restore
+ 987+ 8719              .dma_selftest_fail_count:
+ 988+ 8719 21 6A 88             ld      hl,x86_dev_dma_fail_count
+ 989+ 871C 18 0D                jr      .dma_selftest_restore
+ 990+ 871E              .dma_selftest_fail_page:
+ 991+ 871E 21 86 88             ld      hl,x86_dev_dma_fail_page
+ 992+ 8721 18 08                jr      .dma_selftest_restore
+ 993+ 8723              .dma_selftest_fail_mask:
+ 994+ 8723 21 AA 88             ld      hl,x86_dev_dma_fail_mask
+ 995+ 8726 18 03                jr      .dma_selftest_restore
+ 996+ 8728              .dma_selftest_fail_master:
+ 997+ 8728 21 C5 88             ld      hl,x86_dev_dma_fail_master
+ 998+ 872B              .dma_selftest_restore:
+ 999+ 872B E5                   push    hl
+1000+ 872C CD F0 85             call    x86_dev_dma_reset_impl
+1001+ 872F 21 00 00             ld      hl,0
+1002+ 8732 22 E8 88             ld      (x86_dev_port),hl
+1003+ 8735 E1                   pop     hl
+1004+ 8736 C3 64 3C             jp      p126_ngs_ipc_log
+1005+ 8739
+1006+ 8739              ; -------------------------------------------------------------------------
+1007+ 8739
+1008+ 8739 00 00 00...  x86_dev_dma_address: defs 8,0
+1009+ 8741 00 00 00...  x86_dev_dma_count: defs 8,0
+1010+ 8749 00 00 00 00  x86_dev_dma_page: defs 4,0
+1011+ 874D 00           x86_dev_dma_command: db 0
+1012+ 874E 00           x86_dev_dma_status: db 0
+1013+ 874F 00           x86_dev_dma_request: db 0
+1014+ 8750 0F           x86_dev_dma_mask: db #0F
+1015+ 8751 00           x86_dev_dma_mode: db 0
+1016+ 8752 00           x86_dev_dma_temporary: db 0
+1017+ 8753 00           x86_dev_dma_flipflop: db 0
+1018+ 8754 00           x86_dev_dma_page_select: db 0
+1019+ 8755 00           x86_dev_dma_page_index: db 0
+1020+ 8756 00           x86_dev_dma_port_offset: db 0
+1021+ 8757 00           x86_dev_dma_write_value: db 0
+1022+ 8758 01 02 04 08  x86_dev_dma_bit_masks: db #01,#02,#04,#08
+1023+ 875C 5B 4E 47 53  x86_dev_dma_selftest_pass: db "[NGS] X86 DMA REGISTER SELFTEST PASS",13,10,0
+1023+ 8760 5D 20 58 38
+1023+ 8764 36 20 44 4D
+1023+ 8768 41 20 52 45
+1023+ 876C 47 49 53 54
+1023+ 8770 45 52 20 53
+1023+ 8774 45 4C 46 54
+1023+ 8778 45 53 54 20
+1023+ 877C 50 41 53 53
+1023+ 8780 0D 0A 00
+1024+ 8783 00 00 00...  x86_dev_pit_reload: defs 6,0
+1025+ 8789 00 00 00...  x86_dev_pit_latch: defs 6,0
+1026+ 878F 03 03 03     x86_dev_pit_access: db 3,3,3
+1027+ 8792 00 00 00     x86_dev_pit_mode: db 0,0,0
+1028+ 8795 00 00 00     x86_dev_pit_bcd: db 0,0,0
+1029+ 8798 00 00 00     x86_dev_pit_read_ff: db 0,0,0
+1030+ 879B 00 00 00     x86_dev_pit_write_ff: db 0,0,0
+1031+ 879E 00 00 00     x86_dev_pit_latch_valid: db 0,0,0
+1032+ 87A1 00           x86_dev_pit_channel: db 0
+1033+ 87A2 00           x86_dev_pit_byte_select: db 0
+1034+ 87A3 00           x86_dev_pit_read_value: db 0
+1035+ 87A4 00           x86_dev_pit_write_value: db 0
+1036+ 87A5 5B 4E 47 53  x86_dev_pit_selftest_pass: db "[NGS] X86 PIT REGISTER SELFTEST PASS",13,10,0
+1036+ 87A9 5D 20 58 38
+1036+ 87AD 36 20 50 49
+1036+ 87B1 54 20 52 45
+1036+ 87B5 47 49 53 54
+1036+ 87B9 45 52 20 53
+1036+ 87BD 45 4C 46 54
+1036+ 87C1 45 53 54 20
+1036+ 87C5 50 41 53 53
+1036+ 87C9 0D 0A 00
+1037+ 87CC 5B 4E 47 53  x86_dev_pit_selftest_fail: db "[NGS] X86 PIT REGISTER SELFTEST FAIL",13,10,0
+1037+ 87D0 5D 20 58 38
+1037+ 87D4 36 20 50 49
+1037+ 87D8 54 20 52 45
+1037+ 87DC 47 49 53 54
+1037+ 87E0 45 52 20 53
+1037+ 87E4 45 4C 46 54
+1037+ 87E8 45 53 54 20
+1037+ 87EC 46 41 49 4C
+1037+ 87F0 0D 0A 00
+1038+ 87F3 5B 4E 47 53  x86_dev_dma_selftest_fail: db "[NGS] X86 DMA REGISTER SELFTEST FAIL",13,10,0
+1038+ 87F7 5D 20 58 38
+1038+ 87FB 36 20 44 4D
+1038+ 87FF 41 20 52 45
+1038+ 8803 47 49 53 54
+1038+ 8807 45 52 20 53
+1038+ 880B 45 4C 46 54
+1038+ 880F 45 53 54 20
+1038+ 8813 46 41 49 4C
+1038+ 8817 0D 0A 00
+1039+ 881A 5B 4E 47 53  x86_dev_dma_fail_address_write: db "[NGS] X86 DMA FAIL: ADDRESS WRITE",13,10,0
+1039+ 881E 5D 20 58 38
+1039+ 8822 36 20 44 4D
+1039+ 8826 41 20 46 41
+1039+ 882A 49 4C 3A 20
+1039+ 882E 41 44 44 52
+1039+ 8832 45 53 53 20
+1039+ 8836 57 52 49 54
+1039+ 883A 45 0D 0A 00
+1040+ 883E 5B 4E 47 53  x86_dev_dma_fail_address_read: db "[NGS] X86 DMA FAIL: ADDRESS READ/FLIPFLOP",13,10,0
+1040+ 8842 5D 20 58 38
+1040+ 8846 36 20 44 4D
+1040+ 884A 41 20 46 41
+1040+ 884E 49 4C 3A 20
+1040+ 8852 41 44 44 52
+1040+ 8856 45 53 53 20
+1040+ 885A 52 45 41 44
+1040+ 885E 2F 46 4C 49
+1040+ 8862 50 46 4C 4F
+1040+ 8866 50 0D 0A 00
+1041+ 886A 5B 4E 47 53  x86_dev_dma_fail_count: db "[NGS] X86 DMA FAIL: COUNT",13,10,0
+1041+ 886E 5D 20 58 38
+1041+ 8872 36 20 44 4D
+1041+ 8876 41 20 46 41
+1041+ 887A 49 4C 3A 20
+1041+ 887E 43 4F 55 4E
+1041+ 8882 54 0D 0A 00
+1042+ 8886 5B 4E 47 53  x86_dev_dma_fail_page: db "[NGS] X86 DMA FAIL: PAGE REGISTER",13,10,0
+1042+ 888A 5D 20 58 38
+1042+ 888E 36 20 44 4D
+1042+ 8892 41 20 46 41
+1042+ 8896 49 4C 3A 20
+1042+ 889A 50 41 47 45
+1042+ 889E 20 52 45 47
+1042+ 88A2 49 53 54 45
+1042+ 88A6 52 0D 0A 00
+1043+ 88AA 5B 4E 47 53  x86_dev_dma_fail_mask: db "[NGS] X86 DMA FAIL: MASK",13,10,0
+1043+ 88AE 5D 20 58 38
+1043+ 88B2 36 20 44 4D
+1043+ 88B6 41 20 46 41
+1043+ 88BA 49 4C 3A 20
+1043+ 88BE 4D 41 53 4B
+1043+ 88C2 0D 0A 00
+1044+ 88C5 5B 4E 47 53  x86_dev_dma_fail_master: db "[NGS] X86 DMA FAIL: MASTER CLEAR",13,10,0
+1044+ 88C9 5D 20 58 38
+1044+ 88CD 36 20 44 4D
+1044+ 88D1 41 20 46 41
+1044+ 88D5 49 4C 3A 20
+1044+ 88D9 4D 41 53 54
+1044+ 88DD 45 52 20 43
+1044+ 88E1 4C 45 41 52
+1044+ 88E5 0D 0A 00
+1045+ 88E8
+1046+ 88E8
+1047+ 88E8 00 00        x86_dev_port: dw 0
+1048+ 88EA 00           x86_dev_write_value: db 0
+1049+ 88EB 00           x86_dev_board_write_value: db 0
+1050+ 88EC 00           x86_dev_board_nmi: db 0
+1051+ 88ED 00           x86_dev_board_expansion: db 0
+1052+ 88EE 00           x86_dev_board_bus: db 0
+1053+ 88EF 00           x86_dev_board_mda: db 0
+1054+ 88F0 00           x86_dev_board_cga: db 0
+1055+ 88F1 5B 4E 47 53  x86_dev_board_selftest_pass: db "[NGS] X86 BOARD LATCH SELFTEST PASS",13,10,0
+1055+ 88F5 5D 20 58 38
+1055+ 88F9 36 20 42 4F
+1055+ 88FD 41 52 44 20
+1055+ 8901 4C 41 54 43
+1055+ 8905 48 20 53 45
+1055+ 8909 4C 46 54 45
+1055+ 890D 53 54 20 50
+1055+ 8911 41 53 53 0D
+1055+ 8915 0A 00
+1056+ 8917 5B 4E 47 53  x86_dev_board_selftest_fail: db "[NGS] X86 BOARD LATCH SELFTEST FAIL",13,10,0
+1056+ 891B 5D 20 58 38
+1056+ 891F 36 20 42 4F
+1056+ 8923 41 52 44 20
+1056+ 8927 4C 41 54 43
+1056+ 892B 48 20 53 45
+1056+ 892F 4C 46 54 45
+1056+ 8933 53 54 20 46
+1056+ 8937 41 49 4C 0D
+1056+ 893B 0A 00
+1057+ 893D
 # file closed: x86_devices.asm
- 236  893B              x86_dev_module_end:
- 237  893B                      SAVEBIN "build/X86DEV.C",x86_dev_module_start,x86_dev_module_end-x86_dev_module_start
- 238  893B
- 239  893B              ; The stage-0 loader receives only X86CORE.C at logical origin 0000h.
- 240  893B                      SAVEBIN "build/x86_cpu_state.bin",0,p126_ngs_ipc_module_end
- 241  893B                      SAVEBIN "build/X86CORE.C",0,p126_ngs_ipc_module_end
- 242  893B
- 243  893B              ; Export explicit boundaries for build/map inspection.
- 244  893B                  DISPLAY "P126_NGS_RESIDENT_START=", /H, p126_ngs_resident_entry_vector
- 245  893B                  DISPLAY "P126_NGS_RESIDENT_END=", /H, x86_cpu_state_module_start
- 246  893B                  DISPLAY "P126_NGS_RESIDENT_SIZE=", /D, x86_cpu_state_module_start-p126_ngs_resident_entry_vector
- 247  893B                  DISPLAY "P126_X86_STATE_START=", /H, x86_cpu_state_module_start
- 248  893B                  DISPLAY "P126_X86_STATE_END=", /H, x86_cpu_state_module_end
- 249  893B                  DISPLAY "P126_X86_STATE_SIZE=", /D, x86_cpu_state_module_end-x86_cpu_state_module_start
- 250  893B                  DISPLAY "P126_X86_EXEC_START=", /H, x86_cpu_exec_module_start
- 251  893B                  DISPLAY "P126_X86_EXEC_END=", /H, x86_cpu_exec_module_end
- 252  893B                  DISPLAY "P126_X86_EXEC_SIZE=", /D, x86_cpu_exec_module_end-x86_cpu_exec_module_start
- 253  893B                  DISPLAY "P126_X86_MODRM_START=", /H, x86_modrm_module_start
- 254  893B                  DISPLAY "P126_X86_MODRM_END=", /H, x86_modrm_module_end
- 255  893B                  DISPLAY "P126_X86_MODRM_SIZE=", /D, x86_modrm_module_end-x86_modrm_module_start
- 256  893B                  DISPLAY "P126_X86_ALU_START=", /H, x86_alu_module_start
- 257  893B                  DISPLAY "P126_X86_ALU_END=", /H, x86_alu_module_end
- 258  893B                  DISPLAY "P126_X86_ALU_SIZE=", /D, x86_alu_module_end-x86_alu_module_start
- 259  893B                  DISPLAY "P126_X86_IO_START=", /H, x86_io_module_start
- 260  893B                  DISPLAY "P126_X86_IO_END=", /H, x86_io_module_end
- 261  893B                  DISPLAY "P126_X86_IO_SIZE=", /D, x86_io_module_end-x86_io_module_start
- 262  893B                  DISPLAY "P126_NGS_IPC_START=", /H, p126_ngs_ipc_module_start
- 263  893B                  DISPLAY "P126_NGS_IPC_END=", /H, p126_ngs_ipc_module_end
- 264  893B                  DISPLAY "P126_NGS_IPC_SIZE=", /D, p126_ngs_ipc_module_end-p126_ngs_ipc_module_start
- 265  893B                  DISPLAY "P126_X86_IMAGE_END=", /H, p126_ngs_ipc_module_end
- 266  893B                  DISPLAY "P126_X86_IMAGE_SIZE=", /D, p126_ngs_ipc_module_end
- 267  893B                  DISPLAY "P126_X86IO_OVERLAY_START=", /H, x86_io_module_start
- 268  893B                  DISPLAY "P126_X86IO_OVERLAY_END=", /H, x86_io_module_end
- 269  893B                  DISPLAY "P126_X86IO_OVERLAY_SIZE=", /D, x86_io_module_end-x86_io_module_start
- 270  893B                  DISPLAY "P126_X86ALU_OVERLAY_START=", /H, x86_alu_module_start
- 271  893B                  DISPLAY "P126_X86ALU_OVERLAY_END=", /H, x86_alu_module_end
- 272  893B                  DISPLAY "P126_X86ALU_OVERLAY_SIZE=", /D, x86_alu_module_end-x86_alu_module_start
- 273  893B
- 274  893B                  ASSERT p126_ngs_resident_entry_vector = 0
- 275  893B                  ASSERT x86_cpu_state_module_start > p126_ngs_resident_entry_vector
- 276  893B                  ASSERT x86_cpu_state_module_end > x86_cpu_state_module_start
- 277  893B                  ASSERT x86_cpu_exec_module_end > x86_cpu_exec_module_start
- 278  893B                  ASSERT x86_cpu_exec_module_start = x86_cpu_state_module_end
- 279  893B                  ASSERT x86_modrm_module_end > x86_modrm_module_start
- 280  893B                  ASSERT x86_modrm_module_start = x86_cpu_exec_module_end
- 281  893B                      ASSERT p126_ngs_ipc_module_end > p126_ngs_ipc_module_start
- 282  893B                  ASSERT p126_ngs_ipc_module_start = x86_modrm_module_end
- 283  893B                  ASSERT p126_ngs_ipc_module_end <= #4000
- 284  893B                  ASSERT x86_io_module_start = #8000
- 285  893B                  ASSERT x86_io_module_end > x86_io_module_start
- 286  893B                  ASSERT x86_io_module_end <= #C000
- 287  893B                  ASSERT x86_io_module_end-x86_io_module_start <= P126_IMAGE_X86IO_MAX_SIZE
- 288  893B                  ASSERT x86_alu_module_start = #8000
- 289  893B                  ASSERT x86_alu_module_end > x86_alu_module_start
- 290  893B                  ASSERT x86_alu_module_end <= #C000
- 291  893B                  ASSERT x86_alu_module_end-x86_alu_module_start <= P126_IMAGE_X86ALU_MAX_SIZE
- 292  893B
+ 236  893D              x86_dev_module_end:
+ 237  893D                      SAVEBIN "build/X86DEV.C",x86_dev_module_start,x86_dev_module_end-x86_dev_module_start
+ 238  893D
+ 239  893D              ; The stage-0 loader receives only X86CORE.C at logical origin 0000h.
+ 240  893D                      SAVEBIN "build/x86_cpu_state.bin",0,p126_ngs_ipc_module_end
+ 241  893D                      SAVEBIN "build/X86CORE.C",0,p126_ngs_ipc_module_end
+ 242  893D
+ 243  893D              ; Export explicit boundaries for build/map inspection.
+ 244  893D                  DISPLAY "P126_NGS_RESIDENT_START=", /H, p126_ngs_resident_entry_vector
+ 245  893D                  DISPLAY "P126_NGS_RESIDENT_END=", /H, x86_cpu_state_module_start
+ 246  893D                  DISPLAY "P126_NGS_RESIDENT_SIZE=", /D, x86_cpu_state_module_start-p126_ngs_resident_entry_vector
+ 247  893D                  DISPLAY "P126_X86_STATE_START=", /H, x86_cpu_state_module_start
+ 248  893D                  DISPLAY "P126_X86_STATE_END=", /H, x86_cpu_state_module_end
+ 249  893D                  DISPLAY "P126_X86_STATE_SIZE=", /D, x86_cpu_state_module_end-x86_cpu_state_module_start
+ 250  893D                  DISPLAY "P126_X86_EXEC_START=", /H, x86_cpu_exec_module_start
+ 251  893D                  DISPLAY "P126_X86_EXEC_END=", /H, x86_cpu_exec_module_end
+ 252  893D                  DISPLAY "P126_X86_EXEC_SIZE=", /D, x86_cpu_exec_module_end-x86_cpu_exec_module_start
+ 253  893D                  DISPLAY "P126_X86_MODRM_START=", /H, x86_modrm_module_start
+ 254  893D                  DISPLAY "P126_X86_MODRM_END=", /H, x86_modrm_module_end
+ 255  893D                  DISPLAY "P126_X86_MODRM_SIZE=", /D, x86_modrm_module_end-x86_modrm_module_start
+ 256  893D                  DISPLAY "P126_X86_ALU_START=", /H, x86_alu_module_start
+ 257  893D                  DISPLAY "P126_X86_ALU_END=", /H, x86_alu_module_end
+ 258  893D                  DISPLAY "P126_X86_ALU_SIZE=", /D, x86_alu_module_end-x86_alu_module_start
+ 259  893D                  DISPLAY "P126_X86_IO_START=", /H, x86_io_module_start
+ 260  893D                  DISPLAY "P126_X86_IO_END=", /H, x86_io_module_end
+ 261  893D                  DISPLAY "P126_X86_IO_SIZE=", /D, x86_io_module_end-x86_io_module_start
+ 262  893D                  DISPLAY "P126_NGS_IPC_START=", /H, p126_ngs_ipc_module_start
+ 263  893D                  DISPLAY "P126_NGS_IPC_END=", /H, p126_ngs_ipc_module_end
+ 264  893D                  DISPLAY "P126_NGS_IPC_SIZE=", /D, p126_ngs_ipc_module_end-p126_ngs_ipc_module_start
+ 265  893D                  DISPLAY "P126_X86_IMAGE_END=", /H, p126_ngs_ipc_module_end
+ 266  893D                  DISPLAY "P126_X86_IMAGE_SIZE=", /D, p126_ngs_ipc_module_end
+ 267  893D                  DISPLAY "P126_X86IO_OVERLAY_START=", /H, x86_io_module_start
+ 268  893D                  DISPLAY "P126_X86IO_OVERLAY_END=", /H, x86_io_module_end
+ 269  893D                  DISPLAY "P126_X86IO_OVERLAY_SIZE=", /D, x86_io_module_end-x86_io_module_start
+ 270  893D                  DISPLAY "P126_X86ALU_OVERLAY_START=", /H, x86_alu_module_start
+ 271  893D                  DISPLAY "P126_X86ALU_OVERLAY_END=", /H, x86_alu_module_end
+ 272  893D                  DISPLAY "P126_X86ALU_OVERLAY_SIZE=", /D, x86_alu_module_end-x86_alu_module_start
+ 273  893D
+ 274  893D                  ASSERT p126_ngs_resident_entry_vector = 0
+ 275  893D                  ASSERT x86_cpu_state_module_start > p126_ngs_resident_entry_vector
+ 276  893D                  ASSERT x86_cpu_state_module_end > x86_cpu_state_module_start
+ 277  893D                  ASSERT x86_cpu_exec_module_end > x86_cpu_exec_module_start
+ 278  893D                  ASSERT x86_cpu_exec_module_start = x86_cpu_state_module_end
+ 279  893D                  ASSERT x86_modrm_module_end > x86_modrm_module_start
+ 280  893D                  ASSERT x86_modrm_module_start = x86_cpu_exec_module_end
+ 281  893D                      ASSERT p126_ngs_ipc_module_end > p126_ngs_ipc_module_start
+ 282  893D                  ASSERT p126_ngs_ipc_module_start = x86_modrm_module_end
+ 283  893D                  ASSERT p126_ngs_ipc_module_end <= #4000
+ 284  893D                  ASSERT x86_io_module_start = #8000
+ 285  893D                  ASSERT x86_io_module_end > x86_io_module_start
+ 286  893D                  ASSERT x86_io_module_end <= #C000
+ 287  893D                  ASSERT x86_io_module_end-x86_io_module_start <= P126_IMAGE_X86IO_MAX_SIZE
+ 288  893D                  ASSERT x86_alu_module_start = #8000
+ 289  893D                  ASSERT x86_alu_module_end > x86_alu_module_start
+ 290  893D                  ASSERT x86_alu_module_end <= #C000
+ 291  893D                  ASSERT x86_alu_module_end-x86_alu_module_start <= P126_IMAGE_X86ALU_MAX_SIZE
+ 292  893D
 # file closed: x86_cpu_state_assemble.asm
 
 Value    Label
@@ -13137,11 +13141,11 @@ Value    Label
 0x2F29   x86_decode_modrm16.disp8_add
 0x2E83   x86_decode_modrm16.memory
 0x2EF5   x86_decode_modrm16.si_only
-0x88EC   x86_dev_board_bus
-0x88EE   x86_dev_board_cga
-0x88EB   x86_dev_board_expansion
-0x88ED   x86_dev_board_mda
-0x88EA   x86_dev_board_nmi
+0x88EE   x86_dev_board_bus
+0x88F0   x86_dev_board_cga
+0x88ED   x86_dev_board_expansion
+0x88EF   x86_dev_board_mda
+0x88EC   x86_dev_board_nmi
 0x803D   x86_dev_board_read8
 0x8080   x86_dev_board_read8.board_read_bus
 0x808A   x86_dev_board_read8.board_read_cga
@@ -13149,85 +13153,85 @@ Value    Label
 0x8085   x86_dev_board_read8.board_read_mda
 0x8076   x86_dev_board_read8.board_read_nmi
 0x80F3   x86_dev_board_reset_impl
-0x8915   x86_dev_board_selftest_fail
+0x8917   x86_dev_board_selftest_fail
 0x8107   x86_dev_board_selftest_impl
 0x817A   x86_dev_board_selftest_impl.board_selftest_fail
 0x817D   x86_dev_board_selftest_impl.board_selftest_restore
-0x88EF   x86_dev_board_selftest_pass
+0x88F1   x86_dev_board_selftest_pass
 0x808F   x86_dev_board_write8
 0x80DB   x86_dev_board_write8.board_write_bus
 0x80EB   x86_dev_board_write8.board_write_cga
 0x80D3   x86_dev_board_write8.board_write_expansion
 0x80E3   x86_dev_board_write8.board_write_mda
 0x80CB   x86_dev_board_write8.board_write_nmi
-0x88E9   x86_dev_board_write_value
-0x8737   x86_dev_dma_address
-0x8756   x86_dev_dma_bit_masks
-0x874B   x86_dev_dma_command
-0x873F   x86_dev_dma_count
+0x88EB   x86_dev_board_write_value
+0x8739   x86_dev_dma_address
+0x8758   x86_dev_dma_bit_masks
+0x874D   x86_dev_dma_command
+0x8741   x86_dev_dma_count
 0x8455   x86_dev_dma_decode
 0x847E   x86_dev_dma_decode.dma_decode_bad
 0x8475   x86_dev_dma_decode.dma_decode_controller
-0x883C   x86_dev_dma_fail_address_read
-0x8818   x86_dev_dma_fail_address_write
-0x8868   x86_dev_dma_fail_count
-0x88A8   x86_dev_dma_fail_mask
-0x88C3   x86_dev_dma_fail_master
-0x8884   x86_dev_dma_fail_page
-0x8751   x86_dev_dma_flipflop
-0x874E   x86_dev_dma_mask
-0x874F   x86_dev_dma_mode
-0x8747   x86_dev_dma_page
-0x8753   x86_dev_dma_page_index
-0x8752   x86_dev_dma_page_select
-0x8754   x86_dev_dma_port_offset
+0x883E   x86_dev_dma_fail_address_read
+0x881A   x86_dev_dma_fail_address_write
+0x886A   x86_dev_dma_fail_count
+0x88AA   x86_dev_dma_fail_mask
+0x88C5   x86_dev_dma_fail_master
+0x8886   x86_dev_dma_fail_page
+0x8753   x86_dev_dma_flipflop
+0x8750   x86_dev_dma_mask
+0x8751   x86_dev_dma_mode
+0x8749   x86_dev_dma_page
+0x8755   x86_dev_dma_page_index
+0x8754   x86_dev_dma_page_select
+0x8756   x86_dev_dma_port_offset
 0x8480   x86_dev_dma_read8
 0x84B2   x86_dev_dma_read8.dma_read_channel
 0x84AF   x86_dev_dma_read8.dma_read_count
-0x84D1   x86_dev_dma_read8.dma_read_open_bus
-0x84D5   x86_dev_dma_read8.dma_read_page
-0x84B9   x86_dev_dma_read8.dma_read_status
-0x874D   x86_dev_dma_request
-0x85EE   x86_dev_dma_reset_impl
-0x87F1 X x86_dev_dma_selftest_fail
-0x8634   x86_dev_dma_selftest_impl
-0x8712   x86_dev_dma_selftest_impl.dma_selftest_fail_address_read
-0x870D   x86_dev_dma_selftest_impl.dma_selftest_fail_address_write
-0x8717   x86_dev_dma_selftest_impl.dma_selftest_fail_count
-0x8721   x86_dev_dma_selftest_impl.dma_selftest_fail_mask
-0x8726   x86_dev_dma_selftest_impl.dma_selftest_fail_master
-0x871C   x86_dev_dma_selftest_impl.dma_selftest_fail_page
-0x8729   x86_dev_dma_selftest_impl.dma_selftest_restore
-0x875A   x86_dev_dma_selftest_pass
-0x874C   x86_dev_dma_status
-0x8750   x86_dev_dma_temporary
-0x85E5   x86_dev_dma_toggle_flipflop
-0x84E2   x86_dev_dma_write8
-0x8571   x86_dev_dma_write8.dma_request_clear
-0x859B   x86_dev_dma_write8.dma_unmask_channel
-0x8524   x86_dev_dma_write8.dma_write_channel
-0x8541   x86_dev_dma_write8.dma_write_channel_store
-0x85AF   x86_dev_dma_write8.dma_write_clear_flipflop
-0x85CF   x86_dev_dma_write8.dma_write_clear_mask
-0x854B   x86_dev_dma_write8.dma_write_command
-0x853E   x86_dev_dma_write8.dma_write_count
-0x85B5   x86_dev_dma_write8.dma_write_master_clear
-0x85A7   x86_dev_dma_write8.dma_write_mode
-0x85D5   x86_dev_dma_write8.dma_write_page
-0x8553   x86_dev_dma_write8.dma_write_request
-0x857D   x86_dev_dma_write8.dma_write_single_mask
-0x8755   x86_dev_dma_write_value
-0x893B   x86_dev_module_end
+0x84D3   x86_dev_dma_read8.dma_read_open_bus
+0x84D7   x86_dev_dma_read8.dma_read_page
+0x84BB   x86_dev_dma_read8.dma_read_status
+0x874F   x86_dev_dma_request
+0x85F0   x86_dev_dma_reset_impl
+0x87F3 X x86_dev_dma_selftest_fail
+0x8636   x86_dev_dma_selftest_impl
+0x8714   x86_dev_dma_selftest_impl.dma_selftest_fail_address_read
+0x870F   x86_dev_dma_selftest_impl.dma_selftest_fail_address_write
+0x8719   x86_dev_dma_selftest_impl.dma_selftest_fail_count
+0x8723   x86_dev_dma_selftest_impl.dma_selftest_fail_mask
+0x8728   x86_dev_dma_selftest_impl.dma_selftest_fail_master
+0x871E   x86_dev_dma_selftest_impl.dma_selftest_fail_page
+0x872B   x86_dev_dma_selftest_impl.dma_selftest_restore
+0x875C   x86_dev_dma_selftest_pass
+0x874E   x86_dev_dma_status
+0x8752   x86_dev_dma_temporary
+0x85E7   x86_dev_dma_toggle_flipflop
+0x84E4   x86_dev_dma_write8
+0x8573   x86_dev_dma_write8.dma_request_clear
+0x859D   x86_dev_dma_write8.dma_unmask_channel
+0x8526   x86_dev_dma_write8.dma_write_channel
+0x8543   x86_dev_dma_write8.dma_write_channel_store
+0x85B1   x86_dev_dma_write8.dma_write_clear_flipflop
+0x85D1   x86_dev_dma_write8.dma_write_clear_mask
+0x854D   x86_dev_dma_write8.dma_write_command
+0x8540   x86_dev_dma_write8.dma_write_count
+0x85B7   x86_dev_dma_write8.dma_write_master_clear
+0x85A9   x86_dev_dma_write8.dma_write_mode
+0x85D7   x86_dev_dma_write8.dma_write_page
+0x8555   x86_dev_dma_write8.dma_write_request
+0x857F   x86_dev_dma_write8.dma_write_single_mask
+0x8757   x86_dev_dma_write_value
+0x893D   x86_dev_module_end
 0x8000   x86_dev_module_start
-0x878D   x86_dev_pit_access
-0x8793   x86_dev_pit_bcd
-0x87A0   x86_dev_pit_byte_select
-0x879F   x86_dev_pit_channel
+0x878F   x86_dev_pit_access
+0x8795   x86_dev_pit_bcd
+0x87A2   x86_dev_pit_byte_select
+0x87A1   x86_dev_pit_channel
 0x8185   x86_dev_pit_decode
 0x8199   x86_dev_pit_decode.pit_decode_bad
-0x8787   x86_dev_pit_latch
-0x879C   x86_dev_pit_latch_valid
-0x8790   x86_dev_pit_mode
+0x8789   x86_dev_pit_latch
+0x879E   x86_dev_pit_latch_valid
+0x8792   x86_dev_pit_mode
 0x819B   x86_dev_pit_read8
 0x81EC   x86_dev_pit_read8.pit_read_base
 0x81D6   x86_dev_pit_read8.pit_read_byte
@@ -13237,15 +13241,15 @@ Value    Label
 0x81D1   x86_dev_pit_read8.pit_read_msb
 0x822E   x86_dev_pit_read8.pit_read_open_bus
 0x81E9   x86_dev_pit_read8.pit_read_reload
-0x8796   x86_dev_pit_read_ff
-0x87A1   x86_dev_pit_read_value
-0x8781   x86_dev_pit_reload
+0x8798   x86_dev_pit_read_ff
+0x87A3   x86_dev_pit_read_value
+0x8783   x86_dev_pit_reload
 0x8338   x86_dev_pit_reset_impl
-0x87CA   x86_dev_pit_selftest_fail
+0x87CC   x86_dev_pit_selftest_fail
 0x83A9   x86_dev_pit_selftest_impl
 0x8444   x86_dev_pit_selftest_impl.pit_selftest_fail
 0x8447   x86_dev_pit_selftest_impl.pit_selftest_restore
-0x87A3   x86_dev_pit_selftest_pass
+0x87A5   x86_dev_pit_selftest_pass
 0x8232   x86_dev_pit_write8
 0x8312   x86_dev_pit_write8.pit_latch_command
 0x82E9   x86_dev_pit_write8.pit_mode_store
@@ -13254,16 +13258,16 @@ Value    Label
 0x82A0   x86_dev_pit_write8.pit_write_done
 0x8264   x86_dev_pit_write8.pit_write_lsb
 0x826A   x86_dev_pit_write8.pit_write_msb
-0x8799   x86_dev_pit_write_ff
-0x87A2   x86_dev_pit_write_value
-0x88E6   x86_dev_port
+0x879B   x86_dev_pit_write_ff
+0x87A4   x86_dev_pit_write_value
+0x88E8   x86_dev_port
 0x3E93   x86_dev_read8
 0x8000   x86_dev_read8_impl
 0x3E7C   x86_dev_reset
 0x8025   x86_dev_reset_impl
 0x3EAA   x86_dev_write8
 0x800E   x86_dev_write8_impl
-0x88E8   x86_dev_write_value
+0x88EA   x86_dev_write_value
 0x2F5D   x86_ea_is_reg
 0x2F5F   x86_ea_offset
 0x2F5E   x86_ea_reg
