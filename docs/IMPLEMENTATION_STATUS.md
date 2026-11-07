@@ -597,3 +597,12 @@ User-provided physical target log (09:52:27) validates the corrected MPAGEX page
 - This is a direct timing/timeout parity correction from Project125. The page-42 destination remains Project126-specific because its resident stack/code allocation differs from Project125's page-03 layout.
 - Next target run must show `DMA HOST END DETECTED` (forward) and `DMA RX MAX FRAME HOST END` (reverse), followed by full CRC and payload checks. ATM-side TX completion must not be considered a PASS unless NeoGS reports a valid frame.
 - Verification status: source commit recorded; CI and hardware retest pending. No 16 KiB DMA HARDWARE PASS is claimed.
+
+
+## 2026-11-07 — cursor keyboard matrix correction (supersedes prior mapping)
+
+The target log after commit `1bd610d` showed that the catalogue cursor did not move. Rechecking the standard Spectrum matrix corrected the previous bit-order mistake: row `#EFFE` is `0,9,8,7,6`, with bit 0=0, bit 1=9, bit 2=8, bit 3=7, bit 4=6. Therefore CAPS SHIFT+7 (UP) is bit 3 and CAPS SHIFT+6 (DOWN) is bit 4. The earlier bit-1/bit-0 mapping was incorrect and is superseded.
+
+Updated `p126_catalog_scan_keys` to use bit 3/bit 4. Restored one `[CAT] CURSOR KEY DETECTED` diagnostic per recognized key press (not per polling iteration), before the release wait, so the next target log distinguishes keyboard-scan failure from navigation/redraw failure. No hardware PASS is claimed pending a new target run.
+
+Source commit: `aac9d7e60c391510150016d3b29906a7b2f90e3d`.

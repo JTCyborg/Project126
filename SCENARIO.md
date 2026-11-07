@@ -963,3 +963,13 @@ User-provided physical ATM/NeoGS target log at 09:52:27 confirms the corrected P
 Source commit: `1bd610d119d8c121bb3093fb6562e98864085f63`.
 Build PASS: [GitHub Actions 42360694869](https://github.com/JTCyborg/Project126/actions/runs/42360694869).
 Аппаратная проверка исправления и исчезновения каталога ещё не выполнена.
+
+
+## 2026-11-07 — повторная коррекция матрицы курсорных клавиш (supersedes previous bit mapping)
+
+Повторный аппаратный тест после commit `1bd610d` показал, что курсор не перемещается. Повторно проверена нумерация битов стандартной ZX Spectrum keyboard matrix: строка `#EFFE` содержит клавиши `0,9,8,7,6`, где bit 0=0, bit 1=9, bit 2=8, bit 3=7, bit 4=6. Следовательно CAPS SHIFT+7 (UP) — bit 3, CAPS SHIFT+6 (DOWN) — bit 4. Предыдущее утверждение о bit 1/bit 0 было ошибочным и отменяется.
+
+В `p126_catalog_scan_keys` восстановлены правильные маски UP/DOWN: bit 3 и bit 4 соответственно. Возвращён один диагностический вывод `[CAT] CURSOR KEY DETECTED` на каждое распознанное нажатие (после первичного scan, до ожидания отпускания), чтобы следующий аппаратный лог однозначно показал, видит ли ATM клавишу. Постоянного вывода в цикле опроса нет. CAPS SHIFT, ENTER, LEFT/RIGHT и логика перемещения не менялись.
+
+Source commit: `aac9d7e60c391510150016d3b29906a7b2f90e3d`.
+Аппаратная проверка ожидается; до нового target log клавиатура не считается исправленной.
