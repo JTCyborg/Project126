@@ -124,6 +124,7 @@ The manager is not complete until all of the following are true:
 
 - [x] WIN2 selector register/encoding identified from Project125 reference: MPAG #00, selector ROR8(physical_page); Project126 startup #80 corresponds to page 01h.
 - [x] WIN2 self-test uses nonzero page-specific markers, checks WIN3 write/read and WIN2 read-through independently, verifies WIN2 local write/read before cross-window visibility, and explicitly reasserts NOROM/RAMRO/EXPAG configuration. Failure stages 00–07 distinguish configuration, page04 mapping, page05 mapping, and write-through paths.
+- [x] Correct the physical-byte alias address: WIN2 `BFFFh` and WIN3 `FFFFh` are both offset `3FFFh` within their respective 16 KiB windows. The earlier `CFFFh` reference was offset `0FFFh` and caused a false write-through failure; all WIN2/WIN3 comparisons now use `BFFFh`↔`FFFFh`.
 - [x] Resident runtime self-test exercises WIN2 mapping/read/write on physical pages 04h and 05h at offset 3FFFh, saves/restores both bytes, and leaves page 04h mapped.
 - [ ] Confirm the runtime self-test passes on the physical Project126 target.
 - [x] Resident/overlay link layout and size assertions pass for X86IO and X86ALU fixed-origin modules.
