@@ -372,7 +372,7 @@ x86_dev_pit_write8:
         add     hl,de
         ld      a,(hl)
         cp      3
-        jr      nz,.pit_write_done
+        jp      nz,.pit_write_update_out
         ld      a,(x86_dev_pit_channel)
         ld      e,a
         ld      d,0
@@ -381,6 +381,31 @@ x86_dev_pit_write8:
         ld      a,(hl)
         xor     1
         ld      (hl),a
+        ; LSB/MSB mode loads the counter only after the second byte.
+        or      a
+        jp      nz,.pit_write_done
+.pit_write_update_out:
+        ; PCem pit_load(): channel 2 OUT changes on a complete count load.
+        ld      a,(x86_dev_pit_channel)
+        cp      2
+        jp      nz,.pit_write_done
+        ld      a,(x86_dev_pit_mode+2)
+        cp      2
+        jr      z,.pit_write_out_high
+        cp      3
+        jr      z,.pit_write_out_high
+        cp      0
+        jr      z,.pit_write_out_low
+        cp      4
+        jr      z,.pit_write_out_low
+        jp      .pit_write_done
+.pit_write_out_high:
+        ld      a,1
+        ld      (x86_dev_pit_out2),a
+        jp      .pit_write_done
+.pit_write_out_low:
+        xor     a
+        ld      (x86_dev_pit_out2),a
 .pit_write_done:
         or      a
         ret
@@ -452,6 +477,20 @@ x86_dev_pit_write8:
         ld      hl,x86_dev_pit_latch_valid
         add     hl,de
         ld      (hl),a
+        ; PCem pit_write(): mode control sets OUT low only for mode 0.
+        ld      a,(x86_dev_pit_channel)
+        cp      2
+        jr      nz,.pit_control_done
+        ld      a,(x86_dev_pit_mode+2)
+        or      a
+        jr      z,.pit_control_out_low
+        ld      a,1
+        ld      (x86_dev_pit_out2),a
+        jr      .pit_control_done
+.pit_control_out_low:
+        xor     a
+        ld      (x86_dev_pit_out2),a
+.pit_control_done:
         or      a
         ret
 .pit_latch_command:
@@ -527,6 +566,7 @@ x86_dev_pit_reset_impl:
         ld      (x86_dev_pit_byte_select),a
         ld      (x86_dev_pit_read_value),a
         ld      (x86_dev_pit_write_value),a
+        ld      (x86_dev_pit_out2),a
         ret
 
 ; Reset-time regression for channel 0 LSB/MSB, latch/readback and channel 1 LSB.
@@ -587,6 +627,50 @@ x86_dev_pit_selftest_impl:
         jp      nz,.pit_selftest_fail
         call    x86_dev_pit_read8
         cp      #AB
+        jp      nz,.pit_selftest_fail
+        ; PCem channel-2 mode 3: control word sets OUT high; count load
+        ; preserves the high state after both LSB and MSB have arrived.
+        ld      hl,#0043
+        ld      (x86_dev_port),hl
+        ld      a,#B6
+        call    x86_dev_pit_write8
+        jp      c,.pit_selftest_fail
+        ld      a,(x86_dev_pit_out2)
+        cp      1
+        jp      nz,.pit_selftest_fail
+        ld      hl,#0042
+        ld      (x86_dev_port),hl
+        ld      a,#34
+        call    x86_dev_pit_write8
+        jp      c,.pit_selftest_fail
+        ld      a,(x86_dev_pit_out2)
+        cp      1
+        jp      nz,.pit_selftest_fail
+        ld      a,#12
+        call    x86_dev_pit_write8
+        jp      c,.pit_selftest_fail
+        ld      a,(x86_dev_pit_out2)
+        cp      1
+        jp      nz,.pit_selftest_fail
+        ; Mode 0 control word and count load both drive OUT low.
+        ld      hl,#0043
+        ld      (x86_dev_port),hl
+        ld      a,#B0
+        call    x86_dev_pit_write8
+        jp      c,.pit_selftest_fail
+        ld      a,(x86_dev_pit_out2)
+        or      a
+        jp      nz,.pit_selftest_fail
+        ld      hl,#0042
+        ld      (x86_dev_port),hl
+        ld      a,#20
+        call    x86_dev_pit_write8
+        jp      c,.pit_selftest_fail
+        ld      a,#00
+        call    x86_dev_pit_write8
+        jp      c,.pit_selftest_fail
+        ld      a,(x86_dev_pit_out2)
+        or      a
         jp      nz,.pit_selftest_fail
         ld      hl,x86_dev_pit_selftest_pass
         jr      .pit_selftest_restore
@@ -1033,6 +1117,8 @@ x86_dev_pit_channel: db 0
 x86_dev_pit_byte_select: db 0
 x86_dev_pit_read_value: db 0
 x86_dev_pit_write_value: db 0
+; Static channel-2 OUT pin observed by XT port 62h bit 5.
+x86_dev_pit_out2: db 0
 x86_dev_pit_selftest_pass: db "[NGS] X86 PIT REGISTER SELFTEST PASS",13,10,0
 x86_dev_pit_selftest_fail: db "[NGS] X86 PIT REGISTER SELFTEST FAIL",13,10,0
 x86_dev_dma_selftest_fail: db "[NGS] X86 DMA REGISTER SELFTEST FAIL",13,10,0
