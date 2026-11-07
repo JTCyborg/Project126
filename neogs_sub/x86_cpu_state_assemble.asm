@@ -53,6 +53,7 @@ p126_ngs_resident_start:
         out     (c),a                  ; WIN1 -> physical page 03
         ld      a,#80
         out     (P126_NGS_OVERLAY_WINDOW_PORT),a ; WIN2 placeholder -> page 01
+        ld      (p126_overlay_current_selector),a
         ld      a,#01
         out     (#10),a                ; WIN3 -> physical page 02 until banked
         ld      sp,#7FFE
@@ -179,6 +180,9 @@ x86_modrm_module_end:
 x86_alu_module_start:
         INCLUDE "neogs_sub/x86_alu.asm"
 x86_alu_module_end:
+
+; Resident bank-call gate and compatibility entry points for X86IO.
+        INCLUDE "neogs_sub/p126_overlay_gate.asm"
 
 ; Link the ABI 1.0 DMA receiver/dispatcher into the fixed resident image.
 p126_ngs_ipc_module_start:
