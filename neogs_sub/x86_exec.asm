@@ -56,13 +56,30 @@ x86_cpu_step:
         jp      x86_exec_interrupt
 
 .boundary_irq_inhibit:
-        ; MOV SS / POP SS inhibits maskable IRQ delivery for this boundary.
+        ; PCem's noint latch suppresses both TF and maskable IRQ delivery for
+        ; one boundary after STI, MOV SS or POP SS.
         ld      a,(x86_irq_inhibit)
+        or      a
+        jr      z,.boundary_tf_check
+        xor     a
+        ld      (x86_irq_inhibit),a
+        ld      (x86_tf_pending),a
+        jr      .boundary_halt_check
+
+.boundary_tf_check:
+        ; PCem snapshots TF before executing an instruction and tests the
+        ; saved value plus the post-instruction TF state at its boundary.
+        ; NMI has already been serviced; this check precedes maskable IRQ.
+        ld      a,(x86_tf_pending)
         or      a
         jr      z,.boundary_irq_pending
         xor     a
-        ld      (x86_irq_inhibit),a
-        jr      .boundary_halt_check
+        ld      (x86_tf_pending),a
+        ld      hl,(x86_reg_flags)
+        bit     0,h
+        jr      z,.boundary_irq_pending
+        ld      a,1
+        jp      x86_exec_interrupt
 
 .boundary_irq_pending:
         ld      a,(x86_pending_irq)
@@ -84,6 +101,17 @@ x86_cpu_step:
         ret
 
 .boundary_start_instruction:
+        ; Snapshot TF before the first prefix byte, matching PCem's trap
+        ; variable. A TF set by POPF therefore takes effect after the next
+        ; complete instruction, not immediately after POPF itself.
+        ld      hl,(x86_reg_flags)
+        ld      a,0
+        bit     0,h
+        jr      z,.tf_snapshot_done
+        inc     a
+.tf_snapshot_done:
+        ld      (x86_tf_pending),a
+
         ; Keep the address of the first prefix byte so REP can yield after
         ; each iteration and re-enter at the complete instruction boundary.
         ld      hl,(x86_reg_ip)
