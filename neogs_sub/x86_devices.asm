@@ -663,7 +663,11 @@ x86_dev_dma_read8:
 .dma_read_channel:
         add     hl,de
         ld      a,(hl)
+        ; The flip-flop helper uses A as scratch. Preserve the byte read
+        ; from the guest register so IN returns the actual low/high byte.
+        push    af
         call    x86_dev_dma_toggle_flipflop
+        pop     af
         or      a
         ret
 .dma_read_status:
