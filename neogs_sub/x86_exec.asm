@@ -1031,6 +1031,7 @@ x86_exec_group3_test:
         ret     c
         ld      (x86_exec_group3_imm8),a
         call    x86_modrm_read_rm8
+        ret     c
         ld      (x86_exec_group3_value8),a
         ld      a,(x86_exec_group3_imm8)
         ld      c,a
@@ -1044,6 +1045,7 @@ x86_exec_group3_test:
         ret     c
         ld      (x86_exec_group3_imm16),hl
         call    x86_modrm_read_rm16
+        ret     c
         ld      de,(x86_exec_group3_imm16)
         ld      b,1
         call    x86_alu_logic16
@@ -1055,10 +1057,12 @@ x86_exec_group3_not:
         bit     0,a
         jr      nz,.group3_not_word
         call    x86_modrm_read_rm8
+        ret     c
         cpl
         jp      x86_modrm_write_rm8
 .group3_not_word:
         call    x86_modrm_read_rm16
+        ret     c
         ld      a,l
         cpl
         ld      l,a
@@ -1072,12 +1076,14 @@ x86_exec_group3_neg:
         bit     0,a
         jr      nz,.group3_neg_word
         call    x86_modrm_read_rm8
+        ret     c
         ld      c,a
         xor     a
         call    x86_alu_sub8
         jp      x86_modrm_write_rm8
 .group3_neg_word:
         call    x86_modrm_read_rm16
+        ret     c
         ex      de,hl
         ld      hl,0
         call    x86_alu_sub16
@@ -1103,15 +1109,10 @@ x86_exec_group3_muldiv:
 
 x86_exec_group3_mul8:
         call    x86_modrm_read_rm8
+        ret     c
         ld      (x86_exec_group3_operand8),a
         ld      a,(x86_reg_ax)
         ld      (x86_exec_group3_original_al),a
-        ld      c,a
-        ld      a,(x86_exec_group3_operand8)
-        ex      af,af'
-        ld      a,c
-        ld      c,a
-        ex      af,af'
         ld      a,(x86_exec_group3_operand8)
         ld      c,a
         ld      a,(x86_exec_group3_original_al)
@@ -1121,6 +1122,7 @@ x86_exec_group3_mul8:
 
 x86_exec_group3_imul8:
         call    x86_modrm_read_rm8
+        ret     c
         ld      (x86_exec_group3_operand8),a
         ld      a,(x86_reg_ax)
         ld      (x86_exec_group3_original_al),a
@@ -1244,6 +1246,7 @@ x86_exec_group3_mul8_flags:
 
 x86_exec_group3_div8:
         call    x86_modrm_read_rm8
+        ret     c
         or      a
         jp      z,x86_exec_group3_divide_error
         ld      c,a
@@ -1258,6 +1261,7 @@ x86_exec_group3_div8:
 
 x86_exec_group3_idiv8:
         call    x86_modrm_read_rm8
+        ret     c
         or      a
         jp      z,x86_exec_group3_divide_error
         ld      (x86_exec_group3_operand8),a
