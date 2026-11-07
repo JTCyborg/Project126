@@ -81,6 +81,11 @@ x86_cpu_step:
         jp      z,x86_exec_lahf
         cp      #EA
         jp      z,x86_exec_jmp_far_imm
+        cp      #E0
+        jp      c,.not_loop_family
+        cp      #E4
+        jp      c,x86_exec_loop_family
+.not_loop_family:
         cp      #E8
         jp      z,x86_exec_call_near_rel16
         cp      #E9
@@ -868,6 +873,66 @@ x86_exec_jmp_far_imm:
         or      a
         ret
 
+; E0 LOOPNE, E1 LOOPE, E2 LOOP, E3 JCXZ.
+; CX decrement does not modify FLAGS. All forms consume signed rel8.
+x86_exec_loop_family:
+        ld      a,(x86_exec_opcode)
+        ld      (x86_exec_loop_opcode),a
+        call    x86_cpu_fetch8
+        ret     c
+        ld      (x86_exec_jcc_displacement),a
+
+        ld      a,(x86_exec_loop_opcode)
+        cp      #E3
+        jr      z,.loop_test_cx
+        ld      hl,(x86_reg_cx)
+        dec     hl
+        ld      (x86_reg_cx),hl
+        ld      a,h
+        or      l
+        jr      z,.loop_not_taken
+
+        ld      a,(x86_exec_loop_opcode)
+        cp      #E0
+        jr      z,.loop_test_zf_clear
+        cp      #E1
+        jr      z,.loop_test_zf_set
+        ; E2 LOOP only requires CX != 0.
+        jr      .loop_taken
+
+.loop_test_cx:
+        ld      hl,(x86_reg_cx)
+        ld      a,h
+        or      l
+        jr      nz,.loop_not_taken
+        jr      .loop_taken
+
+.loop_test_zf_clear:
+        ld      hl,(x86_reg_flags)
+        bit     6,l
+        jr      nz,.loop_not_taken
+        jr      .loop_taken
+
+.loop_test_zf_set:
+        ld      hl,(x86_reg_flags)
+        bit     6,l
+        jr      z,.loop_not_taken
+
+.loop_taken:
+        ld      a,(x86_exec_jcc_displacement)
+        ld      e,a
+        ld      d,0
+        bit     7,e
+        jr      z,.loop_add
+        dec     d
+.loop_add:
+        ld      hl,(x86_reg_ip)
+        add     hl,de
+        ld      (x86_reg_ip),hl
+.loop_not_taken:
+        or      a
+        ret
+
 ; E8 CALL rel16. Push the post-displacement IP to SS:SP-2,
 ; then branch relative to the post-displacement IP.
 x86_exec_call_near_rel16:
@@ -951,6 +1016,7 @@ x86_exec_stack_new_sp: dw 0
 x86_exec_target_cs: dw 0
 x86_exec_ret_adjust: dw 0
 x86_exec_call_displacement: dw 0
+x86_exec_loop_opcode: db 0
 x86_exec_jcc_condition: db 0
 x86_exec_jcc_displacement: db 0
 x86_exec_moffs_opcode: db 0
