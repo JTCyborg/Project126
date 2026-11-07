@@ -875,3 +875,11 @@ User-provided physical ATM/NeoGS target log at 09:52:27 confirms the corrected P
 - The 16 KiB test frame is assembled at C000h and passed to the validator at that address. The first four-byte magic comparison is failing. No DMA transaction has started.
 - Added temporary target diagnostics in atm_host/neogs_ipc.asm: on BAD_MAGIC print the validator's frame pointer and the four actual bytes at that address ([ATM IPC] BAD MAGIC PTR=... DATA=...). This distinguishes wrong page mapping or overwritten staging buffer from a malformed header.
 - No speculative DMA, NeoGS mapping, or ABI changes. Next hardware log must include the pointer/data trace; then correct the actual memory-page/staging issue based on observed bytes. BUILD and hardware test remain pending.
+
+
+### DMA max-frame staging-buffer correction (2026-11-07)
+
+- Hardware diagnostic reported ATM validator input `PTR=C000 DATA=20444D41` and failed with `BAD_MAGIC` before E0/READY; no DMA transaction had started.
+- Source audit confirmed the ATM host TR-DOS file is saved only from `P126_HOST_LOAD_ADDRESS` through `p126_host_program_end` (asserted at or below `A800h`). The test's static `db` header placed after `ORG C000h` was therefore outside the packaged host file and was never loaded into the runtime staging RAM.
+- Corrected `p126_neogs_dma_smoke_test` to write all 18 ABI header bytes explicitly into the C000h runtime staging buffer before filling the payload and calculating CRC. The staging buffer is now an address constant, not an assumed preloaded binary block.
+- This fixes the proven header-initialization defect only. ATM page mapping, full 16 KiB DMA transfer and reverse DMA remain subject to subsequent hardware verification; no DMA PASS is inferred from this correction.
