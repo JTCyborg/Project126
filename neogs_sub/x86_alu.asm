@@ -220,9 +220,9 @@ x86_alu_logic8:
         ld      (x86_alu_logic_rhs),a
         ld      a,b
         ld      (x86_alu_logic_op),a
-        ld      a,(x86_alu_logic_lhs)
         ld      a,(x86_alu_logic_rhs)
         ld      c,a
+        ld      a,(x86_alu_logic_lhs)
         call    x86_alu_logic_apply8
         ld      (x86_alu_logic_result),a
         or      a
