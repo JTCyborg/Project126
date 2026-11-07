@@ -66,6 +66,10 @@ x86_cpu_step:
         jp      z,x86_exec_call_far_imm
         cp      #9B
         jp      z,x86_exec_wait
+        cp      #C6
+        jp      z,x86_exec_mov_imm_rm
+        cp      #C7
+        jp      z,x86_exec_mov_imm_rm
         cp      #C1
         jp      z,x86_exec_ret_near
         cp      #C2
@@ -185,6 +189,27 @@ x86_exec_mov_rm_reg:
 .mov_r16_from_rm16:
         call    x86_modrm_read_rm16
         jp      x86_modrm_write_reg16
+
+; C6/C7 MOV r/m8/16, immediate. The ModR/M extension field must be /0.
+x86_exec_mov_imm_rm:
+        call    x86_decode_modrm16
+        ret     c
+        ld      a,(x86_modrm_reg)
+        or      a
+        jr      nz,.mov_imm_rm_invalid
+        ld      a,(x86_exec_opcode)
+        bit     0,a
+        jr      nz,.mov_imm_rm_word
+        call    x86_cpu_fetch8
+        ret     c
+        jp      x86_modrm_write_rm8
+.mov_imm_rm_word:
+        call    x86_cpu_fetch16
+        ret     c
+        jp      x86_modrm_write_rm16
+.mov_imm_rm_invalid:
+        scf
+        ret
 
 ; 9A CALL FAR ptr16:16. The return IP is the address after both immediates.
 ; Stack layout after the call is [SS:SP]=return IP, [SS:SP+2]=old CS.
