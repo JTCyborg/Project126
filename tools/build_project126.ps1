@@ -69,9 +69,9 @@ try {
         Write-Host "[DEBUG] Listing: build/$($unit.Listing)"
         Write-Host "[DEBUG] Symbol map: build/$($unit.Map)"
         if ($unit.Name -eq "NeoGS") {
-            # The source exports the resident audit/core and X86IO overlay via
-            # SAVEBIN. Do not request a combined --raw image: ORG 8000h is a
-            # second address region and must not create a sparse audit binary.
+            # The source exports the resident audit/core plus X86IO and X86ALU overlays
+            # via SAVEBIN. The overlays reuse logical ORG 8000h on separate
+            # physical pages; do not request a sparse combined --raw image.
             & $assembler --msg=all "--lst=build/$($unit.Listing)" --lstlab=sort "--sym=build/$($unit.Map)" $unit.Source
         } else {
             & $assembler --msg=all "--lst=build/$($unit.Listing)" --lstlab=sort "--sym=build/$($unit.Map)" "--raw=build/$($unit.Binary)" $unit.Source
