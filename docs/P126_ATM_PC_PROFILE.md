@@ -105,8 +105,8 @@ A source-level address map and compile-time assertions are not BUILD/EMULATOR/HA
 ### PPI / XT keyboard implementation status
 
 The initial runtime slice is being added in neogs_sub/x86_io.asm for ports 0060h–0063h:
-- 60h: PPI port A / keyboard scan-code data latch and FIFO consumer.
-- 61h: PPI port B / system-control latch, including XT keyboard reset and acknowledge bits.
+- 60h: PPI port A / keyboard scan-code FIFO consumer (XT input behavior; generic output-latch mode is not yet complete).
+- 61h: PPI port B / system-control latch, including PB6 rising-edge XT keyboard reset and PB7 data acknowledge (PB input-mode behavior remains incomplete).
 - 62h: PPI port C input/output composition; board configuration input is a deterministic profile value pending explicit ATM-PC switch definition.
 - 63h: PPI mode-set and bit-set/reset control register.
 - Initial BIOS mode-0 control word is 99h. PPI mode 1/2 handshake modes and board-specific port-C switch wiring are outside this first slice.
