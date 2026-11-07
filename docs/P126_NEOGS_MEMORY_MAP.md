@@ -37,7 +37,7 @@ This carve-out is deliberately narrow and must be removed or replaced by a valid
 
 ## NeoGS logical window contract
 
-The resident memory backend reserves logical window WIN3 (C000h–FFFFh) as a banked physical-RAM aperture. The page is selected by writing the physical 16 KiB page number to NeoGS port 23h (WIN3). Guest RAM physical pages 44h–83h are therefore reachable as a sequence of bank selections. The CPU code, resident data and stack used while this backend is active must remain in WIN0–WIN2. WIN3 is volatile and is not restored after a memory access; it is exclusively owned by the memory backend. Interrupt handlers that can run during a banked access must also reside outside WIN3 and must not use WIN3 as their own data window.
+The resident memory backend reserves logical window WIN3 (C000h–FFFFh) as a banked physical-RAM aperture. The WIN3 page is selected through MPAGEX port 10h (the independent C000h–FFFFh selector), not PG3 port 23h. Match the Project125 encoding: rotate the physical page number right once (`RRCA`) before writing it to MPAGEX. For physical page 42h the selector byte is 21h. Guest RAM physical pages 44h–83h are therefore reachable as a sequence of bank selections. The CPU code, resident data and stack used while this backend is active must remain in WIN0–WIN2. WIN3 is volatile and is not restored after a memory access; it is exclusively owned by the memory backend. Interrupt handlers that can run during a banked access must also reside outside WIN3 and must not use WIN3 as their own data window.
 
 This is a logical execution contract, not a claim that the whole resident kernel fits in three windows. Kernel paging/banking beyond the fixed resident entry and memory-access critical section remains a separate linker/runtime design task. The implementation must not switch WIN0–WIN2 while executing code from those windows.
 
@@ -85,7 +85,7 @@ The system BIOS slot is 256 KiB but the current guest-visible reset mapping is 8
 
 The initial VGA aperture backend maps the guest's 128 KiB A0000–BFFFF range linearly to the first eight pages of the 256 KiB VRAM allocation. This is an explicit staging implementation, not VGA-compatible plane addressing. Sequencer/GC registers, latches, plane masks, read/write modes and scanout remain unimplemented.
 
-The common API is `x86_guest_mem_read8` and `x86_guest_mem_write8`. ROM writes fail with carry set. The selector's page-bias constants are asserted in the shared NeoGS map. All accesses use the WIN3 page-select port 23h; the runtime placement constraints described above still apply.
+The common API is `x86_guest_mem_read8` and `x86_guest_mem_write8`. ROM writes fail with carry set. The selector's page-bias constants are asserted in the shared NeoGS map. All accesses use the WIN3 MPAGEX page-select port 10h with the Project125 RRCA selector encoding; the runtime placement constraints described above still apply.
 
 
 ### Verification — unified guest memory dispatcher
@@ -115,8 +115,13 @@ The previously observed ROM response 3F:40:00 is diagnostic output from the stoc
 
 ## Production DMA page-42 hardware validation stage (2026-11-07)
 
-- The current diagnostic firmware maps physical page 42h into WIN3 by writing 42h to the WIN3 selector port #23 before arming DMA. Resident code, data and stack remain in WIN0-WIN2; WIN3 is used only as the 16 KiB staging aperture at logical C000h-FFFFh.
+- The current diagnostic firmware maps physical page 42h into WIN3 through MPAGEX port #10 before arming DMA. It encodes the page selector exactly as Project125 does: `A=42h; RRCA; OUT (10h),A`, producing selector byte 21h. PG3 port #23 is not the WIN3/MPAGEX selector. Resident code, data and stack remain in WIN0-WIN2; WIN3 is used only as the 16 KiB staging aperture at logical C000h-FFFFh.
 - ATM→NeoGS DMA destination is physical 108000h (DMA_MOD=1, HAD=10h, MAD=80h, LAD=00h). NeoGS validates the received frame from logical C000h after stopping DMA. The page bound is 4000h bytes, inclusive of a full-page frame.
 - NeoGS→ATM test frame is built at logical C000h in the same mapped physical page; DMA source is 108000h with the same module/address registers. The existing ATM ROM dummy-read and CRC/pattern checks remain unchanged.
 - The forward test frame is now 274 bytes: 18-byte ABI header plus deterministic 256-byte payload 00h..FFh. Both endpoints validate the full frame CRC. The reverse test uses the same 274-byte deterministic response.
 - This is a source/build test stage, not a hardware PASS. Require CI BUILD PASS and a new target log showing page 42 pre-mapped, forward DMA readback 108112h, NeoGS FRAME VALID, reverse DMA readback 108112h, ATM FRAME CRC VALID and PATTERN PASS. If page-42 mapping fails, restore the page-03 Project125 parity test without changing its proven sequence.
+
+
+## WIN3 selector correction — 2026-11-07
+
+The production page-42 DMA test initially wrote the raw physical page number 42h to port 23h. This was incorrect: Project125 selects the independent WIN3 window with MPAGEX at port 10h and rotates the physical page number right once before the OUT. The corrected page-42 selector sequence is `LD A,42h / RRCA / OUT (10h),A` (selector byte 21h). Both ATM→NeoGS receive-buffer access and NeoGS→ATM response construction must use this exact mapping. DMA module/address registers remain module 1, HAD=10h, MAD=80h, LAD=00h (108000h). Hardware verification of the corrected production mapping is pending.
