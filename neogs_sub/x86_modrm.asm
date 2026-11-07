@@ -21,8 +21,8 @@ x86_decode_modrm16:
         ld      (x86_modrm_byte),a
 
         and     #C0
-        rrca
-        rrca
+        rlca
+        rlca
         ld      (x86_modrm_mod),a
 
         ld      a,(x86_modrm_byte)
