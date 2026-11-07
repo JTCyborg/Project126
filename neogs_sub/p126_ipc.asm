@@ -150,9 +150,9 @@ p126_ngs_ipc_crc_work: dw 0
 ; Receive one ATM -> NeoGS ABI 1.0 frame through ZX DMA.
 ; Entry: resident dispatcher consumed E0h from ZXCMD; CBIT remains asserted.
 ; Resident code, stack and interrupt handlers must stay in WIN0-WIN2.
-; OUT: carry clear/A=0, HL=#C000 and BC=derived frame size; otherwise
-; carry set/A=status. Uses physical DMA page 42h (108000h), then maps it
-; into WIN3. The callable dispatcher below routes E0h to this endpoint.
+; OUT: carry clear/A=0, HL=#D000 and BC=derived frame size; otherwise
+; carry set/A=status. Diagnostic DMA destination is physical 00D000h on
+; page 03h, matching Project125. Production page-42 staging is not yet tested.
 ; -------------------------------------------------------------------------
 P126_NGS_DMA_MOD      EQU #1B
 P126_NGS_DMA_HAD      EQU #1C
@@ -162,14 +162,18 @@ P126_NGS_DMA_CST      EQU #1F
 P126_NGS_ZXSTAT       EQU #04
 P126_NGS_CLRCBIT      EQU #05
 P126_NGS_WIN3_PORT    EQU #23
-P126_NGS_DMA_TARGET_PAGE     EQU #42
-P126_NGS_DMA_TIMEOUT  EQU #FFFF
+; Project125 hardware-parity diagnostic locations. WIN1 is physical page 03;
+; its operational stack is at logical 7FFEh (physical offset 3FFEh). The two
+; 274-byte smoke buffers at D000h and E000h do not overlap that stack.
+; These are diagnostic carve-outs only; production ABI staging remains page 42h.
+P126_NGS_DMA_DIAG_PAGE        EQU #03
+P126_NGS_DMA_TIMEOUT          EQU #FFFF
 
 p126_ngs_ipc_dma_receive_frame::
         ; Match the proven Project125 DMA setup ordering: map the physical
         ; destination page into a CPU window before arming ZX DMA. Resident
         ; code, data and stack remain in WIN0-WIN2; WIN3 is only the aperture.
-        ld      a,P126_NGS_DMA_TARGET_PAGE
+        ld      a,P126_NGS_DMA_DIAG_PAGE
         out     (P126_NGS_WIN3_PORT),a
         ld      hl,p126_ngs_ipc_log_dma_page_premapped
         call    p126_ngs_ipc_log
@@ -177,9 +181,9 @@ p126_ngs_ipc_dma_receive_frame::
         call    p126_ngs_ipc_log
         ld      a,1
         out     (P126_NGS_DMA_MOD),a
-        ld      a,#10
+        xor     a
         out     (P126_NGS_DMA_HAD),a
-        ld      a,#80
+        ld      a,#D0
         out     (P126_NGS_DMA_MAD),a
         xor     a
         out     (P126_NGS_DMA_LAD),a
@@ -221,8 +225,8 @@ p126_ngs_ipc_dma_receive_frame::
         ld      hl,p126_ngs_ipc_log_dma_stopped
         call    p126_ngs_ipc_log
 
-        ; Read back DMA address registers after stop. Their exact post-stop
-        ; semantics are diagnostic until confirmed on target hardware.
+        ; Read back DMA address registers after stop. For the 274-byte smoke
+        ; frame, D000h + 0112h must be visible as 00D112h.
         ld      hl,p126_ngs_ipc_log_dma_addr
         call    p126_ngs_ipc_log
         in      a,(P126_NGS_DMA_HAD)
@@ -233,37 +237,17 @@ p126_ngs_ipc_dma_receive_frame::
         call    p126_ngs_ipc_log_hex_byte_inline
         call    p126_ngs_ipc_log_crlf
 
-        ; WIN3 was mapped to page 42 before DMA was armed and remains
-        ; selected. Do not switch the window between DMA completion and readback.
+        ; WIN3 remains mapped to physical page 03. The DMA destination is
+        ; D000h (the Project125-proven host-to-NeoGS diagnostic address).
         ld      hl,p126_ngs_ipc_log_dma_page_mapped
         call    p126_ngs_ipc_log
         ld      hl,p126_ngs_ipc_log_dma_end
         call    p126_ngs_ipc_log
 
-        ; Reversible WIN3 RAM test at C100h, outside the smoke frame.
-        ld      a,(#C100)
-        ld      (p126_ngs_ipc_saved_probe),a
-        ld      a,#A5
-        ld      (#C100),a
-        ld      hl,#C100
-        cp      (hl)
-        jr      nz,.p126_ngs_win3_probe_failed
-        ld      a,(p126_ngs_ipc_saved_probe)
-        ld      (#C100),a
-        ld      hl,p126_ngs_ipc_log_win3_probe_pass
-        call    p126_ngs_ipc_log
-        jr      .p126_ngs_dump_frame
-.p126_ngs_win3_probe_failed:
-        ld      a,(p126_ngs_ipc_saved_probe)
-        ld      (#C100),a
-        ld      hl,p126_ngs_ipc_log_win3_probe_fail
-        call    p126_ngs_ipc_log
-
-.p126_ngs_dump_frame:
-        ; Dump all 16 fixed header bytes visible through WIN3.
+        ; Inspect the actual Project125 parity destination, D000h.
         ld      hl,p126_ngs_ipc_log_rx_header
         call    p126_ngs_ipc_log
-        ld      ix,#C000
+        ld      ix,#D000
         ld      b,16
 .p126_ngs_rx_dump_loop:
         ld      a,(ix+0)
@@ -273,15 +257,15 @@ p126_ngs_ipc_dma_receive_frame::
         call    p126_ngs_ipc_log_crlf
 
         ; Derive exact frame size from the fixed header's payload length.
-        ld      a,(#C00C)
+        ld      a,(#D00C)
         ld      e,a
-        ld      a,(#C00D)
+        ld      a,(#D00D)
         ld      d,a
         ld      hl,P126_IPC_HEADER_SIZE
         add     hl,de
-        ; Reject any declared frame larger than the 16 KiB DMA page.
+        ; Diagnostic target starts at D000h; reject a frame crossing page 03.
         ld      a,h
-        cp      #40
+        cp      #30
         jr      c,.p126_ngs_dma_size_ok
         jp      nz,.p126_ngs_dma_bad_length
         ld      a,l
@@ -291,7 +275,7 @@ p126_ngs_ipc_dma_receive_frame::
 .p126_ngs_dma_size_ok:
         ld      (p126_ngs_ipc_rx_size),hl
         ld      bc,(p126_ngs_ipc_rx_size)
-        ld      hl,#C000
+        ld      hl,#D000
         call    p126_ngs_ipc_validate_frame
         jr      c,.p126_ngs_dma_validation_failed
         ld      hl,p126_ngs_ipc_log_frame_valid
@@ -300,7 +284,7 @@ p126_ngs_ipc_dma_receive_frame::
         ; Validation succeeded: only now acknowledge completion to ATM.
         xor     a
         out     (P126_NGS_CLRCBIT),a
-        ld      hl,#C000
+        ld      hl,#D000
         ld      bc,(p126_ngs_ipc_rx_size)
         xor     a
         ret
@@ -332,13 +316,10 @@ p126_ngs_ipc_dma_receive_frame::
         ret
 
 p126_ngs_ipc_rx_size: dw 0
-p126_ngs_ipc_saved_probe: db 0
-
-
 ; -------------------------------------------------------------------------
 ; Resident command-dispatch entry, one bounded unit of work.
 ; OUT: carry clear/Z=1/A=0 when no command is pending;
-;      carry clear/Z=0 with HL=#C000, BC=size on a valid E0h frame;
+;      carry clear/Z=0 with HL=#D000, BC=size on a valid E0h frame;
 ;      carry set/A=status for a rejected command or receive failure.
 ; The caller owns the resident main loop and must keep its stack/code outside
 ; WIN3. E0h is consumed from ZXCMD while CBIT stays asserted until DMA is armed.
@@ -346,15 +327,16 @@ p126_ngs_ipc_saved_probe: db 0
 P126_NGS_ZXCMD       EQU #01
 
 ; Reverse DMA diagnostic response for ABI command E1h (NGS_FRAME).
-; The 274-byte frame is staged at physical 108000h (page 42h).
+; Use the Project125 reference source address: physical 00E000h, page 03h
+; / logical E000h through the WIN3 alias. This is diagnostic only.
 p126_ngs_ipc_dma_send_test_frame::
-        ld      a,P126_NGS_DMA_TARGET_PAGE
+        ld      a,P126_NGS_DMA_DIAG_PAGE
         out     (P126_NGS_WIN3_PORT),a
         ld      hl,p126_ngs_ipc_dma_test_header
-        ld      de,#C000
+        ld      de,#E000
         ld      bc,P126_IPC_HEADER_SIZE
         ldir
-        ld      hl,#C000+P126_IPC_HEADER_SIZE
+        ld      hl,#E000+P126_IPC_HEADER_SIZE
         xor     a
         ld      b,0
 .ngs_fill:
@@ -364,7 +346,7 @@ p126_ngs_ipc_dma_send_test_frame::
         djnz    .ngs_fill
         ; CRC covers header[0..15] followed by payload[18..273].
         ld      hl,#FFFF
-        ld      de,#C000
+        ld      de,#E000
         ld      b,16
 .ngs_crc_header:
         ld      a,(de)
@@ -379,12 +361,12 @@ p126_ngs_ipc_dma_send_test_frame::
         inc     de
         call    p126_ngs_ipc_crc16_update
         djnz    .ngs_crc_payload
-        ld      (#C000+P126_IPC_OFF_CRC),hl
+        ld      (#E000+P126_IPC_OFF_CRC),hl
         ld      a,1
         out     (P126_NGS_DMA_MOD),a
-        ld      a,#10
+        xor     a
         out     (P126_NGS_DMA_HAD),a
-        ld      a,#80
+        ld      a,#E0
         out     (P126_NGS_DMA_MAD),a
         xor     a
         out     (P126_NGS_DMA_LAD),a
@@ -509,12 +491,10 @@ p126_ngs_ipc_log_dma_host_end:    db "[NGS] DMA HOST END DETECTED",13,10,0
 p126_ngs_ipc_log_dma_timeout:     db "[NGS] DMA WAIT TIMEOUT",13,10,0
 p126_ngs_ipc_log_bad_length:      db "[NGS] DMA FRAME LENGTH INVALID",13,10,0
 p126_ngs_ipc_log_dma_stopped:     db "[NGS] DMA STOPPED",13,10,0
-p126_ngs_ipc_log_dma_page_premapped: db "[NGS] DMA PAGE 42 PRE-MAPPED",13,10,0
-p126_ngs_ipc_log_dma_page_mapped: db "[NGS] DMA PAGE 42 STILL MAPPED",13,10,0
+p126_ngs_ipc_log_dma_page_premapped: db "[NGS] DMA DIAG PAGE 03 PRE-MAPPED",13,10,0
+p126_ngs_ipc_log_dma_page_mapped: db "[NGS] DMA DIAG PAGE 03 STILL MAPPED",13,10,0
 p126_ngs_ipc_log_dma_end:         db "[NGS] DMA END RECEIVED",13,10,0
 p126_ngs_ipc_log_dma_addr:        db "[NGS] DMA ADDR READBACK=",0
-p126_ngs_ipc_log_win3_probe_pass: db "[NGS] WIN3 RW TEST=PASS",13,10,0
-p126_ngs_ipc_log_win3_probe_fail: db "[NGS] WIN3 RW TEST=FAIL",13,10,0
 p126_ngs_ipc_log_rx_header:       db "[NGS] DMA RX HEADER=",0
 p126_ngs_ipc_log_frame_valid:     db "[NGS] DMA FRAME VALID",13,10,0
 p126_ngs_ipc_log_frame_rejected:  db "[NGS] DMA FRAME REJECTED STATUS=",0

@@ -31,7 +31,11 @@ The ATM-visible ZX DMA aperture is 0000h..3FFFh (16 KiB), as documented by the N
 
 DMA writes deposit host-written aperture bytes at the NeoGS destination. DMA reads expose NeoGS source bytes through the same host aperture. No dummy write is required. The first read from the aperture is a dummy read and must be discarded before collecting the first valid byte. Read and write directions must not be interleaved in one armed DMA transaction.
 
-The aperture and direction are hardware-defined. Project126 staging addresses, ATM source/destination buffer placement, paging assumptions and resident memory reservations remain to be assigned by Project126 memory-map/integration work. Do not copy Project125 physical page addresses or stack layout by assumption.
+The aperture and direction are hardware-defined. Project126 production staging is page 42h (physical 108000h), as reserved in docs/P126_NEOGS_MEMORY_MAP.md; this allocation is not considered hardware-validated until a separate page-42 test passes.
+
+For the current hardware-parity diagnostic only, the endpoints deliberately use the known Project125 physical addresses: ATM→NeoGS destination 00D000h and NeoGS→ATM source 00E000h (both in physical page 03h). The Project126 resident maps page 03h into WIN3 for CPU inspection. The 274-byte diagnostic buffers occupy D000h..D111h and E000h..E111h; they are explicit carve-outs and do not overlap the operational stack at 7FFEh. This temporary diagnostic placement must not be mistaken for the production ABI staging allocation or generalized to arbitrary full-aperture frames. The ATM reverse reader performs DI before its mandatory dummy read, matching Project125 and preventing IM1 from fetching DMA bytes at #0038h.
+
+Project125's DMA rules remain normative: host→NeoGS writes have no dummy write; NeoGS→host reads require ROM visible at 0000h..3FFFh and exactly one discarded first read; DMA directions are not interleaved; stop DMA before changing direction. The GS105a-specific post-enable settling delay is not automatically imposed on the resident endpoint.
 
 ## 3. Control commands and transaction lifecycle
 

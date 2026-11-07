@@ -13,7 +13,7 @@ The allocation unit is a 16 KiB physical page. There are 256 pages (00–FF), to
 
 | Pages | Physical range | Size | Owner / purpose |
 |---|---:|---:|---|
-| 00–0F | 000000–03FFFF | 256 KiB | Resident NeoGS kernel and runtime. Hard maximum remains 256 KiB. |
+| 00–0F | 000000–03FFFF | 256 KiB | Resident NeoGS kernel and runtime. Hard maximum remains 256 KiB. Page 03 contains two explicitly reserved Project125-parity DMA diagnostic buffers at D000h..D111h and E000h..E111h; the operational stack remains at 7FFEh. |
 | 10–1F | 040000–07FFFF | 256 KiB | System x86 BIOS image slot. Enforces the 256 KiB system BIOS limit. |
 | 20–2F | 080000–0BFFFF | 256 KiB | VGA BIOS image slot. Separate from system BIOS; reserved capacity, not a required image size. |
 | 30–3F | 0C0000–0FFFFF | 256 KiB | VGA VRAM backing store. |
@@ -22,6 +22,18 @@ The allocation unit is a 16 KiB physical page. There are 256 pages (00–FF), to
 | 43 | 10C000–10FFFF | 16 KiB | IPC/session scratch and transient frame-codec workspace. Not a second DMA buffer. |
 | 44–83 | 110000–20FFFF | 1 MiB | Guest x86 RAM backing store. This is a physical NeoGS allocation, not the guest logical address map. |
 | 84–FF | 210000–3FFFFF | 1.9375 MiB | Unassigned expansion reserve. No subsystem may consume it without updating this map and its assertions. |
+
+## Project125-parity DMA diagnostic carve-outs
+
+The current smoke test intentionally uses the same NeoGS physical addresses as the proven Project125 DMA tests, rather than assuming the new page-42 allocation is already known-good:
+
+- ATM → NeoGS: destination 00D000h (page 03h, offset 1000h), frame size currently 274 bytes.
+- NeoGS → ATM: source 00E000h (page 03h, offset 2000h), frame size 274 bytes.
+- Project126 maps physical page 03h into WIN3 for CPU-side frame inspection. The active resident stack is at logical 7FFEh in WIN1/page 03h (physical offset 3FFEh), so these two small diagnostic regions are disjoint from the stack.
+- These ranges are reserved only for the fixed diagnostic smoke frame. They are not production buffers and must not be used for a frame that extends beyond D111h/E111h. The production ABI staging allocation remains page 42h (108000h), pending independent hardware validation.
+- The current ATM→NeoGS diagnostic receiver rejects frames larger than 3000h bytes so a DMA transaction cannot cross the end of page 03h.
+
+This carve-out is deliberately narrow and must be removed or replaced by a validated page-42 transport test before general frame traffic is enabled.
 
 ## NeoGS logical window contract
 
