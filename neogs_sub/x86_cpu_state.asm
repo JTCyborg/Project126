@@ -869,8 +869,15 @@ x86_guest_ram_select_page:
         add     a,P126_NGS_GUEST_RAM_PAGE_BASE
         ld      b,a
         ld      a,(x86_phys_addr+1)
-        rrca
-        rrca
+        ; Extract physical address bits 15:14 as the 16 KiB page index.
+        ; Six logical shifts are required; two RRCA rotations selected
+        ; unrelated bits and sent BIOS/RAM reads to the wrong WIN3 bank.
+        srl     a
+        srl     a
+        srl     a
+        srl     a
+        srl     a
+        srl     a
         and     #03
         add     a,b
         rrca                            ; MPAGEX selector = physical page rotated right
@@ -975,8 +982,15 @@ x86_guest_mem_select_page:
         add     a,b
         ld      b,a
         ld      a,(x86_phys_addr+1)
-        rrca
-        rrca
+        ; Extract physical address bits 15:14 as the 16 KiB page index.
+        ; Six logical shifts are required; two RRCA rotations selected
+        ; unrelated bits and sent BIOS/RAM reads to the wrong WIN3 bank.
+        srl     a
+        srl     a
+        srl     a
+        srl     a
+        srl     a
+        srl     a
         and     #03
         add     a,b
         rrca                            ; MPAGEX selector = physical page rotated right
