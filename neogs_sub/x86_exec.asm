@@ -69,6 +69,11 @@ x86_cpu_step:
         cp      #A4
         jp      c,x86_exec_moffs
 .not_moffs:
+        cp      #50
+        jp      c,.not_push_pop_reg
+        cp      #60
+        jp      c,x86_exec_push_pop_reg
+.not_push_pop_reg:
         cp      #F4
         jp      z,x86_exec_hlt
         ; 40-4F: INC/DEC r16. Carry flag is preserved by both operations.
@@ -88,6 +93,90 @@ x86_cpu_step:
 .not_mov_imm_reg:
         scf
         ret
+
+; 50-57 PUSH r16, 58-5F POP r16.
+; Stack words use SS:SP and 16-bit offset wrap. PCem's 8086 path decrements
+; SP before reading the PUSH source, and increments SP before resolving POP;
+; this preserves the original 8086 PUSH SP / POP SP behavior.
+x86_exec_push_pop_reg:
+        ld      a,(x86_exec_opcode)
+        and     #08
+        ld      (x86_exec_stack_is_pop),a
+        ld      a,(x86_exec_opcode)
+        and     #07
+        add     a,a
+        ld      e,a
+        ld      d,0
+        ld      hl,x86_exec_reg16_table
+        add     hl,de
+        ld      e,(hl)
+        inc     hl
+        ld      d,(hl)
+        ld      (x86_exec_reg_ptr),de
+
+        ld      hl,(x86_reg_sp)
+        ld      a,(x86_exec_stack_is_pop)
+        or      a
+        jr      nz,.pop_word
+
+        ; PUSH: decrement SP first, then read the source register. For PUSH SP
+        ; this intentionally stores the decremented SP value (8086 behavior).
+        dec     hl
+        dec     hl
+        ld      (x86_reg_sp),hl
+        ld      (x86_exec_stack_offset),hl
+        ld      de,(x86_exec_reg_ptr)
+        ex      de,hl
+        ld      e,(hl)
+        inc     hl
+        ld      d,(hl)
+        ld      (x86_exec_stack_value),de
+
+        call    x86_exec_stack_make_address
+        ld      a,(x86_exec_stack_value)
+        call    x86_guest_mem_write8
+        ret     c
+        ld      hl,(x86_exec_stack_offset)
+        inc     hl
+        ld      (x86_exec_stack_offset),hl
+        call    x86_exec_stack_make_address
+        ld      a,(x86_exec_stack_value+1)
+        call    x86_guest_mem_write8
+        ret
+.pop_word:
+        ; POP: address is old SP, then SP is advanced before destination
+        ; commit. POP SP finally overwrites that incremented value.
+        ld      (x86_exec_stack_offset),hl
+        inc     hl
+        inc     hl
+        ld      (x86_reg_sp),hl
+
+        call    x86_exec_stack_make_address
+        call    x86_guest_mem_read8
+        ret     c
+        ld      (x86_exec_stack_value),a
+        ld      hl,(x86_exec_stack_offset)
+        inc     hl
+        ld      (x86_exec_stack_offset),hl
+        call    x86_exec_stack_make_address
+        call    x86_guest_mem_read8
+        ret     c
+        ld      (x86_exec_stack_value+1),a
+
+        ld      hl,(x86_exec_reg_ptr)
+        ld      a,(x86_exec_stack_value)
+        ld      (hl),a
+        inc     hl
+        ld      a,(x86_exec_stack_value+1)
+        ld      (hl),a
+        or      a
+        ret
+
+; Build the current SS:stack_offset address through the Project126 mapper.
+x86_exec_stack_make_address:
+        ld      hl,(x86_reg_ss)
+        ld      de,(x86_exec_stack_offset)
+        jp      x86_cpu_calc_phys
 
 ; A0-A3: MOV AL/AX <-> DS:[moffs16].
 ; Segment override prefixes are handled by the prefix layer, not yet present.
@@ -375,6 +464,9 @@ x86_exec_reg_ptr: dw 0
 x86_exec_result_word: dw 0
 x86_exec_saved_cf: db 0
 x86_exec_is_dec: db 0
+x86_exec_stack_is_pop: db 0
+x86_exec_stack_offset: dw 0
+x86_exec_stack_value: dw 0
 x86_exec_moffs_opcode: db 0
 x86_exec_moffs_offset: dw 0
 x86_exec_moffs_value: dw 0
