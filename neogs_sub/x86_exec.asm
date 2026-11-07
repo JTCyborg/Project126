@@ -51,6 +51,25 @@ x86_cpu_step:
 
         cp      #06
         jp      c,x86_exec_add_family
+        cp      #08
+        jp      c,.not_logic_or
+        cp      #0E
+        jp      c,x86_exec_logic_family
+.not_logic_or:
+        cp      #20
+        jp      c,.not_logic_and
+        cp      #26
+        jp      c,x86_exec_logic_family
+.not_logic_and:
+        cp      #30
+        jp      c,.not_logic_xor
+        cp      #36
+        jp      c,x86_exec_logic_family
+.not_logic_xor:
+        cp      #84
+        jp      z,x86_exec_logic_family
+        cp      #85
+        jp      z,x86_exec_logic_family
         cp      #28
         jp      c,.not_sub_family_28
         cp      #2E
@@ -382,6 +401,146 @@ x86_exec_subcmp_family:
         or      a
         ret     nz
         ld      hl,(x86_exec_alu_result16)
+        ld      (x86_reg_ax),hl
+        or      a
+        ret
+
+; OR 08-0D, AND 20-25, XOR 30-35, TEST 84-85.
+; Each operation uses the shared logical ALU helpers, which clear CF/AF/OF
+; and update SF/ZF/PF. TEST never writes its destination.
+x86_exec_logic_family:
+        ld      a,(x86_exec_opcode)
+        ld      (x86_exec_alu_opcode),a
+        cp      #20
+        jr      c,.logic_is_or
+        cp      #30
+        jr      c,.logic_is_and
+        cp      #36
+        jr      nc,.logic_is_test
+        ld      a,2
+        jr      .logic_operation_ready
+.logic_is_or:
+        xor     a
+        jr      .logic_operation_ready
+.logic_is_and:
+        ld      a,1
+        jr      .logic_operation_ready
+.logic_is_test:
+        ld      a,1
+.logic_operation_ready:
+        ld      (x86_exec_alu_operation),a
+        ld      a,(x86_exec_alu_opcode)
+        cp      #84
+        jr      z,.logic_test_rm_reg
+        cp      #85
+        jr      z,.logic_test_rm_reg
+        bit     2,a
+        jp      nz,.logic_accumulator_immediate
+
+        call    x86_decode_modrm16
+        ret     c
+        ld      a,(x86_exec_alu_opcode)
+        bit     0,a
+        jp      nz,.logic_word
+        bit     1,a
+        jr      nz,.logic_r8_from_rm8
+
+        ; OR/AND/XOR r/m8,r8
+        call    x86_modrm_read_rm8
+        ld      (x86_exec_alu_lhs8),a
+        ld      a,(x86_modrm_reg)
+        call    x86_modrm_read_reg8
+        ld      c,a
+        ld      a,(x86_exec_alu_lhs8)
+        ld      b,(x86_exec_alu_operation)
+        call    x86_alu_logic8
+        jp      x86_modrm_write_rm8
+
+.logic_r8_from_rm8:
+        ; OR/AND/XOR r8,r/m8
+        ld      a,(x86_modrm_reg)
+        call    x86_modrm_read_reg8
+        ld      (x86_exec_alu_lhs8),a
+        call    x86_modrm_read_rm8
+        ld      c,a
+        ld      a,(x86_exec_alu_lhs8)
+        ld      b,(x86_exec_alu_operation)
+        call    x86_alu_logic8
+        ld      c,a
+        ld      a,(x86_modrm_reg)
+        jp      x86_modrm_write_reg8
+
+.logic_word:
+        bit     1,a
+        jr      nz,.logic_r16_from_rm16
+
+        ; OR/AND/XOR r/m16,r16
+        call    x86_modrm_read_rm16
+        ld      (x86_exec_alu_lhs16),hl
+        call    x86_modrm_read_reg16
+        ex      de,hl
+        ld      hl,(x86_exec_alu_lhs16)
+        ld      b,(x86_exec_alu_operation)
+        call    x86_alu_logic16
+        jp      x86_modrm_write_rm16
+
+.logic_r16_from_rm16:
+        ; OR/AND/XOR r16,r/m16
+        call    x86_modrm_read_reg16
+        ld      (x86_exec_alu_lhs16),hl
+        call    x86_modrm_read_rm16
+        ex      de,hl
+        ld      hl,(x86_exec_alu_lhs16)
+        ld      b,(x86_exec_alu_operation)
+        call    x86_alu_logic16
+        jp      x86_modrm_write_reg16
+
+.logic_test_rm_reg:
+        call    x86_decode_modrm16
+        ret     c
+        ld      a,(x86_exec_alu_opcode)
+        bit     0,a
+        jr      nz,.logic_test_word
+        call    x86_modrm_read_rm8
+        ld      (x86_exec_alu_lhs8),a
+        ld      a,(x86_modrm_reg)
+        call    x86_modrm_read_reg8
+        ld      c,a
+        ld      a,(x86_exec_alu_lhs8)
+        ld      b,1
+        call    x86_alu_logic8
+        or      a
+        ret
+.logic_test_word:
+        call    x86_modrm_read_rm16
+        ld      (x86_exec_alu_lhs16),hl
+        call    x86_modrm_read_reg16
+        ex      de,hl
+        ld      hl,(x86_exec_alu_lhs16)
+        ld      b,1
+        call    x86_alu_logic16
+        or      a
+        ret
+
+.logic_accumulator_immediate:
+        bit     0,a
+        jr      nz,.logic_ax_immediate
+        call    x86_cpu_fetch8
+        ret     c
+        ld      c,a
+        ld      a,(x86_reg_ax)
+        ld      b,(x86_exec_alu_operation)
+        call    x86_alu_logic8
+        ld      (x86_reg_ax),a
+        or      a
+        ret
+.logic_ax_immediate:
+        call    x86_cpu_fetch16
+        ret     c
+        ex      de,hl
+        ld      hl,(x86_reg_ax)
+        ld      b,(x86_exec_alu_operation)
+        call    x86_alu_logic16
         ld      (x86_reg_ax),hl
         or      a
         ret
@@ -1655,6 +1814,7 @@ x86_exec_alu_lhs16: dw 0
 x86_exec_alu_result8: db 0
 x86_exec_alu_result16: dw 0
 x86_exec_alu_is_cmp: db 0
+x86_exec_alu_operation: db 0
 x86_exec_mov_byte: db 0
 x86_exec_sreg_opcode: db 0
 x86_exec_sreg_index: db 0
