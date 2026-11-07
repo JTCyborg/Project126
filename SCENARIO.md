@@ -1071,3 +1071,12 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 - Changed p126_bios_enter_trdos_mode to read the current #5C3B value, set only D4 with OR #10, write the result to #7FFD, and update #5C3B. With the current display configuration this preserves BANKM=#18 instead of forcing #10.
 - The existing #3FF7=#BF WIN0 automatic TR-DOS selector remains reasserted. #EFF7, the permanent DOSEN setup, the #0177 trampoline, catalogue, keyboard, TR-DOS C=0Ah/C=08h ABI, sector reader, DMA, IPC and IMAGE protocol are unchanged.
 - This fixes an unintended video-page switch in the disk-entry path. It does not by itself prove that the ROM call now returns. Hardware verification still requires C=0Ah RETURN followed by C=08h CALL/RETURN; no BIOS read/transfer/install PASS is claimed.
+
+
+## 2026-11-07 — Restore permanent DOSEN after RTC access (TR-DOS hang root cause)
+
+- The new hardware trace confirmed BANKM=#18 after the high-resolution page-preservation fix, but the TR-DOS C=0Ah call still did not return. The selected filename and type remained valid.
+- A cross-module audit found the state transition that had been missed: Project126 initializes ATM video and establishes permanent DOSEN through #0177, then probes the RTC before BIOS selection. The native DS12887_OPEN/DS12887_CLOSE path writes #80 and then #00 to #EFF7. The latter has A9=1 and closes the permanent DOSEN/shadow-port path. Timestamped logging can repeat the same open/close sequence before the BIOS call.
+- Added p126_atm_restore_dosen in p126_screen_console.asm. After native RTC gate closure it re-enters the documented #3Dxx ROM trampoline and writes #C6 to #0177. This re-establishes permanent DOSEN/shadow-port access and restores the project's fixed RG=6 ATM 80x25 text mode.
+- DS12887_CLOSE now invokes that helper after its #EFF7=0 write on the native ATM RTC backend. SMUC backend behavior is unchanged. The existing ROM2/BANKM D3 preservation and WIN0 #3FF7=#BF selection are unchanged.
+- This correction addresses a concrete destructive #EFF7 write in the RTC path. Hardware verification is still required: after RTC PROBE and timestamped logging, the next BIOS selection must show TR-DOS C=0Ah RETURN and then C=08h CALL/RETURN. BIOS sector read, IMAGE transfer and BIOS execution remain unverified.

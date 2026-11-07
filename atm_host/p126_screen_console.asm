@@ -121,6 +121,27 @@ p126_atm_video_mode_ready:
         pop     af
         ret
 
+; Reopen the permanent ATM shadow-port/DOSEN state after an RTC access.
+; DS12887_OPEN/CLOSE uses #EFF7, whose A9=1 write closes the permanent
+; DOSEN path. Re-enter #3Dxx, execute OUT (C),A from the TR-DOS ROM, and
+; write #C6 to #0177: A9=0 keeps shadow ports/DOSEN active and RG=6 restores
+; the fixed ATM 80x25 text mode. ROM2 and WIN0 selector #3FF7=#BF must remain
+; configured by p126_atm_video_init.
+p126_atm_restore_dosen::
+        push    af
+        push    bc
+        ld      bc,p126_atm_restore_dosen_done
+        push    bc
+        ld      bc,#2A53
+        push    bc
+        ld      bc,#0177
+        ld      a,#C6
+        jp      #3D2F
+p126_atm_restore_dosen_done:
+        pop     bc
+        pop     af
+        ret
+
 ; =========================================================================
 ; Screen initialization and static Project124-style two-zone workspace.
 ; The upper 12 rows are the status panel; the lower 13 rows are the log.
