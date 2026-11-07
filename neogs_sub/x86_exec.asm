@@ -279,7 +279,7 @@ x86_exec_subcmp_family:
         ld      (x86_exec_alu_is_cmp),a
         ld      a,(x86_exec_alu_opcode)
         bit     2,a
-        jr      nz,.subcmp_accumulator
+        jp      nz,.subcmp_accumulator
 
         call    x86_decode_modrm16
         ret     c
