@@ -41,6 +41,7 @@ x86_cpu_reset:
         ld      hl,X86_FLAGS_RESET
         ld      (x86_reg_flags),hl
         xor     a
+        ld      (x86_mem_fault_diag_once),a
         ld      (x86_halted),a
         ld      (x86_pending_irq),a
         ld      (x86_pending_nmi),a
@@ -101,76 +102,76 @@ x86_bios_reset_vector_probe:
 ; Compare the DMA BIOS payload, installed page-10 bytes and the normal
 ; guest-memory read path before BIOS execution starts.
 ; The DMA frame remains mapped and valid until IMAGE_FINISH returns.
-x86_bios_image_diag:
-        push    af
-        push    bc
-        push    de
-        push    hl
-        ld      a,#21                  ; DMA staging page 42h
-        out     (P126_NGS_BANK_WINDOW_PORT),a
-        ld      a,(#C077)              ; payload offset 005Bh
-        ld      (x86_bios_diag_src_005b),a
-        ld      a,(#E00C)              ; payload offset 1FF0h
-        ld      (x86_bios_diag_src_1ff0),a
-        ld      a,#08                  ; installed physical page 10h
-        out     (P126_NGS_BANK_WINDOW_PORT),a
-        ld      a,(#C05B)              ; installed BIOS offset 005Bh
-        ld      (x86_bios_diag_dst_005b),a
-        ld      a,(#DFF0)              ; installed BIOS offset 1FF0h
-        ld      (x86_bios_diag_dst_1ff0),a
-        ld      hl,x86_bios_diag_src_msg
-        call    x86_bios_trace_emit_string
-        ld      a,(x86_bios_diag_src_005b)
-        call    x86_bios_trace_emit_hex8
-        ld      hl,x86_bios_diag_dst_msg
-        call    x86_bios_trace_emit_string
-        ld      a,(x86_bios_diag_dst_005b)
-        call    x86_bios_trace_emit_hex8
-        ld      hl,x86_bios_diag_run_msg
-        call    x86_bios_trace_emit_string
-        ld      hl,#F000
-        ld      de,#E05B
-        call    x86_cpu_calc_phys
-        call    x86_guest_mem_read8
-        call    x86_bios_trace_emit_hex8
-        ld      hl,x86_bios_diag_vector_src_msg
-        call    x86_bios_trace_emit_string
-        ld      a,(x86_bios_diag_src_1ff0)
-        call    x86_bios_trace_emit_hex8
-        ld      hl,x86_bios_diag_vector_dst_msg
-        call    x86_bios_trace_emit_string
-        ld      a,(x86_bios_diag_dst_1ff0)
-        call    x86_bios_trace_emit_hex8
-        ld      a,13
-        call    x86_bios_trace_emit_char
-        ld      a,10
-        call    x86_bios_trace_emit_char
-        ld      a,#21                  ; restore production DMA page 42h
-        out     (P126_NGS_BANK_WINDOW_PORT),a
-        pop     hl
-        pop     de
-        pop     bc
-        pop     af
-        ret
-
-x86_bios_trace_emit_string:
-        ld      a,(hl)
-        inc     hl
-        or      a
-        ret     z
-        call    x86_bios_trace_emit_char
-        jr      x86_bios_trace_emit_string
-
-x86_bios_diag_src_msg: db "[BIOS IMAGE] SRC@005B=",0
-x86_bios_diag_dst_msg: db " DST@005B=",0
-x86_bios_diag_run_msg: db " RUN@FE05B=",0
-x86_bios_diag_vector_src_msg: db " SRC@1FF0=",0
-x86_bios_diag_vector_dst_msg: db " DST@1FF0=",0
-x86_bios_diag_src_005b: db 0
-x86_bios_diag_dst_005b: db 0
-x86_bios_diag_src_1ff0: db 0
-x86_bios_diag_dst_1ff0: db 0
-
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED: x86_bios_image_diag:
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         push    af
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         push    bc
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         push    de
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         push    hl
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         ld      a,#21                  ; DMA staging page 42h
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         out     (P126_NGS_BANK_WINDOW_PORT),a
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         ld      a,(#C077)              ; payload offset 005Bh
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         ld      (x86_bios_diag_src_005b),a
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         ld      a,(#E00C)              ; payload offset 1FF0h
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         ld      (x86_bios_diag_src_1ff0),a
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         ld      a,#08                  ; installed physical page 10h
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         out     (P126_NGS_BANK_WINDOW_PORT),a
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         ld      a,(#C05B)              ; installed BIOS offset 005Bh
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         ld      (x86_bios_diag_dst_005b),a
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         ld      a,(#DFF0)              ; installed BIOS offset 1FF0h
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         ld      (x86_bios_diag_dst_1ff0),a
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         ld      hl,x86_bios_diag_src_msg
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         call    x86_bios_trace_emit_string
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         ld      a,(x86_bios_diag_src_005b)
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         call    x86_bios_trace_emit_hex8
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         ld      hl,x86_bios_diag_dst_msg
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         call    x86_bios_trace_emit_string
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         ld      a,(x86_bios_diag_dst_005b)
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         call    x86_bios_trace_emit_hex8
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         ld      hl,x86_bios_diag_run_msg
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         call    x86_bios_trace_emit_string
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         ld      hl,#F000
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         ld      de,#E05B
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         call    x86_cpu_calc_phys
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         call    x86_guest_mem_read8
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         call    x86_bios_trace_emit_hex8
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         ld      hl,x86_bios_diag_vector_src_msg
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         call    x86_bios_trace_emit_string
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         ld      a,(x86_bios_diag_src_1ff0)
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         call    x86_bios_trace_emit_hex8
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         ld      hl,x86_bios_diag_vector_dst_msg
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         call    x86_bios_trace_emit_string
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         ld      a,(x86_bios_diag_dst_1ff0)
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         call    x86_bios_trace_emit_hex8
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         ld      a,13
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         call    x86_bios_trace_emit_char
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         ld      a,10
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         call    x86_bios_trace_emit_char
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         ld      a,#21                  ; restore production DMA page 42h
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         out     (P126_NGS_BANK_WINDOW_PORT),a
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         pop     hl
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         pop     de
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         pop     bc
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         pop     af
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         ret
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED: 
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED: x86_bios_trace_emit_string:
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         ld      a,(hl)
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         inc     hl
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         or      a
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         ret     z
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         call    x86_bios_trace_emit_char
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED:         jr      x86_bios_trace_emit_string
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED: 
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED: x86_bios_diag_src_msg: db "[BIOS IMAGE] SRC@005B=",0
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED: x86_bios_diag_dst_msg: db " DST@005B=",0
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED: x86_bios_diag_run_msg: db " RUN@FE05B=",0
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED: x86_bios_diag_vector_src_msg: db " SRC@1FF0=",0
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED: x86_bios_diag_vector_dst_msg: db " DST@1FF0=",0
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED: x86_bios_diag_src_005b: db 0
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED: x86_bios_diag_dst_005b: db 0
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED: x86_bios_diag_src_1ff0: db 0
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED: x86_bios_diag_dst_1ff0: db 0
+; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED: 
 x86_bios_startup_trace:
         call    x86_bios_reset_vector_probe
         jr      nc,.reset_vector_ok
@@ -188,11 +189,11 @@ x86_bios_startup_trace:
         ld      hl,0
         ld      (x86_bios_trace_executed),hl
 .trace_loop:
-        call    x86_bios_trace_log_fetch_probe
+        ; OBSOLETE: per-instruction fetch probe disabled after BIOS image/readback validation.
         call    x86_cpu_step
         jr      c,.trace_fault
         call    x86_bios_trace_capture_instruction
-        call    x86_bios_trace_log_first32
+        ; OBSOLETE: first-32 register dump disabled; terminal fault snapshot remains active.
         ld      hl,(x86_bios_trace_executed)
         inc     hl
         ld      (x86_bios_trace_executed),hl
@@ -310,168 +311,168 @@ x86_bios_trace_capture_instruction:
 
 ; Read the next two bytes through the production guest-memory mapper
 ; before the CPU step. This separates bad backing/mapping from decode faults.
-x86_bios_trace_log_fetch_probe:
-        push    af
-        push    bc
-        push    de
-        push    hl
-        ld      a,(x86_bios_trace_first_count)
-        cp      32
-        jp      nc,.probe_done
-
-        ld      hl,(x86_reg_cs)
-        ld      de,(x86_reg_ip)
-        call    x86_cpu_calc_phys
-        call    x86_guest_mem_read8
-        ld      (x86_bios_trace_probe_byte0),a
-        ld      a,0
-        adc     a,0
-        ld      (x86_bios_trace_probe_error0),a
-
-        ld      hl,(x86_reg_cs)
-        ld      de,(x86_reg_ip)
-        inc     de
-        call    x86_cpu_calc_phys
-        call    x86_guest_mem_read8
-        ld      (x86_bios_trace_probe_byte1),a
-        ld      a,0
-        adc     a,0
-        ld      (x86_bios_trace_probe_error1),a
-
-        ld      hl,x86_bios_trace_probe_prefix
-        call    p126_ngs_resident_log
-        ld      a,(x86_bios_trace_probe_byte0)
-        call    x86_bios_trace_emit_hex8
-        ld      hl,x86_bios_trace_probe_second
-        call    p126_ngs_resident_log
-        ld      a,(x86_bios_trace_probe_byte1)
-        call    x86_bios_trace_emit_hex8
-        ld      a,13
-        call    x86_bios_trace_emit_char
-        ld      a,10
-        call    x86_bios_trace_emit_char
-.probe_done:
-        pop     hl
-        pop     de
-        pop     bc
-        pop     af
-        ret
-
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED: x86_bios_trace_log_fetch_probe:
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED:         push    af
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED:         push    bc
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED:         push    de
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED:         push    hl
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED:         ld      a,(x86_bios_trace_first_count)
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED:         cp      32
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED:         jp      nc,.probe_done
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED: 
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED:         ld      hl,(x86_reg_cs)
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED:         ld      de,(x86_reg_ip)
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED:         call    x86_cpu_calc_phys
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED:         call    x86_guest_mem_read8
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED:         ld      (x86_bios_trace_probe_byte0),a
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED:         ld      a,0
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED:         adc     a,0
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED:         ld      (x86_bios_trace_probe_error0),a
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED: 
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED:         ld      hl,(x86_reg_cs)
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED:         ld      de,(x86_reg_ip)
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED:         inc     de
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED:         call    x86_cpu_calc_phys
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED:         call    x86_guest_mem_read8
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED:         ld      (x86_bios_trace_probe_byte1),a
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED:         ld      a,0
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED:         adc     a,0
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED:         ld      (x86_bios_trace_probe_error1),a
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED: 
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED:         ld      hl,x86_bios_trace_probe_prefix
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED:         call    p126_ngs_resident_log
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED:         ld      a,(x86_bios_trace_probe_byte0)
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED:         call    x86_bios_trace_emit_hex8
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED:         ld      hl,x86_bios_trace_probe_second
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED:         call    p126_ngs_resident_log
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED:         ld      a,(x86_bios_trace_probe_byte1)
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED:         call    x86_bios_trace_emit_hex8
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED:         ld      a,13
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED:         call    x86_bios_trace_emit_char
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED:         ld      a,10
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED:         call    x86_bios_trace_emit_char
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED: .probe_done:
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED:         pop     hl
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED:         pop     de
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED:         pop     bc
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED:         pop     af
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED:         ret
+; OBSOLETE FIRST-32 FETCH PROBE DISABLED: 
 ; Emit a detailed architectural snapshot for each of the first 32 BIOS
 ; instructions. CS:IP and physical address identify the instruction start;
 ; registers and FLAGS are the post-instruction architectural state.
-x86_bios_trace_log_first32:
-        push    af
-        push    bc
-        push    de
-        push    hl
-        ld      a,(x86_bios_trace_first_count)
-        cp      32
-        jp      nc,.first32_done
-        inc     a
-        ld      (x86_bios_trace_first_count),a
-        ld      (x86_bios_trace_first_number),a
-
-        ld      hl,(x86_exec_instruction_start_cs)
-        ld      de,(x86_exec_instruction_start_ip)
-        call    x86_cpu_calc_phys
-        ld      a,(x86_phys_addr)
-        ld      (x86_bios_trace_first_phys),a
-        ld      a,(x86_phys_addr+1)
-        ld      (x86_bios_trace_first_phys+1),a
-        ld      a,(x86_phys_addr+2)
-        ld      (x86_bios_trace_first_phys+2),a
-        call    x86_mem_classify
-        ld      (x86_bios_trace_first_region),a
-
-        ld      hl,x86_bios_trace_first_prefix
-        call    p126_ngs_resident_log
-        ld      a,(x86_bios_trace_first_number)
-        call    x86_bios_trace_emit_hex8
-        ld      hl,x86_bios_trace_first_csip
-        call    p126_ngs_resident_log
-        ld      hl,(x86_exec_instruction_start_cs)
-        call    x86_bios_trace_emit_hex16
-        ld      a,':'
-        call    x86_bios_trace_emit_char
-        ld      hl,(x86_exec_instruction_start_ip)
-        call    x86_bios_trace_emit_hex16
-        ld      hl,x86_bios_trace_first_phys_text
-        call    p126_ngs_resident_log
-        ld      a,(x86_bios_trace_first_phys+2)
-        call    x86_bios_trace_emit_hex8
-        ld      a,(x86_bios_trace_first_phys+1)
-        call    x86_bios_trace_emit_hex8
-        ld      a,(x86_bios_trace_first_phys)
-        call    x86_bios_trace_emit_hex8
-        ld      hl,x86_bios_trace_first_region_text
-        call    p126_ngs_resident_log
-        ld      a,(x86_bios_trace_first_region)
-        call    x86_bios_trace_emit_hex8
-        ld      hl,x86_bios_trace_first_opcode_text
-        call    p126_ngs_resident_log
-        ld      a,(x86_exec_opcode)
-        call    x86_bios_trace_emit_hex8
-
-        ld      hl,x86_bios_trace_first_ax
-        call    p126_ngs_resident_log
-        ld      hl,(x86_reg_ax)
-        call    x86_bios_trace_emit_hex16
-        ld      hl,x86_bios_trace_first_bx
-        call    p126_ngs_resident_log
-        ld      hl,(x86_reg_bx)
-        call    x86_bios_trace_emit_hex16
-        ld      hl,x86_bios_trace_first_cx
-        call    p126_ngs_resident_log
-        ld      hl,(x86_reg_cx)
-        call    x86_bios_trace_emit_hex16
-        ld      hl,x86_bios_trace_first_dx
-        call    p126_ngs_resident_log
-        ld      hl,(x86_reg_dx)
-        call    x86_bios_trace_emit_hex16
-        ld      hl,x86_bios_trace_first_si
-        call    p126_ngs_resident_log
-        ld      hl,(x86_reg_si)
-        call    x86_bios_trace_emit_hex16
-        ld      hl,x86_bios_trace_first_di
-        call    p126_ngs_resident_log
-        ld      hl,(x86_reg_di)
-        call    x86_bios_trace_emit_hex16
-        ld      hl,x86_bios_trace_first_bp
-        call    p126_ngs_resident_log
-        ld      hl,(x86_reg_bp)
-        call    x86_bios_trace_emit_hex16
-        ld      hl,x86_bios_trace_first_sp
-        call    p126_ngs_resident_log
-        ld      hl,(x86_reg_sp)
-        call    x86_bios_trace_emit_hex16
-        ld      hl,x86_bios_trace_first_ds
-        call    p126_ngs_resident_log
-        ld      hl,(x86_reg_ds)
-        call    x86_bios_trace_emit_hex16
-        ld      hl,x86_bios_trace_first_es
-        call    p126_ngs_resident_log
-        ld      hl,(x86_reg_es)
-        call    x86_bios_trace_emit_hex16
-        ld      hl,x86_bios_trace_first_ss
-        call    p126_ngs_resident_log
-        ld      hl,(x86_reg_ss)
-        call    x86_bios_trace_emit_hex16
-        ld      hl,x86_bios_trace_first_flags
-        call    p126_ngs_resident_log
-        ld      hl,(x86_reg_flags)
-        call    x86_bios_trace_emit_hex16
-        ld      a,13
-        call    x86_bios_trace_emit_char
-        ld      a,10
-        call    x86_bios_trace_emit_char
-.first32_done:
-        pop     hl
-        pop     de
-        pop     bc
-        pop     af
-        ret
-
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED: x86_bios_trace_log_first32:
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         push    af
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         push    bc
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         push    de
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         push    hl
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      a,(x86_bios_trace_first_count)
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         cp      32
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         jp      nc,.first32_done
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         inc     a
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      (x86_bios_trace_first_count),a
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      (x86_bios_trace_first_number),a
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED: 
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      hl,(x86_exec_instruction_start_cs)
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      de,(x86_exec_instruction_start_ip)
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         call    x86_cpu_calc_phys
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      a,(x86_phys_addr)
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      (x86_bios_trace_first_phys),a
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      a,(x86_phys_addr+1)
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      (x86_bios_trace_first_phys+1),a
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      a,(x86_phys_addr+2)
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      (x86_bios_trace_first_phys+2),a
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         call    x86_mem_classify
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      (x86_bios_trace_first_region),a
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED: 
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      hl,x86_bios_trace_first_prefix
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         call    p126_ngs_resident_log
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      a,(x86_bios_trace_first_number)
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         call    x86_bios_trace_emit_hex8
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      hl,x86_bios_trace_first_csip
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         call    p126_ngs_resident_log
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      hl,(x86_exec_instruction_start_cs)
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         call    x86_bios_trace_emit_hex16
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      a,':'
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         call    x86_bios_trace_emit_char
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      hl,(x86_exec_instruction_start_ip)
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         call    x86_bios_trace_emit_hex16
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      hl,x86_bios_trace_first_phys_text
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         call    p126_ngs_resident_log
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      a,(x86_bios_trace_first_phys+2)
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         call    x86_bios_trace_emit_hex8
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      a,(x86_bios_trace_first_phys+1)
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         call    x86_bios_trace_emit_hex8
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      a,(x86_bios_trace_first_phys)
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         call    x86_bios_trace_emit_hex8
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      hl,x86_bios_trace_first_region_text
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         call    p126_ngs_resident_log
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      a,(x86_bios_trace_first_region)
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         call    x86_bios_trace_emit_hex8
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      hl,x86_bios_trace_first_opcode_text
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         call    p126_ngs_resident_log
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      a,(x86_exec_opcode)
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         call    x86_bios_trace_emit_hex8
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED: 
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      hl,x86_bios_trace_first_ax
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         call    p126_ngs_resident_log
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      hl,(x86_reg_ax)
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         call    x86_bios_trace_emit_hex16
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      hl,x86_bios_trace_first_bx
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         call    p126_ngs_resident_log
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      hl,(x86_reg_bx)
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         call    x86_bios_trace_emit_hex16
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      hl,x86_bios_trace_first_cx
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         call    p126_ngs_resident_log
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      hl,(x86_reg_cx)
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         call    x86_bios_trace_emit_hex16
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      hl,x86_bios_trace_first_dx
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         call    p126_ngs_resident_log
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      hl,(x86_reg_dx)
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         call    x86_bios_trace_emit_hex16
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      hl,x86_bios_trace_first_si
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         call    p126_ngs_resident_log
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      hl,(x86_reg_si)
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         call    x86_bios_trace_emit_hex16
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      hl,x86_bios_trace_first_di
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         call    p126_ngs_resident_log
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      hl,(x86_reg_di)
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         call    x86_bios_trace_emit_hex16
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      hl,x86_bios_trace_first_bp
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         call    p126_ngs_resident_log
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      hl,(x86_reg_bp)
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         call    x86_bios_trace_emit_hex16
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      hl,x86_bios_trace_first_sp
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         call    p126_ngs_resident_log
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      hl,(x86_reg_sp)
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         call    x86_bios_trace_emit_hex16
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      hl,x86_bios_trace_first_ds
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         call    p126_ngs_resident_log
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      hl,(x86_reg_ds)
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         call    x86_bios_trace_emit_hex16
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      hl,x86_bios_trace_first_es
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         call    p126_ngs_resident_log
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      hl,(x86_reg_es)
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         call    x86_bios_trace_emit_hex16
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      hl,x86_bios_trace_first_ss
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         call    p126_ngs_resident_log
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      hl,(x86_reg_ss)
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         call    x86_bios_trace_emit_hex16
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      hl,x86_bios_trace_first_flags
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         call    p126_ngs_resident_log
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      hl,(x86_reg_flags)
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         call    x86_bios_trace_emit_hex16
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      a,13
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         call    x86_bios_trace_emit_char
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ld      a,10
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         call    x86_bios_trace_emit_char
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED: .first32_done:
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         pop     hl
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         pop     de
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         pop     bc
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         pop     af
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED:         ret
+; OBSOLETE FIRST-32 REGISTER DUMP DISABLED: 
 ; I/O totals are reported even if no per-access line is present.
 x86_bios_trace_log_io_counts:
         push    af
@@ -994,6 +995,10 @@ x86_guest_mem_read8:
         jr      z,.vgabios
         cp      P126_X86_MEM_SYSBIOS
         jr      z,.sysbios
+        ; A region outside the configured guest map is a real memory fault.
+        ; Emit one compact address/mapping snapshot, then preserve CF=1.
+        ld      (x86_mem_fault_region),a
+        call    x86_guest_mem_fault_diag
         scf
         ret
 .ram:
@@ -1021,6 +1026,104 @@ x86_guest_mem_read8:
         ld      a,(hl)
         or      a
         ret
+
+; -------------------------------------------------------------------------
+; One-shot diagnostic for rejected guest-memory reads.
+; Logs physical address, classifier result, computed NeoGS page/MPAGEX value,
+; WIN3 aperture address and the architectural DS:SI source registers.
+; This is intentionally fault-only; normal memory accesses remain silent.
+; -------------------------------------------------------------------------
+x86_guest_mem_fault_diag:
+        push    af
+        push    bc
+        push    de
+        push    hl
+        ld      a,(x86_mem_fault_diag_once)
+        or      a
+        jr      nz,.diag_done
+        inc     a
+        ld      (x86_mem_fault_diag_once),a
+        ld      a,(x86_phys_addr+2)
+        ld      (x86_mem_fault_page),a
+        add     a,a
+        add     a,a
+        add     a,P126_NGS_GUEST_RAM_PAGE_BASE
+        ld      b,a
+        ld      a,(x86_phys_addr+1)
+        srl     a
+        srl     a
+        srl     a
+        srl     a
+        srl     a
+        srl     a
+        and     #03
+        add     a,b
+        ld      (x86_mem_fault_page),a
+        rrca
+        ld      (x86_mem_fault_selector),a
+        ld      a,(x86_phys_addr+1)
+        and     #3F
+        or      #C0
+        ld      (x86_mem_fault_h),a
+        ld      a,(x86_phys_addr)
+        ld      (x86_mem_fault_l),a
+
+        ld      hl,x86_mem_fault_prefix
+        call    p126_ngs_resident_log
+        ld      a,(x86_phys_addr+2)
+        call    x86_bios_trace_emit_hex8
+        ld      a,(x86_phys_addr+1)
+        call    x86_bios_trace_emit_hex8
+        ld      a,(x86_phys_addr)
+        call    x86_bios_trace_emit_hex8
+        ld      hl,x86_mem_fault_region_text
+        call    p126_ngs_resident_log
+        ld      a,(x86_mem_fault_region)
+        call    x86_bios_trace_emit_hex8
+        ld      hl,x86_mem_fault_page_text
+        call    p126_ngs_resident_log
+        ld      a,(x86_mem_fault_page)
+        call    x86_bios_trace_emit_hex8
+        ld      hl,x86_mem_fault_selector_text
+        call    p126_ngs_resident_log
+        ld      a,(x86_mem_fault_selector)
+        call    x86_bios_trace_emit_hex8
+        ld      hl,x86_mem_fault_hl_text
+        call    p126_ngs_resident_log
+        ld      a,(x86_mem_fault_h)
+        call    x86_bios_trace_emit_hex8
+        ld      a,(x86_mem_fault_l)
+        call    x86_bios_trace_emit_hex8
+        ld      hl,x86_mem_fault_dssi_text
+        call    p126_ngs_resident_log
+        ld      hl,(x86_reg_ds)
+        call    x86_bios_trace_emit_hex16
+        ld      a,':'
+        call    x86_bios_trace_emit_char
+        ld      hl,(x86_reg_si)
+        call    x86_bios_trace_emit_hex16
+        ld      hl,x86_mem_fault_cf_text
+        call    p126_ngs_resident_log
+.diag_done:
+        pop     hl
+        pop     de
+        pop     bc
+        pop     af
+        ret
+
+x86_mem_fault_prefix:       db "[X86 MEM FAULT] P=",0
+x86_mem_fault_region_text:  db " R=",0
+x86_mem_fault_page_text:    db " PAGE=",0
+x86_mem_fault_selector_text: db " MP=",0
+x86_mem_fault_hl_text:      db " HL=",0
+x86_mem_fault_dssi_text:   db " DS:SI=",0
+x86_mem_fault_cf_text:      db " CF=1",13,10,0
+x86_mem_fault_diag_once:    db 0
+x86_mem_fault_region:       db 0
+x86_mem_fault_page:         db 0
+x86_mem_fault_selector:     db 0
+x86_mem_fault_h:            db 0
+x86_mem_fault_l:            db 0
 
 x86_guest_mem_write8:
         ld      (x86_mem_data),a
