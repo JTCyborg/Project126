@@ -414,6 +414,8 @@ x86_exec_test_al_imm:
         jr      z,.test8_sign_done
         set     7,l
 .test8_sign_done:
+        ld      a,(x86_exec_test_result)
+        and     a
         jp      po,.test8_parity_done
         set     2,l
 .test8_parity_done:
