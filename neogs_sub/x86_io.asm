@@ -53,6 +53,8 @@ x86_io_reset_impl:
         ld      a,#08
         ld      (x86_io_pic_vector_base),a
         call    x86_io_pic_selftest_impl
+        call    x86_io_dma_reset_impl
+        call    x86_io_dma_selftest_impl
         ret
 
 ; Register-level regression for the 8259A master model. It is run after the
@@ -271,6 +273,8 @@ x86_io_read8_impl_device:
         ld      a,(x86_io_test_latch)
         ret
 .io_read8_ppi:
+        call    x86_io_dma_read8
+        ret     nc
         call    x86_io_pic_read8
         ret     nc
         call    x86_io_ppi_read8
@@ -329,6 +333,390 @@ x86_io_ppi_read8:
 .ppi_pc_done:
         or      a
         ret
+
+; -------------------------------------------------------------------------
+; 8237-compatible 4-channel DMA register file and page registers.
+; Transfer execution is a separate device-service task: this slice models
+; guest-visible address/count/mode/mask/request/status programming only.
+; -------------------------------------------------------------------------
+x86_io_dma_decode:
+        ld      hl,(x86_io_port)
+        ld      a,h
+        or      a
+        jr      nz,.dma_decode_bad
+        ld      a,l
+        cp      #10
+        jr      c,.dma_decode_controller
+        cp      #80
+        jr      c,.dma_decode_bad
+        cp      #84
+        jr      nc,.dma_decode_bad
+        sub     #80
+        ld      (x86_io_dma_page_index),a
+        ld      a,1
+        ld      (x86_io_dma_page_select),a
+        or      a
+        ret
+.dma_decode_controller:
+        ld      (x86_io_dma_port_offset),a
+        xor     a
+        ld      (x86_io_dma_page_select),a
+        or      a
+        ret
+.dma_decode_bad:
+        scf
+        ret
+
+x86_io_dma_read8:
+        call    x86_io_dma_decode
+        ret     c
+        ld      a,(x86_io_dma_page_select)
+        or      a
+        jr      nz,.dma_read_page
+        ld      a,(x86_io_dma_port_offset)
+        cp      8
+        jr      z,.dma_read_status
+        cp      8
+        jr      nc,.dma_read_open_bus
+        ; 00h..07h alternate address/count registers; one shared byte pointer.
+        ld      a,(x86_io_dma_port_offset)
+        srl     a
+        add     a,a
+        ld      e,a
+        ld      a,(x86_io_dma_flipflop)
+        add     a,e
+        ld      e,a
+        ld      d,0
+        ld      a,(x86_io_dma_port_offset)
+        bit     0,a
+        jr      nz,.dma_read_count
+        ld      hl,x86_io_dma_address
+        jr      .dma_read_channel
+.dma_read_count:
+        ld      hl,x86_io_dma_count
+.dma_read_channel:
+        add     hl,de
+        ld      a,(hl)
+        call    x86_io_dma_toggle_flipflop
+        or      a
+        ret
+.dma_read_status:
+        ; Bits 0..3 are terminal-count flags; bits 4..7 are request flags.
+        ld      a,(x86_io_dma_status)
+        and     #0F
+        ld      b,a
+        ld      a,(x86_io_dma_request)
+        and     #0F
+        rlca
+        rlca
+        rlca
+        rlca
+        or      b
+        ld      b,a
+        xor     a
+        ld      (x86_io_dma_status),a
+        ld      a,b
+        or      a
+        ret
+.dma_read_open_bus:
+        ld      a,#FF
+        or      a
+        ret
+.dma_read_page:
+        ld      a,(x86_io_dma_page_index)
+        ld      e,a
+        ld      d,0
+        ld      hl,x86_io_dma_page
+        add     hl,de
+        ld      a,(hl)
+        or      a
+        ret
+
+x86_io_dma_write8:
+        ld      (x86_io_dma_write_value),a
+        call    x86_io_dma_decode
+        ret     c
+        ld      a,(x86_io_dma_page_select)
+        or      a
+        jr      nz,.dma_write_page
+        ld      a,(x86_io_dma_port_offset)
+        cp      8
+        jr      c,.dma_write_channel
+        cp      8
+        jr      z,.dma_write_command
+        cp      9
+        jr      z,.dma_write_request
+        cp      #0A
+        jr      z,.dma_write_single_mask
+        cp      #0B
+        jr      z,.dma_write_mode
+        cp      #0C
+        jr      z,.dma_write_clear_flipflop
+        cp      #0D
+        jr      z,.dma_write_master_clear
+        cp      #0E
+        jr      z,.dma_write_clear_mask
+        ; 0Fh: write all four channel mask bits.
+        ld      a,(x86_io_dma_write_value)
+        and     #0F
+        ld      (x86_io_dma_mask),a
+        or      a
+        ret
+.dma_write_channel:
+        ld      a,(x86_io_dma_port_offset)
+        srl     a
+        add     a,a
+        ld      e,a
+        ld      a,(x86_io_dma_flipflop)
+        add     a,e
+        ld      e,a
+        ld      d,0
+        ld      a,(x86_io_dma_port_offset)
+        bit     0,a
+        jr      nz,.dma_write_count
+        ld      hl,x86_io_dma_address
+        jr      .dma_write_channel_store
+.dma_write_count:
+        ld      hl,x86_io_dma_count
+.dma_write_channel_store:
+        add     hl,de
+        ld      a,(x86_io_dma_write_value)
+        ld      (hl),a
+        call    x86_io_dma_toggle_flipflop
+        or      a
+        ret
+.dma_write_command:
+        ld      a,(x86_io_dma_write_value)
+        ld      (x86_io_dma_command),a
+        or      a
+        ret
+.dma_write_request:
+        ld      a,(x86_io_dma_write_value)
+        and     3
+        ld      e,a
+        ld      d,0
+        ld      hl,x86_io_dma_bit_masks
+        add     hl,de
+        ld      a,(hl)
+        ld      b,a
+        ld      a,(x86_io_dma_write_value)
+        bit     2,a
+        jr      z,.dma_request_clear
+        ld      a,(x86_io_dma_request)
+        or      b
+        ld      (x86_io_dma_request),a
+        or      a
+        ret
+.dma_request_clear:
+        ld      a,b
+        cpl
+        ld      b,a
+        ld      a,(x86_io_dma_request)
+        and     b
+        ld      (x86_io_dma_request),a
+        or      a
+        ret
+.dma_write_single_mask:
+        ld      a,(x86_io_dma_write_value)
+        and     3
+        ld      e,a
+        ld      d,0
+        ld      hl,x86_io_dma_bit_masks
+        add     hl,de
+        ld      a,(hl)
+        ld      b,a
+        ld      a,(x86_io_dma_write_value)
+        bit     2,a
+        jr      z,.dma_unmask_channel
+        ld      a,(x86_io_dma_mask)
+        or      b
+        ld      (x86_io_dma_mask),a
+        or      a
+        ret
+.dma_unmask_channel:
+        ld      a,b
+        cpl
+        ld      b,a
+        ld      a,(x86_io_dma_mask)
+        and     b
+        ld      (x86_io_dma_mask),a
+        or      a
+        ret
+.dma_write_mode:
+        ld      a,(x86_io_dma_write_value)
+        ld      (x86_io_dma_mode),a
+        or      a
+        ret
+.dma_write_clear_flipflop:
+        xor     a
+        ld      (x86_io_dma_flipflop),a
+        or      a
+        ret
+.dma_write_master_clear:
+        xor     a
+        ld      (x86_io_dma_command),a
+        ld      (x86_io_dma_status),a
+        ld      (x86_io_dma_request),a
+        ld      (x86_io_dma_mode),a
+        ld      (x86_io_dma_temporary),a
+        ld      (x86_io_dma_flipflop),a
+        ld      a,#0F
+        ld      (x86_io_dma_mask),a
+        or      a
+        ret
+.dma_write_clear_mask:
+        xor     a
+        ld      (x86_io_dma_mask),a
+        or      a
+        ret
+.dma_write_page:
+        ld      a,(x86_io_dma_page_index)
+        ld      e,a
+        ld      d,0
+        ld      hl,x86_io_dma_page
+        add     hl,de
+        ld      a,(x86_io_dma_write_value)
+        ld      (hl),a
+        or      a
+        ret
+
+x86_io_dma_toggle_flipflop:
+        ld      a,(x86_io_dma_flipflop)
+        xor     1
+        ld      (x86_io_dma_flipflop),a
+        ret
+
+; CPU reset clears the entire guest-visible 8237 register file and page latches.
+x86_io_dma_reset_impl:
+        xor     a
+        ld      hl,x86_io_dma_address
+        ld      de,x86_io_dma_address+1
+        ld      bc,7
+        ld      (hl),a
+        ldir
+        ld      hl,x86_io_dma_count
+        ld      de,x86_io_dma_count+1
+        ld      bc,7
+        ld      (hl),a
+        ldir
+        ld      hl,x86_io_dma_page
+        ld      de,x86_io_dma_page+1
+        ld      bc,3
+        ld      (hl),a
+        ldir
+        ld      (x86_io_dma_command),a
+        ld      (x86_io_dma_status),a
+        ld      (x86_io_dma_request),a
+        ld      (x86_io_dma_mode),a
+        ld      (x86_io_dma_temporary),a
+        ld      (x86_io_dma_flipflop),a
+        ld      (x86_io_dma_page_select),a
+        ld      (x86_io_dma_page_index),a
+        ld      (x86_io_dma_port_offset),a
+        ld      a,#0F
+        ld      (x86_io_dma_mask),a
+        ret
+
+; Register-file regression: address/count low-high flip-flop, page registers,
+; single-channel mask commands and master-clear reset behavior.
+x86_io_dma_selftest_impl:
+        ; Clear byte pointer, then program channel 0 address=1234h.
+        ld      hl,#000C
+        ld      (x86_io_port),hl
+        xor     a
+        call    x86_io_dma_write8
+        jr      c,.dma_selftest_fail
+        ld      hl,#0000
+        ld      (x86_io_port),hl
+        ld      a,#34
+        call    x86_io_dma_write8
+        jr      c,.dma_selftest_fail
+        ld      a,#12
+        call    x86_io_dma_write8
+        jr      c,.dma_selftest_fail
+        ld      a,(x86_io_dma_address)
+        cp      #34
+        jr      nz,.dma_selftest_fail
+        ld      a,(x86_io_dma_address+1)
+        cp      #12
+        jr      nz,.dma_selftest_fail
+        ; Read back the same low/high sequence.
+        ld      a,(x86_io_dma_flipflop)
+        or      a
+        jr      nz,.dma_selftest_fail
+        call    x86_io_dma_read8
+        cp      #34
+        jr      nz,.dma_selftest_fail
+        call    x86_io_dma_read8
+        cp      #12
+        jr      nz,.dma_selftest_fail
+        ; Channel 0 count=5678h.
+        ld      hl,#0001
+        ld      (x86_io_port),hl
+        ld      a,#78
+        call    x86_io_dma_write8
+        jr      c,.dma_selftest_fail
+        ld      a,#56
+        call    x86_io_dma_write8
+        jr      c,.dma_selftest_fail
+        ld      a,(x86_io_dma_count)
+        cp      #78
+        jr      nz,.dma_selftest_fail
+        ld      a,(x86_io_dma_count+1)
+        cp      #56
+        jr      nz,.dma_selftest_fail
+        ; DMA page register for channel 1 is port 81h.
+        ld      hl,#0081
+        ld      (x86_io_port),hl
+        ld      a,#A5
+        call    x86_io_dma_write8
+        jr      c,.dma_selftest_fail
+        call    x86_io_dma_read8
+        cp      #A5
+        jr      nz,.dma_selftest_fail
+        ; Clear all masks, mask channel 2, then unmask channel 2.
+        ld      hl,#000E
+        ld      (x86_io_port),hl
+        xor     a
+        call    x86_io_dma_write8
+        jr      c,.dma_selftest_fail
+        ld      hl,#000A
+        ld      (x86_io_port),hl
+        ld      a,#06
+        call    x86_io_dma_write8
+        jr      c,.dma_selftest_fail
+        ld      a,(x86_io_dma_mask)
+        cp      4
+        jr      nz,.dma_selftest_fail
+        ld      a,#02
+        call    x86_io_dma_write8
+        jr      c,.dma_selftest_fail
+        ld      a,(x86_io_dma_mask)
+        or      a
+        jr      nz,.dma_selftest_fail
+        ; Master clear restores mask=0Fh and byte pointer=0.
+        ld      hl,#000D
+        ld      (x86_io_port),hl
+        xor     a
+        call    x86_io_dma_write8
+        jr      c,.dma_selftest_fail
+        ld      a,(x86_io_dma_mask)
+        cp      #0F
+        jr      nz,.dma_selftest_fail
+        ld      a,(x86_io_dma_flipflop)
+        or      a
+        jr      nz,.dma_selftest_fail
+        ld      hl,x86_io_dma_selftest_pass
+        jr      .dma_selftest_restore
+.dma_selftest_fail:
+        ld      hl,x86_io_dma_selftest_fail
+.dma_selftest_restore:
+        push    hl
+        call    x86_io_dma_reset_impl
+        ld      hl,0
+        ld      (x86_io_port),hl
+        pop     hl
+        jp      x86_io_log_string
 
 ; -------------------------------------------------------------------------
 ; 8259A master PIC register interface (ports 0020h/0021h).
@@ -667,6 +1055,9 @@ x86_io_write8_impl_device:
         ret
 .io_write8_ppi:
         ld      (x86_io_write_value),a
+        call    x86_io_dma_write8
+        ret     nc
+        ld      a,(x86_io_write_value)
         call    x86_io_pic_write8
         ret     nc
         ld      a,(x86_io_write_value)
@@ -1030,6 +1421,25 @@ x86_io_pic_selected_mask: db 0
 x86_io_pic_vector_result: db 0
 x86_io_pic_bit_masks: db #01,#02,#04,#08,#10,#20,#40,#80
 x86_io_pic_higher_masks: db #00,#01,#03,#07,#0F,#1F,#3F,#7F
+
+; 8237 register state: four address/count pairs, page latches and controller.
+x86_io_dma_address: defs 8,0
+x86_io_dma_count: defs 8,0
+x86_io_dma_page: defs 4,0
+x86_io_dma_command: db 0
+x86_io_dma_status: db 0
+x86_io_dma_request: db 0
+x86_io_dma_mask: db #0F
+x86_io_dma_mode: db 0
+x86_io_dma_temporary: db 0
+x86_io_dma_flipflop: db 0
+x86_io_dma_page_select: db 0
+x86_io_dma_page_index: db 0
+x86_io_dma_port_offset: db 0
+x86_io_dma_write_value: db 0
+x86_io_dma_bit_masks: db #01,#02,#04,#08
+x86_io_dma_selftest_pass: db "[NGS] X86 DMA REGISTER SELFTEST PASS",13,10,0
+x86_io_dma_selftest_fail: db "[NGS] X86 DMA REGISTER SELFTEST FAIL",13,10,0
 
 ; Deterministic XT profile switch input (generic XT/no-FPU default). This
 ; value remains a profile parameter until the ATM-PC board switches are set.
