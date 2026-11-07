@@ -848,12 +848,12 @@ x86_io_dump_bios_table_impl:
         call    x86_io_log_hex16
         ld      hl,x86_io_bios_table_data_text
         call    x86_io_log_string
-        ; The watchdog stops immediately after LODSB at E06E. Include the
-        ; byte just consumed by starting at SI-1, then show the next 15 bytes.
-        ld      hl,(x86_reg_si)
-        dec     hl
+        ; BIOS1 has two consecutive port-init tables. Dump the fixed
+        ; E0A8..E0BB window so the second FF terminator can be verified even
+        ; when the guest SI has already run away under the watchdog.
+        ld      hl,#E0A8
         ld      (x86_io_diag_offset),hl
-        ld      a,16
+        ld      a,20
         ld      (x86_io_diag_remaining),a
 .bios_table_dump_loop:
         ld      hl,(x86_reg_ds)
@@ -948,7 +948,7 @@ x86_io_log_out:       db "OUT",0
 x86_io_log_port_text: db " P=",0
 x86_io_log_value_text: db " V=",0
 x86_io_log_at_text:  db " @",0
-x86_io_bios_table_prefix: db "[BIOS TABLE] DS:SI=",0
+x86_io_bios_table_prefix: db "[BIOS TABLE] E0A8=",0
 x86_io_bios_table_data_text: db " DATA=",0
 x86_io_pic_selftest_pass: db "[NGS] X86 PIC REGISTER SELFTEST PASS",13,10,0
 x86_io_pic_selftest_fail: db "[NGS] X86 PIC REGISTER SELFTEST FAIL",13,10,0
