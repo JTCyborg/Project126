@@ -413,3 +413,6 @@ Diagnosis:
 - No DMA registers, handshake order, ABI fields, or CRC algorithm were changed.
 
 Verification boundary: source correction is committed. CI assembly/package result and target hardware rerun are tracked separately; no DMA hardware PASS is claimed until ATM reports `FRAME VALID` and NeoGS independently validates the received frame.
+
+
+- **CI verification:** GitHub Actions run [42352359828](https://github.com/JTCyborg/Project126/actions/runs/42352359828), source commit `7601e8e58c8c82a0bce4697de3cdcb824f743685`, completed with SUCCESS. The ATM/NeoGS assembly and TR-DOS image packaging step passed. This confirms build correctness only; hardware rerun is still required.
