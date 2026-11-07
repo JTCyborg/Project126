@@ -644,18 +644,44 @@ p126_neogs_startup_stage: db '0'
 ; DMA transport. The NeoGS resident loop independently validates CRC and
 ; emits DMA FRAME VALID / DMA FRAME REJECTED on its own #EF channel.
 p126_neogs_dma_smoke_test::
+        ; Build a 274-byte deterministic request in ATM RAM: 18-byte ABI
+        ; header plus payload 00h..FFh. This validates page-42 delivery with
+        ; a complete payload and CRC, not merely a header-sized DMA write.
+        ld      hl,p126_neogs_dma_test_frame+P126_IPC_HEADER_SIZE
+        xor     a
+        ld      b,0
+.p126_neogs_dma_fill:
+        ld      (hl),a
+        inc     hl
+        inc     a
+        djnz    .p126_neogs_dma_fill
+
+        ; CRC-16/CCITT-FALSE over header[0..15] and payload[18..273].
         ld      hl,#FFFF
         ld      de,p126_neogs_dma_test_frame
         ld      b,16
-.p126_neogs_dma_crc_loop:
+.p126_neogs_dma_crc_header:
         ld      a,(de)
         inc     de
         call    p126_ipc_crc16_update
-        djnz    .p126_neogs_dma_crc_loop
-        ld      (p126_neogs_dma_test_frame+16),hl
+        djnz    .p126_neogs_dma_crc_header
+        inc     de
+        inc     de
+        ld      b,0
+.p126_neogs_dma_crc_payload:
+        ld      a,(de)
+        inc     de
+        call    p126_ipc_crc16_update
+        djnz    .p126_neogs_dma_crc_payload
+        ld      (p126_neogs_dma_test_frame+P126_IPC_OFF_CRC),hl
         ld      hl,p126_neogs_dma_test_frame
-        ld      bc,18
+        ld      bc,P126_IPC_HEADER_SIZE+256
         jp      p126_ipc_dma_send_frame
 
 p126_neogs_dma_test_frame:
-        db      'P','1','2','6',1,0,1,5,0,0,1,0,0,0,0,0,0,0
+        db      'P','1','2','6',1,0,1,5,0,0
+        db      #01,#00              ; sequence = 1
+        db      #00,#01              ; payload length = 0100h (256 bytes)
+        db      #00,#00              ; status = OK
+        db      #00,#00              ; CRC, filled at runtime
+        defs    256,0

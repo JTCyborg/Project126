@@ -18,7 +18,7 @@ The allocation unit is a 16 KiB physical page. There are 256 pages (00–FF), to
 | 20–2F | 080000–0BFFFF | 256 KiB | VGA BIOS image slot. Separate from system BIOS; reserved capacity, not a required image size. |
 | 30–3F | 0C0000–0FFFFF | 256 KiB | VGA VRAM backing store. |
 | 40–41 | 100000–107FFF | 32 KiB | One complete ATM presentation-frame buffer. Actual pixel ABI and hardware mode remain open. |
-| 42 | 108000–10BFFF | 16 KiB | One DMA aperture backing page for ABI 1.0 frames. One active DMA transaction. |
+| 42 | 108000–10BFFF | 16 KiB | Production DMA aperture backing page for ABI 1.0 frames. Current hardware test maps it into WIN3; one active DMA transaction. |
 | 43 | 10C000–10FFFF | 16 KiB | IPC/session scratch and transient frame-codec workspace. Not a second DMA buffer. |
 | 44–83 | 110000–20FFFF | 1 MiB | Guest x86 RAM backing store. This is a physical NeoGS allocation, not the guest logical address map. |
 | 84–FF | 210000–3FFFFF | 1.9375 MiB | Unassigned expansion reserve. No subsystem may consume it without updating this map and its assertions. |
@@ -30,8 +30,8 @@ The current smoke test intentionally uses the same NeoGS physical addresses as t
 - ATM → NeoGS: destination 00D000h (page 03h, offset 1000h), frame size currently 274 bytes.
 - NeoGS → ATM: source 00E000h (page 03h, offset 2000h), frame size 274 bytes.
 - Project126 maps physical page 03h into WIN1 through PG1 port #21, matching Project125. Physical D000h/E000h appear at logical 5000h/6000h. The active resident stack is at logical 7FFEh in WIN1/page 03h (physical offset 3FFEh), so these two small diagnostic regions are disjoint from the stack.
-- These ranges are reserved only for the fixed diagnostic smoke frame. They are not production buffers and must not be used for a frame that extends beyond D111h/E111h. The production ABI staging allocation remains page 42h (108000h), pending independent hardware validation.
-- The current ATM→NeoGS diagnostic receiver rejects frames larger than 3000h bytes so a DMA transaction cannot cross the end of page 03h.
+- These ranges preserve the Project125-parity hardware reference points. They are not production buffers and must not be used for general frame traffic. The current Project126 page-42 validation firmware uses page 42h (108000h) instead; page-03 remains a known-good fallback/reference only.
+- The earlier page-03 diagnostic receiver was limited to 3000h bytes to avoid crossing the page boundary. The page-42 receiver now bounds each frame to the full 4000h-byte physical page.
 
 This carve-out is deliberately narrow and must be removed or replaced by a validated page-42 transport test before general frame traffic is enabled.
 
@@ -111,3 +111,12 @@ The GS105a stock ROM is a temporary bootstrap transport only. Project126 stage-0
 The 4 MiB physical map describes the target addressable resource: 256 pages of 16 KiB, 000000h–3FFFFFh. Pages 84h–FFh are currently unassigned expansion reserve, not unavailable memory. The runtime must be able to discover/test all physically installed pages and allocate the currently unassigned range when needed. A complete 256-page destructive/non-destructive memory test strategy must preserve the executing kernel, stack, bootstrap, DMA and IPC state (for example by using a reserved test window and restoring its contents).
 
 The previously observed ROM response 3F:40:00 is diagnostic output from the stock ROM only; it is not authoritative proof that the top three pages are absent. The ATM-side pre-bootstrap check requiring RAM24 high byte >= #40 is superseded and must be removed from the startup path. Actual NOROM operation, page detection and full-range read/write retention remain HARDWARE-UNVERIFIED.
+
+
+## Production DMA page-42 hardware validation stage (2026-11-07)
+
+- The current diagnostic firmware maps physical page 42h into WIN3 by writing 42h to the WIN3 selector port #23 before arming DMA. Resident code, data and stack remain in WIN0-WIN2; WIN3 is used only as the 16 KiB staging aperture at logical C000h-FFFFh.
+- ATM→NeoGS DMA destination is physical 108000h (DMA_MOD=1, HAD=10h, MAD=80h, LAD=00h). NeoGS validates the received frame from logical C000h after stopping DMA. The page bound is 4000h bytes, inclusive of a full-page frame.
+- NeoGS→ATM test frame is built at logical C000h in the same mapped physical page; DMA source is 108000h with the same module/address registers. The existing ATM ROM dummy-read and CRC/pattern checks remain unchanged.
+- The forward test frame is now 274 bytes: 18-byte ABI header plus deterministic 256-byte payload 00h..FFh. Both endpoints validate the full frame CRC. The reverse test uses the same 274-byte deterministic response.
+- This is a source/build test stage, not a hardware PASS. Require CI BUILD PASS and a new target log showing page 42 pre-mapped, forward DMA readback 108112h, NeoGS FRAME VALID, reverse DMA readback 108112h, ATM FRAME CRC VALID and PATTERN PASS. If page-42 mapping fails, restore the page-03 Project125 parity test without changing its proven sequence.

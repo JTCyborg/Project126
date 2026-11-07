@@ -487,3 +487,34 @@ Verification boundary: source correction is committed. CI assembly/package resul
 - Renamed the ATM diagnostic to FRAME VALIDATION FAILED with status code, avoiding the false CRC-only diagnosis.
 - DMA registers, page mapping, handshake, and Project125 transport sequence are unchanged.
 - Verification: source correction only; CI/build and a new hardware run are pending. No hardware DMA PASS is claimed.
+
+
+## 2026-11-07 — Bidirectional DMA smoke test: HARDWARE PASS
+
+User-provided target log confirms both diagnostic DMA directions end-to-end on physical ATM/NeoGS hardware.
+
+- **ATM → NeoGS:** ATM frame CRC FF5B matches; local validator reports FRAME VALID; E0/READY handshake succeeds; payload copy and FF/end complete; NeoGS stops DMA, reads the expected P126 ABI 1.0 header and reports DMA FRAME VALID. Address readback 00D012 is consistent with the 18-byte header transfer.
+- **NeoGS → ATM:** reverse DMA completes; ATM reports CRC calculated/stored D867, DMA RX FRAME CRC VALID and DMA RX PATTERN PASS for the complete deterministic 00h..FFh payload.
+- **HARDWARE PASS scope:** bidirectional DMA smoke transport, end-of-transfer handshake, frame format validation, CRC-16/CCITT-FALSE and reverse payload byte comparison.
+- **Configuration proven:** Project125 parity diagnostic path, DMA module 1, page 03h; forward destination D000h and reverse source E000h; PG1/WIN1 mapping; no dummy write on forward transfer and one discarded read on reverse transfer.
+- **Not proven:** production page 42h / physical 108000h staging, payloads beyond the tested smoke-frame sizes, multi-frame fragmentation/reassembly, sustained streaming, application service dispatch, VGA frame delivery, BIOS transfer or x86 execution. Do not promote the page-03 diagnostic carve-outs to production allocation.
+- The earlier failure entries above are historical and remain as debugging chronology; this section supersedes their pending/failed verification status for the two smoke directions only.
+- **Next:** retain the now-proven Project125 DMA path unchanged. Validate production page 42h separately, then run full-frame integrity and fragmentation/stress tests. Every fragment must be validated by its complete header, declared length and CRC; byte-count-only checks are insufficient.
+
+
+## 2026-11-07 — Production DMA page 42 validation implemented (hardware pending)
+
+- NeoGS forward receive now selects physical page 42h in WIN3 via port #23 before arming DMA. Destination registers are module 1, HAD=10h, MAD=80h, LAD=00h (physical 108000h). Received data is validated from logical C000h; declared frame size is bounded to 16 KiB.
+- NeoGS reverse test now constructs the response in the same page-42 WIN3 mapping and DMA-reads from physical 108000h. The ATM reverse sequence is unchanged: DI, one discarded ROM-aperture read, exact frame copy, FF/end, full CRC and payload pattern validation.
+- ATM forward test frame increased from a header-only request to 274 bytes: 18-byte ABI header plus deterministic payload 00h..FFh. ATM computes CRC across header[0..15] and all 256 payload bytes; NeoGS validates the complete frame after DMA stop.
+- Expected DMA progression in both directions is 108000h→108112h. Independent NeoGS log markers identify page-42 mapping and reverse address readback.
+- The known-good page-03 Project125-parity transport is not altered in its hardware-tested implementation history; the current test path now specifically exercises the allocated production page 42h through the documented WIN3 selector.
+- **BUILD PASS:** GitHub Actions run [42356251101](https://github.com/JTCyborg/Project126/actions/runs/42356251101), built commit `a91fc6a86873e4a5208067b55782cb0085ae930e` (includes the page-42 receiver and 274-byte ATM test frame). SjASMPlus assembled NeoGS, ATM IPC and standalone NeoGS IPC with 0 errors/0 warnings; NeoGS IPC image is 1408 bytes, combined NeoGS image 3350 bytes, ATM IPC image 1777 bytes; TR-DOS image packaged successfully. One pre-existing generated-path backslash warning remains in the disk assembler.
+- **HARDWARE PENDING:** page-42 target verification is not yet claimed. Do not mark page 42h as hardware PASS until the new ATM/NeoGS target log confirms full CRC and payload checks in both directions.
+- **Next after page-42 PASS:** maximum-size single-frame test, then ABI fragmentation/reassembly with per-fragment CRC/sequence/metadata validation, followed by sustained multi-frame streaming stress and error/recovery tests.
+
+
+### Latest page-42 source build confirmation
+
+- **BUILD PASS:** final self-contained source commit `cd37fcb1e720b4455a815f9b65b34eaf62c6f4b3`; GitHub Actions run [42356391039](https://github.com/JTCyborg/Project126/actions/runs/42356391039) completed successfully. NeoGS main image 3350 bytes, ATM IPC 1777 bytes, standalone NeoGS IPC 1408 bytes; all assembly units report 0 errors and 0 warnings. TR-DOS image packaged at 655360 bytes. The disk assembly emits one pre-existing generated-path backslash warning.
+- Build artifact: `project126-trdos-disk-and-build` is attached to the workflow run. This confirms source assembly and disk packaging only; production page-42 physical DMA remains **HARDWARE PENDING**.

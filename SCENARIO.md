@@ -784,3 +784,52 @@ The test is diagnostic only. BUILD PASS and hardware PASS are tracked separately
 DMA mapping, DMA registers, направления, Project125 handshake и ABI layout не менялись.
 
 Проверка: source correction. Требуется BUILD/CI и новый аппаратный запуск. Критерий прямого направления — NeoGS принимает кадр с status 00h; обратного — ATM сообщает FRAME CRC VALID и PATTERN PASS. До этого DMA hardware PASS не заявляется.
+
+
+## 2026-11-07 — двусторонний DMA smoke test: HARDWARE PASS
+
+Аппаратный лог ATM пользователя подтверждает успешное выполнение обеих диагностических DMA-транзакций после исправления CRC validator и reverse-frame header.
+
+**ATM → NeoGS (E0h / REQUEST):**
+- ATM локально проверил исходный кадр: CRC CALCULATED=FF5B FRAME CRC=FF5B; результат FRAME VALID.
+- NeoGS получил E0h, настроил DMA module 1, сообщил READY/освободил CBIT; ATM получил E0 ACK / READY.
+- ATM завершил запись payload через DMA aperture и отправил FFh.
+- NeoGS обнаружил конец передачи, остановил DMA; readback 00D012 соответствует 18-байтовому заголовку.
+- NeoGS прочитал заголовок P126 ABI 1.0 и дважды сообщил DMA FRAME VALID. Отказов CRC или формата нет.
+
+**NeoGS → ATM (E1h / NGS_FRAME):**
+- NeoGS сообщил, что reverse DMA test запрошен и DMA armed.
+- ATM завершил чтение кадра, отправил host-end; NeoGS подтвердил конец теста.
+- ATM вычислил CRC CALCULATED=D867 FRAME CRC=D867, сообщил DMA RX FRAME CRC VALID и DMA RX PATTERN PASS.
+- Проверка полного детерминированного payload 00h..FFh прошла.
+
+**Подтверждённый результат:** оба направления DMA работают на реальном ATM/NeoGS с диагностической конфигурацией Project125 parity: module 1, физическая страница 03h, ATM→NeoGS через D000h и NeoGS→ATM через E000h; WIN1/PG1 mapping и Project125 dummy-read правило для обратного направления сохранены. ABI frame validation и CRC подтверждены на обоих концах.
+
+**Граница доказательства:** это HARDWARE PASS для двустороннего DMA smoke test и целостности тестовых кадров. Это не подтверждает ещё производственную staging page 42h (108000h), большие/фрагментированные кадры, устойчивую потоковую передачу, полный сервисный IPC, VGA frame transport или x86 BIOS загрузку. Диагностические carve-outs D000h..D111h и E000h..E111h в page 03h остаются временными; производственную карту памяти не менять на основании этого теста.
+
+**Следующий этап:** оставить проверенный DMA транспорт неизменным и перейти к отдельной проверке production page 42h/ABI fragmentation по сценарию. Для стресс-теста требуется проверить полный payload и CRC каждого кадра, а не только счётчик переданных байтов.
+
+
+## 2026-11-07 — production DMA page 42h validation implementation
+
+Следующий диагностический этап после подтверждённого Project125-parity smoke PASS переводит только тестовые DMA endpoints на выделенную production staging page 42h. Проверенный page-03 механизм сохранён в истории сценария как эталон и fallback; его аппаратный результат не переносится автоматически на page 42h.
+
+- NeoGS отображает физическую page 42h в WIN3 (logical C000h-FFFFh) через selector port #23 до настройки/старта DMA. Код, данные и стек остаются вне WIN3.
+- ATM→NeoGS: DMA module 1, physical destination 108000h (HAD=10h, MAD=80h, LAD=00h). ATM формирует полный 274-byte ABI 1.0 кадр: 18-byte header + payload 00h..FFh; CRC-16/CCITT-FALSE рассчитывается по header[0..15] и полному payload. NeoGS после FF/end останавливает DMA, проверяет границу кадра в пределах 4000h и валидирует полный CRC из C000h.
+- NeoGS→ATM: тот же deterministic 274-byte response создаётся в page 42h через C000h и передаётся DMA read с физического адреса 108000h. ATM сохраняет Project125 reverse-read sequence: DI, один discarded read из ROM aperture 0000h, затем 274 bytes; после FF/end проверяются полный CRC и каждый байт payload.
+- Для обоих направлений ожидаемое продвижение физического DMA address: 108000h→108112h. Новые независимые маркеры: `+[NGS] DMA PRODUCTION PAGE 42 PRE-MAPPED`, `+[NGS] DMA RX ADDR READBACK=108112`, `+[NGS] DMA FRAME VALID`, ATM `+[ATM IPC] DMA RX FRAME CRC VALID` и `+[ATM IPC] DMA RX PATTERN PASS`.
+- Это source implementation. BUILD PASS и page-42 HARDWARE PASS не заявляются до CI и нового аппаратного лога. Page-03 parity PASS остаётся отдельным доказанным результатом.
+
+**После page-42 аппаратного PASS:** увеличить тестовые кадры до максимального ABI 1.0 кадра, затем реализовать/проверить fragment/reassembly по 10-byte extension из раздела 5 протокола; каждый фрагмент валидируется по длине и CRC до помещения в общий logical message. После этого — многокадровый потоковый стресс-тест с проверкой sequence, message ID, fragment index/count, total length, полного содержимого и recovery на ошибках. Не считать передачу успешной только по счётчику байтов.
+
+
+### Build verification for the page-42 diagnostic
+
+- **BUILD PASS:** GitHub Actions run [42356251101](https://github.com/JTCyborg/Project126/actions/runs/42356251101), built commit `a91fc6a86873e4a5208067b55782cb0085ae930e`. NeoGS, ATM IPC and standalone NeoGS IPC assembled with 0 errors and 0 warnings; TR-DOS disk image packaging completed. The disk assembly still emits its pre-existing generated-path backslash warning.
+- **HARDWARE:** pending. The CI result proves assembly and packaging only; it does not prove page-42 physical DMA access or WIN3 mapping on ATM/NeoGS hardware.
+
+
+### Final page-42 diagnostic build
+
+- **BUILD PASS:** commit `cd37fcb1e720b4455a815f9b65b34eaf62c6f4b3`, workflow run [42356391039](https://github.com/JTCyborg/Project126/actions/runs/42356391039). NeoGS, ATM IPC and standalone NeoGS IPC assembled successfully with zero errors; TR-DOS disk packaging completed (655360 bytes). One pre-existing disk-generated-path backslash warning remains.
+- The generated TR-DOS disk and listings/maps are available in the workflow artifact. **Page-42 hardware access is still unverified** pending the next ATM/NeoGS log.

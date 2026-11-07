@@ -5,6 +5,7 @@
 
         ORG 0
 
+
 p126_ngs_ipc_module_start:
         INCLUDE "neogs_sub/p126_ipc.asm"
 p126_ngs_ipc_module_end:
