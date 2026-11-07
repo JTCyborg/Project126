@@ -773,3 +773,12 @@ Source commit: `aac9d7e60c391510150016d3b29906a7b2f90e3d`.
 - The expected BIOS1 vector is verified byte-for-byte as `EA 5B E0 00 F0`. On match, the immediate FAR JMP operands are decoded and stored as `CS:IP=F000:E05B`; success/failure is emitted on NeoGS debug port EFh.
 - This is a reset-vector memory-fetch and FAR JMP decode gate only. It does **not** execute the JMP, implement the 8086 instruction loop, run BIOS POST, or establish VGA operation. Those remain separate stages.
 - **VERIFICATION REQUIRED:** CI assembly and physical hardware log must show `X86 BIOS RESET VECTOR FETCH PASS` followed by `X86 FAR JMP DECODED F000:E05B`. No hardware PASS is claimed by this source change.
+
+
+## Intel 8086 execution core — opcode coverage ledger
+
+- Detailed ledger: `docs/8086_PCEM_OPCODE_COVERAGE.md`.
+- Current implementation: `neogs_sub/x86_exec.asm` now covers NOP, HLT, three JMP encodings and MOV immediate to all eight 8-bit and eight 16-bit registers.
+- **Current raw opcode-byte coverage: 21 / 236 = 8.90%.** This is a dispatch-coverage metric only; ModR/M, prefix, flags, interrupt and semantic completeness are separately required before claiming 100%.
+- The 16 MOV-immediate encodings were added in commit `28575e385d5d2a66c5ca448e72f7b4e2f01d2391`.
+- CPU functional tests and BIOS execution remain blocked until the complete 8086 implementation is ported. Assembly-only build checks are permitted solely for syntax, linkage and image-size validation.
