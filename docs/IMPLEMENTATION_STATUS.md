@@ -359,3 +359,11 @@ The ATM log `DMA SMOKE FRAME SENT` means the transport handshake completed; it i
 - Build log exposed that `p126_ipc.asm` is assembled independently as `NEOGS_IPC` as well as included by the resident core. Calls from this shared source to `p126_ngs_resident_log` failed in the standalone assembly because that symbol belongs to the other assembly unit.
 - Replaced those references with a self-contained `p126_ngs_ipc_log` routine inside the IPC module. It writes directly to NeoGS's independent `#EF` output and preserves AF/BC, so the same source assembles in both contexts.
 - The fix addresses the exact undefined symbol errors reported by the local SjASMPlus build. Full build/CI confirmation remains pending.
+
+
+## ATM frame-validator CRC pointer correction (2026-11-07)
+
+- Latest hardware evidence: resident startup, ABI CRC self-test, ATM video/RTC/console/catalog all complete; the DMA smoke test fails at `DMA FAIL STAGE=1`.
+- Stage 1 is the ATM-local call to `p126_ipc_validate_frame`, before the E0h command or DMA handshake. The NeoGS DMA receiver has not yet been exercised by this attempt.
+- Found and corrected a pointer-clobber defect in the ATM CRC validator: an `EX DE,HL` moved the frame pointer out of DE, then `LD HL,#FFFF` overwrote it. The CRC loop consequently read from address 0000h. DE now remains the frame pointer throughout header CRC processing.
+- **Verification:** source correction committed; local SjASMPlus/build and target rerun are still required. Do not claim DMA hardware PASS. If stage 1 clears, the next diagnostic stage is 2 (size), then 3 (E0h/READY), 4 (copy), and 5 (FF/completion).
