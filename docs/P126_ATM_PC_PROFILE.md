@@ -101,3 +101,13 @@ VGA BIOS is a separate image and is not one of these three system BIOS choices. 
 - BIOS POST/boot validation on NeoGS.
 
 A source-level address map and compile-time assertions are not BUILD/EMULATOR/HARDWARE PASS for those runtime components.
+
+### PPI / XT keyboard implementation status
+
+The initial runtime slice is being added in neogs_sub/x86_io.asm for ports 0060h–0063h:
+- 60h: PPI port A / keyboard scan-code data latch and FIFO consumer.
+- 61h: PPI port B / system-control latch, including XT keyboard reset and acknowledge bits.
+- 62h: PPI port C input/output composition; board configuration input is a deterministic profile value pending explicit ATM-PC switch definition.
+- 63h: PPI mode-set and bit-set/reset control register.
+- Initial BIOS mode-0 control word is 99h. PPI mode 1/2 handshake modes and board-specific port-C switch wiring are outside this first slice.
+- Keyboard scan-code production is exposed as a software API for the future DMA/IPC input service. It does not access NeoGS physical ports and does not claim a working ATM keyboard path or PIC IRQ1 delivery.
