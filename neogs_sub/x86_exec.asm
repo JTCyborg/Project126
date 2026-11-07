@@ -59,7 +59,75 @@ x86_cpu_step:
         jp      z,x86_exec_nop
         cp      #F4
         jp      z,x86_exec_hlt
+        ; B0-BF: MOV r8/r16, immediate.
+        ld      a,(x86_exec_opcode)
+        cp      #B0
+        jp      c,.not_mov_imm_reg
+        cp      #C0
+        jp      nc,.not_mov_imm_reg
+        jp      x86_exec_mov_imm_reg
+.not_mov_imm_reg:
         scf
+        ret
+
+; B0-B7: MOV r8,imm8. Byte-register encoding is AL,CL,DL,BL,AH,CH,DH,BH.
+; B8-BF: MOV r16,imm16. Register encoding is AX,CX,DX,BX,SP,BP,SI,DI.
+; The table maps the byte-register high half back to AX/CX/DX/BX.
+x86_exec_mov_imm_reg:
+        ld      a,(x86_exec_opcode)
+        cp      #B8
+        jr      nc,.word_register
+
+        sub     #B0
+        ld      b,a
+        call    x86_cpu_fetch8
+        ret     c
+        ld      c,a
+
+        ld      a,b
+        and     #03
+        add     a,a
+        ld      e,a
+        ld      d,0
+        ld      hl,x86_exec_reg16_table
+        add     hl,de
+        ld      e,(hl)
+        inc     hl
+        ld      d,(hl)
+
+        ld      a,b
+        cp      4
+        jr      c,.byte_store
+        inc     de
+.byte_store:
+        ld      a,c
+        ld      (de),a
+        or      a
+        ret
+
+.word_register:
+        sub     #B8
+        ld      b,a
+        call    x86_cpu_fetch16
+        ret     c
+        ld      (x86_exec_imm_word),hl
+
+        ld      a,b
+        add     a,a
+        ld      e,a
+        ld      d,0
+        ld      hl,x86_exec_reg16_table
+        add     hl,de
+        ld      e,(hl)
+        inc     hl
+        ld      d,(hl)
+
+        ld      hl,(x86_exec_imm_word)
+        ex      de,hl
+        ld      (hl),e
+        inc     hl
+        ld      (hl),d
+        or      a
         ret
 
 ; EA ptr16:16 — JMP FAR immediate. Offset precedes segment in the stream.
@@ -116,3 +184,7 @@ x86_exec_fetch_byte: db 0
 x86_exec_imm_low: db 0
 x86_exec_opcode: db 0
 x86_exec_target_ip: dw 0
+x86_exec_imm_word: dw 0
+x86_exec_reg16_table:
+        dw x86_reg_ax,x86_reg_cx,x86_reg_dx,x86_reg_bx
+        dw x86_reg_sp,x86_reg_bp,x86_reg_si,x86_reg_di
