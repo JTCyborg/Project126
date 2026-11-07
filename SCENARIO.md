@@ -1377,3 +1377,11 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 - Latest source commits: `73bd244` restores zero-based sector indices; `5323b8d` labels the file-count diagnostic. Hardware validation is pending.
 - The current screen confirms the list renderer is not a scrollbar: the vertical dots are the filename/type separator at fixed column 10. A scrollbar is not implemented yet and should be considered only after directory enumeration and cursor movement work correctly.
 - Known independent issue remains: `X86 DMA REGISTER SELFTEST FAIL`.
+
+
+## 2026-11-07 — Populate the catalogue buffer after NeoGS loading
+
+- The disk-image dump `2.png` shows at least ten valid 16-byte TR-DOS directory records beginning at disk-image offset 0: `proj126`, `boot`, `P126BOOT`, `X86CORE`, `X86IO`, `X86ALU`, `X86DEV`, `BIOS1`, `BIOS2`, and `COMPAQ`.
+- Startup previously read the directory into `#C800..#CFFF` before `p126_neogs_startup`, then opened/read `P126BOOT.C`, `X86CORE.C`, `X86IO.C`, `X86ALU.C`, and `X86DEV.C` through TR-DOS before the catalogue consumed the preloaded buffer. The buffer was therefore stale across subsequent TR-DOS operations, with no integrity check.
+- Reordered startup: NeoGS bootstrap/resident and overlay transfers now complete first; the host then rereads all eight directory sectors into `#C800..#CFFF`, sets `p126_catalog_preloaded`, and only then initializes ATM video. This removes the stale-buffer window and makes the directory read the final TR-DOS disk operation before catalogue parsing.
+- Source commit: `93d5ceb3bc88de30844a733f16858b92682012de`. Hardware validation pending. Expected next log: `[CAT] FILE COUNT=0A` or greater for the supplied disk image; if it remains `01`, investigate the #3D13 call arguments and returned sector contents with a targeted buffer dump.
