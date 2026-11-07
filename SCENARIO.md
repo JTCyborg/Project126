@@ -1172,7 +1172,7 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 - [x] Добавлен resident runtime self-test WIN2: проверяет разные страницы 04h/05h через BFFFh, сохраняет и восстанавливает исходные байты, оставляет page04h mapped; при ошибке IO_OVERLAY_READY не выставляется.
 - [ ] Получить физический лог с `[NGS] WIN2 PAGE04/05 TEST PASS` и подтвердить последующий вызов X86IO из BIOS.
 - [x] Общая карта памяти обновлена: WIN0 — resident, WIN1 — stack/fixed data, WIN2 — overlay aperture, WIN3 — guest-memory aperture.
-- [x] GitHub Actions BUILD PASS: [run 42396608945](https://github.com/JTCyborg/Project126/actions/runs/42396608945), commit `079c53a136dc043428ffba92ef328e99ac96e70f`. Размеры: X86CORE 15756/16384, X86IO 796/4096; TR-DOS image 655360 байт; NeoGS assembly 0 errors/0 warnings.
+- [x] GitHub Actions BUILD PASS: [run 42396918560](https://github.com/JTCyborg/Project126/actions/runs/42396918560), commit `477bd340759c185395a340675a247c59d9cd6031`. Размеры: X86CORE 15994/16384, X86IO 796/4096; TR-DOS image 655360 байт; NeoGS assembly 0 errors/0 warnings.
 - [ ] Проверить на физическом ATM/NeoGS: host open/read X86IO.C, IMAGE transfer, NeoGS page-04 readback, WIN2 mapping and successful first BIOS I/O call.
 - [ ] Реализовать динамический Overlay Manager: allocator для pages 05h–0Fh, module manifest, generic image loader, resident call/return gate, bounded nesting and page restore.
 - [ ] После аппаратной проверки X86IO продолжить вынос следующих крупных модулей; PIC/PIT/DMA/VGA/RTC/IDE пока не добавлять обратно в resident core.
