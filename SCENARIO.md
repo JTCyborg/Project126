@@ -1530,6 +1530,7 @@ The temporary diagnostic is therefore moved back to the first terminator and now
 ### 2026-11-08 — XT speaker status / PIT channel-2 OUT
 
 - В PCem `keyboard_xt_read(62h)` bit 5 берётся из `ppispeakon`, а `pit_speaker_timer()` обновляет его из OUT канала 2. Это не комбинация PB0/PB1.
-- `x86_dev_pit_out2` хранит программное статическое состояние OUT2. Control word повторяет `pit_write()`: mode 0 устанавливает OUT=0, остальные режимы — OUT=1. Полная загрузка счётчика повторяет `pit_load()`: mode 0/4 → OUT=0, mode 2/3 → OUT=1; режимы 1/5 сохраняют состояние до аппаратного триггера.
-- Чтение порта 62h добавляет bit 5 из OUT2. Полный временной отсчёт, обработка динамических фронтов GATE, генерация speaker waveform и IRQ0 не реализованы этим изменением.
-- Reset-time PIT self-test проверяет channel 2 mode 3 и mode 0, включая загрузку LSB/MSB.
+- `x86_dev_pit_out2` хранит программное состояние OUT2. Control word повторяет `pit_write()`: mode 0 устанавливает OUT=0, остальные режимы — OUT=1. Полная загрузка счётчика повторяет `pit_load()`: mode 0/4 → OUT=0, mode 2/3 → OUT=1; режимы 1/5 сохраняют состояние до триггера.
+- PB0 порта 61h подключён к программному GATE2. Реализованы PCem-подобные фронты: при активном счётчике восходящий фронт mode 1/5 устанавливает OUT=0, mode 2/3 — OUT=1; при не загруженном/disabled-счётчике изменяется только latch GATE. Нисходящий фронт не синтезирует выходной переход.
+- Чтение порта 62h добавляет bit 5 из OUT2. Полный временной отсчёт, периодические переходы OUT, speaker waveform и IRQ0 остаются отдельными задачами.
+- Reset-time PIT self-test проверяет channel 2 mode 3, mode 0 и запуск mode 1 по фронту GATE2.
