@@ -1130,3 +1130,20 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 - [ ] Перенести расширяемые device models (PIC/PIT/DMA/VGA/RTC/IDE) в отдельные overlay-модули после проверки менеджера. Не увеличивать лимит X86CORE.C и не менять физическую карту страниц без отдельного решения.
 
 Причина приоритета: после первого PPI/I/O среза X86CORE.C занимает 16379 из 16384 байт; осталось 5 байт. Следующий полноценный контроллер нельзя безопасно добавить в resident image до решения overlay/loading architecture.
+
+
+## 2026-11-07 — Overlay Manager: source audit and design baseline
+
+- [x] Прослежен текущий stage-0 путь: X86CORE.C передаётся одним DBIT-потоком, копируется в logical 0000h и запускается; действующий предел — 4000h байт.
+- [x] Прослежен resident build: CPU state, execution, ModR/M, ALU, I/O и IPC включены в одну flat translation unit с ORG 0.
+- [x] Проверена текущая стартовая раскладка: WIN0→page 00h, WIN1→page 03h, WIN2→page 01h, WIN3→page 02h; stack=7FFEh. WIN3 остаётся исключительно guest-memory aperture.
+- [x] Выполнен первичный source scan CPU/IPC units: прямых memory operands в logical 8000h–BFFFh не обнаружено; WIN2 определён как кандидат overlay aperture, но полное отсутствие использования WIN2 ещё требует runtime/source audit.
+- [x] Зафиксирован проектный вариант: WIN2 (8000h–BFFFh) как 16-KiB overlay execution/data window; candidate physical pool pages 04h–0Fh. Страницы 00h–03h не выдаются allocator'у.
+- [x] Определены требования к fixed-origin module linking, manifest, DMA/IPC streaming, page-42 staging, WIN3 destination copy/readback, resident call/return gate и bounded nested calls.
+- [ ] Подтвердить точное WIN2 page-selector register/encoding по аппаратной документации или проверенной Project125 процедуре; не выводить encoding из одного startup значения OUT (#00),#80.
+- [ ] Реализовать manifest/IMAGE module service и ATM TR-DOS streaming loader.
+- [ ] Реализовать resident call gate, mapping save/restore и allocator.
+- [ ] Перенести первый реальный модуль (XT PPI/keyboard) из resident image только после готовности и проверки его загрузки.
+- [ ] Выполнить CI и аппаратные тесты загрузки, checksum/readback, вызовов, вложенности и восстановления WIN2 mapping.
+
+Полная спецификация проектного baseline: [docs/P126_OVERLAY_MANAGER_DESIGN.md](docs/P126_OVERLAY_MANAGER_DESIGN.md). Это завершённый source audit/design checkpoint, не реализация и не hardware PASS.
