@@ -219,6 +219,7 @@ x86_bios_startup_trace:
         call    p126_ngs_resident_log
         call    x86_bios_trace_log_cs_ip
         call    x86_bios_trace_log_registers
+        call    x86_bios_trace_log_group1
         call    x86_io_dump_bios_table
         call    x86_bios_trace_log_io_counts
         call    x86_bios_trace_log_history
@@ -601,6 +602,58 @@ x86_bios_trace_marker_arm:
         ld      (x86_bios_trace_remaining),hl
         ret
 
+; Last group-immediate execution snapshot for the BIOS XOR DH,03 boundary.
+x86_bios_trace_log_group1:
+        push    af
+        push    bc
+        push    de
+        push    hl
+        ld      hl,x86_group1_diag_log
+        call    p126_ngs_resident_log
+        ld      hl,(x86_group1_diag_ip)
+        call    x86_bios_trace_emit_hex16
+        ld      a,' '
+        call    x86_bios_trace_emit_char
+        ld      a,(x86_group1_diag_ext)
+        call    x86_bios_trace_emit_hex8
+        ld      a,' '
+        call    x86_bios_trace_emit_char
+        ld      a,(x86_group1_diag_ea_is_reg)
+        call    x86_bios_trace_emit_hex8
+        ld      a,' '
+        call    x86_bios_trace_emit_char
+        ld      a,(x86_group1_diag_ea_reg)
+        call    x86_bios_trace_emit_hex8
+        ld      a,' '
+        call    x86_bios_trace_emit_char
+        ld      a,(x86_group1_diag_lhs)
+        call    x86_bios_trace_emit_hex8
+        ld      a,' '
+        call    x86_bios_trace_emit_char
+        ld      a,(x86_group1_diag_imm)
+        call    x86_bios_trace_emit_hex8
+        ld      a,' '
+        call    x86_bios_trace_emit_char
+        ld      a,(x86_group1_diag_result)
+        call    x86_bios_trace_emit_hex8
+        ld      a,' '
+        call    x86_bios_trace_emit_char
+        ld      hl,(x86_group1_diag_dx_before)
+        call    x86_bios_trace_emit_hex16
+        ld      a,' '
+        call    x86_bios_trace_emit_char
+        ld      hl,(x86_group1_diag_dx_after)
+        call    x86_bios_trace_emit_hex16
+        ld      a,13
+        call    x86_bios_trace_emit_char
+        ld      a,10
+        call    x86_bios_trace_emit_char
+        pop     hl
+        pop     de
+        pop     bc
+        pop     af
+        ret
+
 ; Capture a compact stop event for the DMA diagnostics response.
 ; A=1 slice budget, 2 guest HLT, 3 opcode/memory fault, 4 reset-vector fault.
 x86_bios_trace_capture_event:
@@ -788,6 +841,17 @@ x86_bios_trace_history_al_text: db " AL=",0
 x86_bios_trace_history_flags_text: db " FL=",0
 x86_bios_trace_history_opcode_text: db " OP=",0
 x86_bios_trace_history: BLOCK 16*9,0
+
+x86_group1_diag_ip:          dw 0
+x86_group1_diag_dx_before:   dw 0
+x86_group1_diag_dx_after:    dw 0
+x86_group1_diag_ext:         db 0
+x86_group1_diag_ea_is_reg:   db 0
+x86_group1_diag_ea_reg:      db 0
+x86_group1_diag_lhs:         db 0
+x86_group1_diag_imm:         db 0
+x86_group1_diag_result:      db 0
+x86_group1_diag_log: db "[X86 G1] IP EXT REG RM LHS IMM RES DX0 DX1=",0
 
 x86_bios_trace_remaining: dw 0
 x86_bios_trace_executed:  dw 0
