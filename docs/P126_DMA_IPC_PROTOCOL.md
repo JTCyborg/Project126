@@ -331,3 +331,14 @@ This is a diagnostic test only; it does not yet implement ABI multi-frame fragme
 The first production page-42 implementation used port 23h (PG3) and wrote the raw page number 42h. This did not reproduce Project125's WIN3 mapping. Project125 uses MPAGEX port 10h for the C000h–FFFFh window and rotates the physical page number right once before writing the selector. Project126 now follows that exact sequence for both DMA directions. The physical DMA destination/source remains 108000h; no DMA register, host aperture, dummy-read rule, or E0/FF handshake change is made.
 
 The 09:44 target log showed the reverse transfer CRC as 7C1C, identical to the ATM request frame, although the NeoGS response frame (RESPONSE header plus payload 00h..FFh) must have CRC D867. This means the earlier reverse PATTERN PASS was not proof that the response had been constructed in the selected production page; the reverse direction must be revalidated after correcting WIN3 selection. Production page-42 HARDWARE PASS remains pending.
+
+
+
+## Production page 42h hardware result — 2026-11-07
+
+Physical ATM/NeoGS log at 09:52:27 confirms both directions on the corrected production mapping. Forward: 274-byte ATM request CRC 7C1C, DMA 108000h→108112h, NeoGS header 50313236010001050000010000010000 and DMA FRAME VALID. Reverse: readback 108113h (discarded first ROM-aperture read plus 274 frame bytes), ATM CRC D867 matches frame CRC, and DMA RX PATTERN PASS validates payload 00h..FFh. The page-42 MPAGEX #10 / RRCA correction is now HARDWARE PASS for this smoke-frame size. Larger frames, fragmentation/reassembly and sustained streaming remain pending.
+
+
+## Maximum-size frame validation stage — 2026-11-07
+
+Before enabling fragmentation, the target diagnostic sends one ABI 1.0 frame of exactly 4000h bytes (18-byte header + 3FEEh payload) in each direction. The payload repeats 00h..FFh and is checked byte-for-byte on reverse reception; CRC-16/CCITT-FALSE covers the complete payload on both endpoints. The forward DMA counter must read 10C000h after the transfer. The reverse counter must read 10C001h, accounting for the single discarded ROM-aperture read. ATM reuses its C000h..FFFFh RAM page-0 TR-DOS staging window for TX and RX sequentially. This is a diagnostic extension only: ABI 1.0, page-42 mapping, module 1, and E0/E1/FF handshake are unchanged. A successful 274-byte hardware test does not imply the 16 KiB test has passed.

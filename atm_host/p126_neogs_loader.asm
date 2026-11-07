@@ -640,23 +640,25 @@ p126_neogs_startup_error: db 0
 p126_neogs_startup_stage: db '0'
 
 
-; Build and send one valid 18-byte diagnostics request through the application
-; DMA transport. The NeoGS resident loop independently validates CRC and
-; emits DMA FRAME VALID / DMA FRAME REJECTED on its own #EF channel.
+; Build and send one maximum-size ABI 1.0 diagnostics request.
+; The complete 16 KiB host buffer occupies ATM RAM page 0 at C000-FFFF.
+; Page 0 is restored by p126_atm_video_init and is otherwise the TR-DOS
+; staging window. The reverse-DMA test reuses this same buffer after TX.
 p126_neogs_dma_smoke_test::
-        ; Build a 274-byte deterministic request in ATM RAM: 18-byte ABI
-        ; header plus payload 00h..FFh. This validates page-42 delivery with
-        ; a complete payload and CRC, not merely a header-sized DMA write.
         ld      hl,p126_neogs_dma_test_frame+P126_IPC_HEADER_SIZE
-        xor     a
-        ld      b,0
+        ld      bc,P126_IPC_MAX_PAYLOAD
+        ld      e,0
 .p126_neogs_dma_fill:
+        ld      a,e
         ld      (hl),a
         inc     hl
-        inc     a
-        djnz    .p126_neogs_dma_fill
+        inc     e
+        dec     bc
+        ld      a,b
+        or      c
+        jr      nz,.p126_neogs_dma_fill
 
-        ; CRC-16/CCITT-FALSE over header[0..15] and payload[18..273].
+        ; CRC-16/CCITT-FALSE over header[0..15] and all 16366 payload bytes.
         ld      hl,#FFFF
         ld      de,p126_neogs_dma_test_frame
         ld      b,16
@@ -667,21 +669,28 @@ p126_neogs_dma_smoke_test::
         djnz    .p126_neogs_dma_crc_header
         inc     de
         inc     de
-        ld      b,0
+        ld      bc,P126_IPC_MAX_PAYLOAD
 .p126_neogs_dma_crc_payload:
         ld      a,(de)
         inc     de
         call    p126_ipc_crc16_update
-        djnz    .p126_neogs_dma_crc_payload
+        dec     bc
+        ld      a,b
+        or      c
+        jr      nz,.p126_neogs_dma_crc_payload
         ld      (p126_neogs_dma_test_frame+P126_IPC_OFF_CRC),hl
         ld      hl,p126_neogs_dma_test_frame
-        ld      bc,P126_IPC_HEADER_SIZE+256
+        ld      bc,P126_IPC_MAX_FRAME_SIZE
         jp      p126_ipc_dma_send_frame
 
+        ORG     #C000
 p126_neogs_dma_test_frame:
-        db      'P','1','2','6',1,0,1,5,0,0
-        db      #01,#00              ; sequence = 1
-        db      #00,#01              ; payload length = 0100h (256 bytes)
+        db      'P','1','2','6',P126_IPC_MAJOR,P126_IPC_MINOR
+        db      P126_MSG_REQUEST,P126_SERVICE_DIAGNOSTICS,P126_OP_DIAGNOSTIC,0
+        db      #02,#00              ; sequence = 2
+        db      #EE,#3F              ; payload length = 3FEEh (16366 bytes)
         db      #00,#00              ; status = OK
         db      #00,#00              ; CRC, filled at runtime
-        defs    256,0
+        defs    P126_IPC_MAX_PAYLOAD,0
+        ASSERT  p126_neogs_dma_test_frame = #C000
+        ASSERT  p126_neogs_dma_test_frame + P126_IPC_MAX_FRAME_SIZE = #10000

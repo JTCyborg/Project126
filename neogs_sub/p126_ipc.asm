@@ -225,17 +225,19 @@ p126_ngs_ipc_dma_receive_frame::
         ld      hl,p126_ngs_ipc_log_dma_stopped
         call    p126_ngs_ipc_log
 
-        ; A 274-byte frame must advance 108000h to 108112h.
+        ; A maximum 16 KiB frame must advance 108000h to 10C000h.
         ld      hl,p126_ngs_ipc_log_dma_addr
         call    p126_ngs_ipc_log
         in      a,(P126_NGS_DMA_HAD)
+        ld      (p126_ngs_ipc_dma_end_had),a
         call    p126_ngs_ipc_log_hex_byte_inline
         in      a,(P126_NGS_DMA_MAD)
+        ld      (p126_ngs_ipc_dma_end_mad),a
         call    p126_ngs_ipc_log_hex_byte_inline
         in      a,(P126_NGS_DMA_LAD)
+        ld      (p126_ngs_ipc_dma_end_lad),a
         call    p126_ngs_ipc_log_hex_byte_inline
         call    p126_ngs_ipc_log_crlf
-
         ; WIN3 remains mapped to physical page 42h; CPU view is C000h.
         ld      hl,p126_ngs_ipc_log_dma_page42_mapped
         call    p126_ngs_ipc_log
@@ -270,6 +272,21 @@ p126_ngs_ipc_dma_receive_frame::
         jp      .p126_ngs_dma_bad_length
 .p126_ngs_dma_size_ok:
         ld      (p126_ngs_ipc_rx_size),hl
+        ; Compare DMA counter with base + the declared frame size. This
+        ; validates exact byte count for every legal frame length; for the
+        ; 16 KiB test the expected end address is 10C000h.
+        ld      hl,(p126_ngs_ipc_rx_size)
+        ld      de,#8000
+        add     hl,de
+        ld      a,(p126_ngs_ipc_dma_end_had)
+        cp      #10
+        jp      nz,.p126_ngs_dma_bad_length
+        ld      a,(p126_ngs_ipc_dma_end_mad)
+        cp      h
+        jp      nz,.p126_ngs_dma_bad_length
+        ld      a,(p126_ngs_ipc_dma_end_lad)
+        cp      l
+        jp      nz,.p126_ngs_dma_bad_length
         ld      bc,(p126_ngs_ipc_rx_size)
         ld      hl,#C000
         call    p126_ngs_ipc_validate_frame
@@ -310,6 +327,9 @@ p126_ngs_ipc_dma_receive_frame::
         ret
 
 p126_ngs_ipc_rx_size: dw 0
+p126_ngs_ipc_dma_end_had: db 0
+p126_ngs_ipc_dma_end_mad: db 0
+p126_ngs_ipc_dma_end_lad: db 0
 ; -------------------------------------------------------------------------
 ; Resident command-dispatch entry, one bounded unit of work.
 ; OUT: carry clear/Z=1/A=0 when no command is pending;
@@ -320,8 +340,8 @@ p126_ngs_ipc_rx_size: dw 0
 ; -------------------------------------------------------------------------
 P126_NGS_ZXCMD       EQU #01
 
-; Reverse DMA production-page test response for ABI command E1h (NGS_FRAME).
-; Source is physical 108000h / page 42h, mapped at WIN3 logical C000h.
+; Reverse DMA maximum-frame response for ABI command E1h (NGS_FRAME).
+; Source is the complete 16 KiB physical page 42h at 108000h.
 p126_ngs_ipc_dma_send_test_frame::
         ; Build the deterministic reverse frame directly in production page
         ; 42h through WIN3, then DMA-read it from physical address 108000h.
@@ -334,15 +354,19 @@ p126_ngs_ipc_dma_send_test_frame::
         ld      bc,P126_IPC_HEADER_SIZE
         ldir
         ld      hl,#C000+P126_IPC_HEADER_SIZE
-        xor     a
-        ld      b,0
+        ld      bc,P126_IPC_MAX_PAYLOAD
+        ld      e,0
 .ngs_fill:
+        ld      a,e
         ld      (hl),a
         inc     hl
-        inc     a
-        djnz    .ngs_fill
+        inc     e
+        dec     bc
+        ld      a,b
+        or      c
+        jr      nz,.ngs_fill
 
-        ; CRC covers header[0..15] followed by payload[18..273].
+        ; CRC covers header[0..15] followed by all 16366 payload bytes.
         ld      hl,#FFFF
         ld      de,#C000
         ld      b,16
@@ -353,12 +377,15 @@ p126_ngs_ipc_dma_send_test_frame::
         djnz    .ngs_crc_header
         inc     de
         inc     de
-        ld      b,0
+        ld      bc,P126_IPC_MAX_PAYLOAD
 .ngs_crc_payload:
         ld      a,(de)
         inc     de
         call    p126_ngs_ipc_crc16_update
-        djnz    .ngs_crc_payload
+        dec     bc
+        ld      a,b
+        or      c
+        jr      nz,.ngs_crc_payload
         ld      (#C000+P126_IPC_OFF_CRC),hl
 
         ; Physical source page 42h base = 108000h.
@@ -407,17 +434,38 @@ p126_ngs_ipc_dma_send_test_frame::
         in      a,(P126_NGS_DMA_LAD)
         call    p126_ngs_ipc_log_hex_byte_inline
         call    p126_ngs_ipc_log_crlf
+        ; One dummy aperture read plus exactly 4000h frame bytes. Do not
+        ; acknowledge FF until the counter confirms the complete transfer.
+        in      a,(P126_NGS_DMA_HAD)
+        cp      #10
+        jr      nz,.ngs_reverse_length_bad
+        in      a,(P126_NGS_DMA_MAD)
+        cp      #C0
+        jr      nz,.ngs_reverse_length_bad
+        in      a,(P126_NGS_DMA_LAD)
+        cp      #01
+        jr      nz,.ngs_reverse_length_bad
         xor     a
         out     (P126_NGS_CLRCBIT),a
+        ret
+.ngs_reverse_length_bad:
+        ld      hl,p126_ngs_ipc_log_dma_rx_length_bad
+        call    p126_ngs_ipc_log
+        ld      a,P126_STATUS_BAD_FRAME
+        scf
+        push    af
         xor     a
+        out     (P126_NGS_CLRCBIT),a
+        pop     af
+        scf
         ret
 
 p126_ngs_ipc_dma_test_header:
         db 'P','1','2','6'
         db P126_IPC_MAJOR,P126_IPC_MINOR
         db P126_MSG_RESPONSE,P126_SERVICE_DIAGNOSTICS,P126_OP_DIAGNOSTIC,0
-        db #00,#00
-        db #00,#01
+        db #02,#00              ; sequence = 2
+        db #EE,#3F              ; payload length = 3FEEh (16366 bytes)
         db #00,#00
         db #00,#00
 
@@ -507,11 +555,12 @@ p126_ngs_ipc_log_dma_addr:        db "[NGS] DMA ADDR READBACK=",0
 p126_ngs_ipc_log_rx_header:       db "[NGS] DMA RX HEADER=",0
 p126_ngs_ipc_log_frame_valid:     db "[NGS] DMA FRAME VALID",13,10,0
 p126_ngs_ipc_log_frame_rejected:  db "[NGS] DMA FRAME REJECTED STATUS=",0
-p126_ngs_ipc_log_dma_rx_request: db "[NGS] DMA RX TEST REQUESTED",13,10,0
-p126_ngs_ipc_log_dma_rx_armed:   db "[NGS] DMA RX TEST ARMED",13,10,0
-p126_ngs_ipc_log_dma_rx_end:     db "[NGS] DMA RX TEST HOST END",13,10,0
+p126_ngs_ipc_log_dma_rx_request: db "[NGS] DMA RX MAX FRAME REQUESTED",13,10,0
+p126_ngs_ipc_log_dma_rx_armed:   db "[NGS] DMA RX MAX FRAME ARMED",13,10,0
+p126_ngs_ipc_log_dma_rx_end:     db "[NGS] DMA RX MAX FRAME HOST END",13,10,0
 p126_ngs_ipc_log_dma_rx_addr:    db "[NGS] DMA RX ADDR READBACK=",0
-p126_ngs_ipc_log_dma_rx_timeout: db "[NGS] DMA RX TEST TIMEOUT",13,10,0
+p126_ngs_ipc_log_dma_rx_timeout: db "[NGS] DMA RX MAX FRAME TIMEOUT",13,10,0
+p126_ngs_ipc_log_dma_rx_length_bad: db "[NGS] DMA RX MAX FRAME LENGTH INVALID",13,10,0
 
 ; Emit CR/LF on NeoGS's independent #EF diagnostic channel.
 p126_ngs_ipc_log_crlf:

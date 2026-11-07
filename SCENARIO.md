@@ -842,3 +842,28 @@ DMA mapping, DMA registers, направления, Project125 handshake и ABI 
 Причина найдена при буквальной сверке с Project125: WIN3 (C000h–FFFFh) выбирается через MPAGEX port #10, а физический номер страницы перед OUT кодируется RRCA. Project126 использовал PG3 port #23 и передавал сырое значение 42h. Это приводило к тому, что CPU-окно и физический DMA-адрес указывали на разные страницы. Исправлены оба page-42 endpoint и общий x86 memory backend: MPAGEX=#10, selector=`RRCA(page)`, page 42h → selector 21h. Общие memory-map constants/assertion также исправлены с #23 на #10.
 
 DMA module/address registers, physical DMA base 108000h, host aperture 0000h, dummy-read правило обратного направления и E0/FF handshake не менялись. Исправленные исходники собраны успешно: GitHub Actions [42357023766](https://github.com/JTCyborg/Project126/actions/runs/42357023766), code commit `a2fa006fdd8ce5023b7949f92393934cbbd224c5`, artifact `project126-trdos-disk-and-build`. Проверка page 42h после исправления требует нового аппаратного запуска: ATM→NeoGS должен показать заголовок `50313236` и `DMA FRAME VALID`; NeoGS→ATM должен показать CRC D867 и `PATTERN PASS`. До этого production page-42 HARDWARE PASS не заявляется.
+
+
+
+## 2026-11-07 — Production page 42h bidirectional DMA: HARDWARE PASS
+
+User-provided physical ATM/NeoGS target log at 09:52:27 confirms the corrected Project125-compatible MPAGEX mapping and both production DMA directions.
+
+- Boot/resident startup, ABI CRC16 and ATM video/catalog initialization completed.
+- ATM → NeoGS: ATM request CRC16/CCITT-FALSE 7C1C matches its stored frame CRC; E0/READY handshake succeeds; 274 bytes are transferred to physical page 42h at 108000h; address readback is 108112h; logical C000h contains header 50313236010001050000010000010000; NeoGS reports DMA FRAME VALID.
+- NeoGS → ATM: reverse DMA completes from physical page 42h; readback is 108113h, consistent with one discarded ROM-aperture read plus 274 frame bytes; ATM calculates CRC D867 matching the stored frame CRC and reports DMA RX FRAME CRC VALID and DMA RX PATTERN PASS for payload 00h..FFh.
+- HARDWARE PASS: production page 42h mapping through MPAGEX port #10 with RRCA selector encoding, ATM→NeoGS transfer, NeoGS frame-header/CRC validation, NeoGS→ATM transfer, reverse CRC and deterministic payload comparison.
+- This supersedes the prior page-42 hardware-pending/failure entries. The original Project125-parity page-03 diagnostic path remains separately validated and is not promoted to production allocation.
+- Scope remains limited to the 274-byte smoke frame and the deterministic 256-byte payload. Maximum-size frames, fragmentation/reassembly, sustained streaming, error recovery and application service dispatch remain unverified.
+
+
+## 2026-11-07 — Maximum-size single-frame DMA test implemented
+
+- Следующий этап после аппаратного PASS production page 42h: максимальный одиночный кадр ABI 1.0 размером ровно 4000h (16384 байта), включая 18-байтовый заголовок и payload 3FEEh (16366 байт). Фрагментация пока не включается.
+- ATM строит request с sequence 0002h и payload-последовательностью 00h..FFh, повторяемой до последнего байта; CRC-16/CCITT-FALSE рассчитывается по всему заголовку (кроме CRC-поля) и всем 16366 байтам payload. ATM отправляет ровно 4000h байт через прежний E0/READY/LDIR/FF транспорт.
+- ATM использует единственный общий тестовый буфер C000h..FFFFh (RAM page 0), предусмотренный host memory map как TR-DOS staging window. После прямой передачи тот же буфер переиспользуется для обратного DMA; отдельные 16 KiB RX и TX буферы не резервируются. Host code/stack остаются на существующих страницах/окнах.
+- NeoGS принимает кадр в production physical page 42h / 108000h, проверяет declared size = 4000h и полный CRC. Дополнительно readback DMA destination должен быть ровно 10C000h — первый адрес за пределами page 42h.
+- NeoGS строит обратный RESPONSE в той же странице с payload length 3FEEh, sequence 0002h и тем же повторяющимся шаблоном. ATM выполняет Project125 reverse sequence (DI, один dummy read, затем 4000h data bytes), проверяет полный CRC и сравнивает каждый из 16366 payload bytes. NeoGS reverse DMA readback ожидается 10C001h (dummy read + 4000h data bytes).
+- Контракт DMA не меняется: module 1, physical base 108000h, MPAGEX #10 / RRCA для WIN3, host aperture 0000h, без dummy write для forward и один dummy read для reverse. ABI 1.0 и рабочий DMA mapping не меняются.
+- Маркеры: [BOOT] DMA MAX FRAME TEST BEGIN, [NGS] DMA FRAME VALID, [BOOT] DMA MAX TX PASS, [ATM IPC] DMA RX 16K PATTERN PASS, [BOOT] DMA MAX RX PASS. Точные readback: 10C000h forward и 10C001h reverse.
+- Статус: IMPLEMENTED; BUILD и HARDWARE для 16 KiB размера pending до CI и нового физического лога. Успех прежнего 274-byte теста не переносится автоматически на максимальный размер.
