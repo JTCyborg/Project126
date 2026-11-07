@@ -720,3 +720,13 @@ Source commit: `aac9d7e60c391510150016d3b29906a7b2f90e3d`.
 - After each ROM call, the wrapper invokes the existing `p126_atm_video_init`, which re-enters the documented `#3D2F` ROM trampoline and restores the Project126 80x25 display, WIN0 auto-TR-DOS selector, page 7/3 video mapping and host/staging mappings. This is the Project126 equivalent of NedoOS `shadon_pgsys`; it intentionally uses Project126's own page map rather than copying NedoOS' page constants.
 - The sector reader, C=0Ah/C=08h ABI arguments, filename fields, 32-sector BIOS size, DMA/IPC/IMAGE protocol and catalogue flow are unchanged.
 - **STATUS:** source committed; CI run 154 (`42368399500`) is in progress at documentation update time. Physical ATM verification pending. Required evidence: C=0Ah RETURN, C=08h CALL/RETURN, 32 successful C=05h reads, then the existing IMAGE transaction markers. This is a source-level port of the documented NedoOS ATM2+ sequence, not yet a hardware-confirmed fix.
+
+
+## 2026-11-07 — BIOS IMAGE DMA frame-length correction
+
+- Hardware log confirms the ATM2+ TR-DOS call wrapper is now working on target: C=0Ah returns, C=08h returns, the 8 KiB BIOS file is opened, all 32 sectors are read, and ATM video is restored before IPC.
+- The first IMAGE request then failed locally with `[ATM IPC] FRAME STRUCTURE INVALID`, immediately after `DMA TX BEGIN`; no E0 command/DMA transfer was started and NeoGS did not receive a frame.
+- Root cause found in `p126_bios_send_frame`: it calculated the end pointer as `P126_BIOS_FRAME + 18 + payload_length` and mistakenly passed that absolute address in BC as the frame byte count. With staging at C000h, IMAGE_BEGIN therefore advertised C018h bytes instead of 24 bytes, so the structural preflight correctly rejected it.
+- Fixed BC to be the arithmetic sum `P126_IPC_HEADER_SIZE + p126_bios_payload_length`, independently of the C000h frame base. Expected exact sizes: IMAGE_BEGIN 24 bytes; IMAGE_FRAGMENT 8220 bytes (18-byte header + 10-byte fragment extension + 8192-byte BIOS); IMAGE_FINISH 20 bytes.
+- No DMA register, page mapping, ABI field, CRC algorithm, handshake or TR-DOS code changed.
+- **STATUS:** source committed; CI and the next physical ATM run are required. Expected next trace: FRAME VALID / SEND E0 / E0 ACK / DMA COPY / SEND FF, then NeoGS frame validation. This correction is not yet hardware-confirmed.
