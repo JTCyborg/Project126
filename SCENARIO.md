@@ -1385,3 +1385,13 @@ Source commit: `e9cf9c3638687d5230a8ab50ebea075417013afb`. CI build и аппа�
 - Startup previously read the directory into `#C800..#CFFF` before `p126_neogs_startup`, then opened/read `P126BOOT.C`, `X86CORE.C`, `X86IO.C`, `X86ALU.C`, and `X86DEV.C` through TR-DOS before the catalogue consumed the preloaded buffer. The buffer was therefore stale across subsequent TR-DOS operations, with no integrity check.
 - Reordered startup: NeoGS bootstrap/resident and overlay transfers now complete first; the host then rereads all eight directory sectors into `#C800..#CFFF`, sets `p126_catalog_preloaded`, and only then initializes ATM video. This removes the stale-buffer window and makes the directory read the final TR-DOS disk operation before catalogue parsing.
 - Source commit: `93d5ceb3bc88de30844a733f16858b92682012de`. Hardware validation pending. Expected next log: `[CAT] FILE COUNT=0A` or greater for the supplied disk image; if it remains `01`, investigate the #3D13 call arguments and returned sector contents with a targeted buffer dump.
+
+
+## 7.13. Диагностические режимы вывода
+
+- Обычная сборка использует компактный лог: этапы загрузки, итоговые результаты самотестов, успешные контрольные точки передачи образов, выбор/загрузку BIOS и сообщения об ошибках.
+- Подробная трассировка каждого гостевого x86 `IN/OUT` отключена по умолчанию. В `neogs_sub/x86_io.asm` параметр `P126_DEBUG_IO_TRACE EQU 0` можно временно установить в `1` для диагностики конкретного обмена с портами.
+- Отключение трассировки не отключает программную модель портов, счётчики IN/OUT или аварийную диагностику. Однократные дампы BIOS/регистров при watchdog и сообщения об ошибках остаются активными.
+- Ошибки DMA/IPC, тайм-ауты, некорректные кадры и провалы self-test должны оставаться видимыми в обычном логе; успешные промежуточные этапы DMA могут быть сокращены отдельно после проверки, что итоговая строка сохраняет идентификатор образа/операции и результат.
+- Результаты PASS не следует печатать повторно из каждого внутреннего подэтапа: предпочтителен один итог на компонент и подробности только при FAIL.
+- Три уровня диагностики: NORMAL (по умолчанию), DEBUG (временная трассировка по compile-time флагам), CRASH (автоматический аварийный снимок). ATM #EF и NeoGS #EF остаются независимыми каналами.
