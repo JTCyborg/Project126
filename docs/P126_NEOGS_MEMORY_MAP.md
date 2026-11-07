@@ -162,12 +162,12 @@ GitHub Actions run [42396958741](https://github.com/JTCyborg/Project126/actions/
 
 The 8086 ALU implementation has been moved out of WIN0 into a second fixed-origin overlay on physical page 05h:
 
-- Resident X86CORE.C: 15,610 bytes of the 16,384-byte WIN0 limit (774 bytes free).
+- Resident X86CORE.C: 15,632 bytes of the 16,384-byte WIN0 limit (752 bytes free).
 - X86IO.C: 796 bytes, origin 8000h, physical page 04h / selector 02h.
-- X86ALU.C: 1,175 bytes, origin 8000h, physical page 05h / selector 82h.
+- X86ALU.C: 1,187 bytes, origin 8000h, physical page 05h / selector 82h.
 - The 10 ALU entry points used by x86_exec are resident wrappers. Each enters the shared WIN2 call gate; the ALU implementation's internal calls remain direct within page05.
 - ATM uses the shared fixed-profile loader to stream X86IO.C and X86ALU.C after A2h. IMAGE kind 02h targets page05; the receiver verifies every byte through WIN3 before IMAGE_FINISH.
 - IMAGE_FINISH probes x86_alu_overlay_probe through the resident gate and confirms that WIN2 returns to page04 before publishing X86ALU_READY.
 - BIOS execution is gated on X86IO_READY, X86ALU_READY and BIOS_IMAGE_READY.
-- BUILD PASS: [GitHub Actions run 42398846093](https://github.com/JTCyborg/Project126/actions/runs/42398846093), commit 94ac5ba2a2cbb338af0e0bb1af8b1efd826a469a. X86CORE 15,610/16,384; X86IO 796/4,096; X86ALU 1,175/4,096. Assembly and TR-DOS packaging: 0 errors, 0 warnings.
+- BUILD PASS: [GitHub Actions run 42399458157](https://github.com/JTCyborg/Project126/actions/runs/42399458157), commit 705a0d5e41909a2cd42654f9095d7dfa43a57669. X86CORE 15,632/16,384; X86IO 796/4,096; X86ALU 1,187/4,096. Assembly and TR-DOS packaging: 0 errors, 0 warnings.
 - This validates source/build/package only. The new ATM X86ALU transfer, page05 readback, gate probe, and ALU execution on physical ATM/NeoGS remain unconfirmed.
