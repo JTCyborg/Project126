@@ -365,7 +365,7 @@ x86_io_pit_read8:
         call    x86_io_pit_decode
         ret     c
         cp      3
-        jr      z,.pit_read_open_bus
+        jp      z,.pit_read_open_bus
         ld      (x86_io_pit_channel),a
         ld      e,a
         ld      d,0
