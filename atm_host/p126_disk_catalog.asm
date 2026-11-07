@@ -332,7 +332,10 @@ p126_catalog_read_disk:
         cp      8
         jr      nc, .catalog_sectors_complete
 
+        ; TR-DOS sectors are numbered 1..16, never 0..15.
+        ; Directory sectors occupy 1..8 on logical track 0.
         ld      a, (p126_catalog_sector_index)
+        inc     a
         ld      e, a
         ld      d, 0
         ld      hl, (p126_catalog_buffer_ptr)
