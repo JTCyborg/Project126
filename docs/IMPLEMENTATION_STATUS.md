@@ -389,7 +389,17 @@ The ATM log `DMA SMOKE FRAME SENT` means the transport handshake completed; it i
 - **Verification:** GitHub Actions run [42351776510](https://github.com/JTCyborg/Project126/actions/runs/42351776510), commit `d9b2a391ddaf0bbf4ccd918b34a58cbecc17f40e`, completed successfully. ATM IPC and NeoGS assembly, including the new trace code, passed; TR-DOS image packaging and artifact publication also completed. This is BUILD PASS only. No hardware trace or DMA runtime PASS is claimed.
 
 
-### 2026-11-07 — локализация ATM CRC_ERROR и сверка с Project125
+#
+## 2026-11-07 — First executable 8086 instruction core
+
+- Added `neogs_sub/x86_exec.asm` as the Project126 8086 execution module.
+- Implemented guest instruction fetch through the production CS:IP → 20-bit physical address → guest-memory backend.
+- Added one-instruction execution for `JMP FAR ptr16:16` (EA), near relative JMP (E9), short relative JMP (EB), NOP (90), and HLT (F4).
+- The post-install BIOS reset gate now resets the guest to FFFF:0000 and executes the actual first BIOS instruction. It verifies the resulting F000:E05B state instead of manually reading bytes and writing the decoded target into registers.
+- PCem/808x.c is the semantic reference; unsupported instructions still stop with carry. This is an initial executable slice, **not a complete 8086 implementation**. ModR/M, general register operations, ALU dispatch, stack, interrupts, strings, and virtual I/O remain to be ported.
+- No claim of BIOS POST or VGA initialization is made by this stage.
+
+## 2026-11-07 — локализация ATM CRC_ERROR и сверка с Project125
 
 - **Аппаратный лог пользователя:** ATM выводит `[ATM IPC] FRAME VALIDATION FAILED`, затем `DMA FAIL STAGE=1` и `DMA VALIDATOR ERROR=04`. Это `P126_STATUS_CRC_ERROR`; отказ происходит в локальном ATM валидаторе до команды E0. NeoGS receiver и DMA engine на этом запуске ещё не задействованы.
 - **Сверка с Project125:** изучены `PROJECT125_DMA_IPC.md`, `NeoGS/dma_zx_doc.txt`, `NeoGS/ports.inc`, `zx_main/neogs_transport_v2.asm` и `shared/neogs_io.inc`. Для ATM→NeoGS запись Project125 использует host write в DMA aperture `0000h..3FFFh`; NeoGS настраивает DMA module 1, HAD/MAD/LAD и CST bit 7. Dummy read из документа относится к обратному направлению NeoGS→ATM; dummy write перед ATM→NeoGS не требуется. Отдельно учтено предупреждение Project125 о задержке после включения DMA в сценариях, где управление DMA идёт через штатный GS105a ROM. Текущий P126 обмен выполняется уже резидентной прошивкой, поэтому это предупреждение проверяется на аппаратном этапе, а не объявляется причиной текущего CRC отказа.
