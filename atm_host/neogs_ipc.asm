@@ -390,17 +390,28 @@ p126_ipc_dma_send_frame::
         call    p126_ipc_debug_string
         ld      a,P126_CMD_HOST_FRAME
         call    p126_ipc_send_command
-        ret     c
+        jr      nc,.p126_dma_e0_ack
+        push    af
+        ld      hl,p126_ipc_log_dma_tx_e0_timeout
+        call    p126_ipc_debug_string
+        pop     af
+        scf
+        ret
+.p126_dma_e0_ack:
         ld      hl,p126_ipc_log_dma_tx_ready
         call    p126_ipc_debug_string
 
         ld      a,4
         ld      (p126_ipc_dma_stage),a
+        di
+        ld      hl,p126_ipc_log_dma_tx_copy_begin
+        call    p126_ipc_debug_string
         ld      hl,(p126_ipc_dma_source)
         ld      bc,(p126_ipc_dma_size)
         ld      de,P126_IPC_DMA_WINDOW
-        di
         ldir
+        ld      hl,p126_ipc_log_dma_tx_copy_done
+        call    p126_ipc_debug_string
 
         ld      a,5
         ld      (p126_ipc_dma_stage),a
@@ -409,7 +420,14 @@ p126_ipc_dma_send_frame::
         ld      a,P126_IPC_DMA_END
         out     (P126_GSCOM),a
         call    p126_ipc_wait_cbit_clear
-        ret     c
+        jr      nc,.p126_dma_ff_ack
+        push    af
+        ld      hl,p126_ipc_log_dma_tx_ff_timeout
+        call    p126_ipc_debug_string
+        pop     af
+        scf
+        ret
+.p126_dma_ff_ack:
         ld      hl,p126_ipc_log_dma_tx_done
         call    p126_ipc_debug_string
         xor     a
@@ -451,6 +469,8 @@ p126_ipc_log_dma_tx_begin:        db "[ATM IPC] DMA TX BEGIN",13,10,0
 p126_ipc_log_dma_tx_validate_ok:  db "[ATM IPC] FRAME VALID",13,10,0
 p126_ipc_log_dma_tx_validate_bad: db "[ATM IPC] FRAME VALIDATION FAILED",13,10,0
 p126_ipc_log_dma_tx_e0:           db "[ATM IPC] SEND E0",13,10,0
+p126_ipc_log_dma_tx_e0_timeout:   db "[ATM IPC] E0 ACK TIMEOUT",13,10,0
 p126_ipc_log_dma_tx_ready:        db "[ATM IPC] E0 ACK / READY",13,10,0
 p126_ipc_log_dma_tx_ff:           db "[ATM IPC] SEND FF",13,10,0
+p126_ipc_log_dma_tx_ff_timeout:   db "[ATM IPC] FF ACK TIMEOUT",13,10,0
 p126_ipc_log_dma_tx_done:         db "[ATM IPC] DMA TX COMPLETE",13,10,0
