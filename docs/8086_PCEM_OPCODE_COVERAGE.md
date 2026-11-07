@@ -6,10 +6,10 @@ Later 80186/286/386 instructions are not part of the target CPU.
 
 ## Progress metric
 
-- Denominator: 236 distinct opcode-byte values in the documented original 8086 opcode map, including the 8087 ESC opcode range and undocumented 8086-compatible values where PCem has an execution path.
+- Denominator: 235 distinct opcode-byte values in the documented original 8086 opcode map, including the 8087 ESC opcode range and undocumented 8086-compatible values where PCem has an execution path.
 - Numerator: opcode-byte values with a concrete execution path in the Project126 dispatcher.
 - Current numerator: 21.
-- **Opcode-byte dispatch coverage: 21 / 236 = 8.90%.**
+- **Opcode-byte dispatch coverage: 21 / 235 = 8.94%.**
 - This is a source-coverage metric, not a claim of full semantic correctness. ModR/M forms, memory addressing, prefixes, flags, interrupt behavior and corner cases are tracked separately and must also be complete before the CPU is called 100%.
 - An instruction family is not considered complete merely because one opcode in the family is present.
 
