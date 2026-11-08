@@ -287,6 +287,7 @@ p126_neogs_load_manifest:
         ld      (p126_neogs_file_extension),a
         call    p126_neogs_open_file
         ret     c
+        ; V remains active only while checking the exact 39-byte file size.
         ld      a,'V'
         ld      (p126_neogs_startup_stage),a
         ld      hl,(p126_neogs_file_length)
@@ -300,30 +301,44 @@ p126_neogs_load_manifest:
         ldir
 
         ld      hl,p126_neogs_manifest
+        ld      a,'a'
+        ld      (p126_neogs_startup_stage),a
         ld      a,(hl)
         cp      'P'
         jr      nz,.manifest_bad
         inc     hl
+        ld      a,'b'
+        ld      (p126_neogs_startup_stage),a
         ld      a,(hl)
         cp      '1'
         jr      nz,.manifest_bad
         inc     hl
+        ld      a,'c'
+        ld      (p126_neogs_startup_stage),a
         ld      a,(hl)
         cp      '2'
         jr      nz,.manifest_bad
         inc     hl
+        ld      a,'d'
+        ld      (p126_neogs_startup_stage),a
         ld      a,(hl)
         cp      '6'
         jr      nz,.manifest_bad
         inc     hl
+        ld      a,'e'
+        ld      (p126_neogs_startup_stage),a
         ld      a,(hl)
         cp      1
         jr      nz,.manifest_bad
         inc     hl
+        ld      a,'f'
+        ld      (p126_neogs_startup_stage),a
         ld      a,(hl)
         cp      4
         jr      nz,.manifest_bad
         inc     hl
+        ld      a,'g'
+        ld      (p126_neogs_startup_stage),a
         ld      a,(hl)
         cp      8
         jr      nz,.manifest_bad
@@ -333,28 +348,42 @@ p126_neogs_load_manifest:
         ld      c,1
         ld      d,4
 .manifest_record_loop:
+        ld      a,'h'
+        ld      (p126_neogs_startup_stage),a
         ld      a,(hl)
         cp      c
         jr      nz,.manifest_bad
         inc     hl
+        ld      a,'i'
+        ld      (p126_neogs_startup_stage),a
         ld      a,(hl)
         cp      d
         jr      nz,.manifest_bad
         inc     hl
+        ld      a,'j'
+        ld      (p126_neogs_startup_stage),a
         ld      a,(hl)
         cp      1
         jr      nz,.manifest_bad
         inc     hl
+        ld      a,'k'
+        ld      (p126_neogs_startup_stage),a
         ld      a,(hl)
         or      a
         jr      nz,.manifest_bad
         inc     hl
+        ld      a,'l'
+        ld      (p126_neogs_startup_stage),a
         ld      e,(hl)
         inc     hl
         ld      a,(hl)
         inc     hl
         or      e
         jr      z,.manifest_bad
+        push    af
+        ld      a,'m'
+        ld      (p126_neogs_startup_stage),a
+        pop     af
         cp      #40
         jr      c,.manifest_size_ok
         jr      nz,.manifest_bad

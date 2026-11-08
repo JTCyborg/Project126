@@ -105,6 +105,34 @@ p126_host_ngs_start_failed:
         out     (c),a
         ld      a,(p126_neogs_startup_stage)
         out     (c),a
+        ; Include the manifest descriptor length and loader error in the
+        ; failure line. Stage V means the file opened but was not 39 bytes.
+        ld      a,' '
+        out     (c),a
+        ld      a,'L'
+        out     (c),a
+        ld      a,'E'
+        out     (c),a
+        ld      a,'N'
+        out     (c),a
+        ld      a,'='
+        out     (c),a
+        ld      a,(p126_neogs_file_length+1)
+        call    p126_host_debug_hex_byte
+        ld      a,(p126_neogs_file_length)
+        call    p126_host_debug_hex_byte
+        ld      a,' '
+        out     (c),a
+        ld      a,'E'
+        out     (c),a
+        ld      a,'R'
+        out     (c),a
+        ld      a,'R'
+        out     (c),a
+        ld      a,'='
+        out     (c),a
+        ld      a,(p126_neogs_startup_error)
+        call    p126_host_debug_hex_byte
         ld      a,13
         out     (c),a
         ld      a,10
