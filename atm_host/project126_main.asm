@@ -216,10 +216,12 @@ p126_host_video_mode_done:
 
         ld      hl, p126_log_console_begin
         call    p126_host_debug_string
-        ; VGA owns the complete ATM display. Start from a clean screen and
-        ; do not paint the diagnostic dashboard over the guest BIOS output.
+        ; Keep the ATM boot/catalogue interface active until the user selects
+        ; a BIOS image. Only the post-selection path clears the screen for VGA.
+        call    BIOS_DebugConsole_Init
         call    p126_screen_clear_guest_display
-        xor     a
+        call    BIOS_DebugConsole_DrawInterface
+        ld      a,1
         ld      (p126_host_console_ready),a
         ld      hl, p126_log_console_done
         call    p126_host_debug_string
