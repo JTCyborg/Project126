@@ -1334,18 +1334,37 @@ x86_vga_get_text_snapshot_impl:
         ld      a,(x86_vga_gdc+5)
         and     #60
         jp      nz,.text_snapshot_bad
+        ; PCem selects the 40-column text renderer from Sequencer Clocking
+        ; Mode bit3. This ATM text descriptor is 80 columns.
+        ld      a,(x86_vga_seq+1)
+        bit     3,a
+        jp      nz,.text_snapshot_bad
 
-        ; CRTC start address is in words; the host text aperture is byte-based.
+        ; Match PCem svga_poll()/svga_render_text_80():
+        ; ma_latch = CRTC[0Ch:0Dh] + ((CRTC[08h]&60h)>>5)
+        ; byte address = ma_latch>>1; row stride = CRTC[13h]<<2.
         ld      a,(x86_vga_crtc+12)
         ld      h,a
         ld      a,(x86_vga_crtc+13)
         ld      l,a
-        add     hl,hl
+        ld      a,(x86_vga_crtc+8)
+        and     #60
+        srl     a
+        srl     a
+        srl     a
+        srl     a
+        srl     a
+        ld      e,a
+        ld      d,0
+        add     hl,de
+        srl     h
+        rr      l
         ld      (x86_vga_text_start),hl
-        ; CRTC offset is also in words; multiply by two for byte stride.
+        ; PCem advances ma by rowoffset<<3; convert ma units to CPU bytes.
         ld      a,(x86_vga_crtc+19)
         ld      l,a
         ld      h,0
+        add     hl,hl
         add     hl,hl
         ex      de,hl
         ld      hl,(x86_vga_text_start)
