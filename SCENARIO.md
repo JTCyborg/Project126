@@ -1616,3 +1616,12 @@ The temporary diagnostic is therefore moved back to the first terminator and now
 - The intended `[PIT] R=...` record remains emitted only on BIOS terminal paths (watchdog, guest HLT, or CPU fault), via the resident X86IO snapshot gate and nested X86DEV overlay call.
 - The latest supplied ATM trace ends after BIOS continuous-execution start and resident bootstrap/ACK timeout. It contains no BIOS terminal event and no `[IO COUNT]`, `[GUEST OUT]`, or `[PIT]` records, so it does not provide a PIT state sample. Absence of `[PIT]` is not evidence of a PIT counter fault; the immediate issue is that BIOS execution is re-entered/interrupted before terminal diagnostics execute.
 - The cooperative BIOS slicing commits remain in the branch as a separate IPC scheduling change; they do not replace or redefine the PIT diagnostic objective.
+
+
+## 2026-11-08 — One-shot PIT sample after BIOS timer setup
+
+- The BIOS terminal-path snapshot was not reached in the latest ATM trace: execution starts at the reset vector and far-jumps into the BIOS, then the resident startup/ACK-timeout sequence appears again. The absence of a terminal event means the existing stop-only `[PIT]` record cannot diagnose the timer yet.
+- Added a one-shot sample inside the active X86DEV overlay. After channel 2 is loaded, GATE2 is high, and at least 32 guest PIT input clocks have been processed, the model emits the existing `[PIT] R=... M=... G=... O=... C=... H=... T=... X=... Q=... L=...` record.
+- The sample is emitted after the tick update, does not access an inactive overlay, does not alter PIT register/timing semantics, and is suppressed after the first record until PIT reset. It is not emitted by the register self-test unless guest channel 2 remains configured and clocked after reset.
+- Interpretation: no record means BIOS did not complete/load channel 2 with GATE2 high, or guest-cycle advancement did not deliver 32 PIT clocks; a record with `T` advanced but `C/X` static identifies a channel counter/mode implementation gap; a mode/divisor/GATE mismatch identifies guest programming or PPI control behavior.
+- Assembly and ATM/NeoGS validation are pending. This diagnostic does not claim full PIT compatibility: channel 2 timing currently advances only modes 0 and 3, and IRQ0/channels 0–1 remain incomplete.
