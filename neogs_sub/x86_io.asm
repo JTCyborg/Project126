@@ -28,6 +28,11 @@ x86_io_reset_impl:
         ld      hl,0
         ld      (x86_io_count_in),hl
         ld      (x86_io_count_out),hl
+        ld      (x86_io_pit_out42_count),hl
+        ld      (x86_io_pit_out43_count),hl
+        ld      (x86_io_ppi_out61_count),hl
+        ld      (x86_io_last_out_port),hl
+        ld      (x86_io_last_out_value),hl
         ld      (x86_io_test_latch),hl
         xor     a
         ld      (x86_io_keyboard_head),a
@@ -656,6 +661,38 @@ x86_io_write8_impl:
         ld      hl,(x86_io_count_out)
         inc     hl
         ld      (x86_io_count_out),hl
+        ld      (x86_io_last_out_value),a
+        ld      hl,(x86_io_port)
+        ld      (x86_io_last_out_port),hl
+        ld      de,#0042
+        or      a
+        sbc     hl,de
+        jr      nz,.check_pit_control_out
+        ld      hl,(x86_io_pit_out42_count)
+        inc     hl
+        ld      (x86_io_pit_out42_count),hl
+        jr      .restore_out_value
+.check_pit_control_out:
+        ld      hl,(x86_io_port)
+        ld      de,#0043
+        or      a
+        sbc     hl,de
+        jr      nz,.check_ppi_pb_out
+        ld      hl,(x86_io_pit_out43_count)
+        inc     hl
+        ld      (x86_io_pit_out43_count),hl
+        jr      .restore_out_value
+.check_ppi_pb_out:
+        ld      hl,(x86_io_port)
+        ld      de,#0061
+        or      a
+        sbc     hl,de
+        jr      nz,.restore_out_value
+        ld      hl,(x86_io_ppi_out61_count)
+        inc     hl
+        ld      (x86_io_ppi_out61_count),hl
+.restore_out_value:
+        ld      a,(x86_io_last_out_value)
         jp      x86_io_write8_impl_device
 
 ; Internal byte write. Does not change the operation counter.
@@ -982,7 +1019,22 @@ x86_io_snapshot_counters_impl:
         ld      (x86_bios_trace_io_out_snapshot),hl
         ld      hl,(x86_io_port)
         ld      (x86_bios_trace_io_port_snapshot),hl
+        ld      hl,(x86_io_last_out_port)
+        ld      (x86_bios_trace_io_last_out_port_snapshot),hl
+        ld      a,(x86_io_last_out_value)
+        ld      (x86_bios_trace_io_last_out_value_snapshot),a
+        ld      hl,(x86_io_pit_out42_count)
+        ld      (x86_bios_trace_io_out42_snapshot),hl
+        ld      hl,(x86_io_pit_out43_count)
+        ld      (x86_bios_trace_io_out43_snapshot),hl
+        ld      hl,(x86_io_ppi_out61_count)
+        ld      (x86_bios_trace_io_out61_snapshot),hl
         ret
 
 x86_io_count_in:  dw 0
 x86_io_count_out: dw 0
+x86_io_pit_out42_count: dw 0
+x86_io_pit_out43_count: dw 0
+x86_io_ppi_out61_count: dw 0
+x86_io_last_out_port: dw 0
+x86_io_last_out_value: db 0
