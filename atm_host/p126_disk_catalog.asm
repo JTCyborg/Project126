@@ -258,10 +258,11 @@ p126_catalog_scan_keys:
         bit     0, a
         jp      nz, .catalog_keys_done
 
-        ; Row #EF: key 7 (bit 3) = up, key 6 (bit 4) = down.
+        ; Row #EF: key 7 (bit 1) = up, key 6 (bit 0) = down.
+        ; Matrix bits are active-low; CAPS SHIFT was checked above.
         ld      bc, #EFFE
         in      a, (c)
-        bit     3, a
+        bit     1, a
         jr      nz, .catalog_check_down
         ld      a, (p126_catalog_scan_result)
         or      1
@@ -270,7 +271,7 @@ p126_catalog_scan_keys:
 .catalog_check_down:
         ld      bc, #EFFE
         in      a, (c)
-        bit     4, a
+        bit     0, a
         jr      nz, .catalog_check_other_arrows
         ld      a, (p126_catalog_scan_result)
         or      2
