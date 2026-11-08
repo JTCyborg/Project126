@@ -1307,7 +1307,7 @@ x86_vga_calc_write_plane_value:
 
 ; Save/restore-safe aperture regression. It tests planar writes to all four
 ; interleaved planes, selected-plane reads, then chain-4 packed access at the
-; final 64 KiB aperture byte (AFFFFh -> VRAM offset 3FFFFh).
+; final 64 KiB aperture byte (AFFFFh -> packed VRAM offset 0FFFFh; planar path reaches 3FFFCh).
 x86_vga_aperture_selftest_impl:
         ld      hl,(x86_phys_addr)
         ld      (x86_vga_test_saved_phys),hl
