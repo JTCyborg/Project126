@@ -531,6 +531,35 @@ x86_io_pic_ack_impl:
         add     a,b
         ld      (x86_io_pic_vector_result),a
         call    x86_io_pic_update_pending
+        ; IRQ6-specific acknowledge checkpoint. Acknowledge is the CPU's
+        ; virtual INTA boundary; this distinguishes PIC delivery from a
+        ; merely latched IRR request.
+        ld      a,(x86_io_pic_selected_irq)
+        cp      6
+        jr      nz,.pic_ack_return
+        push    af
+        push    bc
+        push    de
+        push    hl
+        ld      hl,x86_io_pic_irq6_ack_log
+        call    x86_io_log_string
+        ld      a,(x86_io_pic_isr)
+        call    x86_io_log_hex8
+        ld      a,'/'
+        call    x86_io_log_char
+        ld      a,(x86_io_pic_irr)
+        call    x86_io_log_hex8
+        ld      a,'/'
+        call    x86_io_log_char
+        ld      a,(x86_pending_irq)
+        call    x86_io_log_hex8
+        ld      a,10
+        call    x86_io_log_char
+        pop     hl
+        pop     de
+        pop     bc
+        pop     af
+.pic_ack_return:
         ld      a,(x86_io_pic_vector_result)
         or      a
         ret
@@ -937,6 +966,34 @@ x86_io_fdc_write8:
         ld      (x86_io_fdc_sense_pc),a
         ld      a,6
         call    x86_io_pic_raise_impl
+        ; Diagnostic checkpoint: prove the DOR edge reached the PIC model.
+        ; Keep the guest I/O operation's register contract unchanged.
+        push    af
+        push    bc
+        push    de
+        push    hl
+        ld      hl,x86_io_fdc_irq6_raise_log
+        call    x86_io_log_string
+        ld      a,(x86_io_fdc_dor)
+        call    x86_io_log_hex8
+        ld      a,'/'
+        call    x86_io_log_char
+        ld      a,(x86_io_pic_irr)
+        call    x86_io_log_hex8
+        ld      a,'/'
+        call    x86_io_log_char
+        ld      a,(x86_io_pic_imr)
+        call    x86_io_log_hex8
+        ld      a,'/'
+        call    x86_io_log_char
+        ld      a,(x86_pending_irq)
+        call    x86_io_log_hex8
+        ld      a,10
+        call    x86_io_log_char
+        pop     hl
+        pop     de
+        pop     bc
+        pop     af
 .fdc_write_done:
         or      a
         ret
@@ -1528,6 +1585,8 @@ x86_io_log_nibble:
         call    x86_io_log_char
         ret
 
+x86_io_fdc_irq6_raise_log: db "[FDC] IRQ6 R DOR/IRR/IMR/PEND=",0
+x86_io_pic_irq6_ack_log: db "[PIC] IRQ6 ACK ISR/IRR/PEND=",0
 x86_io_log_prefix:    db "[IO] ",0
 x86_io_log_in:        db "IN",0
 x86_io_log_out:       db "OUT",0
