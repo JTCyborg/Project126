@@ -1052,6 +1052,15 @@ p126_ngs_image_finish:
         ld      a,5
         ld      ix,x86_vga_reset_impl
         call    p126_overlay_call_module
+        ld      a,5
+        ld      ix,x86_vga_register_selftest_impl
+        call    p126_overlay_call_module
+        cp      #5A
+        jr      nz,.image_finish_vga_probe_bad
+        ld      de,#A55A
+        or      a
+        sbc     hl,de
+        jr      nz,.image_finish_vga_probe_bad
         ld      a,1
         ld      (p126_ngs_vga_overlay_ready),a
         ld      hl,p126_ngs_vga_overlay_installed_log
