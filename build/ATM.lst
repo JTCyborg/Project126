@@ -36,12 +36,12 @@
 # file opened: p126_ipc_protocol.inc
   1+++0000              ; =========================================================================
   2+++0000              ; PROJECT126 — shared DMA/IPC ABI constants
-  3+++0000              ; Version: P126 DMA/IPC ABI 1.0
+  3+++0000              ; Version: P126 DMA/IPC ABI 1.1
   4+++0000              ; This file contains protocol constants only; no host or NeoGS port I/O.
   5+++0000              ; =========================================================================
   6+++0000
   7+++0000              P126_IPC_MAJOR             EQU 1
-  8+++0000              P126_IPC_MINOR             EQU 0
+  8+++0000              P126_IPC_MINOR             EQU 1
   9+++0000              P126_IPC_HEADER_SIZE       EQU 18
  10+++0000              P126_IPC_MAX_FRAME_SIZE    EQU #4000
  11+++0000              P126_IPC_MAX_PAYLOAD       EQU P126_IPC_MAX_FRAME_SIZE-P126_IPC_HEADER_SIZE
@@ -126,20 +126,25 @@
  90+++0000              P126_CRC16_CHECK_L        EQU #B1
  91+++0000
  92+++0000
- 93+++0000              ; IMAGE service v1.0 fixed image profiles.
- 94+++0000              ; SYSBIOS: 8 KiB image to physical page 10h.
- 95+++0000              ; X86IO: fixed-origin 8000h overlay to physical page 04h, maximum 4 KiB.
- 96+++0000              ; X86ALU: fixed-origin 8000h overlay to physical page 05h, maximum 4 KiB.
- 97+++0000              P126_IMAGE_KIND_SYSBIOS      EQU #00
- 98+++0000              P126_IMAGE_KIND_X86IO        EQU #01
- 99+++0000              P126_IMAGE_KIND_X86ALU       EQU #02
-100+++0000              P126_IMAGE_KIND_X86DEV       EQU #03
-101+++0000              P126_IMAGE_X86IO_MAX_SIZE    EQU #1000
-102+++0000              P126_IMAGE_X86ALU_MAX_SIZE   EQU #1000
-103+++0000              P126_IMAGE_X86DEV_MAX_SIZE   EQU #1000
-104+++0000              P126_IMAGE_SYSBIOS_SIZE      EQU #2000
-105+++0000              P126_IMAGE_FRAGMENT_EXT_SIZE EQU 10
-106+++0000
+ 93+++0000              ; IMAGE service v1.1 image profiles.
+ 94+++0000              ; IMAGE_BEGIN payload: message-id u16, image-kind u8, physical-page u8,
+ 95+++0000              ; exact image-size u16. The receiver validates kind/page policy and derives
+ 96+++0000              ; the WIN3/MPAGEX selector from ROR8(physical-page).
+ 97+++0000              ; SYSBIOS: 8 KiB image to physical page 10h. X86 overlays retain their
+ 98+++0000              ; pinned page assignments 04h..07h until the resident module manager owns
+ 99+++0000              ; allocation of the dynamic page range.
+100+++0000              P126_IMAGE_KIND_SYSBIOS      EQU #00
+101+++0000              P126_IMAGE_KIND_X86IO        EQU #01
+102+++0000              P126_IMAGE_KIND_X86ALU       EQU #02
+103+++0000              P126_IMAGE_KIND_X86DEV       EQU #03
+104+++0000              P126_IMAGE_KIND_X86EXEC      EQU #04
+105+++0000              P126_IMAGE_X86IO_MAX_SIZE    EQU #1000
+106+++0000              P126_IMAGE_X86ALU_MAX_SIZE   EQU #1000
+107+++0000              P126_IMAGE_X86DEV_MAX_SIZE   EQU #1000
+108+++0000              P126_IMAGE_X86EXEC_MAX_SIZE  EQU #4000
+109+++0000              P126_IMAGE_SYSBIOS_SIZE      EQU #2000
+110+++0000              P126_IMAGE_FRAGMENT_EXT_SIZE EQU 10
+111+++0000
 # file closed: p126_ipc_protocol.inc
  10++ 0000
  11++ 0000              P126_GSCOM          EQU #BB
@@ -395,7 +400,7 @@
 215+  00ED FE 01                cp      P126_IPC_MAJOR
 216+  00EF C2 DD 01             jp      nz,.p126_frame_version
 217+  00F2 DD 7E 05             ld      a,(ix+5)
-218+  00F5 FE 00                cp      P126_IPC_MINOR
+218+  00F5 FE 01                cp      P126_IPC_MINOR
 219+  00F7 C2 DD 01             jp      nz,.p126_frame_version
 220+  00FA DD 7E 06             ld      a,(ix+6)
 221+  00FD FE 01                cp      P126_MSG_REQUEST
@@ -614,7 +619,7 @@
 430+  0262 FE 01                cp      P126_IPC_MAJOR
 431+  0264 C2 99 02             jp      nz,.p126_tx_version
 432+  0267 DD 7E 05             ld      a,(ix+5)
-433+  026A FE 00                cp      P126_IPC_MINOR
+433+  026A FE 01                cp      P126_IPC_MINOR
 434+  026C C2 99 02             jp      nz,.p126_tx_version
 435+  026F DD 7E 06             ld      a,(ix+6)
 436+  0272 FE 01                cp      P126_MSG_REQUEST
@@ -1350,10 +1355,12 @@ Value    Label
 0x0000 X P126_IMAGE_KIND_SYSBIOS
 0x0002 X P126_IMAGE_KIND_X86ALU
 0x0003 X P126_IMAGE_KIND_X86DEV
+0x0004 X P126_IMAGE_KIND_X86EXEC
 0x0001 X P126_IMAGE_KIND_X86IO
 0x2000 X P126_IMAGE_SYSBIOS_SIZE
 0x1000 X P126_IMAGE_X86ALU_MAX_SIZE
 0x1000 X P126_IMAGE_X86DEV_MAX_SIZE
+0x4000 X P126_IMAGE_X86EXEC_MAX_SIZE
 0x1000 X P126_IMAGE_X86IO_MAX_SIZE
 0x04BD   p126_ipc_console_hex16
 0x04C5   p126_ipc_console_hex8
@@ -1448,7 +1455,7 @@ Value    Label
 0x3FE4 X P126_IPC_MAX_FRAGMENT_DATA
 0x4000   P126_IPC_MAX_FRAME_SIZE
 0x3FEE   P126_IPC_MAX_PAYLOAD
-0x0000   P126_IPC_MINOR
+0x0001   P126_IPC_MINOR
 0x0010 X P126_IPC_OFF_CRC
 0x0009 X P126_IPC_OFF_FLAGS
 0x000C X P126_IPC_OFF_LENGTH
