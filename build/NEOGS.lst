@@ -709,9 +709,9 @@
  267+ 02FF C5                   push    bc
  268+ 0300 D5                   push    de
  269+ 0301 E5                   push    hl
- 270+ 0302                      ; Capture post-instruction SI, AL and FLAGS in the existing 9-byte
- 271+ 0302                      ; history slot. This makes LODSB -> CMP -> JZ state visible at watchdog
- 272+ 0302                      ; without expanding the fixed-size trace ring or resident image.
+ 270+ 0302                      ; Capture post-instruction CX, AL and FLAGS in the existing 9-byte
+ 271+ 0302                      ; history slot. CX is essential for diagnosing LOOP/LOOPZ progress;
+ 272+ 0302                      ; retain the fixed-size trace ring and resident image footprint.
  273+ 0302
  274+ 0302 3A F9 05             ld      a,(x86_bios_trace_history_index)
  275+ 0305 57                   ld      d,a
@@ -736,7 +736,7 @@
  294+ 0324 23                   inc     hl
  295+ 0325 72                   ld      (hl),d
  296+ 0326 23                   inc     hl
- 297+ 0327 ED 5B 19 0C          ld      de,(x86_reg_si)
+ 297+ 0327 ED 5B 0F 0C          ld      de,(x86_reg_cx)
  298+ 032B 73                   ld      (hl),e
  299+ 032C 23                   inc     hl
  300+ 032D 72                   ld      (hl),d
@@ -1006,10 +1006,10 @@
  564+ 03E6 32 00 06             ld      (x86_bios_trace_dump_ip+1),a
  565+ 03E9 23                   inc     hl
  566+ 03EA 7E                   ld      a,(hl)
- 567+ 03EB 32 01 06             ld      (x86_bios_trace_dump_si),a
+ 567+ 03EB 32 01 06             ld      (x86_bios_trace_dump_cx),a
  568+ 03EE 23                   inc     hl
  569+ 03EF 7E                   ld      a,(hl)
- 570+ 03F0 32 02 06             ld      (x86_bios_trace_dump_si+1),a
+ 570+ 03F0 32 02 06             ld      (x86_bios_trace_dump_cx+1),a
  571+ 03F3 23                   inc     hl
  572+ 03F4 7E                   ld      a,(hl)
  573+ 03F5 32 03 06             ld      (x86_bios_trace_dump_al),a
@@ -1028,9 +1028,9 @@
  586+ 0410 CD 65 05             call    x86_bios_trace_emit_char
  587+ 0413 2A FF 05             ld      hl,(x86_bios_trace_dump_ip)
  588+ 0416 CD A0 04             call    x86_bios_trace_emit_hex16
- 589+ 0419 21 8C 06             ld      hl,x86_bios_trace_history_si_text
+ 589+ 0419 21 8C 06             ld      hl,x86_bios_trace_history_cx_text
  590+ 041C CD CB 00             call    p126_ngs_resident_log
- 591+ 041F 2A 01 06             ld      hl,(x86_bios_trace_dump_si)
+ 591+ 041F 2A 01 06             ld      hl,(x86_bios_trace_dump_cx)
  592+ 0422 CD A0 04             call    x86_bios_trace_emit_hex16
  593+ 0425 21 91 06             ld      hl,x86_bios_trace_history_al_text
  594+ 0428 CD CB 00             call    p126_ngs_resident_log
@@ -1255,7 +1255,7 @@
  792+ 05FB 00 00        x86_bios_trace_record_ptr: dw 0
  793+ 05FD 00 00        x86_bios_trace_dump_cs: dw 0
  794+ 05FF 00 00        x86_bios_trace_dump_ip: dw 0
- 795+ 0601 00 00        x86_bios_trace_dump_si: dw 0
+ 795+ 0601 00 00        x86_bios_trace_dump_cx: dw 0
  796+ 0603 00           x86_bios_trace_dump_al: db 0
  797+ 0604 00           x86_bios_trace_dump_flags: db 0
  798+ 0605 00           x86_bios_trace_dump_opcode: db 0
@@ -1300,7 +1300,7 @@
  814+ 0680 5B 58 38 36  x86_bios_trace_history_prefix: db "[X86 HIST] ",0
  814+ 0684 20 48 49 53
  814+ 0688 54 5D 20 00
- 815+ 068C 20 53 49 3D  x86_bios_trace_history_si_text: db " SI=",0
+ 815+ 068C 20 43 58 3D  x86_bios_trace_history_cx_text: db " CX=",0
  815+ 0690 00
  816+ 0691 20 41 4C 3D  x86_bios_trace_history_al_text: db " AL=",0
  816+ 0695 00
@@ -13637,11 +13637,11 @@ Value    Label
 0x0763   x86_bios_trace_cs_ip_prefix
 0x0603   x86_bios_trace_dump_al
 0x05FD   x86_bios_trace_dump_cs
+0x0601   x86_bios_trace_dump_cx
 0x0604   x86_bios_trace_dump_flags
 0x05FA   x86_bios_trace_dump_index
 0x05FF   x86_bios_trace_dump_ip
 0x0605   x86_bios_trace_dump_opcode
-0x0601   x86_bios_trace_dump_si
 0x0565   x86_bios_trace_emit_char
 0x04A0   x86_bios_trace_emit_hex16
 0x04A8   x86_bios_trace_emit_hex8
@@ -13675,11 +13675,11 @@ Value    Label
 0x07A4   x86_bios_trace_halted_log
 0x06A0   x86_bios_trace_history
 0x0691   x86_bios_trace_history_al_text
+0x068C   x86_bios_trace_history_cx_text
 0x0696   x86_bios_trace_history_flags_text
 0x05F9   x86_bios_trace_history_index
 0x069B   x86_bios_trace_history_opcode_text
 0x0680   x86_bios_trace_history_prefix
-0x068C   x86_bios_trace_history_si_text
 0x064F   x86_bios_trace_history_title
 0x0640   x86_bios_trace_io_in_snapshot
 0x0646   x86_bios_trace_io_last_out_port_snapshot
