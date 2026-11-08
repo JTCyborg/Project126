@@ -267,9 +267,9 @@ x86_bios_trace_capture_instruction:
         push    bc
         push    de
         push    hl
-        ; Capture post-instruction SI, AL and FLAGS in the existing 9-byte
-        ; history slot. This makes LODSB -> CMP -> JZ state visible at watchdog
-        ; without expanding the fixed-size trace ring or resident image.
+        ; Capture post-instruction CX, AL and FLAGS in the existing 9-byte
+        ; history slot. CX is essential for diagnosing LOOP/LOOPZ progress;
+        ; retain the fixed-size trace ring and resident image footprint.
 
         ld      a,(x86_bios_trace_history_index)
         ld      d,a
@@ -294,7 +294,7 @@ x86_bios_trace_capture_instruction:
         inc     hl
         ld      (hl),d
         inc     hl
-        ld      de,(x86_reg_si)
+        ld      de,(x86_reg_cx)
         ld      (hl),e
         inc     hl
         ld      (hl),d
@@ -564,10 +564,10 @@ x86_bios_trace_log_history:
         ld      (x86_bios_trace_dump_ip+1),a
         inc     hl
         ld      a,(hl)
-        ld      (x86_bios_trace_dump_si),a
+        ld      (x86_bios_trace_dump_cx),a
         inc     hl
         ld      a,(hl)
-        ld      (x86_bios_trace_dump_si+1),a
+        ld      (x86_bios_trace_dump_cx+1),a
         inc     hl
         ld      a,(hl)
         ld      (x86_bios_trace_dump_al),a
@@ -586,9 +586,9 @@ x86_bios_trace_log_history:
         call    x86_bios_trace_emit_char
         ld      hl,(x86_bios_trace_dump_ip)
         call    x86_bios_trace_emit_hex16
-        ld      hl,x86_bios_trace_history_si_text
+        ld      hl,x86_bios_trace_history_cx_text
         call    p126_ngs_resident_log
-        ld      hl,(x86_bios_trace_dump_si)
+        ld      hl,(x86_bios_trace_dump_cx)
         call    x86_bios_trace_emit_hex16
         ld      hl,x86_bios_trace_history_al_text
         call    p126_ngs_resident_log
@@ -792,7 +792,7 @@ x86_bios_trace_dump_index: db 0
 x86_bios_trace_record_ptr: dw 0
 x86_bios_trace_dump_cs: dw 0
 x86_bios_trace_dump_ip: dw 0
-x86_bios_trace_dump_si: dw 0
+x86_bios_trace_dump_cx: dw 0
 x86_bios_trace_dump_al: db 0
 x86_bios_trace_dump_flags: db 0
 x86_bios_trace_dump_opcode: db 0
@@ -812,7 +812,7 @@ x86_bios_trace_io_out43_snapshot: dw 0
 x86_bios_trace_io_out61_snapshot: dw 0
 x86_bios_trace_history_title: db "[X86 HIST] LAST 16 INSTRUCTIONS (OLDEST FIRST)",13,10,0
 x86_bios_trace_history_prefix: db "[X86 HIST] ",0
-x86_bios_trace_history_si_text: db " SI=",0
+x86_bios_trace_history_cx_text: db " CX=",0
 x86_bios_trace_history_al_text: db " AL=",0
 x86_bios_trace_history_flags_text: db " FL=",0
 x86_bios_trace_history_opcode_text: db " OP=",0
