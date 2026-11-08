@@ -1312,6 +1312,10 @@ x86_vga_get_text_snapshot_impl:
         ld      a,(x86_vga_gdc+6)
         bit     0,a
         jp      nz,.text_snapshot_bad
+        ld      a,(x86_vga_attr+#10)
+        bit     0,a
+        jp      nz,.text_snapshot_bad
+        ld      a,(x86_vga_gdc+6)
         and     #0C
         cp      0
         jp      z,.text_snapshot_colour
