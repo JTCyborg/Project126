@@ -636,14 +636,6 @@ p126_ngs_ipc_dispatch_once::
         scf
         ret
 
-; Resident trampoline into the dynamically installed X86VID overlay.
-; The converter implementation is not linked into the resident image: resolve
-; its public entry through the module registry on every call.
-x86_video_convert:
-        ld      a,P126_NGS_X86VID_MODULE_ID
-        ld      ix,x86_video_convert_impl
-        jp      p126_overlay_call_module
-
 .p126_ngs_dispatch_video_frame:
         ld      a,(p126_ngs_vid_overlay_ready)
         or      a
