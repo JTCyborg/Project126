@@ -1263,7 +1263,7 @@ p126_ngs_ipc_crc16_test_vector:
         db "123456789"
 
 ; Independent NeoGS #EF diagnostics for the DMA transaction lifecycle.
-p126_ngs_ipc_log_dma_e0:          db "[NGS] DMA E0 RECEIVED",13,10,0
+p126_ngs_ipc_log_dma_e0:          db "[NGS] DMA E0",13,10,0
 p126_ngs_ipc_log_dma_cfg_begin:   db "[NGS] DMA CFG",13,10,0
 p126_ngs_ipc_log_dma_armed:       db "[NGS] DMA ARMED",13,10,0
 p126_ngs_ipc_log_dma_ready:       db "[NGS] DMA READY",13,10,0
@@ -1273,7 +1273,7 @@ p126_ngs_ipc_log_bad_length:      db "[NGS] DMA BAD LENGTH",13,10,0
 p126_ngs_ipc_log_dma_stopped:     db "[NGS] DMA STOPPED",13,10,0
 p126_ngs_ipc_log_dma_page42_premapped: db "[NGS] DMA P42 PRE",13,10,0
 p126_ngs_ipc_log_dma_page42_mapped: db "[NGS] DMA P42 MAP",13,10,0
-p126_ngs_ipc_log_dma_end:         db "[NGS] DMA END RECEIVED",13,10,0
+p126_ngs_ipc_log_dma_end:         db "[NGS] DMA END",13,10,0
 p126_ngs_ipc_log_dma_addr:        db "[NGS] DMA ADDR=",0
 p126_ngs_ipc_log_rx_header:       db "[NGS] RX HDR=",0
 p126_ngs_ipc_log_frame_valid:     db "[NGS] FRAME OK",13,10,0
