@@ -523,11 +523,23 @@ p126_ngs_ipc_dispatch_once::
         ld      a,(#C007)
         cp      P126_SERVICE_IMAGE
         jr      z,.p126_ngs_dispatch_image
+        cp      P126_SERVICE_VIDEO
+        jr      z,.p126_ngs_dispatch_video
         ; Diagnostics currently has no additional side effects.
         xor     a
         out     (P126_NGS_CLRCBIT),a
         ld      a,1
         or      a
+        ret
+
+.p126_ngs_dispatch_video:
+        ld      a,(#C008)
+        cp      P126_OP_VIDEO_MODE
+        jp      z,p126_ngs_video_mode
+        xor     a
+        out     (P126_NGS_CLRCBIT),a
+        ld      a,P126_STATUS_NO_OPERATION
+        scf
         ret
 
 .p126_ngs_dispatch_image:
@@ -572,6 +584,58 @@ p126_ngs_ipc_dispatch_once::
         ld      hl,p126_ngs_ipc_log_dma_rx_request
         call    p126_ngs_ipc_log
         call    p126_ngs_ipc_dma_send_test_frame
+        ret
+
+; -------------------------------------------------------------------------
+; VIDEO_MODE descriptor v1 (8 bytes):
+; version, ATM mode, width, height, output format, flags, frame_size:u16.
+; Only the currently implemented ATM RG6 80x25 text layout is accepted.
+p126_ngs_video_mode:
+        ld      hl,(#C00C)
+        ld      de,P126_VIDEO_MODE_DESC_SIZE
+        or      a
+        sbc     hl,de
+        jp      nz,.video_mode_bad
+        ld      a,(#C012)
+        cp      P126_VIDEO_DESC_VERSION
+        jp      nz,.video_mode_bad
+        ld      a,(#C013)
+        cp      P126_ATM_MODE_RG6_TEXT80X25
+        jp      nz,.video_mode_bad
+        ld      a,(#C014)
+        cp      P126_VIDEO_TEXT80_WIDTH
+        jp      nz,.video_mode_bad
+        ld      a,(#C015)
+        cp      P126_VIDEO_TEXT80_HEIGHT
+        jp      nz,.video_mode_bad
+        ld      a,(#C016)
+        cp      P126_VIDEO_FORMAT_TEXT80X25
+        jp      nz,.video_mode_bad
+        ld      a,(#C017)
+        or      a
+        jp      nz,.video_mode_bad
+        ld      hl,(#C018)
+        ld      de,P126_VIDEO_TEXT80_FRAME_SIZE
+        or      a
+        sbc     hl,de
+        jp      nz,.video_mode_bad
+
+        ld      hl,#C012
+        ld      de,p126_ngs_video_mode_desc
+        ld      bc,P126_VIDEO_MODE_DESC_SIZE
+        ldir
+        ld      a,1
+        ld      (p126_ngs_video_mode_ready),a
+        xor     a
+        out     (P126_NGS_CLRCBIT),a
+        ld      a,1
+        or      a
+        ret
+.video_mode_bad:
+        xor     a
+        out     (P126_NGS_CLRCBIT),a
+        ld      a,P126_STATUS_BAD_FRAME
+        scf
         ret
 
 ; -------------------------------------------------------------------------
@@ -1332,6 +1396,8 @@ p126_ngs_alu_overlay_ready:  db 0
 p126_ngs_dev_overlay_ready:  db 0
 p126_ngs_exec_overlay_ready: db 0
 p126_ngs_vga_overlay_ready:  db 0
+p126_ngs_video_mode_ready:   db 0
+p126_ngs_video_mode_desc:    defs P126_VIDEO_MODE_DESC_SIZE,0
 p126_ngs_image_id:           dw 0
 p126_ngs_image_size:         dw 0
 p126_ngs_image_kind:         db 0
