@@ -58,13 +58,13 @@ Implement PCem-compatible port decode, mono/colour CRTC alias selection, Attribu
 Replace linear A0000h–BFFFFh staging with map select, chain-4/chain-2, plane selection, latches, read modes 0/1, write modes 0–3, rotate, set/reset, logical operation, bit mask and map mask. Verify all four planes independently.
 
 ### Stage 3 — VGA scanout
-Port relevant PCem text, planar 4-bpp and packed 8-bpp rendering. Derive geometry, pitch, start address, cursor, blink, panning, palette and display enable from VGA registers. Add deterministic patterns.
+The first text-mode capture path now reads VGA character/attribute cells using PCem CRTC MA/start/stride rules and preserves the VGA latches. Full pixel scanout remains: port planar 4-bpp and packed 8-bpp rendering, then add cursor/blink, panning, palette and deterministic graphics patterns.
 
 ### Stage 4 — ATM mode descriptor and converter
-Derive the descriptor from actual ATM mode-control state and Project126 ATM source/docs. Implement each supported ATM layout separately. Verify mode-specific output length (up to 32768 bytes) and reference vectors; do not invent modes.
+The host now publishes a versioned descriptor for its current RG6 80x25 text mode. X86VID validates that descriptor and converts a VGA text screen to a compact 4000-byte character/attribute frame. Other ATM layouts and VGA graphics-to-ATM conversion remain future work.
 
 ### Stage 5 — frame transfer and DMA/IPC
-Use pages40h–41h as one 32 KiB converted-frame buffer, page42h as DMA staging and page43h as scratch. Transfer the logical frame as independently CRC-checked ABI 1.1 fragments. Add timeout/recovery and ownership rules.
+The current RG6 frame is written directly after the 18-byte header in page42h, then sent as a fixed 16 KiB reverse-DMA response with CRC validation. The ATM host validates the VIDEO response and copies the 4000-byte payload into the active page7/page3 text layout. Pages40h–41h are reserved for future larger frame formats; fragmented transfers are still required for those modes.
 
 ### Stage 6 — BIOS and end-to-end tests
 Run BIOS2 INT 10h text/graphics paths. Validate guest register access, aperture, scanout, ATM conversion, reassembly and final ATM placement. Keep the current BIOS2 INT CD stop point unchanged.
@@ -74,17 +74,17 @@ Run BIOS2 INT 10h text/graphics paths. Validate guest register access, aperture,
 - Exactly 262144 bytes of VRAM; all four planes pass read/write/latch tests.
 - Implemented VGA register behavior matches the corresponding PCem paths.
 - BIOS2 INT 10h text and supported graphics tests produce expected VGA scanout.
-- Every supported ATM mode produces its defined deterministic output length (up to 32768 bytes).
-- DMA fragmentation never exceeds the 16 KiB aperture and never mutates the source frame while it is in flight.
-- ATM video memory is updated only from a fully reassembled, validated frame; incomplete frames are rejected without applying them.
+- Current RG6 text conversion produces exactly 4000 deterministic bytes; future ATM modes must define and test their own output lengths.
+- The current 4000-byte RG6 frame is transferred in one validated 16 KiB reverse-DMA frame; larger formats must use ordered fragmentation without mutating an in-flight source.
+- ATM text memory is updated only after the complete reverse-DMA frame passes header, length and CRC validation.
 - Build logs report component versions, image sizes and test results. Assembly success is not hardware/display verification.
 
 ## 7. Implementation progress (2026-11-08)
 
 ### Completed in source (not yet build-verified)
 
-- Added X86VGA as dynamic module ID05 / physical page08, separate from the 4 KiB X86DEV overlay.
-- Extended the build output, TR-DOS disk packaging, five-record X86MODS manifest, host loader and NeoGS IMAGE receiver for X86VGA.
+- Added X86VGA as dynamic module ID05 / physical page08 and X86VID as dynamic module ID06 / physical page09, separate from the 4 KiB X86DEV overlay.
+- Extended the build output, TR-DOS disk packaging, six-record X86MODS manifest, host loader and NeoGS IMAGE receiver for X86VGA and X86VID.
 - IMAGE_FINISH registers page08 only after the received image has passed the existing physical-page readback check; the resident then calls the module through the overlay gate.
 - Added an overlay probe and register-file self-test. The test covers Sequencer, Attribute Controller flip-flop, Graphics Controller and DAC RGB read/write sequencing.
 - Added VGA guest I/O dispatch for ports 3C0h–3DFh, including active mono/colour CRTC aliasing and the PCem-visible register read/write side effects.
@@ -95,7 +95,7 @@ Run BIOS2 INT 10h text/graphics paths. Validate guest register access, aperture,
 
 The current X86VGA code now has source implementations for register/port access and VGA aperture semantics, including GDC[6] window selection, chain-4/chain-2, four-plane latches, read mode 1 and write modes 0–3. It is still not a complete VGA adapter: scanout/rendering, timing, text cursor/blink and packed/planar pixel conversion remain to be implemented and tested.
 
-The ATM RG6 text converter source and reverse-DMA VIDEO frame path are now present; host-side frame receive/application and additional ATM modes remain to be implemented. The existing BIOS2 INT CD debugging state remains untouched.
+The ATM RG6 80x25 text converter, mode descriptor exchange, reverse-DMA VIDEO response, host frame validation and page7/page3 screen application are now present in source. Graphics-mode conversion and additional ATM modes remain to be implemented. The existing BIOS2 INT CD debugging state remains untouched.
 
 No SjASMPlus build or emulator run has been performed for these changes yet. The source changes must be assembled and exercised before reporting build or runtime success.
 
