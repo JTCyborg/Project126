@@ -184,8 +184,8 @@ x86_io_pic_selftest_impl:
         jp      x86_io_log_string
 
 ; A=XT keyboard scan-code byte. Carry set means FIFO full (byte rejected).
-; This is the software input-service API; the caller is the future IPC
-; keyboard event handler, never a physical NeoGS port operation.
+; This software input-service API is called by the resident INPUT dispatcher
+; through the X86IO overlay gate, never a physical NeoGS port operation.
 x86_io_keyboard_push_impl:
         ld      b,a
         ld      a,(x86_io_keyboard_count)
