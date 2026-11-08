@@ -1048,11 +1048,13 @@ x86_io_fdc_command_complete:
 x86_io_ata_reset_impl:
         xor     a
         ld      (x86_io_ata_error),a
-        ld      (x86_io_ata_count),a
-        ld      (x86_io_ata_sector),a
         ld      (x86_io_ata_cyl_low),a
         ld      (x86_io_ata_cyl_high),a
         ld      (x86_io_ata_drive),a
+        ld      a,1
+        ld      (x86_io_ata_count),a
+        ld      (x86_io_ata_sector),a
+        xor     a
         ld      (x86_io_ata_command),a
         ld      (x86_io_ata_ident_index),a
         ld      (x86_io_ata_ident_active),a
@@ -1151,11 +1153,30 @@ x86_io_ata_write8:
         ld      a,l
         cp      #F6
         jp      nz,.ata_write_unhandled
+        ld      a,(x86_io_ata_control)
+        and     4
+        ld      b,a
         ld      a,(x86_io_ata_write_value)
         ld      (x86_io_ata_control),a
         bit     2,a
-        jp      z,.ata_write_alt_done
+        jp      z,.ata_write_alt_release
         ld      a,#80
+        ld      (x86_io_ata_status),a
+        or      a
+        ret
+.ata_write_alt_release:
+        ld      a,b
+        or      a
+        jp      z,.ata_write_alt_done
+        ; SRST falling edge: restore ATA device signature registers.
+        ld      a,1
+        ld      (x86_io_ata_error),a
+        ld      (x86_io_ata_count),a
+        ld      (x86_io_ata_sector),a
+        xor     a
+        ld      (x86_io_ata_cyl_low),a
+        ld      (x86_io_ata_cyl_high),a
+        ld      a,#50
         ld      (x86_io_ata_status),a
 .ata_write_alt_done:
         or      a
