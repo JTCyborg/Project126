@@ -418,7 +418,7 @@ p126_neogs_load_manifest:
 p126_neogs_verify_overlay_manifest:
         ld      a,(p126_neogs_manifest_valid)
         or      a
-        jr      z,.manifest_verify_bad
+        jp      z,.manifest_verify_bad
         ld      a,(p126_neogs_overlay_kind)
         cp      P126_IMAGE_KIND_X86IO
         jr      nz,.manifest_verify_alu
@@ -446,14 +446,14 @@ p126_neogs_verify_overlay_manifest:
         jr      .manifest_verify_id
 .manifest_verify_vid:
         cp      P126_IMAGE_KIND_X86VID
-        jr      nz,.manifest_verify_bad
+        jp      nz,.manifest_verify_bad
         ld      a,6
 .manifest_verify_id:
         ; Descriptor ID and IMAGE kind must identify the same module.
         ld      b,a
         ld      a,(p126_neogs_manifest_module_id)
         cp      b
-        jr      nz,.manifest_verify_bad
+        jp      nz,.manifest_verify_bad
         ld      a,b
         dec     a
         add     a,a
@@ -471,7 +471,7 @@ p126_neogs_verify_overlay_manifest:
         ld      b,a
         ld      a,(p126_neogs_overlay_page)
         cp      b
-        jr      nz,.manifest_verify_bad
+        jp      nz,.manifest_verify_bad
 
         ; Exact size must agree with the directory record.
         inc     hl
@@ -650,7 +650,7 @@ p126_neogs_load_fixed_overlay:
         ld      de,1
         xor     a
         call    p126_bios_send_frame
-        jr      c,.fixed_overlay_transport_error
+        jp      c,.fixed_overlay_transport_error
 
         ; One FRAGMENT: id=1, index=0, count=1, u32 total length.
         ld      a,1
@@ -679,7 +679,7 @@ p126_neogs_load_fixed_overlay:
         ld      de,2
         ld      a,P126_OP_IMAGE_FRAGMENT
         call    p126_bios_send_frame
-        jr      c,.fixed_overlay_transport_error
+        jp      c,.fixed_overlay_transport_error
 
         ; IMAGE_FINISH is accepted only after target readback and gate checks.
         ld      a,1
