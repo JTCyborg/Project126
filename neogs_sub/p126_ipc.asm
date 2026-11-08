@@ -578,7 +578,8 @@ p126_ngs_ipc_dispatch_once::
 ; IMAGE service ABI 1.1. The host supplies a physical destination page
 ; in IMAGE_BEGIN; the receiver validates the kind/page policy and derives
 ; the WIN3/MPAGEX selector instead of hard-wiring a selector per image kind.
-; SYSBIOS remains pinned to page 10h; current X86 modules remain pinned 04h-07h.
+; SYSBIOS remains pinned to page10h; X86IO/ALU/DEV/EXEC use pages04h-07h.
+; X86VGA is installed on dynamic allocator page08h and registered after readback.
 ; -------------------------------------------------------------------------
 p126_ngs_image_begin:
         ld      hl,p126_ngs_image_begin_log
