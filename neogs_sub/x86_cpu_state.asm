@@ -212,10 +212,17 @@ x86_bios_startup_trace:
         ld      hl,(x86_bios_trace_executed)
         inc     hl
         ld      (x86_bios_trace_executed),hl
+        ; Keep the serial log bounded during long REP/string and RAM-size
+        ; loops. Emit progress every 4096 instructions, not every 256.
         ld      a,l
         or      a
-        call    z,x86_bios_trace_log_cs_ip
-        call    z,x86_bios_trace_log_progress
+        jr      nz,.trace_no_progress
+        ld      a,h
+        and     #0F
+        jr      nz,.trace_no_progress
+        call    x86_bios_trace_log_cs_ip
+        call    x86_bios_trace_log_progress
+.trace_no_progress:
         ld      a,(x86_halted)
         or      a
         jr      nz,.trace_halted
