@@ -95,7 +95,7 @@ x86_video_convert_impl:
         ld      a,(x86_video_char)
         call    x86_video_write_frame_byte
         ld      hl,(x86_video_frame_index)
-        ld      de,P126_VIDEO_TEXT80_WIDTH*P126_VIDEO_TEXT80_HEIGHT
+        ld      de,P126_VIDEO_TEXT80_CELLS
         add     hl,de
         ld      a,(x86_video_attr)
         call    x86_video_write_frame_byte
@@ -124,7 +124,7 @@ x86_video_convert_impl:
         jp      c,.video_convert_row
 
         ld      hl,(x86_video_frame_index)
-        ld      de,P126_VIDEO_TEXT80_WIDTH*P126_VIDEO_TEXT80_HEIGHT
+        ld      de,P126_VIDEO_TEXT80_CELLS
         or      a
         sbc     hl,de
         jp      nz,.video_convert_bad_mode
