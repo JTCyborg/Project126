@@ -4391,8 +4391,13 @@ x86_exec_jmp_far_imm:
         ld      (x86_exec_target_ip),hl
         call    x86_cpu_fetch16
         ret     c
+        ; Preserve EA's decoded far pointer for the BIOS transition diagnostic.
+        ld      (x86_exec_far_jmp_target_cs),hl
+        ld      a,1
+        ld      (x86_exec_far_jmp_target_valid),a
         ld      (x86_reg_cs),hl
         ld      hl,(x86_exec_target_ip)
+        ld      (x86_exec_far_jmp_target_ip),hl
         ld      (x86_reg_ip),hl
         or      a
         ret
@@ -4600,3 +4605,8 @@ x86_exec_overlay_probe:
         ld      a,#E7
         or      a
         ret
+
+; Diagnostic snapshot of the last successfully decoded EA ptr16:16.
+x86_exec_far_jmp_target_ip: dw 0
+x86_exec_far_jmp_target_cs: dw 0
+x86_exec_far_jmp_target_valid: db 0
