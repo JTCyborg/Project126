@@ -502,6 +502,7 @@ p126_ipc_version_text:
 ; -------------------------------------------------------------------------
 P126_IPC_DMA_WINDOW EQU #0000
 P126_IPC_DMA_END    EQU #FF
+P126_IPC_DMA_PAGE0 EQU #7F          ; ATM physical RAM page 0 in WIN3
 
 p126_ipc_dma_send_frame::
         ; Preserve the caller's frame pointer and length before any logger
@@ -750,7 +751,7 @@ p126_ipc_dma_receive_debug_frame::
         ; Do not rely on whichever WIN3 page a preceding device/DMA operation
         ; happened to leave selected: explicitly restore the same mapping used
         ; by the Project125 video pull path before the dummy read and LDIR.
-        ld      a,P126_HOST_PAGE0
+        ld      a,P126_IPC_DMA_PAGE0
         ld      bc,#FFF7
         out     (c),a
 
@@ -852,7 +853,7 @@ p126_ipc_dma_receive_video_frame::
         ; Match Project125: receive into physical ATM page 0 at C000h.
         ; Explicitly select it here because prior DMA/device paths may leave
         ; another RAM page mapped into WIN3.
-        ld      a,P126_HOST_PAGE0
+        ld      a,P126_IPC_DMA_PAGE0
         ld      bc,#FFF7
         out     (c),a
 
