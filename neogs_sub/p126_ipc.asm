@@ -1221,12 +1221,12 @@ p126_ngs_image_begin_log:    db "[NGS] IMG BEGIN",13,10,0
 p126_ngs_image_fragment_log: db "[NGS] IMG FRAG",13,10,0
 p126_ngs_image_finish_log:   db "[NGS] IMG FINISH",13,10,0
 p126_ngs_image_installed_log: db "[NGS] SYSBIOS PAGE10 OK",13,10,0
-p126_ngs_image_verify_ok_log: db "[NGS] SYSBIOS READBACK OK",13,10,0
+p126_ngs_image_verify_ok_log: db "[NGS] SYSBIOS RD OK",13,10,0
 p126_ngs_io_overlay_installed_log: db "[NGS] X86IO PAGE04 WIN2 OK",13,10,0
-p126_ngs_io_overlay_verify_ok_log: db "[NGS] X86IO PAGE04 READBACK OK",13,10,0
-p126_ngs_alu_overlay_verify_ok_log: db "[NGS] X86ALU PAGE05 READBACK OK",13,10,0
-p126_ngs_alu_overlay_installed_log: db "[NGS] X86ALU PAGE05 GATE OK",13,10,0
-p126_ngs_alu_overlay_probe_fail_log: db "[NGS] X86ALU PAGE05 GATE FAIL",13,10,0
+p126_ngs_io_overlay_verify_ok_log: db "[NGS] X86IO RD OK",13,10,0
+p126_ngs_alu_overlay_verify_ok_log: db "[NGS] X86ALU RD OK",13,10,0
+p126_ngs_alu_overlay_installed_log: db "[NGS] X86ALU GATE OK",13,10,0
+p126_ngs_alu_overlay_probe_fail_log: db "[NGS] X86ALU GATE FAIL",13,10,0
 p126_ngs_image_begin_rejected_log: db "[NGS] IMG BEGIN BAD",13,10,0
 p126_ngs_image_fragment_rejected_log: db "[NGS] IMG FRAG BAD",13,10,0
 p126_ngs_image_finish_rejected_log: db "[NGS] IMG FINISH BAD",13,10,0
@@ -1264,26 +1264,26 @@ p126_ngs_ipc_crc16_test_vector:
 
 ; Independent NeoGS #EF diagnostics for the DMA transaction lifecycle.
 p126_ngs_ipc_log_dma_e0:          db "[NGS] DMA E0 RECEIVED",13,10,0
-p126_ngs_ipc_log_dma_cfg_begin:   db "[NGS] DMA CONFIG BEGIN",13,10,0
+p126_ngs_ipc_log_dma_cfg_begin:   db "[NGS] DMA CFG",13,10,0
 p126_ngs_ipc_log_dma_armed:       db "[NGS] DMA ARMED",13,10,0
 p126_ngs_ipc_log_dma_ready:       db "[NGS] DMA READY",13,10,0
 p126_ngs_ipc_log_dma_host_end:    db "[NGS] DMA HOST END",13,10,0
-p126_ngs_ipc_log_dma_timeout:     db "[NGS] DMA WAIT TIMEOUT",13,10,0
+p126_ngs_ipc_log_dma_timeout:     db "[NGS] DMA TIMEOUT",13,10,0
 p126_ngs_ipc_log_bad_length:      db "[NGS] DMA BAD LENGTH",13,10,0
 p126_ngs_ipc_log_dma_stopped:     db "[NGS] DMA STOPPED",13,10,0
-p126_ngs_ipc_log_dma_page42_premapped: db "[NGS] DMA PAGE42 PREMAP",13,10,0
-p126_ngs_ipc_log_dma_page42_mapped: db "[NGS] DMA PAGE42 MAPPED",13,10,0
+p126_ngs_ipc_log_dma_page42_premapped: db "[NGS] DMA P42 PRE",13,10,0
+p126_ngs_ipc_log_dma_page42_mapped: db "[NGS] DMA P42 MAP",13,10,0
 p126_ngs_ipc_log_dma_end:         db "[NGS] DMA END RECEIVED",13,10,0
-p126_ngs_ipc_log_dma_addr:        db "[NGS] DMA ADDR READBACK=",0
-p126_ngs_ipc_log_rx_header:       db "[NGS] DMA RX HEADER=",0
-p126_ngs_ipc_log_frame_valid:     db "[NGS] DMA FRAME VALID",13,10,0
-p126_ngs_ipc_log_frame_rejected:  db "[NGS] DMA FRAME REJECTED STATUS=",0
+p126_ngs_ipc_log_dma_addr:        db "[NGS] DMA ADDR=",0
+p126_ngs_ipc_log_rx_header:       db "[NGS] RX HDR=",0
+p126_ngs_ipc_log_frame_valid:     db "[NGS] FRAME OK",13,10,0
+p126_ngs_ipc_log_frame_rejected:  db "[NGS] FRAME BAD=",0
 p126_ngs_ipc_log_dma_rx_request: db "[NGS] DMA RX REQ",13,10,0
 p126_ngs_ipc_log_dma_rx_armed:   db "[NGS] DMA RX ARMED",13,10,0
 p126_ngs_ipc_log_dma_rx_end:     db "[NGS] DMA RX END",13,10,0
-p126_ngs_ipc_log_dma_rx_addr:    db "[NGS] DMA RX ADDR READBACK=",0
+p126_ngs_ipc_log_dma_rx_addr:    db "[NGS] RX ADDR=",0
 p126_ngs_ipc_log_dma_rx_timeout: db "[NGS] DMA RX TIMEOUT",13,10,0
-p126_ngs_ipc_log_dma_rx_length_bad: db "[NGS] DMA RX BAD LENGTH",13,10,0
+p126_ngs_ipc_log_dma_rx_length_bad: db "[NGS] RX LEN BAD",13,10,0
 
 ; Emit CR/LF on NeoGS's independent #EF diagnostic channel.
 p126_ngs_ipc_log_crlf:
