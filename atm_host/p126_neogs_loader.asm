@@ -383,12 +383,13 @@ p126_neogs_load_manifest:
         ld      a,(hl)
         ld      (p126_neogs_manifest_record_size+1),a
         inc     hl
+        ; OR is used only for the zero-size test and destroys A. Reload the
+        ; original high byte before applying the 16 KiB per-module limit.
         or      e
         jr      z,.manifest_bad
-        push    af
         ld      a,'m'
         ld      (p126_neogs_startup_stage),a
-        pop     af
+        ld      a,(p126_neogs_manifest_record_size+1)
         cp      #40
         jr      c,.manifest_size_ok
         jp      nz,.manifest_bad
