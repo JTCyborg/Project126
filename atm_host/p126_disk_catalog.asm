@@ -165,6 +165,9 @@ p126_catalog_poll_keyboard::
         ; The resident executes the pending BIOS slice before answering E1.
         call    BIOS_DebugConsole_Clear
         call    p126_ipc_dma_receive_debug_frame
+        ; The BIOS stop slice has populated VGA text memory. Convert and
+        ; transfer that screen into the active ATM RG6 80x25 text pages.
+        call    p126_ipc_dma_receive_video_frame
         ld      hl,p126_log_bios_loaded
         call    p126_catalog_log
         ret
