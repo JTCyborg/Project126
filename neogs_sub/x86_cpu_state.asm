@@ -236,6 +236,8 @@ x86_bios_startup_trace:
         call    p126_ngs_resident_log
         call    x86_bios_trace_log_cs_ip
         call    x86_bios_trace_log_registers
+        xor     a                       ; stack top is the CALL return word
+        call    x86_bios_trace_log_stack_word
         call    x86_bios_trace_log_history
         pop     hl
 .trace_checksum_entry_done:
@@ -258,6 +260,8 @@ x86_bios_startup_trace:
         call    p126_ngs_resident_log
         call    x86_bios_trace_log_cs_ip
         call    x86_bios_trace_log_registers
+        ld      a,1                     ; post-RET SP: inspect SS:(SP-2)
+        call    x86_bios_trace_log_stack_word
         call    x86_bios_trace_log_history
         pop     hl
 .trace_low_ip_done:
@@ -410,6 +414,61 @@ x86_bios_startup_trace:
         cp      2
         ret     z
         scf
+        ret
+
+; A=0 logs SS:SP; A=1 logs SS:(SP-2). Used only by the one-shot
+; BIOS checksum-entry / invalid-return diagnostics.
+x86_bios_trace_log_stack_word:
+        ld      (x86_bios_trace_stack_mode),a
+        push    af
+        push    bc
+        push    de
+        push    hl
+        ld      de,(x86_reg_sp)
+        ld      a,(x86_bios_trace_stack_mode)
+        or      a
+        jr      z,.stack_offset_ready
+        dec     de
+        dec     de
+.stack_offset_ready:
+        ld      (x86_bios_trace_stack_offset),de
+        ld      hl,(x86_reg_ss)
+        call    x86_cpu_calc_phys
+        call    x86_guest_mem_read8
+        jr      c,.stack_read_fault
+        ld      (x86_bios_trace_stack_word),a
+        ld      de,(x86_bios_trace_stack_offset)
+        inc     de
+        ld      hl,(x86_reg_ss)
+        call    x86_cpu_calc_phys
+        call    x86_guest_mem_read8
+        jr      c,.stack_read_fault
+        ld      (x86_bios_trace_stack_word+1),a
+        ld      hl,x86_bios_trace_stack_prefix
+        call    p126_ngs_resident_log
+        ld      hl,(x86_reg_ss)
+        call    x86_bios_trace_emit_hex16
+        ld      a,':'
+        call    x86_bios_trace_emit_char
+        ld      hl,(x86_bios_trace_stack_offset)
+        call    x86_bios_trace_emit_hex16
+        ld      a,'='
+        call    x86_bios_trace_emit_char
+        ld      hl,(x86_bios_trace_stack_word)
+        call    x86_bios_trace_emit_hex16
+        jr      .stack_log_done
+.stack_read_fault:
+        ld      hl,x86_bios_trace_stack_fault
+        call    p126_ngs_resident_log
+.stack_log_done:
+        ld      a,13
+        call    x86_bios_trace_emit_char
+        ld      a,10
+        call    x86_bios_trace_emit_char
+        pop     hl
+        pop     de
+        pop     bc
+        pop     af
         ret
 
 ; Capture one completed instruction in a 16-entry circular history.
@@ -1063,6 +1122,9 @@ x86_bios_trace_eebf_once: db 0
 x86_bios_trace_unexpected_cs_once: db 0
 x86_bios_trace_checksum_entry_once: db 0
 x86_bios_trace_low_ip_once: db 0
+x86_bios_trace_stack_mode: db 0
+x86_bios_trace_stack_offset: dw 0
+x86_bios_trace_stack_word: dw 0
 x86_bios_trace_unexpected_cs_log:
         db "[X86 TRACE] FIRST UNEXPECTED CS CHANGE",13,10,0
 x86_bios_trace_far_target_prefix:
@@ -1082,6 +1144,8 @@ x86_bios_trace_progress_opcode: db " OP=",0
 x86_bios_trace_eebf_log: db "[X86 TRACE] FIRST F000:EEBF SNAPSHOT",13,10,0
 x86_bios_trace_checksum_entry_log: db "[X86 TRACE] CHECKSUM ROUTINE ENTRY F000:F9E1",13,10,0
 x86_bios_trace_low_ip_log: db "[X86 TRACE] FIRST EXECUTION BELOW BIOS WINDOW",13,10,0
+x86_bios_trace_stack_prefix: db "[X86 STACK] SS:OFF=WORD ",0
+x86_bios_trace_stack_fault: db "[X86 STACK] READ FAULT",0
 x86_bios_trace_fault_log: db "[NGS] X86 BIOS TRACE STOP: OPCODE OR MEMORY FAULT",13,10,0
 x86_bios_trace_halted_log: db "[NGS] X86 BIOS EXECUTION HALTED BY GUEST",13,10,0
 x86_bios_trace_watchdog_log: db "[NGS] X86 BIOS DIAGNOSTIC STOP",13,10,0
