@@ -1607,3 +1607,12 @@ The temporary diagnostic is therefore moved back to the first terminator and now
 - The terminal HLT/fault/watchdog paths still capture the same stop event and diagnostics. The initial reset-vector probe remains a one-time operation.
 - Commits: fdef1759f8fd14500f879637978cee5e1f018b27 (persistent sliced BIOS runner), f39aa985d09603e91661e7fe4063738342e8d987 (resident loop schedules slices).
 - Build and ATM target retest are pending. The log does not yet establish the exact reset cause; this change removes the confirmed IPC starvation window but must be validated with a fresh build and target trace.
+
+
+
+## 2026-11-08 — Keep the active investigation on PIT diagnostics
+
+- Removed the temporary `>` and `+` BIOS-slice markers; they were unrelated to the PIT investigation and are not part of the diagnostic interface.
+- The intended `[PIT] R=...` record remains emitted only on BIOS terminal paths (watchdog, guest HLT, or CPU fault), via the resident X86IO snapshot gate and nested X86DEV overlay call.
+- The latest supplied ATM trace ends after BIOS continuous-execution start and resident bootstrap/ACK timeout. It contains no BIOS terminal event and no `[IO COUNT]`, `[GUEST OUT]`, or `[PIT]` records, so it does not provide a PIT state sample. Absence of `[PIT]` is not evidence of a PIT counter fault; the immediate issue is that BIOS execution is re-entered/interrupted before terminal diagnostics execute.
+- The cooperative BIOS slicing commits remain in the branch as a separate IPC scheduling change; they do not replace or redefine the PIT diagnostic objective.
