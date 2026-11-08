@@ -525,6 +525,26 @@ p126_ipc_dma_send_frame::
         ld      hl,p126_ipc_log_dma_tx_validate_bad
         call    p126_ipc_debug_string
         pop     af
+        ; Emit the exact rejected frame envelope so the first failing header
+        ; field can be identified without guessing or weakening validation.
+        call    p126_ipc_debug_hex_byte
+        ld      hl,p126_ipc_log_dma_tx_bad_size
+        call    p126_ipc_debug_string
+        ld      hl,(p126_ipc_dma_size)
+        ld      a,h
+        call    p126_ipc_debug_hex_byte
+        ld      a,l
+        call    p126_ipc_debug_hex_byte
+        ld      hl,p126_ipc_log_dma_tx_bad_header
+        call    p126_ipc_debug_string
+        ld      ix,(p126_ipc_dma_source)
+        ld      b,P126_IPC_HEADER_SIZE
+.p126_dma_bad_header_dump:
+        ld      a,(ix+0)
+        call    p126_ipc_debug_hex_byte
+        inc     ix
+        djnz    .p126_dma_bad_header_dump
+        call    p126_ipc_debug_crlf
         scf
         ret
 .p126_dma_frame_valid:
@@ -936,7 +956,9 @@ p126_ipc_log_bad_magic_ptr: db "[ATM IPC] BAD MAGIC PTR=",0
 p126_ipc_log_bad_magic_data: db " DATA=",0
 p126_ipc_log_dma_tx_begin:        db "[ATM IPC] DMA TX BEGIN",13,10,0
 p126_ipc_log_dma_tx_validate_ok:  db "[ATM IPC] FRAME STRUCTURE VALID",13,10,0
-p126_ipc_log_dma_tx_validate_bad: db "[ATM IPC] FRAME STRUCTURE INVALID",13,10,0
+p126_ipc_log_dma_tx_validate_bad: db "[ATM IPC] FRAME STRUCTURE INVALID status=",0
+p126_ipc_log_dma_tx_bad_size:    db " size=",0
+p126_ipc_log_dma_tx_bad_header:  db " hdr=",0
 p126_ipc_log_dma_tx_e0:           db "[ATM IPC] SEND E0",13,10,0
 p126_ipc_log_dma_tx_e0_timeout:   db "[ATM IPC] E0 ACK TIMEOUT",13,10,0
 p126_ipc_log_dma_tx_ready:        db "[ATM IPC] E0 ACK / READY",13,10,0
