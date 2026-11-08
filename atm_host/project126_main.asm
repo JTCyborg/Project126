@@ -133,6 +133,31 @@ p126_host_ngs_start_failed:
         out     (c),a
         ld      a,(p126_neogs_startup_error)
         call    p126_host_debug_hex_byte
+        ; Identify the exact manifest record currently being validated.
+        ld      a,' '
+        out     (c),a
+        ld      a,'R'
+        out     (c),a
+        ld      a,'I'
+        out     (c),a
+        ld      a,'D'
+        out     (c),a
+        ld      a,'='
+        out     (c),a
+        ld      a,(p126_neogs_manifest_record_index)
+        call    p126_host_debug_hex_byte
+        ld      a,' '
+        out     (c),a
+        ld      a,'R'
+        out     (c),a
+        ld      a,'S'
+        out     (c),a
+        ld      a,'='
+        out     (c),a
+        ld      a,(p126_neogs_manifest_record_size+1)
+        call    p126_host_debug_hex_byte
+        ld      a,(p126_neogs_manifest_record_size)
+        call    p126_host_debug_hex_byte
         ld      a,13
         out     (c),a
         ld      a,10
