@@ -986,6 +986,11 @@ x86_io_fdc_write8:
         ld      (x86_io_fdc_sense_st0),a
         xor     a
         ld      (x86_io_fdc_sense_pc),a
+        ; BIOS2 NC_BSY polls BDA 0040:003E bit 7 immediately after
+        ; releasing the FDC reset. The current empty-drive stub has no
+        ; asynchronous NEC765 reset-complete event, so satisfy that BIOS
+        ; readiness poll here. IRQ6 is still raised below for normal flow.
+        call    x86_io_fdc_signal_ready
         ld      a,6
         call    x86_io_pic_raise_impl
         ; Diagnostic checkpoint: prove the DOR edge reached the PIC model.
@@ -1019,6 +1024,27 @@ x86_io_fdc_write8:
 .fdc_write_done:
         or      a
         ret
+; Set the XT BIOS Data Area FDC completion flag (0040:003E bit 7).
+; This is a deliberate empty-controller readiness stub, not a real IRQ path.
+x86_io_fdc_signal_ready:
+        push    af
+        push    bc
+        push    de
+        push    hl
+        ld      hl,#0040
+        ld      de,#003E
+        call    x86_cpu_calc_phys
+        call    x86_guest_mem_read8
+        jr      c,.fdc_ready_done
+        or      #80
+        call    x86_guest_mem_write8
+.fdc_ready_done:
+        pop     hl
+        pop     de
+        pop     bc
+        pop     af
+        ret
+
 .fdc_write_fifo:
         ld      a,(x86_io_fdc_remaining)
         or      a
