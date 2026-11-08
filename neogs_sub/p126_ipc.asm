@@ -216,8 +216,37 @@ p126_ngs_ipc_dma_receive_frame::
         jr      nz,.p126_ngs_dma_wait_end
         dec     d
         jr      nz,.p126_ngs_dma_wait_outer
+        ; Capture the live DMA address before stopping the channel. This
+        ; distinguishes a host that never started copying from a transfer
+        ; that stalled part-way through the frame.
+        in      a,(P126_NGS_DMA_HAD)
+        ld      (p126_ngs_ipc_dma_end_had),a
+        in      a,(P126_NGS_DMA_MAD)
+        ld      (p126_ngs_ipc_dma_end_mad),a
+        in      a,(P126_NGS_DMA_LAD)
+        ld      (p126_ngs_ipc_dma_end_lad),a
         ld      hl,p126_ngs_ipc_log_dma_timeout
         call    p126_ngs_ipc_log
+        ld      hl,p126_ngs_ipc_log_dma_timeout_addr
+        call    p126_ngs_ipc_log
+        ld      a,(p126_ngs_ipc_dma_end_had)
+        call    p126_ngs_ipc_log_hex_byte_inline
+        ld      a,(p126_ngs_ipc_dma_end_mad)
+        call    p126_ngs_ipc_log_hex_byte_inline
+        ld      a,(p126_ngs_ipc_dma_end_lad)
+        call    p126_ngs_ipc_log_hex_byte_inline
+        call    p126_ngs_ipc_log_crlf
+        ; Preserve the partial header's declared payload size for diagnosis.
+        ld      hl,p126_ngs_ipc_log_dma_timeout_hdr
+        call    p126_ngs_ipc_log
+        ld      ix,#C00C
+        ld      b,4
+.p126_ngs_dma_timeout_hdr_loop:
+        ld      a,(ix+0)
+        call    p126_ngs_ipc_log_hex_byte_inline
+        inc     ix
+        djnz    .p126_ngs_dma_timeout_hdr_loop
+        call    p126_ngs_ipc_log_crlf
         xor     a
         out     (P126_NGS_DMA_CST),a
         out     (P126_NGS_CLRCBIT),a
@@ -1660,6 +1689,8 @@ p126_ngs_ipc_log_dma_armed:       db "[NGS] DMA ARMED",13,10,0
 p126_ngs_ipc_log_dma_ready:       db "[NGS] DMA READY",13,10,0
 p126_ngs_ipc_log_dma_host_end:    db "[NGS] DMA HOST END",13,10,0
 p126_ngs_ipc_log_dma_timeout:     db "[NGS] DMA TIMEOUT",13,10,0
+p126_ngs_ipc_log_dma_timeout_addr: db "[NGS] DMA TIMEOUT ADDR=",0
+p126_ngs_ipc_log_dma_timeout_hdr:  db "[NGS] DMA TIMEOUT HDR=",0
 p126_ngs_ipc_log_bad_length:      db "[NGS] DMA BAD LENGTH",13,10,0
 p126_ngs_ipc_log_dma_stopped:     db "[NGS] DMA STOPPED",13,10,0
 p126_ngs_ipc_log_dma_page42_premapped: db "[NGS] P42 PRE",13,10,0
