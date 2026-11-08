@@ -562,9 +562,6 @@ p126_ngs_ipc_dispatch_once::
         ld      a,(p126_ngs_exec_overlay_ready)
         or      a
         jr      z,.ngs_frame_trace_ready
-        ld      a,(p126_ngs_vga_overlay_ready)
-        or      a
-        jr      z,.ngs_frame_trace_ready
         ld      a,(p126_ngs_bios_image_ready)
         or      a
         jr      z,.ngs_frame_trace_ready
