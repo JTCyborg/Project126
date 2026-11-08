@@ -812,8 +812,6 @@ p126_ipc_dma_receive_video_frame::
 
         call    p126_screen_apply_text_frame
         jr      c,.video_dma_failed
-        ld      hl,p126_ipc_video_frame_applied
-        call    p126_ipc_console_string
         or      a
         ret
 
