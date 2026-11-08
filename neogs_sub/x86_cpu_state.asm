@@ -199,6 +199,8 @@ x86_bios_startup_trace:
         ld      (x86_bios_trace_remaining+2),hl
         ld      hl,0
         ld      (x86_bios_trace_executed),hl
+        xor     a
+        ld      (x86_bios_trace_unexpected_cs_once),a
         ld      a,1
         ld      (x86_bios_trace_active),a
 .run_slice:
@@ -209,6 +211,25 @@ x86_bios_startup_trace:
         call    x86_cpu_step
         jr      c,.trace_fault
         call    x86_bios_trace_capture_instruction
+        ; Capture the first transition away from the BIOS reset segment.
+        ; This is a diagnostic only: it does not alter guest CPU state.
+        ld      hl,(x86_reg_cs)
+        ld      de,#F000
+        or      a
+        sbc     hl,de
+        jr      z,.trace_cs_expected
+        ld      a,(x86_bios_trace_unexpected_cs_once)
+        or      a
+        jr      nz,.trace_cs_expected
+        inc     a
+        ld      (x86_bios_trace_unexpected_cs_once),a
+        push    hl
+        ld      hl,x86_bios_trace_unexpected_cs_log
+        call    p126_ngs_resident_log
+        call    x86_bios_trace_log_cs_ip
+        call    x86_bios_trace_log_registers
+        pop     hl
+.trace_cs_expected:
         ld      hl,(x86_bios_trace_executed)
         inc     hl
         ld      (x86_bios_trace_executed),hl
@@ -932,6 +953,9 @@ x86_bios_trace_history: BLOCK 16*13,0
 x86_bios_trace_remaining: dw 0,0
 x86_bios_trace_executed:  dw 0
 x86_bios_trace_active:    db 0
+x86_bios_trace_unexpected_cs_once: db 0
+x86_bios_trace_unexpected_cs_log:
+        db "[X86 TRACE] FIRST CS CHANGE FROM F000",13,10,0
 x86_bios_trace_slice_remaining: db 0
 x86_bios_trace_stop_kind: db 0
 x86_bios_trace_start_log: db "[NGS] X86 BIOS CONTINUOUS EXECUTION START",13,10,0
