@@ -64,7 +64,7 @@ The first text-mode capture path now reads VGA character/attribute cells using P
 The host now publishes a versioned descriptor for its current RG6 80x25 text mode. X86VID validates that descriptor and converts a VGA text screen to a compact 4000-byte character/attribute frame. Other ATM layouts and VGA graphics-to-ATM conversion remain future work.
 
 ### Stage 5 — frame transfer and DMA/IPC
-The current RG6 frame is written directly after the 18-byte header in page42h, then sent as a fixed 16 KiB reverse-DMA response with CRC validation. The ATM host validates the VIDEO response and copies the 4000-byte payload into the active page7/page3 text layout. Pages40h–41h are reserved for future larger frame formats; fragmented transfers are still required for those modes.
+The current RG6 frame is written directly after the 18-byte header in page42h, then sent as a fixed 16 KiB reverse-DMA response with CRC validation. The ATM host validates the VIDEO response and copies the 4000-byte payload into the active page7/page3 text layout. After the first valid frame, the host idle loop requests refreshes every 64 iterations; one failed refresh disables polling to avoid log/transport floods. This is loop-paced rather than synchronized to VGA/ATM vertical blank. Pages40h–41h are reserved for future larger frame formats; fragmented transfers are still required for those modes.
 
 ### Stage 6 — BIOS and end-to-end tests
 Run BIOS2 INT 10h text/graphics paths. Validate guest register access, aperture, scanout, ATM conversion, reassembly and final ATM placement. Keep the current BIOS2 INT CD stop point unchanged.
