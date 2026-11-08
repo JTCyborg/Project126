@@ -1,1458 +1,1527 @@
 # file opened: neogs_ipc_assemble.asm
-  1   0000              ; =========================================================================
-  2   0000              ; PROJECT126 — ATM host IPC assembly translation unit v0.2.0
-  3   0000              ; ORG 0000h is a relocatable image offset, not the final ATM load address.
-  4   0000              ; The module placement is exported to ATM.lst / ATM.map for audit.
-  5   0000              ; =========================================================================
-  6   0000
-  7   0000                      ORG     0
-  8   0000
-  9   0000              p126_atm_ipc_module_start:
- 10   0000                      INCLUDE "atm_host/neogs_ipc.asm"
+   1  0000              ; =========================================================================
+   2  0000              ; PROJECT126 — ATM host IPC assembly translation unit v0.2.0
+   3  0000              ; ORG 0000h is a relocatable image offset, not the final ATM load address.
+   4  0000              ; The module placement is exported to ATM.lst / ATM.map for audit.
+   5  0000              ; =========================================================================
+   6  0000
+   7  0000                      ORG     0
+   8  0000
+   9  0000              p126_atm_ipc_module_start:
+  10  0000                      INCLUDE "atm_host/neogs_ipc.asm"
 # file opened: neogs_ipc.asm
-  1+  0000              ; =========================================================================
-  2+  0000              ; PROJECT126 — ATM Turbo 2+ / NeoGS host-side IPC driver
-  3+  0000              ; Version: P126_ATM_IPC v0.1.0
-  4+  0000              ;
-  5+  0000              ; This is ATM Z80 code. It runs on the 7 MHz host CPU.
-  6+  0000              ; NeoGS is an independent Z80 and has its own private debug port #EF.
-  7+  0000              ;
-  8+  0000              ; The implementation follows the proven Project125 host transport v2
-  9+  0000              ; handshake semantics. It intentionally contains no NeoGS-local IN/OUT
- 10+  0000              ; and does not program DMA_MOD/HAD/MAD/LAD/CST from the ATM side.
- 11+  0000              ; =========================================================================
- 12+  0000
- 13+  0000                      INCLUDE "atm_host/neogs_ipc.inc"
+   1+ 0000              ; =========================================================================
+   2+ 0000              ; PROJECT126 — ATM Turbo 2+ / NeoGS host-side IPC driver
+   3+ 0000              ; Version: P126_ATM_IPC v0.1.0
+   4+ 0000              ;
+   5+ 0000              ; This is ATM Z80 code. It runs on the 7 MHz host CPU.
+   6+ 0000              ; NeoGS is an independent Z80 and has its own private debug port #EF.
+   7+ 0000              ;
+   8+ 0000              ; The implementation follows the proven Project125 host transport v2
+   9+ 0000              ; handshake semantics. It intentionally contains no NeoGS-local IN/OUT
+  10+ 0000              ; and does not program DMA_MOD/HAD/MAD/LAD/CST from the ATM side.
+  11+ 0000              ; =========================================================================
+  12+ 0000
+  13+ 0000                      INCLUDE "atm_host/neogs_ipc.inc"
 # file opened: neogs_ipc.inc
-  1++ 0000              ; =========================================================================
-  2++ 0000              ; PROJECT126 — ATM / NeoGS IPC public interface
-  3++ 0000              ; Version: P126_ATM_IPC_API v0.2.0
-  4++ 0000              ;
-  5++ 0000              ; Include this file in ATM-side Z80 modules that call neogs_ipc.asm.
-  6++ 0000              ; Physical transport: GSCOM/GSSTAT (#BB), GSDAT (#B3), GSCTR (#33).
-  7++ 0000              ; The ATM-side driver never accesses NeoGS-local DMA registers.
-  8++ 0000              ; =========================================================================
-  9++ 0000                      INCLUDE "shared/p126_ipc_protocol.inc"
+   1++0000              ; =========================================================================
+   2++0000              ; PROJECT126 — ATM / NeoGS IPC public interface
+   3++0000              ; Version: P126_ATM_IPC_API v0.2.0
+   4++0000              ;
+   5++0000              ; Include this file in ATM-side Z80 modules that call neogs_ipc.asm.
+   6++0000              ; Physical transport: GSCOM/GSSTAT (#BB), GSDAT (#B3), GSCTR (#33).
+   7++0000              ; The ATM-side driver never accesses NeoGS-local DMA registers.
+   8++0000              ; =========================================================================
+   9++0000                      INCLUDE "shared/p126_ipc_protocol.inc"
 # file opened: p126_ipc_protocol.inc
-  1+++0000              ; =========================================================================
-  2+++0000              ; PROJECT126 — shared DMA/IPC ABI constants
-  3+++0000              ; Version: P126 DMA/IPC ABI 1.1
-  4+++0000              ; This file contains protocol constants only; no host or NeoGS port I/O.
-  5+++0000              ; =========================================================================
-  6+++0000
-  7+++0000              P126_IPC_MAJOR             EQU 1
-  8+++0000              P126_IPC_MINOR             EQU 1
-  9+++0000              P126_IPC_HEADER_SIZE       EQU 18
- 10+++0000              P126_IPC_MAX_FRAME_SIZE    EQU #4000
- 11+++0000              P126_IPC_MAX_PAYLOAD       EQU P126_IPC_MAX_FRAME_SIZE-P126_IPC_HEADER_SIZE
- 12+++0000              P126_IPC_FRAGMENT_HEADER   EQU 10
- 13+++0000              P126_IPC_MAX_FRAGMENT_DATA EQU P126_IPC_MAX_PAYLOAD-P126_IPC_FRAGMENT_HEADER
- 14+++0000
- 15+++0000              ; Fixed header offsets.
- 16+++0000              P126_IPC_OFF_MAGIC        EQU 0
- 17+++0000              P126_IPC_OFF_MAJOR        EQU 4
- 18+++0000              P126_IPC_OFF_MINOR        EQU 5
- 19+++0000              P126_IPC_OFF_TYPE         EQU 6
- 20+++0000              P126_IPC_OFF_SERVICE      EQU 7
- 21+++0000              P126_IPC_OFF_OPERATION    EQU 8
- 22+++0000              P126_IPC_OFF_FLAGS        EQU 9
- 23+++0000              P126_IPC_OFF_SEQUENCE     EQU 10
- 24+++0000              P126_IPC_OFF_LENGTH       EQU 12
- 25+++0000              P126_IPC_OFF_STATUS       EQU 14
- 26+++0000              P126_IPC_OFF_CRC          EQU 16
- 27+++0000
- 28+++0000              ; Message types.
- 29+++0000              P126_MSG_REQUEST          EQU #01
- 30+++0000              P126_MSG_RESPONSE         EQU #02
- 31+++0000              P126_MSG_EVENT            EQU #03
- 32+++0000              P126_MSG_CANCEL           EQU #04
- 33+++0000
- 34+++0000              ; Header flags.
- 35+++0000              P126_FLAG_ACK_REQUIRED    EQU #01
- 36+++0000              P126_FLAG_FRAGMENT        EQU #02
- 37+++0000              P126_FLAG_IDEMPOTENT      EQU #04
- 38+++0000              P126_FLAG_VALID_MASK      EQU #07
- 39+++0000
- 40+++0000              ; GSCOM control-plane commands. Valid only under Project126 resident firmware.
- 41+++0000              P126_CMD_HOST_FRAME       EQU #E0
- 42+++0000              P126_CMD_NGS_FRAME        EQU #E1
- 43+++0000              P126_CMD_NGS_VIDEO_FRAME  EQU #E4
- 44+++0000              P126_CMD_RESYNC           EQU #E2
- 45+++0000              P126_CMD_CAPABILITIES     EQU #E3
- 46+++0000              P126_CMD_DMA_END          EQU #FF
- 47+++0000
- 48+++0000              ; Service IDs.
- 49+++0000              P126_SERVICE_SESSION      EQU #00
- 50+++0000              P126_SERVICE_INPUT        EQU #01
- 51+++0000              P126_SERVICE_VIDEO        EQU #02
- 52+++0000              P126_SERVICE_STORAGE      EQU #03
- 53+++0000              P126_SERVICE_CLOCK        EQU #04
- 54+++0000              P126_SERVICE_DIAGNOSTICS  EQU #05
- 55+++0000              P126_SERVICE_CONFIG       EQU #06
- 56+++0000              P126_SERVICE_IMAGE        EQU #07
- 57+++0000
- 58+++0000              ; Initial operation IDs.
- 59+++0000              P126_OP_HELLO             EQU #00
- 60+++0000              P126_OP_CAPABILITIES      EQU #01
- 61+++0000              P126_OP_RESYNC            EQU #02
- 62+++0000              P126_OP_DIAGNOSTIC        EQU #00
- 63+++0000              P126_OP_IMAGE_BEGIN       EQU #00
- 64+++0000              P126_OP_IMAGE_FRAGMENT    EQU #01
- 65+++0000              P126_OP_IMAGE_FINISH      EQU #02
- 66+++0000              P126_OP_IMAGE_RESULT      EQU #03
- 67+++0000
- 68+++0000              ; Video service operations and mode descriptor ABI.
- 69+++0000              P126_OP_VIDEO_MODE         EQU #00
- 70+++0000              P126_OP_VIDEO_FRAME_REQUEST EQU #01
- 71+++0000              P126_OP_VIDEO_FRAME          EQU #02
- 72+++0000              P126_OP_VIDEO_FRAME_FRAGMENT EQU #03
- 73+++0000              P126_OP_VIDEO_FRAME_FINISH   EQU #04
- 74+++0000              P126_VIDEO_MODE_DESC_SIZE  EQU 8
- 75+++0000              P126_VIDEO_DESC_VERSION    EQU 1
- 76+++0000              P126_VIDEO_FORMAT_TEXT80X25 EQU 1
- 77+++0000              P126_ATM_MODE_RG6_TEXT80X25 EQU 6
- 78+++0000              ; Public ATM-side renderer mode name used by the screen-console and IPC modules.
- 79+++0000              P126_ATM_VIDEO_MODE_RG6_TEXT80X25 EQU P126_ATM_MODE_RG6_TEXT80X25
- 80+++0000              P126_VIDEO_TEXT80_WIDTH    EQU 80
- 81+++0000              P126_VIDEO_TEXT80_HEIGHT   EQU 25
- 82+++0000              P126_VIDEO_TEXT80_CELLS    EQU 2000
- 83+++0000              P126_VIDEO_TEXT80_FRAME_SIZE EQU 4000
- 84+++0000
- 85+++0000              ; Response status codes (16-bit values).
- 86+++0000              P126_STATUS_OK            EQU #0000
- 87+++0000              P126_STATUS_BAD_MAGIC     EQU #0001
- 88+++0000              P126_STATUS_BAD_VERSION   EQU #0002
- 89+++0000              P126_STATUS_BAD_FRAME     EQU #0003
- 90+++0000              P126_STATUS_CRC_ERROR     EQU #0004
- 91+++0000              P126_STATUS_SEQUENCE      EQU #0005
- 92+++0000              P126_STATUS_NO_SERVICE    EQU #0006
- 93+++0000              P126_STATUS_NO_OPERATION  EQU #0007
- 94+++0000              P126_STATUS_NO_BUFFER     EQU #0008
- 95+++0000              P126_STATUS_HOST_IO       EQU #0009
- 96+++0000              P126_STATUS_TIMEOUT       EQU #000A
- 97+++0000              P126_STATUS_CANCELLED     EQU #000B
- 98+++0000              P126_STATUS_ADDRESS_RANGE EQU #000C
- 99+++0000              P126_STATUS_BUSY          EQU #000D
-100+++0000              P126_STATUS_RESET_REQUIRED EQU #000E
-101+++0000              P126_STATUS_BAD_FRAGMENT  EQU #000F
-102+++0000
-103+++0000              ; CRC-16/CCITT-FALSE.
-104+++0000              P126_CRC16_POLY           EQU #1021
-105+++0000              P126_CRC16_INITIAL_H      EQU #FF
-106+++0000              P126_CRC16_INITIAL_L      EQU #FF
-107+++0000              P126_CRC16_CHECK_H        EQU #29
-108+++0000              P126_CRC16_CHECK_L        EQU #B1
-109+++0000
-110+++0000
-111+++0000              ; IMAGE service v1.1 image profiles.
-112+++0000              ; IMAGE_BEGIN payload: message-id u16, image-kind u8, physical-page u8,
-113+++0000              ; exact image-size u16. The receiver validates kind/page policy and derives
-114+++0000              ; the WIN3/MPAGEX selector from ROR8(physical-page).
-115+++0000              ; SYSBIOS: 8 KiB image to physical page 10h. X86 overlays retain their
-116+++0000              ; pinned page assignments 04h..07h until the resident module manager owns
-117+++0000              ; allocation of the dynamic page range.
-118+++0000              P126_IMAGE_KIND_SYSBIOS      EQU #00
-119+++0000              P126_IMAGE_KIND_X86IO        EQU #01
-120+++0000              P126_IMAGE_KIND_X86ALU       EQU #02
-121+++0000              P126_IMAGE_KIND_X86DEV       EQU #03
-122+++0000              P126_IMAGE_KIND_X86EXEC      EQU #04
-123+++0000              P126_IMAGE_KIND_X86VGA       EQU #05
-124+++0000              P126_IMAGE_KIND_X86VID       EQU #06
-125+++0000              P126_IMAGE_X86IO_MAX_SIZE    EQU #1000
-126+++0000              P126_IMAGE_X86ALU_MAX_SIZE   EQU #1000
-127+++0000              P126_IMAGE_X86DEV_MAX_SIZE   EQU #1000
-128+++0000              P126_IMAGE_X86EXEC_MAX_SIZE  EQU #4000
-129+++0000              P126_IMAGE_X86VGA_MAX_SIZE   EQU #4000
-130+++0000              P126_IMAGE_X86VID_MAX_SIZE   EQU #4000
-131+++0000              P126_IMAGE_SYSBIOS_SIZE      EQU #2000
-132+++0000              P126_IMAGE_FRAGMENT_EXT_SIZE EQU 10
-133+++0000
+   1++0000              ; =========================================================================
+   2++0000              ; PROJECT126 — shared DMA/IPC ABI constants
+   3++0000              ; Version: P126 DMA/IPC ABI 1.1
+   4++0000              ; This file contains protocol constants only; no host or NeoGS port I/O.
+   5++0000              ; =========================================================================
+   6++0000
+   7++0000              P126_IPC_MAJOR             EQU 1
+   8++0000              P126_IPC_MINOR             EQU 1
+   9++0000              P126_IPC_HEADER_SIZE       EQU 18
+  10++0000              P126_IPC_MAX_FRAME_SIZE    EQU #4000
+  11++0000              P126_IPC_MAX_PAYLOAD       EQU P126_IPC_MAX_FRAME_SIZE-P126_IPC_HEADER_SIZE
+  12++0000              P126_IPC_FRAGMENT_HEADER   EQU 10
+  13++0000              P126_IPC_MAX_FRAGMENT_DATA EQU P126_IPC_MAX_PAYLOAD-P126_IPC_FRAGMENT_HEADER
+  14++0000
+  15++0000              ; Fixed header offsets.
+  16++0000              P126_IPC_OFF_MAGIC        EQU 0
+  17++0000              P126_IPC_OFF_MAJOR        EQU 4
+  18++0000              P126_IPC_OFF_MINOR        EQU 5
+  19++0000              P126_IPC_OFF_TYPE         EQU 6
+  20++0000              P126_IPC_OFF_SERVICE      EQU 7
+  21++0000              P126_IPC_OFF_OPERATION    EQU 8
+  22++0000              P126_IPC_OFF_FLAGS        EQU 9
+  23++0000              P126_IPC_OFF_SEQUENCE     EQU 10
+  24++0000              P126_IPC_OFF_LENGTH       EQU 12
+  25++0000              P126_IPC_OFF_STATUS       EQU 14
+  26++0000              P126_IPC_OFF_CRC          EQU 16
+  27++0000
+  28++0000              ; Message types.
+  29++0000              P126_MSG_REQUEST          EQU #01
+  30++0000              P126_MSG_RESPONSE         EQU #02
+  31++0000              P126_MSG_EVENT            EQU #03
+  32++0000              P126_MSG_CANCEL           EQU #04
+  33++0000
+  34++0000              ; Header flags.
+  35++0000              P126_FLAG_ACK_REQUIRED    EQU #01
+  36++0000              P126_FLAG_FRAGMENT        EQU #02
+  37++0000              P126_FLAG_IDEMPOTENT      EQU #04
+  38++0000              P126_FLAG_VALID_MASK      EQU #07
+  39++0000
+  40++0000              ; GSCOM control-plane commands. Valid only under Project126 resident firmware.
+  41++0000              P126_CMD_HOST_FRAME       EQU #E0
+  42++0000              P126_CMD_NGS_FRAME        EQU #E1
+  43++0000              P126_CMD_NGS_VIDEO_FRAME  EQU #E4
+  44++0000              P126_CMD_RESYNC           EQU #E2
+  45++0000              P126_CMD_CAPABILITIES     EQU #E3
+  46++0000              P126_CMD_DMA_END          EQU #FF
+  47++0000
+  48++0000              ; Service IDs.
+  49++0000              P126_SERVICE_SESSION      EQU #00
+  50++0000              P126_SERVICE_INPUT        EQU #01
+  51++0000              P126_SERVICE_VIDEO        EQU #02
+  52++0000              P126_SERVICE_STORAGE      EQU #03
+  53++0000              P126_SERVICE_CLOCK        EQU #04
+  54++0000              P126_SERVICE_DIAGNOSTICS  EQU #05
+  55++0000              P126_SERVICE_CONFIG       EQU #06
+  56++0000              P126_SERVICE_IMAGE        EQU #07
+  57++0000
+  58++0000              ; Initial operation IDs.
+  59++0000              P126_OP_HELLO             EQU #00
+  60++0000              P126_OP_CAPABILITIES      EQU #01
+  61++0000              P126_OP_RESYNC            EQU #02
+  62++0000              P126_OP_DIAGNOSTIC        EQU #00
+  63++0000              P126_OP_IMAGE_BEGIN       EQU #00
+  64++0000              P126_OP_IMAGE_FRAGMENT    EQU #01
+  65++0000              P126_OP_IMAGE_FINISH      EQU #02
+  66++0000              P126_OP_IMAGE_RESULT      EQU #03
+  67++0000
+  68++0000              ; Video service operations and mode descriptor ABI.
+  69++0000              P126_OP_VIDEO_MODE         EQU #00
+  70++0000              P126_OP_VIDEO_FRAME_REQUEST EQU #01
+  71++0000              P126_OP_VIDEO_FRAME          EQU #02
+  72++0000              P126_OP_VIDEO_FRAME_FRAGMENT EQU #03
+  73++0000              P126_OP_VIDEO_FRAME_FINISH   EQU #04
+  74++0000              P126_VIDEO_MODE_DESC_SIZE  EQU 8
+  75++0000              P126_VIDEO_DESC_VERSION    EQU 1
+  76++0000              P126_VIDEO_FORMAT_TEXT80X25 EQU 1
+  77++0000              P126_ATM_MODE_RG6_TEXT80X25 EQU 6
+  78++0000              ; Public ATM-side renderer mode name used by the screen-console and IPC modules.
+  79++0000              P126_ATM_VIDEO_MODE_RG6_TEXT80X25 EQU P126_ATM_MODE_RG6_TEXT80X25
+  80++0000              P126_VIDEO_TEXT80_WIDTH    EQU 80
+  81++0000              P126_VIDEO_TEXT80_HEIGHT   EQU 25
+  82++0000              P126_VIDEO_TEXT80_CELLS    EQU 2000
+  83++0000              P126_VIDEO_TEXT80_FRAME_SIZE EQU 4000
+  84++0000
+  85++0000              ; Response status codes (16-bit values).
+  86++0000              P126_STATUS_OK            EQU #0000
+  87++0000              P126_STATUS_BAD_MAGIC     EQU #0001
+  88++0000              P126_STATUS_BAD_VERSION   EQU #0002
+  89++0000              P126_STATUS_BAD_FRAME     EQU #0003
+  90++0000              P126_STATUS_CRC_ERROR     EQU #0004
+  91++0000              P126_STATUS_SEQUENCE      EQU #0005
+  92++0000              P126_STATUS_NO_SERVICE    EQU #0006
+  93++0000              P126_STATUS_NO_OPERATION  EQU #0007
+  94++0000              P126_STATUS_NO_BUFFER     EQU #0008
+  95++0000              P126_STATUS_HOST_IO       EQU #0009
+  96++0000              P126_STATUS_TIMEOUT       EQU #000A
+  97++0000              P126_STATUS_CANCELLED     EQU #000B
+  98++0000              P126_STATUS_ADDRESS_RANGE EQU #000C
+  99++0000              P126_STATUS_BUSY          EQU #000D
+ 100++0000              P126_STATUS_RESET_REQUIRED EQU #000E
+ 101++0000              P126_STATUS_BAD_FRAGMENT  EQU #000F
+ 102++0000
+ 103++0000              ; CRC-16/CCITT-FALSE.
+ 104++0000              P126_CRC16_POLY           EQU #1021
+ 105++0000              P126_CRC16_INITIAL_H      EQU #FF
+ 106++0000              P126_CRC16_INITIAL_L      EQU #FF
+ 107++0000              P126_CRC16_CHECK_H        EQU #29
+ 108++0000              P126_CRC16_CHECK_L        EQU #B1
+ 109++0000
+ 110++0000
+ 111++0000              ; IMAGE service v1.1 image profiles.
+ 112++0000              ; IMAGE_BEGIN payload: message-id u16, image-kind u8, physical-page u8,
+ 113++0000              ; exact image-size u16. The receiver validates kind/page policy and derives
+ 114++0000              ; the WIN3/MPAGEX selector from ROR8(physical-page).
+ 115++0000              ; SYSBIOS: 8 KiB image to physical page 10h. X86 overlays retain their
+ 116++0000              ; pinned page assignments 04h..07h until the resident module manager owns
+ 117++0000              ; allocation of the dynamic page range.
+ 118++0000              P126_IMAGE_KIND_SYSBIOS      EQU #00
+ 119++0000              P126_IMAGE_KIND_X86IO        EQU #01
+ 120++0000              P126_IMAGE_KIND_X86ALU       EQU #02
+ 121++0000              P126_IMAGE_KIND_X86DEV       EQU #03
+ 122++0000              P126_IMAGE_KIND_X86EXEC      EQU #04
+ 123++0000              P126_IMAGE_KIND_X86VGA       EQU #05
+ 124++0000              P126_IMAGE_KIND_X86VID       EQU #06
+ 125++0000              P126_IMAGE_X86IO_MAX_SIZE    EQU #1000
+ 126++0000              P126_IMAGE_X86ALU_MAX_SIZE   EQU #1000
+ 127++0000              P126_IMAGE_X86DEV_MAX_SIZE   EQU #1000
+ 128++0000              P126_IMAGE_X86EXEC_MAX_SIZE  EQU #4000
+ 129++0000              P126_IMAGE_X86VGA_MAX_SIZE   EQU #4000
+ 130++0000              P126_IMAGE_X86VID_MAX_SIZE   EQU #4000
+ 131++0000              P126_IMAGE_SYSBIOS_SIZE      EQU #2000
+ 132++0000              P126_IMAGE_FRAGMENT_EXT_SIZE EQU 10
+ 133++0000
 # file closed: p126_ipc_protocol.inc
- 10++ 0000
- 11++ 0000              P126_GSCOM          EQU #BB
- 12++ 0000              P126_GSSTAT         EQU #BB
- 13++ 0000              P126_GSDAT          EQU #B3
- 14++ 0000              P126_GSCTR          EQU #33
- 15++ 0000
- 16++ 0000              P126_CBIT           EQU 0
- 17++ 0000              P126_DBIT           EQU 7
- 18++ 0000              P126_M_CBIT         EQU #01
- 19++ 0000              P126_M_DBIT         EQU #80
- 20++ 0000
- 21++ 0000              P126_GS_RESET       EQU #80
- 22++ 0000              P126_GS_NMI         EQU #40
- 23++ 0000              P126_GS_LED         EQU #20
- 24++ 0000
- 25++ 0000              ; Driver result convention:
- 26++ 0000              ;   Carry clear = operation completed.
- 27++ 0000              ;   Carry set   = timeout.
- 28++ 0000              ;   A           = last observed GSSTAT on timeout / final status on wait.
- 29++ 0000              ;   p126_ipc_last_status always contains the last sampled GSSTAT byte.
- 30++ 0000
- 31++ 0000              ; Public entry points (see docs/ATM_HOST_INTERFACE.md):
- 32++ 0000              ;   p126_ipc_read_status
- 33++ 0000              ;   p126_ipc_wait_cbit_clear
- 34++ 0000              ;   p126_ipc_wait_dbit_clear
- 35++ 0000              ;   p126_ipc_wait_dbit_set
- 36++ 0000              ;   p126_ipc_send_command       A=command
- 37++ 0000              ;   p126_ipc_send_argument      A=argument; preloads GSDAT before GSCOM
- 38++ 0000              ;   p126_ipc_send_byte          A=data; waits for consumption
- 39++ 0000              ;   p126_ipc_receive_byte       returns A=data
- 40++ 0000              ;   p126_ipc_emit_version
- 41++ 0000              ;   p126_ipc_validate_frame HL=frame, BC=size; carry/A=status
- 42++ 0000              ;   p126_ipc_dma_send_frame HL=frame, BC=size; carry/A=status
- 43++ 0000              ;   p126_ipc_dma_receive_test returns carry clear only after reverse-DMA CRC/pattern PASS
- 44++ 0000              ; ABI 1.0 constants are imported from shared/p126_ipc_protocol.inc.
- 45++ 0000
- 46++ 0000              P126_IPC_TIMEOUT    EQU #FFFF
- 47++ 0000
+  10++0000
+  11++0000              P126_GSCOM          EQU #BB
+  12++0000              P126_GSSTAT         EQU #BB
+  13++0000              P126_GSDAT          EQU #B3
+  14++0000              P126_GSCTR          EQU #33
+  15++0000
+  16++0000              P126_CBIT           EQU 0
+  17++0000              P126_DBIT           EQU 7
+  18++0000              P126_M_CBIT         EQU #01
+  19++0000              P126_M_DBIT         EQU #80
+  20++0000
+  21++0000              P126_GS_RESET       EQU #80
+  22++0000              P126_GS_NMI         EQU #40
+  23++0000              P126_GS_LED         EQU #20
+  24++0000
+  25++0000              ; Driver result convention:
+  26++0000              ;   Carry clear = operation completed.
+  27++0000              ;   Carry set   = timeout.
+  28++0000              ;   A           = last observed GSSTAT on timeout / final status on wait.
+  29++0000              ;   p126_ipc_last_status always contains the last sampled GSSTAT byte.
+  30++0000
+  31++0000              ; Public entry points (see docs/ATM_HOST_INTERFACE.md):
+  32++0000              ;   p126_ipc_read_status
+  33++0000              ;   p126_ipc_wait_cbit_clear
+  34++0000              ;   p126_ipc_wait_dbit_clear
+  35++0000              ;   p126_ipc_wait_dbit_set
+  36++0000              ;   p126_ipc_send_command       A=command
+  37++0000              ;   p126_ipc_send_argument      A=argument; preloads GSDAT before GSCOM
+  38++0000              ;   p126_ipc_send_byte          A=data; waits for consumption
+  39++0000              ;   p126_ipc_receive_byte       returns A=data
+  40++0000              ;   p126_ipc_emit_version
+  41++0000              ;   p126_ipc_validate_frame HL=frame, BC=size; carry/A=status
+  42++0000              ;   p126_ipc_dma_send_frame HL=frame, BC=size; carry/A=status
+  43++0000              ;   p126_ipc_dma_receive_test returns carry clear only after reverse-DMA CRC/pattern PASS
+  44++0000              ; ABI 1.0 constants are imported from shared/p126_ipc_protocol.inc.
+  45++0000
+  46++0000              P126_IPC_TIMEOUT    EQU #FFFF
+  47++0000
 # file closed: neogs_ipc.inc
- 14+  0000
- 15+  0000              ; -------------------------------------------------------------------------
- 16+  0000              ; Read the current hardware handshake state.
- 17+  0000              ; OUT: A=status; p126_ipc_last_status updated.
- 18+  0000              ; -------------------------------------------------------------------------
- 19+  0000              p126_ipc_read_status:
- 19+  0000
- 20+  0000 DB BB                in      a, (P126_GSSTAT)
- 21+  0002 32 B8 02             ld      (p126_ipc_last_status), a
- 22+  0005 C9                   ret
- 23+  0006
- 24+  0006              ; -------------------------------------------------------------------------
- 25+  0006              ; Wait routines. Every wait is bounded by P126_IPC_TIMEOUT.
- 26+  0006              ; OUT: Carry clear on requested state; carry set on timeout.
- 27+  0006              ;      A=last sampled GSSTAT. BC is clobbered.
- 28+  0006              ; -------------------------------------------------------------------------
- 29+  0006              p126_ipc_wait_cbit_clear:
- 29+  0006
- 30+  0006 01 FF FF             ld      bc, P126_IPC_TIMEOUT
- 31+  0009              .p126_cbit_loop:
- 32+  0009 CD 00 00             call    p126_ipc_read_status
- 33+  000C CB 47                bit     P126_CBIT, a
- 34+  000E 28 0A                jr      z, .p126_cbit_ready
- 35+  0010 0B                   dec     bc
- 36+  0011 78                   ld      a, b
- 37+  0012 B1                   or      c
- 38+  0013 20 F4                jr      nz, .p126_cbit_loop
- 39+  0015 3A B8 02             ld      a, (p126_ipc_last_status)
- 40+  0018 37                   scf
- 41+  0019 C9                   ret
- 42+  001A              .p126_cbit_ready:
- 43+  001A 3A B8 02             ld      a, (p126_ipc_last_status)
- 44+  001D B7                   or      a
- 45+  001E C9                   ret
- 46+  001F
- 47+  001F              p126_ipc_wait_dbit_clear:
- 47+  001F
- 48+  001F 01 FF FF             ld      bc, P126_IPC_TIMEOUT
- 49+  0022              .p126_dbit_clear_loop:
- 50+  0022 CD 00 00             call    p126_ipc_read_status
- 51+  0025 CB 7F                bit     P126_DBIT, a
- 52+  0027 28 0A                jr      z, .p126_dbit_clear_ready
- 53+  0029 0B                   dec     bc
- 54+  002A 78                   ld      a, b
- 55+  002B B1                   or      c
- 56+  002C 20 F4                jr      nz, .p126_dbit_clear_loop
- 57+  002E 3A B8 02             ld      a, (p126_ipc_last_status)
- 58+  0031 37                   scf
- 59+  0032 C9                   ret
- 60+  0033              .p126_dbit_clear_ready:
- 61+  0033 3A B8 02             ld      a, (p126_ipc_last_status)
- 62+  0036 B7                   or      a
- 63+  0037 C9                   ret
- 64+  0038
- 65+  0038              ; Long completion watchdog for DMA frames whose service handler performs
- 66+  0038              ; post-receive work (for example installing an 8 KiB BIOS image).
- 67+  0038              ; Matches Project125's eight independent #FFFF polling windows.
- 68+  0038              p126_ipc_wait_cbit_clear_dma:
- 68+  0038
- 69+  0038 16 08                ld      d,8
- 70+  003A              .p126_dma_cbit_outer:
- 71+  003A 01 FF FF             ld      bc,#FFFF
- 72+  003D              .p126_dma_cbit_inner:
- 73+  003D CD 00 00             call    p126_ipc_read_status
- 74+  0040 CB 47                bit     P126_CBIT,a
- 75+  0042 28 0D                jr      z,.p126_dma_cbit_ready
- 76+  0044 0B                   dec     bc
- 77+  0045 78                   ld      a,b
- 78+  0046 B1                   or      c
- 79+  0047 20 F4                jr      nz,.p126_dma_cbit_inner
- 80+  0049 15                   dec     d
- 81+  004A 20 EE                jr      nz,.p126_dma_cbit_outer
- 82+  004C 3A B8 02             ld      a,(p126_ipc_last_status)
- 83+  004F 37                   scf
- 84+  0050 C9                   ret
- 85+  0051              .p126_dma_cbit_ready:
- 86+  0051 3A B8 02             ld      a,(p126_ipc_last_status)
- 87+  0054 B7                   or      a
- 88+  0055 C9                   ret
- 89+  0056
- 90+  0056              p126_ipc_wait_dbit_set:
- 90+  0056
- 91+  0056 01 FF FF             ld      bc, P126_IPC_TIMEOUT
- 92+  0059              .p126_dbit_set_loop:
- 93+  0059 CD 00 00             call    p126_ipc_read_status
- 94+  005C CB 7F                bit     P126_DBIT, a
- 95+  005E 20 0A                jr      nz, .p126_dbit_set_ready
- 96+  0060 0B                   dec     bc
- 97+  0061 78                   ld      a, b
- 98+  0062 B1                   or      c
- 99+  0063 20 F4                jr      nz, .p126_dbit_set_loop
-100+  0065 3A B8 02             ld      a, (p126_ipc_last_status)
-101+  0068 37                   scf
-102+  0069 C9                   ret
-103+  006A              .p126_dbit_set_ready:
-104+  006A 3A B8 02             ld      a, (p126_ipc_last_status)
-105+  006D B7                   or      a
-106+  006E C9                   ret
-107+  006F
-108+  006F              ; -------------------------------------------------------------------------
-109+  006F              ; Send one command through GSCOM.
-110+  006F              ; IN : A=command.
-111+  006F              ; OUT: Carry clear after NeoGS clears CBIT; carry set on timeout.
-112+  006F              ; -------------------------------------------------------------------------
-113+  006F              p126_ipc_send_command:
-113+  006F
-114+  006F 32 B9 02             ld      (p126_ipc_tx_byte), a
-115+  0072 3A B9 02             ld      a, (p126_ipc_tx_byte)
-116+  0075 D3 BB                out     (P126_GSCOM), a
-117+  0077 C3 06 00             jp      p126_ipc_wait_cbit_clear
-118+  007A
-119+  007A              ; -------------------------------------------------------------------------
-120+  007A              ; Preload one data byte before issuing a command.
-121+  007A              ; This ordering is required by the stock GS105a #13/#14 command ABI.
-122+  007A              ; IN : A=argument.
-123+  007A              ; OUT: Carry clear after GSDAT write; carry set if the data slot is busy.
-124+  007A              ; -------------------------------------------------------------------------
-125+  007A              p126_ipc_send_argument:
-125+  007A
-126+  007A 32 B9 02             ld      (p126_ipc_tx_byte), a
-127+  007D CD 1F 00             call    p126_ipc_wait_dbit_clear
-128+  0080 D8                   ret     c
-129+  0081 3A B9 02             ld      a, (p126_ipc_tx_byte)
-130+  0084 D3 B3                out     (P126_GSDAT), a
-131+  0086 B7                   or      a
-132+  0087 C9                   ret
-133+  0088
-134+  0088              ; -------------------------------------------------------------------------
-135+  0088              ; Send a data byte and wait until NeoGS consumes it (DBIT clears).
-136+  0088              ; IN : A=data.
-137+  0088              ; OUT: Carry clear on consumption; carry set on timeout.
-138+  0088              ; -------------------------------------------------------------------------
-139+  0088              p126_ipc_send_byte:
-139+  0088
-140+  0088 32 B9 02             ld      (p126_ipc_tx_byte), a
-141+  008B CD 1F 00             call    p126_ipc_wait_dbit_clear
-142+  008E D8                   ret     c
-143+  008F 3A B9 02             ld      a, (p126_ipc_tx_byte)
-144+  0092 D3 B3                out     (P126_GSDAT), a
-145+  0094 C3 1F 00             jp      p126_ipc_wait_dbit_clear
-146+  0097
-147+  0097              ; -------------------------------------------------------------------------
-148+  0097              ; Receive one byte published by NeoGS.
-149+  0097              ; OUT: A=data; carry clear. Carry set on timeout.
-150+  0097              ; Reading GSDAT acknowledges the byte and clears DBIT in the host view.
-151+  0097              ; -------------------------------------------------------------------------
-152+  0097              p126_ipc_receive_byte:
-152+  0097
-153+  0097 CD 56 00             call    p126_ipc_wait_dbit_set
-154+  009A D8                   ret     c
-155+  009B DB B3                in      a, (P126_GSDAT)
-156+  009D 32 BA 02             ld      (p126_ipc_rx_byte), a
-157+  00A0 B7                   or      a
-158+  00A1 C9                   ret
-159+  00A2
-160+  00A2              ; -------------------------------------------------------------------------
-161+  00A2              ; CRC-16/CCITT-FALSE byte update for the shared P126 DMA/IPC frame ABI.
-162+  00A2              ; IN : HL=current CRC, A=next byte.
-163+  00A2              ; OUT: HL=updated CRC. BC and DE are preserved.
-164+  00A2              ; The caller initializes HL to #FFFF and processes header[0..15]
-165+  00A2              ; followed by exactly payload_length bytes.
-166+  00A2              ; -------------------------------------------------------------------------
-167+  00A2              p126_ipc_crc16_update:
-167+  00A2
-168+  00A2 C5                   push    bc
-169+  00A3 AC                   xor     h
-170+  00A4 67                   ld      h, a
-171+  00A5 06 08                ld      b, 8
-172+  00A7              .p126_crc_bit:
-173+  00A7 29                   add     hl, hl
-174+  00A8 30 08                jr      nc, .p126_crc_no_xor
-175+  00AA 7C                   ld      a, h
-176+  00AB EE 10                xor     #10
-177+  00AD 67                   ld      h, a
-178+  00AE 7D                   ld      a, l
-179+  00AF EE 21                xor     #21
-180+  00B1 6F                   ld      l, a
-181+  00B2              .p126_crc_no_xor:
-182+  00B2 10 F3                djnz    .p126_crc_bit
-183+  00B4 C1                   pop     bc
-184+  00B5 C9                   ret
-185+  00B6
-186+  00B6
-187+  00B6              ; Validate ABI 1.0 complete frame.
-188+  00B6              ; IN: HL=frame pointer, BC=actual size. OUT: carry clear/A=0 or carry set/A=status.
-189+  00B6              ; Clobbers AF,BC,DE,HL,IX. Scratch is non-reentrant.
-190+  00B6              p126_ipc_validate_frame:
-190+  00B6
-191+  00B6 22 EA 01             ld      (p126_ipc_frame_ptr),hl
-192+  00B9 ED 43 EC 01          ld      (p126_ipc_frame_size),bc
-193+  00BD 78                   ld      a,b
-194+  00BE B7                   or      a
-195+  00BF 20 06                jr      nz,.p126_frame_min_ok
-196+  00C1 79                   ld      a,c
-197+  00C2 FE 12                cp      P126_IPC_HEADER_SIZE
-198+  00C4 DA E6 01             jp      c,.p126_frame_bad
-199+  00C7              .p126_frame_min_ok:
-200+  00C7 E5                   push    hl
-201+  00C8 DD E1                pop     ix
-202+  00CA DD 7E 00             ld      a,(ix+0)
-203+  00CD FE 50                cp      'P'
-204+  00CF C2 A6 01             jp      nz,.p126_frame_magic
-205+  00D2 DD 7E 01             ld      a,(ix+1)
-206+  00D5 FE 31                cp      '1'
-207+  00D7 C2 A6 01             jp      nz,.p126_frame_magic
-208+  00DA DD 7E 02             ld      a,(ix+2)
-209+  00DD FE 32                cp      '2'
-210+  00DF C2 A6 01             jp      nz,.p126_frame_magic
-211+  00E2 DD 7E 03             ld      a,(ix+3)
-212+  00E5 FE 36                cp      '6'
-213+  00E7 C2 A6 01             jp      nz,.p126_frame_magic
-214+  00EA DD 7E 04             ld      a,(ix+4)
-215+  00ED FE 01                cp      P126_IPC_MAJOR
-216+  00EF C2 DE 01             jp      nz,.p126_frame_version
-217+  00F2 DD 7E 05             ld      a,(ix+5)
-218+  00F5 FE 01                cp      P126_IPC_MINOR
-219+  00F7 C2 DE 01             jp      nz,.p126_frame_version
-220+  00FA DD 7E 06             ld      a,(ix+6)
-221+  00FD FE 01                cp      P126_MSG_REQUEST
-222+  00FF 28 0D                jr      z,.p126_frame_type
-223+  0101 FE 02                cp      P126_MSG_RESPONSE
-224+  0103 28 09                jr      z,.p126_frame_type
-225+  0105 FE 03                cp      P126_MSG_EVENT
-226+  0107 28 05                jr      z,.p126_frame_type
-227+  0109 FE 04                cp      P126_MSG_CANCEL
-228+  010B C2 E6 01             jp      nz,.p126_frame_bad
-229+  010E              .p126_frame_type:
-230+  010E DD 7E 09             ld      a,(ix+9)
-231+  0111 E6 F8                and     #F8
-232+  0113 C2 E6 01             jp      nz,.p126_frame_bad
-233+  0116 DD 6E 0C             ld      l,(ix+12)
-234+  0119 DD 66 0D             ld      h,(ix+13)
-235+  011C 11 12 00             ld      de,P126_IPC_HEADER_SIZE
-236+  011F 19                   add     hl,de
-237+  0120 ED 5B EC 01          ld      de,(p126_ipc_frame_size)
-238+  0124 B7                   or      a
-239+  0125 ED 52                sbc     hl,de
-240+  0127 C2 E6 01             jp      nz,.p126_frame_bad
-241+  012A                      ; CRC header and payload in one pass.
-242+  012A                      ; Keep DE pointing at the frame while HL holds the CRC accumulator.
-243+  012A                      ; EX DE,HL here would move the frame pointer into HL and then lose it
-244+  012A                      ; when HL is initialized to FFFFh, causing CRC to read from address 0000h.
-245+  012A DD E5                push    ix
-246+  012C D1                   pop     de
-247+  012D 21 FF FF             ld      hl,#FFFF
-248+  0130 06 10                ld      b,16
-249+  0132              .p126_frame_crc_head:
-250+  0132 1A                   ld      a,(de)
-251+  0133 13                   inc     de
-252+  0134 CD A2 00             call    p126_ipc_crc16_update
-253+  0137 10 F9                djnz    .p126_frame_crc_head
-254+  0139 13                   inc     de
-255+  013A 13                   inc     de
-256+  013B D5                   push    de
-257+  013C DD 2A EA 01          ld      ix,(p126_ipc_frame_ptr)
-258+  0140 DD 5E 0C             ld      e,(ix+12)
-259+  0143 DD 56 0D             ld      d,(ix+13)
-260+  0146                      ; Restore the saved payload pointer directly into IX.
-261+  0146                      ; Do not pop it into HL: HL is the live CRC accumulator and must
-262+  0146                      ; survive the transition from header processing to payload processing.
-263+  0146 DD E1                pop     ix
-264+  0148              .p126_frame_crc_data:
-265+  0148 7A                   ld      a,d
-266+  0149 B3                   or      e
-267+  014A 28 0B                jr      z,.p126_frame_crc_compare
-268+  014C DD 7E 00             ld      a,(ix+0)
-269+  014F DD 23                inc     ix
-270+  0151 CD A2 00             call    p126_ipc_crc16_update
-271+  0154 1B                   dec     de
-272+  0155 18 F1                jr      .p126_frame_crc_data
-273+  0157              .p126_frame_crc_compare:
-274+  0157                      ; Capture both values before emitting diagnostics. This lets the next
-275+  0157                      ; hardware log distinguish a bad CRC calculation from a bad frame
-276+  0157                      ; write/byte order without involving the NeoGS DMA receiver.
-277+  0157 22 EE 01             ld      (p126_ipc_crc_work),hl
-278+  015A DD 2A EA 01          ld      ix,(p126_ipc_frame_ptr)
-279+  015E DD 7E 10             ld      a,(ix+16)
-280+  0161 5F                   ld      e,a
-281+  0162 DD 7E 11             ld      a,(ix+17)
-282+  0165 57                   ld      d,a
-283+  0166 ED 53 F0 01          ld      (p126_ipc_crc_expected),de
-284+  016A 21 F5 06             ld      hl,p126_ipc_log_crc_calculated
-285+  016D CD E4 06             call    p126_ipc_debug_string
-286+  0170 2A EE 01             ld      hl,(p126_ipc_crc_work)
-287+  0173 7C                   ld      a,h
-288+  0174 CD AF 06             call    p126_ipc_debug_hex_byte
-289+  0177 7D                   ld      a,l
-290+  0178 CD AF 06             call    p126_ipc_debug_hex_byte
-291+  017B 21 0F 07             ld      hl,p126_ipc_log_crc_expected
-292+  017E CD E4 06             call    p126_ipc_debug_string
-293+  0181 2A F0 01             ld      hl,(p126_ipc_crc_expected)
-294+  0184 7C                   ld      a,h
-295+  0185 CD AF 06             call    p126_ipc_debug_hex_byte
-296+  0188 7D                   ld      a,l
-297+  0189 CD AF 06             call    p126_ipc_debug_hex_byte
-298+  018C 01 EF 00             ld      bc,#00EF
-299+  018F 3E 0D                ld      a,13
-300+  0191 ED 79                out     (c),a
-301+  0193 3E 0A                ld      a,10
-302+  0195 ED 79                out     (c),a
-303+  0197 2A EE 01             ld      hl,(p126_ipc_crc_work)
-304+  019A ED 5B F0 01          ld      de,(p126_ipc_crc_expected)
-305+  019E B7                   or      a
-306+  019F ED 52                sbc     hl,de
-307+  01A1 C2 E2 01             jp      nz,.p126_frame_crc_bad
-308+  01A4 AF                   xor     a
-309+  01A5 C9                   ret
-310+  01A6              .p126_frame_magic:
-311+  01A6                      ; Preserve the validator result while reporting the actual source
-312+  01A6                      ; address and four bytes. This distinguishes a bad header from a
-313+  01A6                      ; wrong ATM page mapping at C000h before DMA is armed.
-314+  01A6 F5                   push    af
-315+  01A7 E5                   push    hl
-316+  01A8 D5                   push    de
-317+  01A9 DD E5                push    ix
-318+  01AB 21 1B 07             ld      hl,p126_ipc_log_bad_magic_ptr
-319+  01AE CD E4 06             call    p126_ipc_debug_string
-320+  01B1 2A EA 01             ld      hl,(p126_ipc_frame_ptr)
-321+  01B4 7C                   ld      a,h
-322+  01B5 CD AF 06             call    p126_ipc_debug_hex_byte
-323+  01B8 7D                   ld      a,l
-324+  01B9 CD AF 06             call    p126_ipc_debug_hex_byte
-325+  01BC 21 34 07             ld      hl,p126_ipc_log_bad_magic_data
-326+  01BF CD E4 06             call    p126_ipc_debug_string
-327+  01C2 DD 2A EA 01          ld      ix,(p126_ipc_frame_ptr)
-328+  01C6 06 04                ld      b,4
-329+  01C8              .p126_bad_magic_dump:
-330+  01C8 DD 7E 00             ld      a,(ix+0)
-331+  01CB CD AF 06             call    p126_ipc_debug_hex_byte
-332+  01CE DD 23                inc     ix
-333+  01D0 10 F6                djnz    .p126_bad_magic_dump
-334+  01D2 CD D4 06             call    p126_ipc_debug_crlf
-335+  01D5 DD E1                pop     ix
-336+  01D7 D1                   pop     de
-337+  01D8 E1                   pop     hl
-338+  01D9 F1                   pop     af
-339+  01DA 3E 01                ld      a,P126_STATUS_BAD_MAGIC
-340+  01DC 37                   scf
-341+  01DD C9                   ret
-342+  01DE              .p126_frame_version:
-343+  01DE 3E 02                ld      a,P126_STATUS_BAD_VERSION
-344+  01E0 37                   scf
-345+  01E1 C9                   ret
-346+  01E2              .p126_frame_crc_bad:
-347+  01E2 3E 04                ld      a,P126_STATUS_CRC_ERROR
-348+  01E4 37                   scf
-349+  01E5 C9                   ret
-350+  01E6              .p126_frame_bad:
-351+  01E6 3E 03                ld      a,P126_STATUS_BAD_FRAME
-352+  01E8 37                   scf
-353+  01E9 C9                   ret
-354+  01EA 00 00        p126_ipc_frame_ptr: dw 0
-355+  01EC 00 00        p126_ipc_frame_size: dw 0
-356+  01EE 00 00        p126_ipc_crc_work: dw 0
-357+  01F0 00 00        p126_ipc_crc_expected: dw 0
-358+  01F2
-359+  01F2              ; Standard CRC-16/CCITT-FALSE regression vector.
-360+  01F2              ; OUT: Carry clear and HL=#29B1 on pass; Carry set on failure.
-361+  01F2              p126_ipc_crc16_selftest:
-361+  01F2
-362+  01F2 C5                   push    bc
-363+  01F3 D5                   push    de
-364+  01F4 21 FF FF             ld      hl, #FFFF
-365+  01F7 11 16 02             ld      de, p126_ipc_crc16_test_vector
-366+  01FA 06 09                ld      b, 9
-367+  01FC              .p126_crc_test_loop:
-368+  01FC 1A                   ld      a, (de)
-369+  01FD 13                   inc     de
-370+  01FE CD A2 00             call    p126_ipc_crc16_update
-371+  0201 10 F9                djnz    .p126_crc_test_loop
-372+  0203 11 B1 29             ld      de, #29B1
-373+  0206 B7                   or      a
-374+  0207 ED 52                sbc     hl, de
-375+  0209 20 07                jr      nz, .p126_crc_test_failed
-376+  020B D1                   pop     de
-377+  020C C1                   pop     bc
-378+  020D 21 B1 29             ld      hl, #29B1
-379+  0210 B7                   or      a
-380+  0211 C9                   ret
-381+  0212              .p126_crc_test_failed:
-382+  0212 D1                   pop     de
-383+  0213 C1                   pop     bc
-384+  0214 37                   scf
-385+  0215 C9                   ret
-386+  0216
-387+  0216              p126_ipc_crc16_test_vector:
-388+  0216 31 32 33 34          db "123456789"
-388+  021A 35 36 37 38
-388+  021E 39
-389+  021F
-390+  021F              ; -------------------------------------------------------------------------
-391+  021F              ; Fast ATM->NeoGS transmit preflight.
-392+  021F              ; This is deliberately structural only: full CRC validation belongs to the
-393+  021F              ; receiving NeoGS endpoint, after the Project125-compatible DMA LDIR.
-394+  021F              ; IN: HL=frame pointer, BC=actual frame size.
-395+  021F              ; OUT: carry clear/A=0 or carry set/A=status.
-396+  021F              ; -------------------------------------------------------------------------
-397+  021F              p126_ipc_validate_tx_frame:
-397+  021F
-398+  021F 22 EA 01             ld      (p126_ipc_frame_ptr),hl
-399+  0222 ED 43 EC 01          ld      (p126_ipc_frame_size),bc
-400+  0226 78                   ld      a,b
-401+  0227 B7                   or      a
-402+  0228 20 06                jr      nz,.p126_tx_min_ok
-403+  022A 79                   ld      a,c
-404+  022B FE 12                cp      P126_IPC_HEADER_SIZE
-405+  022D DA 9E 02             jp      c,.p126_tx_bad
-406+  0230              .p126_tx_min_ok:
-407+  0230 78                   ld      a,b
-408+  0231 FE 40                cp      #40
-409+  0233 38 08                jr      c,.p126_tx_size_ok
-410+  0235 C2 9E 02             jp      nz,.p126_tx_bad
-411+  0238 79                   ld      a,c
-412+  0239 B7                   or      a
-413+  023A C2 9E 02             jp      nz,.p126_tx_bad
-414+  023D              .p126_tx_size_ok:
-415+  023D E5                   push    hl
-416+  023E DD E1                pop     ix
-417+  0240 DD 7E 00             ld      a,(ix+0)
-418+  0243 FE 50                cp      'P'
-419+  0245 C2 96 02             jp      nz,.p126_tx_magic
-420+  0248 DD 7E 01             ld      a,(ix+1)
-421+  024B FE 31                cp      '1'
-422+  024D C2 96 02             jp      nz,.p126_tx_magic
-423+  0250 DD 7E 02             ld      a,(ix+2)
-424+  0253 FE 32                cp      '2'
-425+  0255 C2 96 02             jp      nz,.p126_tx_magic
-426+  0258 DD 7E 03             ld      a,(ix+3)
-427+  025B FE 36                cp      '6'
-428+  025D C2 96 02             jp      nz,.p126_tx_magic
-429+  0260 DD 7E 04             ld      a,(ix+4)
-430+  0263 FE 01                cp      P126_IPC_MAJOR
-431+  0265 C2 9A 02             jp      nz,.p126_tx_version
-432+  0268 DD 7E 05             ld      a,(ix+5)
-433+  026B FE 01                cp      P126_IPC_MINOR
-434+  026D C2 9A 02             jp      nz,.p126_tx_version
-435+  0270 DD 7E 06             ld      a,(ix+6)
-436+  0273 FE 01                cp      P126_MSG_REQUEST
-437+  0275 C2 9E 02             jp      nz,.p126_tx_bad
-438+  0278 DD 7E 09             ld      a,(ix+9)
-439+  027B E6 F8                and     #F8
-440+  027D C2 9E 02             jp      nz,.p126_tx_bad
-441+  0280                      ; actual_size must equal header_size + declared_payload_length.
-442+  0280 DD 6E 0C             ld      l,(ix+12)
-443+  0283 DD 66 0D             ld      h,(ix+13)
-444+  0286 11 12 00             ld      de,P126_IPC_HEADER_SIZE
-445+  0289 19                   add     hl,de
-446+  028A ED 5B EC 01          ld      de,(p126_ipc_frame_size)
-447+  028E B7                   or      a
-448+  028F ED 52                sbc     hl,de
-449+  0291 C2 9E 02             jp      nz,.p126_tx_bad
-450+  0294 AF                   xor     a
-451+  0295 C9                   ret
-452+  0296              .p126_tx_magic:
-453+  0296 3E 01                ld      a,P126_STATUS_BAD_MAGIC
-454+  0298 37                   scf
-455+  0299 C9                   ret
-456+  029A              .p126_tx_version:
-457+  029A 3E 02                ld      a,P126_STATUS_BAD_VERSION
-458+  029C 37                   scf
-459+  029D C9                   ret
-460+  029E              .p126_tx_bad:
-461+  029E 3E 03                ld      a,P126_STATUS_BAD_FRAME
-462+  02A0 37                   scf
-463+  02A1 C9                   ret
-464+  02A2
-465+  02A2              ; -------------------------------------------------------------------------
-466+  02A2              ; Emit a build/runtime identity to ATM's independent debug port #EF.
-467+  02A2              ; Preserves AF, BC and HL.
-468+  02A2              ; -------------------------------------------------------------------------
-469+  02A2              p126_ipc_emit_version:
-469+  02A2
-470+  02A2 F5                   push    af
-471+  02A3 C5                   push    bc
-472+  02A4 E5                   push    hl
-473+  02A5 21 BB 02             ld      hl, p126_ipc_version_text
-474+  02A8 01 EF 00             ld      bc, #00EF
-475+  02AB              .p126_version_loop:
-476+  02AB 7E                   ld      a, (hl)
-477+  02AC 23                   inc     hl
-478+  02AD B7                   or      a
-479+  02AE 28 04                jr      z, .p126_version_done
-480+  02B0 ED 79                out     (c), a
-481+  02B2 18 F7                jr      .p126_version_loop
-482+  02B4              .p126_version_done:
-483+  02B4 E1                   pop     hl
-484+  02B5 C1                   pop     bc
-485+  02B6 F1                   pop     af
-486+  02B7 C9                   ret
-487+  02B8
-488+  02B8              ; Driver state is private to this module. Callers must not modify it.
-489+  02B8 00           p126_ipc_last_status: db 0
-490+  02B9 00           p126_ipc_tx_byte:     db 0
-491+  02BA 00           p126_ipc_rx_byte:     db 0
-492+  02BB
-493+  02BB              p126_ipc_version_text:
-494+  02BB 5B 50 31 32          db "[P126 ATM_IPC v0.2.0]", 13, 10, 0
-494+  02BF 36 20 41 54
-494+  02C3 4D 5F 49 50
-494+  02C7 43 20 76 30
-494+  02CB 2E 32 2E 30
-494+  02CF 5D 0D 0A 00
-495+  02D3
-496+  02D3              ; -------------------------------------------------------------------------
-497+  02D3              ; Send one complete ATM -> NeoGS ABI 1.0 frame through the ZX DMA aperture.
-498+  02D3              ; IN: HL=frame, BC=exact frame size (18..16384).
-499+  02D3              ; OUT: carry clear/A=0 only after NeoGS closes DMA and acknowledges #FF.
-500+  02D3              ; Clobbers AF,BC,DE,HL. Leaves interrupts disabled during/after transfer.
-501+  02D3              ; Source buffer remains caller-owned and must remain stable until return.
-502+  02D3              ; -------------------------------------------------------------------------
-503+  02D3              P126_IPC_DMA_WINDOW EQU #0000
-504+  02D3              P126_IPC_DMA_END    EQU #FF
-505+  02D3
-506+  02D3              p126_ipc_dma_send_frame:
-506+  02D3
-507+  02D3                      ; Preserve the caller's frame pointer and length before any logger
-508+  02D3                      ; call, because the string writer advances HL.
-509+  02D3 3E 01                ld      a,1
-510+  02D5 32 BE 03             ld      (p126_ipc_dma_stage),a
-511+  02D8 22 BA 03             ld      (p126_ipc_dma_source),hl
-512+  02DB ED 43 BC 03          ld      (p126_ipc_dma_size),bc
-513+  02DF 21 3B 07             ld      hl,p126_ipc_log_dma_tx_begin
-514+  02E2 CD E4 06             call    p126_ipc_debug_string
-515+  02E5 2A BA 03             ld      hl,(p126_ipc_dma_source)
-516+  02E8 ED 4B BC 03          ld      bc,(p126_ipc_dma_size)
-517+  02EC                      ; Match the proven Project125 host path: validate the frame envelope
-518+  02EC                      ; here, but do not spend the transfer startup path recalculating the
-519+  02EC                      ; complete 16 KiB CRC. The frame builder already wrote the CRC; NeoGS
-520+  02EC                      ; performs the authoritative full CRC check after DMA reception.
-521+  02EC CD 1F 02             call    p126_ipc_validate_tx_frame
-522+  02EF 30 3A                jr      nc,.p126_dma_frame_valid
-523+  02F1 32 BF 03             ld      (p126_ipc_dma_error),a
-524+  02F4 F5                   push    af
-525+  02F5 21 76 07             ld      hl,p126_ipc_log_dma_tx_validate_bad
-526+  02F8 CD E4 06             call    p126_ipc_debug_string
-527+  02FB F1                   pop     af
-528+  02FC                      ; Emit the exact rejected frame envelope so the first failing header
-529+  02FC                      ; field can be identified without guessing or weakening validation.
-530+  02FC CD AF 06             call    p126_ipc_debug_hex_byte
-531+  02FF 21 A0 07             ld      hl,p126_ipc_log_dma_tx_bad_size
-532+  0302 CD E4 06             call    p126_ipc_debug_string
-533+  0305 2A BC 03             ld      hl,(p126_ipc_dma_size)
-534+  0308 7C                   ld      a,h
-535+  0309 CD AF 06             call    p126_ipc_debug_hex_byte
-536+  030C 7D                   ld      a,l
-537+  030D CD AF 06             call    p126_ipc_debug_hex_byte
-538+  0310 21 A7 07             ld      hl,p126_ipc_log_dma_tx_bad_header
-539+  0313 CD E4 06             call    p126_ipc_debug_string
-540+  0316 DD 2A BA 03          ld      ix,(p126_ipc_dma_source)
-541+  031A 06 12                ld      b,P126_IPC_HEADER_SIZE
-542+  031C              .p126_dma_bad_header_dump:
-543+  031C DD 7E 00             ld      a,(ix+0)
-544+  031F CD AF 06             call    p126_ipc_debug_hex_byte
-545+  0322 DD 23                inc     ix
-546+  0324 10 F6                djnz    .p126_dma_bad_header_dump
-547+  0326 CD D4 06             call    p126_ipc_debug_crlf
-548+  0329 37                   scf
-549+  032A C9                   ret
-550+  032B              .p126_dma_frame_valid:
-551+  032B 21 54 07             ld      hl,p126_ipc_log_dma_tx_validate_ok
-552+  032E CD E4 06             call    p126_ipc_debug_string
-553+  0331 AF                   xor     a
-554+  0332 32 BF 03             ld      (p126_ipc_dma_error),a
-555+  0335
-556+  0335 3E 02                ld      a,2
-557+  0337 32 BE 03             ld      (p126_ipc_dma_stage),a
-558+  033A ED 4B BC 03          ld      bc,(p126_ipc_dma_size)
-559+  033E 78                   ld      a,b
-560+  033F FE 40                cp      #40
-561+  0341 38 0A                jr      c,.p126_dma_size_valid
-562+  0343 C2 B6 03             jp      nz,.p126_dma_bad_size
-563+  0346 79                   ld      a,c
-564+  0347 B7                   or      a
-565+  0348 28 03                jr      z,.p126_dma_size_valid
-566+  034A C3 B6 03             jp      .p126_dma_bad_size
-567+  034D
-568+  034D              .p126_dma_size_valid:
-569+  034D 3E 03                ld      a,3
-570+  034F 32 BE 03             ld      (p126_ipc_dma_stage),a
-571+  0352 21 AD 07             ld      hl,p126_ipc_log_dma_tx_e0
-572+  0355 CD E4 06             call    p126_ipc_debug_string
-573+  0358 3E E0                ld      a,P126_CMD_HOST_FRAME
-574+  035A CD 6F 00             call    p126_ipc_send_command
-575+  035D 30 0A                jr      nc,.p126_dma_e0_ack
-576+  035F F5                   push    af
-577+  0360 21 C1 07             ld      hl,p126_ipc_log_dma_tx_e0_timeout
-578+  0363 CD E4 06             call    p126_ipc_debug_string
-579+  0366 F1                   pop     af
-580+  0367 37                   scf
-581+  0368 C9                   ret
-582+  0369              .p126_dma_e0_ack:
-583+  0369 21 DC 07             ld      hl,p126_ipc_log_dma_tx_ready
-584+  036C CD E4 06             call    p126_ipc_debug_string
-585+  036F
-586+  036F 3E 04                ld      a,4
-587+  0371 32 BE 03             ld      (p126_ipc_dma_stage),a
-588+  0374 F3                   di
-589+  0375 21 F7 07             ld      hl,p126_ipc_log_dma_tx_copy_begin
-590+  0378 CD E4 06             call    p126_ipc_debug_string
-591+  037B 2A BA 03             ld      hl,(p126_ipc_dma_source)
-592+  037E ED 4B BC 03          ld      bc,(p126_ipc_dma_size)
-593+  0382 11 00 00             ld      de,P126_IPC_DMA_WINDOW
-594+  0385 ED B0                ldir
-595+  0387 21 12 08             ld      hl,p126_ipc_log_dma_tx_copy_done
-596+  038A CD E4 06             call    p126_ipc_debug_string
-597+  038D
-598+  038D 3E 05                ld      a,5
-599+  038F 32 BE 03             ld      (p126_ipc_dma_stage),a
-600+  0392 21 2C 08             ld      hl,p126_ipc_log_dma_tx_ff
-601+  0395 CD E4 06             call    p126_ipc_debug_string
-602+  0398 3E FF                ld      a,P126_IPC_DMA_END
-603+  039A D3 BB                out     (P126_GSCOM),a
-604+  039C CD 38 00             call    p126_ipc_wait_cbit_clear_dma
-605+  039F 30 0A                jr      nc,.p126_dma_ff_ack
-606+  03A1 F5                   push    af
-607+  03A2 21 40 08             ld      hl,p126_ipc_log_dma_tx_ff_timeout
-608+  03A5 CD E4 06             call    p126_ipc_debug_string
-609+  03A8 F1                   pop     af
-610+  03A9 37                   scf
-611+  03AA C9                   ret
-612+  03AB              .p126_dma_ff_ack:
-613+  03AB 21 5B 08             ld      hl,p126_ipc_log_dma_tx_done
-614+  03AE CD E4 06             call    p126_ipc_debug_string
-615+  03B1 AF                   xor     a
-616+  03B2 32 BE 03             ld      (p126_ipc_dma_stage),a
-617+  03B5 C9                   ret
-618+  03B6
-619+  03B6              .p126_dma_bad_size:
-620+  03B6 3E 03                ld      a,P126_STATUS_BAD_FRAME
-621+  03B8 37                   scf
-622+  03B9 C9                   ret
-623+  03BA
-624+  03BA 00 00        p126_ipc_dma_source: dw 0
-625+  03BC 00 00        p126_ipc_dma_size:   dw 0
-626+  03BE              ; 0=success/not started, 1=local frame validation, 2=DMA size,
-627+  03BE              ; 3=E0/READY handshake, 4=payload copy, 5=FF/completion acknowledgement.
-628+  03BE 00           p126_ipc_dma_stage:  db 0
-629+  03BF
-630+  03BF 00           p126_ipc_dma_error: db 0
-631+  03C0
-632+  03C0              ; Reverse DMA diagnostic: NeoGS sends a CRC-protected maximum-size 16 KiB frame.
-633+  03C0              ; The first memory read from the DMA aperture is discarded per hardware docs.
-634+  03C0              ; Destination is the same 16 KiB page-0 buffer used by the forward test.
-635+  03C0              ; Requires ROM visible at ATM 0000h..3FFFh during the reverse transfer.
-636+  03C0              P126_IPC_DMA_RX_TEST_SIZE EQU P126_IPC_MAX_FRAME_SIZE
-637+  03C0              P126_IPC_DMA_RX_BUFFER    EQU #C000
-638+  03C0              p126_ipc_dma_receive_test:
-638+  03C0
-639+  03C0 3E 01                ld      a,1
-640+  03C2 32 65 04             ld      (p126_ipc_dma_rx_stage),a
-641+  03C5 21 77 08             ld      hl,p126_ipc_log_dma_rx_begin
-642+  03C8 CD E4 06             call    p126_ipc_debug_string
-643+  03CB 3E E1                ld      a,P126_CMD_NGS_FRAME
-644+  03CD CD 6F 00             call    p126_ipc_send_command
-645+  03D0 30 05                jr      nc,.rx_ready
-646+  03D2 3E 01                ld      a,1
-647+  03D4 C3 51 04             jp      .rx_failed
-648+  03D7              .rx_ready:
-649+  03D7                      ; Project125 disables IM1 before the first ROM-aperture read; an
-650+  03D7                      ; interrupt would fetch NeoGS DMA bytes at #0038h instead of ROM.
-651+  03D7 F3                   di
-652+  03D8 21 00 00             ld      hl,0
-653+  03DB 7E                   ld      a,(hl)                  ; required discarded first read
-654+  03DC 21 00 00             ld      hl,0
-655+  03DF 11 00 C0             ld      de,P126_IPC_DMA_RX_BUFFER
-656+  03E2 01 00 40             ld      bc,P126_IPC_DMA_RX_TEST_SIZE
-657+  03E5 ED B0                ldir
-658+  03E7 21 9A 08             ld      hl,p126_ipc_log_dma_rx_copy_done
-659+  03EA CD E4 06             call    p126_ipc_debug_string
-660+  03ED 3E FF                ld      a,P126_CMD_DMA_END
-661+  03EF CD 6F 00             call    p126_ipc_send_command
-662+  03F2 30 05                jr      nc,.rx_end_ack
-663+  03F4 3E 02                ld      a,2
-664+  03F6 C3 51 04             jp      .rx_failed
-665+  03F9              .rx_end_ack:
-666+  03F9 3E 02                ld      a,2
-667+  03FB 32 65 04             ld      (p126_ipc_dma_rx_stage),a
-668+  03FE 21 00 C0             ld      hl,P126_IPC_DMA_RX_BUFFER
-669+  0401 01 00 40             ld      bc,P126_IPC_DMA_RX_TEST_SIZE
-670+  0404 CD B6 00             call    p126_ipc_validate_frame
-671+  0407 30 14                jr      nc,.rx_crc_ok
-672+  0409 32 66 04             ld      (p126_ipc_dma_rx_error),a
-673+  040C 21 DE 08             ld      hl,p126_ipc_log_dma_rx_crc_bad
-674+  040F CD E4 06             call    p126_ipc_debug_string
-675+  0412 3A 66 04             ld      a,(p126_ipc_dma_rx_error)
-676+  0415 CD AF 06             call    p126_ipc_debug_hex_byte
-677+  0418 CD D4 06             call    p126_ipc_debug_crlf
-678+  041B 37                   scf
-679+  041C C9                   ret
-680+  041D              .rx_crc_ok:
-681+  041D 21 BB 08             ld      hl,p126_ipc_log_dma_rx_crc_ok
-682+  0420 CD E4 06             call    p126_ipc_debug_string
-683+  0423 21 12 C0             ld      hl,P126_IPC_DMA_RX_BUFFER+P126_IPC_HEADER_SIZE
-684+  0426 01 EE 3F             ld      bc,P126_IPC_MAX_PAYLOAD
-685+  0429 1E 00                ld      e,0
-686+  042B              .rx_pattern:
-687+  042B 7B                   ld      a,e
-688+  042C BE                   cp      (hl)
-689+  042D 20 15                jr      nz,.rx_pattern_bad
-690+  042F 23                   inc     hl
-691+  0430 1C                   inc     e
-692+  0431 0B                   dec     bc
-693+  0432 78                   ld      a,b
-694+  0433 B1                   or      c
-695+  0434 20 F5                jr      nz,.rx_pattern
-696+  0436 21 0F 09             ld      hl,p126_ipc_log_dma_rx_pattern_ok
-697+  0439 CD E4 06             call    p126_ipc_debug_string
-698+  043C AF                   xor     a
-699+  043D 32 65 04             ld      (p126_ipc_dma_rx_stage),a
-700+  0440 32 66 04             ld      (p126_ipc_dma_rx_error),a
-701+  0443 C9                   ret
-702+  0444              .rx_pattern_bad:
-703+  0444 3E 03                ld      a,3
-704+  0446 32 66 04             ld      (p126_ipc_dma_rx_error),a
-705+  0449 21 33 09             ld      hl,p126_ipc_log_dma_rx_pattern_bad
-706+  044C CD E4 06             call    p126_ipc_debug_string
-707+  044F 37                   scf
-708+  0450 C9                   ret
-709+  0451              .rx_failed:
-710+  0451 32 66 04             ld      (p126_ipc_dma_rx_error),a
-711+  0454 21 53 09             ld      hl,p126_ipc_log_dma_rx_transport_bad
-712+  0457 CD E4 06             call    p126_ipc_debug_string
-713+  045A 3A 66 04             ld      a,(p126_ipc_dma_rx_error)
-714+  045D CD AF 06             call    p126_ipc_debug_hex_byte
-715+  0460 CD D4 06             call    p126_ipc_debug_crlf
-716+  0463 37                   scf
-717+  0464 C9                   ret
-718+  0465 00           p126_ipc_dma_rx_stage: db 0
-719+  0466 00           p126_ipc_dma_rx_error: db 0
-720+  0467
-721+  0467              ; -------------------------------------------------------------------------
-722+  0467              ; Receive and render the one-shot 8086 BIOS stop event.
-723+  0467              ; The request is the existing E1 reverse-DMA control command. Payload bytes
-724+  0467              ; travel only through ZX DMA; DBIT/GSDAT are not used for diagnostics.
-725+  0467              ; OUT: carry clear when a valid event frame was rendered.
-726+  0467              ; -------------------------------------------------------------------------
-727+  0467              p126_ipc_dma_receive_debug_frame:
-727+  0467
-728+  0467 3E E1                ld      a,P126_CMD_NGS_FRAME
-729+  0469 CD 6F 00             call    p126_ipc_send_command
-730+  046C DA DD 04             jp      c,.debug_dma_failed
-731+  046F
-732+  046F                      ; Reverse DMA reads the complete 16 KiB frame from the ROM aperture.
-733+  046F                      ; The first aperture read is discarded by the documented GS ABI.
-734+  046F F3                   di
-735+  0470 21 00 00             ld      hl,0
-736+  0473 7E                   ld      a,(hl)
-737+  0474 21 00 00             ld      hl,0
-738+  0477 11 00 C0             ld      de,P126_IPC_DMA_RX_BUFFER
-739+  047A 01 00 40             ld      bc,P126_IPC_MAX_FRAME_SIZE
-740+  047D ED B0                ldir
-741+  047F
-742+  047F 3E FF                ld      a,P126_CMD_DMA_END
-743+  0481 CD 6F 00             call    p126_ipc_send_command
-744+  0484 DA DD 04             jp      c,.debug_dma_failed
-745+  0487
-746+  0487 21 00 C0             ld      hl,P126_IPC_DMA_RX_BUFFER
-747+  048A 01 00 40             ld      bc,P126_IPC_MAX_FRAME_SIZE
-748+  048D CD B6 00             call    p126_ipc_validate_frame
-749+  0490 DA DD 04             jp      c,.debug_dma_failed
-750+  0493
-751+  0493                      ; Decode the compact stop event from the first five payload bytes.
-752+  0493 3A 12 C0             ld      a,(P126_IPC_DMA_RX_BUFFER+P126_IPC_HEADER_SIZE)
-753+  0496 FE 01                cp      1
-754+  0498 28 11                jr      z,.debug_budget
-755+  049A FE 02                cp      2
-756+  049C 28 12                jr      z,.debug_halted
-757+  049E FE 03                cp      3
-758+  04A0 28 13                jr      z,.debug_fault
-759+  04A2 FE 04                cp      4
-760+  04A4 28 14                jr      z,.debug_reset_fault
-761+  04A6 21 29 06             ld      hl,p126_ipc_debug_event_missing
-762+  04A9 18 12                jr      .debug_render
-763+  04AB              .debug_budget:
-764+  04AB 21 73 05             ld      hl,p126_ipc_debug_budget
-765+  04AE 18 0D                jr      .debug_render
-766+  04B0              .debug_halted:
-767+  04B0 21 AC 05             ld      hl,p126_ipc_debug_halted
-768+  04B3 18 08                jr      .debug_render
-769+  04B5              .debug_fault:
-770+  04B5 21 CF 05             ld      hl,p126_ipc_debug_fault
-771+  04B8 18 03                jr      .debug_render
-772+  04BA              .debug_reset_fault:
-773+  04BA 21 02 06             ld      hl,p126_ipc_debug_reset_fault
-774+  04BD              .debug_render:
-775+  04BD CD 3E 05             call    p126_ipc_console_string
-776+  04C0 2A 13 C0             ld      hl,(P126_IPC_DMA_RX_BUFFER+P126_IPC_HEADER_SIZE+1)
-777+  04C3 CD 49 05             call    p126_ipc_console_hex16
-778+  04C6 3E 3A                ld      a,':'
-779+  04C8 CD 7F 09             call    BIOS_DebugConsole_PrintChar
-780+  04CB 2A 15 C0             ld      hl,(P126_IPC_DMA_RX_BUFFER+P126_IPC_HEADER_SIZE+3)
-781+  04CE CD 49 05             call    p126_ipc_console_hex16
-782+  04D1 3E 0D                ld      a,13
-783+  04D3 CD 7F 09             call    BIOS_DebugConsole_PrintChar
-784+  04D6 3E 0A                ld      a,10
-785+  04D8 CD 7F 09             call    BIOS_DebugConsole_PrintChar
-786+  04DB B7                   or      a
-787+  04DC C9                   ret
-788+  04DD
-789+  04DD              .debug_dma_failed:
-790+  04DD 21 50 06             ld      hl,p126_ipc_debug_dma_failed
-791+  04E0 CD 3E 05             call    p126_ipc_console_string
-792+  04E3 37                   scf
-793+  04E4 C9                   ret
-794+  04E5
-795+  04E5              ; Request one converted frame from NeoGS and apply the RG6 text payload
-796+  04E5              ; to the ATM's active page7/page3 text memory.
-797+  04E5              p126_ipc_dma_receive_video_frame:
-797+  04E5
-798+  04E5 3A 7C 09             ld      a,(p126_atm_video_mode)
-799+  04E8 FE 06                cp      P126_ATM_VIDEO_MODE_RG6_TEXT80X25
-800+  04EA C2 36 05             jp      nz,.video_dma_failed
-801+  04ED 3E E4                ld      a,P126_CMD_NGS_VIDEO_FRAME
-802+  04EF CD 6F 00             call    p126_ipc_send_command
-803+  04F2 DA 36 05             jp      c,.video_dma_failed
-804+  04F5
-805+  04F5 F3                   di
-806+  04F6 21 00 00             ld      hl,0
-807+  04F9 7E                   ld      a,(hl)
-808+  04FA 21 00 00             ld      hl,0
-809+  04FD 11 00 C0             ld      de,P126_IPC_DMA_RX_BUFFER
-810+  0500 01 00 40             ld      bc,P126_IPC_MAX_FRAME_SIZE
-811+  0503 ED B0                ldir
-812+  0505
-813+  0505 3E FF                ld      a,P126_CMD_DMA_END
-814+  0507 CD 6F 00             call    p126_ipc_send_command
-815+  050A 38 2A                jr      c,.video_dma_failed
-816+  050C
-817+  050C 21 00 C0             ld      hl,P126_IPC_DMA_RX_BUFFER
-818+  050F 01 00 40             ld      bc,P126_IPC_MAX_FRAME_SIZE
-819+  0512 CD B6 00             call    p126_ipc_validate_frame
-820+  0515 38 1F                jr      c,.video_dma_failed
-821+  0517 3A 07 C0             ld      a,(P126_IPC_DMA_RX_BUFFER+7)
-822+  051A FE 02                cp      P126_SERVICE_VIDEO
-823+  051C 20 18                jr      nz,.video_dma_failed
-824+  051E 3A 08 C0             ld      a,(P126_IPC_DMA_RX_BUFFER+8)
-825+  0521 FE 02                cp      P126_OP_VIDEO_FRAME
-826+  0523 20 11                jr      nz,.video_dma_failed
-827+  0525 3A 0E C0             ld      a,(P126_IPC_DMA_RX_BUFFER+14)
-828+  0528 47                   ld      b,a
-829+  0529 3A 0F C0             ld      a,(P126_IPC_DMA_RX_BUFFER+15)
-830+  052C B0                   or      b
-831+  052D 20 07                jr      nz,.video_dma_failed
-832+  052F
-833+  052F CD 7D 09             call    p126_screen_apply_text_frame
-834+  0532 38 02                jr      c,.video_dma_failed
-835+  0534 B7                   or      a
-836+  0535 C9                   ret
-837+  0536
-838+  0536              .video_dma_failed:
-839+  0536 21 8A 06             ld      hl,p126_ipc_video_dma_failed
-840+  0539 CD 3E 05             call    p126_ipc_console_string
-841+  053C 37                   scf
-842+  053D C9                   ret
-843+  053E
-844+  053E              p126_ipc_console_string:
-845+  053E 7E                   ld      a,(hl)
-846+  053F B7                   or      a
-847+  0540 C8                   ret     z
-848+  0541 E5                   push    hl
-849+  0542 CD 7F 09             call    BIOS_DebugConsole_PrintChar
-850+  0545 E1                   pop     hl
-851+  0546 23                   inc     hl
-852+  0547 18 F5                jr      p126_ipc_console_string
-853+  0549
-854+  0549              p126_ipc_console_hex16:
-855+  0549 7C                   ld      a,h
-856+  054A CD 51 05             call    p126_ipc_console_hex8
-857+  054D 7D                   ld      a,l
-858+  054E C3 51 05             jp      p126_ipc_console_hex8
-859+  0551
-860+  0551              p126_ipc_console_hex8:
-861+  0551 32 72 05             ld      (p126_ipc_console_hex_byte),a
-862+  0554 0F                   rrca
-863+  0555 0F                   rrca
-864+  0556 0F                   rrca
-865+  0557 0F                   rrca
-866+  0558 E6 0F                and     #0F
-867+  055A CD 65 05             call    p126_ipc_console_hex_nibble
-868+  055D 3A 72 05             ld      a,(p126_ipc_console_hex_byte)
-869+  0560 E6 0F                and     #0F
-870+  0562 C3 65 05             jp      p126_ipc_console_hex_nibble
-871+  0565
-872+  0565              p126_ipc_console_hex_nibble:
-873+  0565 E6 0F                and     #0F
-874+  0567 C6 30                add     a,'0'
-875+  0569 FE 3A                cp      '9'+1
-876+  056B 38 02                jr      c,.console_hex_emit
-877+  056D C6 07                add     a,7
-878+  056F              .console_hex_emit:
-879+  056F C3 7F 09             jp      BIOS_DebugConsole_PrintChar
-880+  0572
-881+  0572 00           p126_ipc_console_hex_byte: db 0
-882+  0573 5B 58 38 36  p126_ipc_debug_budget: db "[X86] BIOS PAUSED: 16-INSTRUCTION SLICE COMPLETE; CS:IP=",0
-882+  0577 5D 20 42 49
-882+  057B 4F 53 20 50
-882+  057F 41 55 53 45
-882+  0583 44 3A 20 31
-882+  0587 36 2D 49 4E
-882+  058B 53 54 52 55
-882+  058F 43 54 49 4F
-882+  0593 4E 20 53 4C
-882+  0597 49 43 45 20
-882+  059B 43 4F 4D 50
-882+  059F 4C 45 54 45
-882+  05A3 3B 20 43 53
-882+  05A7 3A 49 50 3D
-882+  05AB 00
-883+  05AC 5B 58 38 36  p126_ipc_debug_halted: db "[X86] BIOS HALTED BY GUEST; CS:IP=",0
-883+  05B0 5D 20 42 49
-883+  05B4 4F 53 20 48
-883+  05B8 41 4C 54 45
-883+  05BC 44 20 42 59
-883+  05C0 20 47 55 45
-883+  05C4 53 54 3B 20
-883+  05C8 43 53 3A 49
-883+  05CC 50 3D 00
-884+  05CF 5B 58 38 36  p126_ipc_debug_fault: db "[X86] BIOS STOPPED: OPCODE OR MEMORY FAULT; CS:IP=",0
-884+  05D3 5D 20 42 49
-884+  05D7 4F 53 20 53
-884+  05DB 54 4F 50 50
-884+  05DF 45 44 3A 20
-884+  05E3 4F 50 43 4F
-884+  05E7 44 45 20 4F
-884+  05EB 52 20 4D 45
-884+  05EF 4D 4F 52 59
-884+  05F3 20 46 41 55
-884+  05F7 4C 54 3B 20
-884+  05FB 43 53 3A 49
-884+  05FF 50 3D 00
-885+  0602 5B 58 38 36  p126_ipc_debug_reset_fault: db "[X86] BIOS RESET VECTOR FAILED; CS:IP=",0
-885+  0606 5D 20 42 49
-885+  060A 4F 53 20 52
-885+  060E 45 53 45 54
-885+  0612 20 56 45 43
-885+  0616 54 4F 52 20
-885+  061A 46 41 49 4C
-885+  061E 45 44 3B 20
-885+  0622 43 53 3A 49
-885+  0626 50 3D 00
-886+  0629 5B 58 38 36  p126_ipc_debug_event_missing: db "[X86] BIOS TRACE EVENT MISSING; CS:IP=",0
-886+  062D 5D 20 42 49
-886+  0631 4F 53 20 54
-886+  0635 52 41 43 45
-886+  0639 20 45 56 45
-886+  063D 4E 54 20 4D
-886+  0641 49 53 53 49
-886+  0645 4E 47 3B 20
-886+  0649 43 53 3A 49
-886+  064D 50 3D 00
-887+  0650 5B 58 38 36  p126_ipc_debug_dma_failed: db "[X86] DIAGNOSTIC DMA FAILED",13,10,0
-887+  0654 5D 20 44 49
-887+  0658 41 47 4E 4F
-887+  065C 53 54 49 43
-887+  0660 20 44 4D 41
-887+  0664 20 46 41 49
-887+  0668 4C 45 44 0D
-887+  066C 0A 00
-888+  066E 5B 56 49 44  p126_ipc_video_frame_applied: db "[VIDEO] RG6 FRAME APPLIED",13,10,0
-888+  0672 45 4F 5D 20
-888+  0676 52 47 36 20
-888+  067A 46 52 41 4D
-888+  067E 45 20 41 50
-888+  0682 50 4C 49 45
-888+  0686 44 0D 0A 00
-889+  068A 5B 56 49 44  p126_ipc_video_dma_failed: db "[VIDEO] FRAME RECEIVE/APPLY FAILED",13,10,0
-889+  068E 45 4F 5D 20
-889+  0692 46 52 41 4D
-889+  0696 45 20 52 45
-889+  069A 43 45 49 56
-889+  069E 45 2F 41 50
-889+  06A2 50 4C 59 20
-889+  06A6 46 41 49 4C
-889+  06AA 45 44 0D 0A
-889+  06AE 00
-890+  06AF
-891+  06AF              ; Print A as two hexadecimal digits on ATM's independent #EF stream.
-892+  06AF              ; Preserves AF and BC.
-893+  06AF              p126_ipc_debug_hex_byte:
-894+  06AF F5                   push    af
-895+  06B0 C5                   push    bc
-896+  06B1 0F                   rrca
-897+  06B2 0F                   rrca
-898+  06B3 0F                   rrca
-899+  06B4 0F                   rrca
-900+  06B5 CD C2 06             call    p126_ipc_debug_hex_nibble
-901+  06B8 C1                   pop     bc
-902+  06B9 F1                   pop     af
-903+  06BA F5                   push    af
-904+  06BB E6 0F                and     #0F
-905+  06BD CD C2 06             call    p126_ipc_debug_hex_nibble
-906+  06C0 F1                   pop     af
-907+  06C1 C9                   ret
-908+  06C2
-909+  06C2              p126_ipc_debug_hex_nibble:
-910+  06C2 E6 0F                and     #0F
-911+  06C4 C6 30                add     a,'0'
-912+  06C6 FE 3A                cp      '9'+1
-913+  06C8 38 02                jr      c,.p126_ipc_debug_hex_emit
-914+  06CA C6 07                add     a,7
-915+  06CC              .p126_ipc_debug_hex_emit:
-916+  06CC C5                   push    bc
-917+  06CD 01 EF 00             ld      bc,#00EF
-918+  06D0 ED 79                out     (c),a
-919+  06D2 C1                   pop     bc
-920+  06D3 C9                   ret
-921+  06D4
-922+  06D4              ; Emit CR/LF on ATM's independent #EF debug channel.
-923+  06D4              p126_ipc_debug_crlf:
-924+  06D4 F5                   push    af
-925+  06D5 C5                   push    bc
-926+  06D6 01 EF 00             ld      bc,#00EF
-927+  06D9 3E 0D                ld      a,13
-928+  06DB ED 79                out     (c),a
-929+  06DD 3E 0A                ld      a,10
-930+  06DF ED 79                out     (c),a
-931+  06E1 C1                   pop     bc
-932+  06E2 F1                   pop     af
-933+  06E3 C9                   ret
-934+  06E4
-935+  06E4              ; ATM-local trace output, on ATM's own physical #EF stream.
-936+  06E4              ; IN: HL=zero-terminated string. Preserves AF/BC; clobbers HL.
-937+  06E4              p126_ipc_debug_string:
-938+  06E4 F5                   push    af
-939+  06E5 C5                   push    bc
-940+  06E6 01 EF 00             ld      bc,#00EF
-941+  06E9              .p126_ipc_debug_loop:
-942+  06E9 7E                   ld      a,(hl)
-943+  06EA 23                   inc     hl
-944+  06EB B7                   or      a
-945+  06EC 28 04                jr      z,.p126_ipc_debug_done
-946+  06EE ED 79                out     (c),a
-947+  06F0 18 F7                jr      .p126_ipc_debug_loop
-948+  06F2              .p126_ipc_debug_done:
-949+  06F2 C1                   pop     bc
-950+  06F3 F1                   pop     af
-951+  06F4 C9                   ret
-952+  06F5
-953+  06F5 5B 41 54 4D  p126_ipc_log_crc_calculated:      db "[ATM IPC] CRC CALCULATED=",0
-953+  06F9 20 49 50 43
-953+  06FD 5D 20 43 52
-953+  0701 43 20 43 41
-953+  0705 4C 43 55 4C
-953+  0709 41 54 45 44
-953+  070D 3D 00
-954+  070F 20 46 52 41  p126_ipc_log_crc_expected:        db " FRAME CRC=",0
-954+  0713 4D 45 20 43
-954+  0717 52 43 3D 00
-955+  071B 5B 41 54 4D  p126_ipc_log_bad_magic_ptr: db "[ATM IPC] BAD MAGIC PTR=",0
-955+  071F 20 49 50 43
-955+  0723 5D 20 42 41
-955+  0727 44 20 4D 41
-955+  072B 47 49 43 20
-955+  072F 50 54 52 3D
-955+  0733 00
-956+  0734 20 44 41 54  p126_ipc_log_bad_magic_data: db " DATA=",0
-956+  0738 41 3D 00
-957+  073B 5B 41 54 4D  p126_ipc_log_dma_tx_begin:        db "[ATM IPC] DMA TX BEGIN",13,10,0
-957+  073F 20 49 50 43
-957+  0743 5D 20 44 4D
-957+  0747 41 20 54 58
-957+  074B 20 42 45 47
-957+  074F 49 4E 0D 0A
-957+  0753 00
-958+  0754 5B 41 54 4D  p126_ipc_log_dma_tx_validate_ok:  db "[ATM IPC] FRAME STRUCTURE VALID",13,10,0
-958+  0758 20 49 50 43
-958+  075C 5D 20 46 52
-958+  0760 41 4D 45 20
-958+  0764 53 54 52 55
-958+  0768 43 54 55 52
-958+  076C 45 20 56 41
-958+  0770 4C 49 44 0D
-958+  0774 0A 00
-959+  0776 5B 41 54 4D  p126_ipc_log_dma_tx_validate_bad: db "[ATM IPC] FRAME STRUCTURE INVALID status=",0
-959+  077A 20 49 50 43
-959+  077E 5D 20 46 52
-959+  0782 41 4D 45 20
-959+  0786 53 54 52 55
-959+  078A 43 54 55 52
-959+  078E 45 20 49 4E
-959+  0792 56 41 4C 49
-959+  0796 44 20 73 74
-959+  079A 61 74 75 73
-959+  079E 3D 00
-960+  07A0 20 73 69 7A  p126_ipc_log_dma_tx_bad_size:    db " size=",0
-960+  07A4 65 3D 00
-961+  07A7 20 68 64 72  p126_ipc_log_dma_tx_bad_header:  db " hdr=",0
-961+  07AB 3D 00
-962+  07AD 5B 41 54 4D  p126_ipc_log_dma_tx_e0:           db "[ATM IPC] SEND E0",13,10,0
-962+  07B1 20 49 50 43
-962+  07B5 5D 20 53 45
-962+  07B9 4E 44 20 45
-962+  07BD 30 0D 0A 00
-963+  07C1 5B 41 54 4D  p126_ipc_log_dma_tx_e0_timeout:   db "[ATM IPC] E0 ACK TIMEOUT",13,10,0
-963+  07C5 20 49 50 43
-963+  07C9 5D 20 45 30
-963+  07CD 20 41 43 4B
-963+  07D1 20 54 49 4D
-963+  07D5 45 4F 55 54
-963+  07D9 0D 0A 00
-964+  07DC 5B 41 54 4D  p126_ipc_log_dma_tx_ready:        db "[ATM IPC] E0 ACK / READY",13,10,0
-964+  07E0 20 49 50 43
-964+  07E4 5D 20 45 30
-964+  07E8 20 41 43 4B
-964+  07EC 20 2F 20 52
-964+  07F0 45 41 44 59
-964+  07F4 0D 0A 00
-965+  07F7 5B 41 54 4D  p126_ipc_log_dma_tx_copy_begin:   db "[ATM IPC] DMA COPY BEGIN",13,10,0
-965+  07FB 20 49 50 43
-965+  07FF 5D 20 44 4D
-965+  0803 41 20 43 4F
-965+  0807 50 59 20 42
-965+  080B 45 47 49 4E
-965+  080F 0D 0A 00
-966+  0812 5B 41 54 4D  p126_ipc_log_dma_tx_copy_done:    db "[ATM IPC] DMA COPY DONE",13,10,0
-966+  0816 20 49 50 43
-966+  081A 5D 20 44 4D
-966+  081E 41 20 43 4F
-966+  0822 50 59 20 44
-966+  0826 4F 4E 45 0D
-966+  082A 0A 00
-967+  082C 5B 41 54 4D  p126_ipc_log_dma_tx_ff:           db "[ATM IPC] SEND FF",13,10,0
-967+  0830 20 49 50 43
-967+  0834 5D 20 53 45
-967+  0838 4E 44 20 46
-967+  083C 46 0D 0A 00
-968+  0840 5B 41 54 4D  p126_ipc_log_dma_tx_ff_timeout:   db "[ATM IPC] FF ACK TIMEOUT",13,10,0
-968+  0844 20 49 50 43
-968+  0848 5D 20 46 46
-968+  084C 20 41 43 4B
-968+  0850 20 54 49 4D
-968+  0854 45 4F 55 54
-968+  0858 0D 0A 00
-969+  085B 5B 41 54 4D  p126_ipc_log_dma_tx_done:         db "[ATM IPC] DMA TX COMPLETE",13,10,0
-969+  085F 20 49 50 43
-969+  0863 5D 20 44 4D
-969+  0867 41 20 54 58
-969+  086B 20 43 4F 4D
-969+  086F 50 4C 45 54
-969+  0873 45 0D 0A 00
-970+  0877 5B 41 54 4D  p126_ipc_log_dma_rx_begin:        db "[ATM IPC] DMA RX MAX FRAME BEGIN",13,10,0
-970+  087B 20 49 50 43
-970+  087F 5D 20 44 4D
-970+  0883 41 20 52 58
-970+  0887 20 4D 41 58
-970+  088B 20 46 52 41
-970+  088F 4D 45 20 42
-970+  0893 45 47 49 4E
-970+  0897 0D 0A 00
-971+  089A 5B 41 54 4D  p126_ipc_log_dma_rx_copy_done:    db "[ATM IPC] DMA RX 16K COPY DONE",13,10,0
-971+  089E 20 49 50 43
-971+  08A2 5D 20 44 4D
-971+  08A6 41 20 52 58
-971+  08AA 20 31 36 4B
-971+  08AE 20 43 4F 50
-971+  08B2 59 20 44 4F
-971+  08B6 4E 45 0D 0A
-971+  08BA 00
-972+  08BB 5B 41 54 4D  p126_ipc_log_dma_rx_crc_ok:       db "[ATM IPC] DMA RX FRAME CRC VALID",13,10,0
-972+  08BF 20 49 50 43
-972+  08C3 5D 20 44 4D
-972+  08C7 41 20 52 58
-972+  08CB 20 46 52 41
-972+  08CF 4D 45 20 43
-972+  08D3 52 43 20 56
-972+  08D7 41 4C 49 44
-972+  08DB 0D 0A 00
-973+  08DE 5B 41 54 4D  p126_ipc_log_dma_rx_crc_bad:      db "[ATM IPC] DMA RX FRAME VALIDATION FAILED STATUS=",0
-973+  08E2 20 49 50 43
-973+  08E6 5D 20 44 4D
-973+  08EA 41 20 52 58
-973+  08EE 20 46 52 41
-973+  08F2 4D 45 20 56
-973+  08F6 41 4C 49 44
-973+  08FA 41 54 49 4F
-973+  08FE 4E 20 46 41
-973+  0902 49 4C 45 44
-973+  0906 20 53 54 41
-973+  090A 54 55 53 3D
-973+  090E 00
-974+  090F 5B 41 54 4D  p126_ipc_log_dma_rx_pattern_ok:   db "[ATM IPC] DMA RX 16K PATTERN PASS",13,10,0
-974+  0913 20 49 50 43
-974+  0917 5D 20 44 4D
-974+  091B 41 20 52 58
-974+  091F 20 31 36 4B
-974+  0923 20 50 41 54
-974+  0927 54 45 52 4E
-974+  092B 20 50 41 53
-974+  092F 53 0D 0A 00
-975+  0933 5B 41 54 4D  p126_ipc_log_dma_rx_pattern_bad:  db "[ATM IPC] DMA RX PATTERN FAIL",13,10,0
-975+  0937 20 49 50 43
-975+  093B 5D 20 44 4D
-975+  093F 41 20 52 58
-975+  0943 20 50 41 54
-975+  0947 54 45 52 4E
-975+  094B 20 46 41 49
-975+  094F 4C 0D 0A 00
-976+  0953 5B 41 54 4D  p126_ipc_log_dma_rx_transport_bad: db "[ATM IPC] DMA RX TRANSPORT FAILED STAGE=",0
-976+  0957 20 49 50 43
-976+  095B 5D 20 44 4D
-976+  095F 41 20 52 58
-976+  0963 20 54 52 41
-976+  0967 4E 53 50 4F
-976+  096B 52 54 20 46
-976+  096F 41 49 4C 45
-976+  0973 44 20 53 54
-976+  0977 41 47 45 3D
-976+  097B 00
-977+  097C              ; DMA RX storage aliases the 16 KiB ATM page-0 staging buffer at C000h.
-978+  097C              ; It is intentionally shared with the forward test because the transfers
-979+  097C              ; are sequential and the reverse test overwrites the request after TX.
-980+  097C              p126_ipc_dma_rx_buffer EQU P126_IPC_DMA_RX_BUFFER
-981+  097C
+  14+ 0000
+  15+ 0000              ; -------------------------------------------------------------------------
+  16+ 0000              ; Read the current hardware handshake state.
+  17+ 0000              ; OUT: A=status; p126_ipc_last_status updated.
+  18+ 0000              ; -------------------------------------------------------------------------
+  19+ 0000              p126_ipc_read_status:
+  19+ 0000
+  20+ 0000 DB BB                in      a, (P126_GSSTAT)
+  21+ 0002 32 B8 02             ld      (p126_ipc_last_status), a
+  22+ 0005 C9                   ret
+  23+ 0006
+  24+ 0006              ; -------------------------------------------------------------------------
+  25+ 0006              ; Wait routines. Every wait is bounded by P126_IPC_TIMEOUT.
+  26+ 0006              ; OUT: Carry clear on requested state; carry set on timeout.
+  27+ 0006              ;      A=last sampled GSSTAT. BC is clobbered.
+  28+ 0006              ; -------------------------------------------------------------------------
+  29+ 0006              p126_ipc_wait_cbit_clear:
+  29+ 0006
+  30+ 0006 01 FF FF             ld      bc, P126_IPC_TIMEOUT
+  31+ 0009              .p126_cbit_loop:
+  32+ 0009 CD 00 00             call    p126_ipc_read_status
+  33+ 000C CB 47                bit     P126_CBIT, a
+  34+ 000E 28 0A                jr      z, .p126_cbit_ready
+  35+ 0010 0B                   dec     bc
+  36+ 0011 78                   ld      a, b
+  37+ 0012 B1                   or      c
+  38+ 0013 20 F4                jr      nz, .p126_cbit_loop
+  39+ 0015 3A B8 02             ld      a, (p126_ipc_last_status)
+  40+ 0018 37                   scf
+  41+ 0019 C9                   ret
+  42+ 001A              .p126_cbit_ready:
+  43+ 001A 3A B8 02             ld      a, (p126_ipc_last_status)
+  44+ 001D B7                   or      a
+  45+ 001E C9                   ret
+  46+ 001F
+  47+ 001F              p126_ipc_wait_dbit_clear:
+  47+ 001F
+  48+ 001F 01 FF FF             ld      bc, P126_IPC_TIMEOUT
+  49+ 0022              .p126_dbit_clear_loop:
+  50+ 0022 CD 00 00             call    p126_ipc_read_status
+  51+ 0025 CB 7F                bit     P126_DBIT, a
+  52+ 0027 28 0A                jr      z, .p126_dbit_clear_ready
+  53+ 0029 0B                   dec     bc
+  54+ 002A 78                   ld      a, b
+  55+ 002B B1                   or      c
+  56+ 002C 20 F4                jr      nz, .p126_dbit_clear_loop
+  57+ 002E 3A B8 02             ld      a, (p126_ipc_last_status)
+  58+ 0031 37                   scf
+  59+ 0032 C9                   ret
+  60+ 0033              .p126_dbit_clear_ready:
+  61+ 0033 3A B8 02             ld      a, (p126_ipc_last_status)
+  62+ 0036 B7                   or      a
+  63+ 0037 C9                   ret
+  64+ 0038
+  65+ 0038              ; Long completion watchdog for DMA frames whose service handler performs
+  66+ 0038              ; post-receive work (for example installing an 8 KiB BIOS image).
+  67+ 0038              ; Matches Project125's eight independent #FFFF polling windows.
+  68+ 0038              p126_ipc_wait_cbit_clear_dma:
+  68+ 0038
+  69+ 0038 16 08                ld      d,8
+  70+ 003A              .p126_dma_cbit_outer:
+  71+ 003A 01 FF FF             ld      bc,#FFFF
+  72+ 003D              .p126_dma_cbit_inner:
+  73+ 003D CD 00 00             call    p126_ipc_read_status
+  74+ 0040 CB 47                bit     P126_CBIT,a
+  75+ 0042 28 0D                jr      z,.p126_dma_cbit_ready
+  76+ 0044 0B                   dec     bc
+  77+ 0045 78                   ld      a,b
+  78+ 0046 B1                   or      c
+  79+ 0047 20 F4                jr      nz,.p126_dma_cbit_inner
+  80+ 0049 15                   dec     d
+  81+ 004A 20 EE                jr      nz,.p126_dma_cbit_outer
+  82+ 004C 3A B8 02             ld      a,(p126_ipc_last_status)
+  83+ 004F 37                   scf
+  84+ 0050 C9                   ret
+  85+ 0051              .p126_dma_cbit_ready:
+  86+ 0051 3A B8 02             ld      a,(p126_ipc_last_status)
+  87+ 0054 B7                   or      a
+  88+ 0055 C9                   ret
+  89+ 0056
+  90+ 0056              p126_ipc_wait_dbit_set:
+  90+ 0056
+  91+ 0056 01 FF FF             ld      bc, P126_IPC_TIMEOUT
+  92+ 0059              .p126_dbit_set_loop:
+  93+ 0059 CD 00 00             call    p126_ipc_read_status
+  94+ 005C CB 7F                bit     P126_DBIT, a
+  95+ 005E 20 0A                jr      nz, .p126_dbit_set_ready
+  96+ 0060 0B                   dec     bc
+  97+ 0061 78                   ld      a, b
+  98+ 0062 B1                   or      c
+  99+ 0063 20 F4                jr      nz, .p126_dbit_set_loop
+ 100+ 0065 3A B8 02             ld      a, (p126_ipc_last_status)
+ 101+ 0068 37                   scf
+ 102+ 0069 C9                   ret
+ 103+ 006A              .p126_dbit_set_ready:
+ 104+ 006A 3A B8 02             ld      a, (p126_ipc_last_status)
+ 105+ 006D B7                   or      a
+ 106+ 006E C9                   ret
+ 107+ 006F
+ 108+ 006F              ; -------------------------------------------------------------------------
+ 109+ 006F              ; Send one command through GSCOM.
+ 110+ 006F              ; IN : A=command.
+ 111+ 006F              ; OUT: Carry clear after NeoGS clears CBIT; carry set on timeout.
+ 112+ 006F              ; -------------------------------------------------------------------------
+ 113+ 006F              p126_ipc_send_command:
+ 113+ 006F
+ 114+ 006F 32 B9 02             ld      (p126_ipc_tx_byte), a
+ 115+ 0072 3A B9 02             ld      a, (p126_ipc_tx_byte)
+ 116+ 0075 D3 BB                out     (P126_GSCOM), a
+ 117+ 0077 C3 06 00             jp      p126_ipc_wait_cbit_clear
+ 118+ 007A
+ 119+ 007A              ; -------------------------------------------------------------------------
+ 120+ 007A              ; Preload one data byte before issuing a command.
+ 121+ 007A              ; This ordering is required by the stock GS105a #13/#14 command ABI.
+ 122+ 007A              ; IN : A=argument.
+ 123+ 007A              ; OUT: Carry clear after GSDAT write; carry set if the data slot is busy.
+ 124+ 007A              ; -------------------------------------------------------------------------
+ 125+ 007A              p126_ipc_send_argument:
+ 125+ 007A
+ 126+ 007A 32 B9 02             ld      (p126_ipc_tx_byte), a
+ 127+ 007D CD 1F 00             call    p126_ipc_wait_dbit_clear
+ 128+ 0080 D8                   ret     c
+ 129+ 0081 3A B9 02             ld      a, (p126_ipc_tx_byte)
+ 130+ 0084 D3 B3                out     (P126_GSDAT), a
+ 131+ 0086 B7                   or      a
+ 132+ 0087 C9                   ret
+ 133+ 0088
+ 134+ 0088              ; -------------------------------------------------------------------------
+ 135+ 0088              ; Send a data byte and wait until NeoGS consumes it (DBIT clears).
+ 136+ 0088              ; IN : A=data.
+ 137+ 0088              ; OUT: Carry clear on consumption; carry set on timeout.
+ 138+ 0088              ; -------------------------------------------------------------------------
+ 139+ 0088              p126_ipc_send_byte:
+ 139+ 0088
+ 140+ 0088 32 B9 02             ld      (p126_ipc_tx_byte), a
+ 141+ 008B CD 1F 00             call    p126_ipc_wait_dbit_clear
+ 142+ 008E D8                   ret     c
+ 143+ 008F 3A B9 02             ld      a, (p126_ipc_tx_byte)
+ 144+ 0092 D3 B3                out     (P126_GSDAT), a
+ 145+ 0094 C3 1F 00             jp      p126_ipc_wait_dbit_clear
+ 146+ 0097
+ 147+ 0097              ; -------------------------------------------------------------------------
+ 148+ 0097              ; Receive one byte published by NeoGS.
+ 149+ 0097              ; OUT: A=data; carry clear. Carry set on timeout.
+ 150+ 0097              ; Reading GSDAT acknowledges the byte and clears DBIT in the host view.
+ 151+ 0097              ; -------------------------------------------------------------------------
+ 152+ 0097              p126_ipc_receive_byte:
+ 152+ 0097
+ 153+ 0097 CD 56 00             call    p126_ipc_wait_dbit_set
+ 154+ 009A D8                   ret     c
+ 155+ 009B DB B3                in      a, (P126_GSDAT)
+ 156+ 009D 32 BA 02             ld      (p126_ipc_rx_byte), a
+ 157+ 00A0 B7                   or      a
+ 158+ 00A1 C9                   ret
+ 159+ 00A2
+ 160+ 00A2              ; -------------------------------------------------------------------------
+ 161+ 00A2              ; CRC-16/CCITT-FALSE byte update for the shared P126 DMA/IPC frame ABI.
+ 162+ 00A2              ; IN : HL=current CRC, A=next byte.
+ 163+ 00A2              ; OUT: HL=updated CRC. BC and DE are preserved.
+ 164+ 00A2              ; The caller initializes HL to #FFFF and processes header[0..15]
+ 165+ 00A2              ; followed by exactly payload_length bytes.
+ 166+ 00A2              ; -------------------------------------------------------------------------
+ 167+ 00A2              p126_ipc_crc16_update:
+ 167+ 00A2
+ 168+ 00A2 C5                   push    bc
+ 169+ 00A3 AC                   xor     h
+ 170+ 00A4 67                   ld      h, a
+ 171+ 00A5 06 08                ld      b, 8
+ 172+ 00A7              .p126_crc_bit:
+ 173+ 00A7 29                   add     hl, hl
+ 174+ 00A8 30 08                jr      nc, .p126_crc_no_xor
+ 175+ 00AA 7C                   ld      a, h
+ 176+ 00AB EE 10                xor     #10
+ 177+ 00AD 67                   ld      h, a
+ 178+ 00AE 7D                   ld      a, l
+ 179+ 00AF EE 21                xor     #21
+ 180+ 00B1 6F                   ld      l, a
+ 181+ 00B2              .p126_crc_no_xor:
+ 182+ 00B2 10 F3                djnz    .p126_crc_bit
+ 183+ 00B4 C1                   pop     bc
+ 184+ 00B5 C9                   ret
+ 185+ 00B6
+ 186+ 00B6
+ 187+ 00B6              ; Validate ABI 1.0 complete frame.
+ 188+ 00B6              ; IN: HL=frame pointer, BC=actual size. OUT: carry clear/A=0 or carry set/A=status.
+ 189+ 00B6              ; Clobbers AF,BC,DE,HL,IX. Scratch is non-reentrant.
+ 190+ 00B6              p126_ipc_validate_frame:
+ 190+ 00B6
+ 191+ 00B6 22 EA 01             ld      (p126_ipc_frame_ptr),hl
+ 192+ 00B9 ED 43 EC 01          ld      (p126_ipc_frame_size),bc
+ 193+ 00BD 78                   ld      a,b
+ 194+ 00BE B7                   or      a
+ 195+ 00BF 20 06                jr      nz,.p126_frame_min_ok
+ 196+ 00C1 79                   ld      a,c
+ 197+ 00C2 FE 12                cp      P126_IPC_HEADER_SIZE
+ 198+ 00C4 DA E6 01             jp      c,.p126_frame_bad
+ 199+ 00C7              .p126_frame_min_ok:
+ 200+ 00C7 E5                   push    hl
+ 201+ 00C8 DD E1                pop     ix
+ 202+ 00CA DD 7E 00             ld      a,(ix+0)
+ 203+ 00CD FE 50                cp      'P'
+ 204+ 00CF C2 A6 01             jp      nz,.p126_frame_magic
+ 205+ 00D2 DD 7E 01             ld      a,(ix+1)
+ 206+ 00D5 FE 31                cp      '1'
+ 207+ 00D7 C2 A6 01             jp      nz,.p126_frame_magic
+ 208+ 00DA DD 7E 02             ld      a,(ix+2)
+ 209+ 00DD FE 32                cp      '2'
+ 210+ 00DF C2 A6 01             jp      nz,.p126_frame_magic
+ 211+ 00E2 DD 7E 03             ld      a,(ix+3)
+ 212+ 00E5 FE 36                cp      '6'
+ 213+ 00E7 C2 A6 01             jp      nz,.p126_frame_magic
+ 214+ 00EA DD 7E 04             ld      a,(ix+4)
+ 215+ 00ED FE 01                cp      P126_IPC_MAJOR
+ 216+ 00EF C2 DE 01             jp      nz,.p126_frame_version
+ 217+ 00F2 DD 7E 05             ld      a,(ix+5)
+ 218+ 00F5 FE 01                cp      P126_IPC_MINOR
+ 219+ 00F7 C2 DE 01             jp      nz,.p126_frame_version
+ 220+ 00FA DD 7E 06             ld      a,(ix+6)
+ 221+ 00FD FE 01                cp      P126_MSG_REQUEST
+ 222+ 00FF 28 0D                jr      z,.p126_frame_type
+ 223+ 0101 FE 02                cp      P126_MSG_RESPONSE
+ 224+ 0103 28 09                jr      z,.p126_frame_type
+ 225+ 0105 FE 03                cp      P126_MSG_EVENT
+ 226+ 0107 28 05                jr      z,.p126_frame_type
+ 227+ 0109 FE 04                cp      P126_MSG_CANCEL
+ 228+ 010B C2 E6 01             jp      nz,.p126_frame_bad
+ 229+ 010E              .p126_frame_type:
+ 230+ 010E DD 7E 09             ld      a,(ix+9)
+ 231+ 0111 E6 F8                and     #F8
+ 232+ 0113 C2 E6 01             jp      nz,.p126_frame_bad
+ 233+ 0116 DD 6E 0C             ld      l,(ix+12)
+ 234+ 0119 DD 66 0D             ld      h,(ix+13)
+ 235+ 011C 11 12 00             ld      de,P126_IPC_HEADER_SIZE
+ 236+ 011F 19                   add     hl,de
+ 237+ 0120 ED 5B EC 01          ld      de,(p126_ipc_frame_size)
+ 238+ 0124 B7                   or      a
+ 239+ 0125 ED 52                sbc     hl,de
+ 240+ 0127 C2 E6 01             jp      nz,.p126_frame_bad
+ 241+ 012A                      ; CRC header and payload in one pass.
+ 242+ 012A                      ; Keep DE pointing at the frame while HL holds the CRC accumulator.
+ 243+ 012A                      ; EX DE,HL here would move the frame pointer into HL and then lose it
+ 244+ 012A                      ; when HL is initialized to FFFFh, causing CRC to read from address 0000h.
+ 245+ 012A DD E5                push    ix
+ 246+ 012C D1                   pop     de
+ 247+ 012D 21 FF FF             ld      hl,#FFFF
+ 248+ 0130 06 10                ld      b,16
+ 249+ 0132              .p126_frame_crc_head:
+ 250+ 0132 1A                   ld      a,(de)
+ 251+ 0133 13                   inc     de
+ 252+ 0134 CD A2 00             call    p126_ipc_crc16_update
+ 253+ 0137 10 F9                djnz    .p126_frame_crc_head
+ 254+ 0139 13                   inc     de
+ 255+ 013A 13                   inc     de
+ 256+ 013B D5                   push    de
+ 257+ 013C DD 2A EA 01          ld      ix,(p126_ipc_frame_ptr)
+ 258+ 0140 DD 5E 0C             ld      e,(ix+12)
+ 259+ 0143 DD 56 0D             ld      d,(ix+13)
+ 260+ 0146                      ; Restore the saved payload pointer directly into IX.
+ 261+ 0146                      ; Do not pop it into HL: HL is the live CRC accumulator and must
+ 262+ 0146                      ; survive the transition from header processing to payload processing.
+ 263+ 0146 DD E1                pop     ix
+ 264+ 0148              .p126_frame_crc_data:
+ 265+ 0148 7A                   ld      a,d
+ 266+ 0149 B3                   or      e
+ 267+ 014A 28 0B                jr      z,.p126_frame_crc_compare
+ 268+ 014C DD 7E 00             ld      a,(ix+0)
+ 269+ 014F DD 23                inc     ix
+ 270+ 0151 CD A2 00             call    p126_ipc_crc16_update
+ 271+ 0154 1B                   dec     de
+ 272+ 0155 18 F1                jr      .p126_frame_crc_data
+ 273+ 0157              .p126_frame_crc_compare:
+ 274+ 0157                      ; Capture both values before emitting diagnostics. This lets the next
+ 275+ 0157                      ; hardware log distinguish a bad CRC calculation from a bad frame
+ 276+ 0157                      ; write/byte order without involving the NeoGS DMA receiver.
+ 277+ 0157 22 EE 01             ld      (p126_ipc_crc_work),hl
+ 278+ 015A DD 2A EA 01          ld      ix,(p126_ipc_frame_ptr)
+ 279+ 015E DD 7E 10             ld      a,(ix+16)
+ 280+ 0161 5F                   ld      e,a
+ 281+ 0162 DD 7E 11             ld      a,(ix+17)
+ 282+ 0165 57                   ld      d,a
+ 283+ 0166 ED 53 F0 01          ld      (p126_ipc_crc_expected),de
+ 284+ 016A 21 7F 07             ld      hl,p126_ipc_log_crc_calculated
+ 285+ 016D CD 6E 07             call    p126_ipc_debug_string
+ 286+ 0170 2A EE 01             ld      hl,(p126_ipc_crc_work)
+ 287+ 0173 7C                   ld      a,h
+ 288+ 0174 CD 39 07             call    p126_ipc_debug_hex_byte
+ 289+ 0177 7D                   ld      a,l
+ 290+ 0178 CD 39 07             call    p126_ipc_debug_hex_byte
+ 291+ 017B 21 99 07             ld      hl,p126_ipc_log_crc_expected
+ 292+ 017E CD 6E 07             call    p126_ipc_debug_string
+ 293+ 0181 2A F0 01             ld      hl,(p126_ipc_crc_expected)
+ 294+ 0184 7C                   ld      a,h
+ 295+ 0185 CD 39 07             call    p126_ipc_debug_hex_byte
+ 296+ 0188 7D                   ld      a,l
+ 297+ 0189 CD 39 07             call    p126_ipc_debug_hex_byte
+ 298+ 018C 01 EF 00             ld      bc,#00EF
+ 299+ 018F 3E 0D                ld      a,13
+ 300+ 0191 ED 79                out     (c),a
+ 301+ 0193 3E 0A                ld      a,10
+ 302+ 0195 ED 79                out     (c),a
+ 303+ 0197 2A EE 01             ld      hl,(p126_ipc_crc_work)
+ 304+ 019A ED 5B F0 01          ld      de,(p126_ipc_crc_expected)
+ 305+ 019E B7                   or      a
+ 306+ 019F ED 52                sbc     hl,de
+ 307+ 01A1 C2 E2 01             jp      nz,.p126_frame_crc_bad
+ 308+ 01A4 AF                   xor     a
+ 309+ 01A5 C9                   ret
+ 310+ 01A6              .p126_frame_magic:
+ 311+ 01A6                      ; Preserve the validator result while reporting the actual source
+ 312+ 01A6                      ; address and four bytes. This distinguishes a bad header from a
+ 313+ 01A6                      ; wrong ATM page mapping at C000h before DMA is armed.
+ 314+ 01A6 F5                   push    af
+ 315+ 01A7 E5                   push    hl
+ 316+ 01A8 D5                   push    de
+ 317+ 01A9 DD E5                push    ix
+ 318+ 01AB 21 A5 07             ld      hl,p126_ipc_log_bad_magic_ptr
+ 319+ 01AE CD 6E 07             call    p126_ipc_debug_string
+ 320+ 01B1 2A EA 01             ld      hl,(p126_ipc_frame_ptr)
+ 321+ 01B4 7C                   ld      a,h
+ 322+ 01B5 CD 39 07             call    p126_ipc_debug_hex_byte
+ 323+ 01B8 7D                   ld      a,l
+ 324+ 01B9 CD 39 07             call    p126_ipc_debug_hex_byte
+ 325+ 01BC 21 BE 07             ld      hl,p126_ipc_log_bad_magic_data
+ 326+ 01BF CD 6E 07             call    p126_ipc_debug_string
+ 327+ 01C2 DD 2A EA 01          ld      ix,(p126_ipc_frame_ptr)
+ 328+ 01C6 06 04                ld      b,4
+ 329+ 01C8              .p126_bad_magic_dump:
+ 330+ 01C8 DD 7E 00             ld      a,(ix+0)
+ 331+ 01CB CD 39 07             call    p126_ipc_debug_hex_byte
+ 332+ 01CE DD 23                inc     ix
+ 333+ 01D0 10 F6                djnz    .p126_bad_magic_dump
+ 334+ 01D2 CD 5E 07             call    p126_ipc_debug_crlf
+ 335+ 01D5 DD E1                pop     ix
+ 336+ 01D7 D1                   pop     de
+ 337+ 01D8 E1                   pop     hl
+ 338+ 01D9 F1                   pop     af
+ 339+ 01DA 3E 01                ld      a,P126_STATUS_BAD_MAGIC
+ 340+ 01DC 37                   scf
+ 341+ 01DD C9                   ret
+ 342+ 01DE              .p126_frame_version:
+ 343+ 01DE 3E 02                ld      a,P126_STATUS_BAD_VERSION
+ 344+ 01E0 37                   scf
+ 345+ 01E1 C9                   ret
+ 346+ 01E2              .p126_frame_crc_bad:
+ 347+ 01E2 3E 04                ld      a,P126_STATUS_CRC_ERROR
+ 348+ 01E4 37                   scf
+ 349+ 01E5 C9                   ret
+ 350+ 01E6              .p126_frame_bad:
+ 351+ 01E6 3E 03                ld      a,P126_STATUS_BAD_FRAME
+ 352+ 01E8 37                   scf
+ 353+ 01E9 C9                   ret
+ 354+ 01EA 00 00        p126_ipc_frame_ptr: dw 0
+ 355+ 01EC 00 00        p126_ipc_frame_size: dw 0
+ 356+ 01EE 00 00        p126_ipc_crc_work: dw 0
+ 357+ 01F0 00 00        p126_ipc_crc_expected: dw 0
+ 358+ 01F2
+ 359+ 01F2              ; Standard CRC-16/CCITT-FALSE regression vector.
+ 360+ 01F2              ; OUT: Carry clear and HL=#29B1 on pass; Carry set on failure.
+ 361+ 01F2              p126_ipc_crc16_selftest:
+ 361+ 01F2
+ 362+ 01F2 C5                   push    bc
+ 363+ 01F3 D5                   push    de
+ 364+ 01F4 21 FF FF             ld      hl, #FFFF
+ 365+ 01F7 11 16 02             ld      de, p126_ipc_crc16_test_vector
+ 366+ 01FA 06 09                ld      b, 9
+ 367+ 01FC              .p126_crc_test_loop:
+ 368+ 01FC 1A                   ld      a, (de)
+ 369+ 01FD 13                   inc     de
+ 370+ 01FE CD A2 00             call    p126_ipc_crc16_update
+ 371+ 0201 10 F9                djnz    .p126_crc_test_loop
+ 372+ 0203 11 B1 29             ld      de, #29B1
+ 373+ 0206 B7                   or      a
+ 374+ 0207 ED 52                sbc     hl, de
+ 375+ 0209 20 07                jr      nz, .p126_crc_test_failed
+ 376+ 020B D1                   pop     de
+ 377+ 020C C1                   pop     bc
+ 378+ 020D 21 B1 29             ld      hl, #29B1
+ 379+ 0210 B7                   or      a
+ 380+ 0211 C9                   ret
+ 381+ 0212              .p126_crc_test_failed:
+ 382+ 0212 D1                   pop     de
+ 383+ 0213 C1                   pop     bc
+ 384+ 0214 37                   scf
+ 385+ 0215 C9                   ret
+ 386+ 0216
+ 387+ 0216              p126_ipc_crc16_test_vector:
+ 388+ 0216 31 32 33 34          db "123456789"
+ 388+ 021A 35 36 37 38
+ 388+ 021E 39
+ 389+ 021F
+ 390+ 021F              ; -------------------------------------------------------------------------
+ 391+ 021F              ; Fast ATM->NeoGS transmit preflight.
+ 392+ 021F              ; This is deliberately structural only: full CRC validation belongs to the
+ 393+ 021F              ; receiving NeoGS endpoint, after the Project125-compatible DMA LDIR.
+ 394+ 021F              ; IN: HL=frame pointer, BC=actual frame size.
+ 395+ 021F              ; OUT: carry clear/A=0 or carry set/A=status.
+ 396+ 021F              ; -------------------------------------------------------------------------
+ 397+ 021F              p126_ipc_validate_tx_frame:
+ 397+ 021F
+ 398+ 021F 22 EA 01             ld      (p126_ipc_frame_ptr),hl
+ 399+ 0222 ED 43 EC 01          ld      (p126_ipc_frame_size),bc
+ 400+ 0226 78                   ld      a,b
+ 401+ 0227 B7                   or      a
+ 402+ 0228 20 06                jr      nz,.p126_tx_min_ok
+ 403+ 022A 79                   ld      a,c
+ 404+ 022B FE 12                cp      P126_IPC_HEADER_SIZE
+ 405+ 022D DA 9E 02             jp      c,.p126_tx_bad
+ 406+ 0230              .p126_tx_min_ok:
+ 407+ 0230 78                   ld      a,b
+ 408+ 0231 FE 40                cp      #40
+ 409+ 0233 38 08                jr      c,.p126_tx_size_ok
+ 410+ 0235 C2 9E 02             jp      nz,.p126_tx_bad
+ 411+ 0238 79                   ld      a,c
+ 412+ 0239 B7                   or      a
+ 413+ 023A C2 9E 02             jp      nz,.p126_tx_bad
+ 414+ 023D              .p126_tx_size_ok:
+ 415+ 023D E5                   push    hl
+ 416+ 023E DD E1                pop     ix
+ 417+ 0240 DD 7E 00             ld      a,(ix+0)
+ 418+ 0243 FE 50                cp      'P'
+ 419+ 0245 C2 96 02             jp      nz,.p126_tx_magic
+ 420+ 0248 DD 7E 01             ld      a,(ix+1)
+ 421+ 024B FE 31                cp      '1'
+ 422+ 024D C2 96 02             jp      nz,.p126_tx_magic
+ 423+ 0250 DD 7E 02             ld      a,(ix+2)
+ 424+ 0253 FE 32                cp      '2'
+ 425+ 0255 C2 96 02             jp      nz,.p126_tx_magic
+ 426+ 0258 DD 7E 03             ld      a,(ix+3)
+ 427+ 025B FE 36                cp      '6'
+ 428+ 025D C2 96 02             jp      nz,.p126_tx_magic
+ 429+ 0260 DD 7E 04             ld      a,(ix+4)
+ 430+ 0263 FE 01                cp      P126_IPC_MAJOR
+ 431+ 0265 C2 9A 02             jp      nz,.p126_tx_version
+ 432+ 0268 DD 7E 05             ld      a,(ix+5)
+ 433+ 026B FE 01                cp      P126_IPC_MINOR
+ 434+ 026D C2 9A 02             jp      nz,.p126_tx_version
+ 435+ 0270 DD 7E 06             ld      a,(ix+6)
+ 436+ 0273 FE 01                cp      P126_MSG_REQUEST
+ 437+ 0275 C2 9E 02             jp      nz,.p126_tx_bad
+ 438+ 0278 DD 7E 09             ld      a,(ix+9)
+ 439+ 027B E6 F8                and     #F8
+ 440+ 027D C2 9E 02             jp      nz,.p126_tx_bad
+ 441+ 0280                      ; actual_size must equal header_size + declared_payload_length.
+ 442+ 0280 DD 6E 0C             ld      l,(ix+12)
+ 443+ 0283 DD 66 0D             ld      h,(ix+13)
+ 444+ 0286 11 12 00             ld      de,P126_IPC_HEADER_SIZE
+ 445+ 0289 19                   add     hl,de
+ 446+ 028A ED 5B EC 01          ld      de,(p126_ipc_frame_size)
+ 447+ 028E B7                   or      a
+ 448+ 028F ED 52                sbc     hl,de
+ 449+ 0291 C2 9E 02             jp      nz,.p126_tx_bad
+ 450+ 0294 AF                   xor     a
+ 451+ 0295 C9                   ret
+ 452+ 0296              .p126_tx_magic:
+ 453+ 0296 3E 01                ld      a,P126_STATUS_BAD_MAGIC
+ 454+ 0298 37                   scf
+ 455+ 0299 C9                   ret
+ 456+ 029A              .p126_tx_version:
+ 457+ 029A 3E 02                ld      a,P126_STATUS_BAD_VERSION
+ 458+ 029C 37                   scf
+ 459+ 029D C9                   ret
+ 460+ 029E              .p126_tx_bad:
+ 461+ 029E 3E 03                ld      a,P126_STATUS_BAD_FRAME
+ 462+ 02A0 37                   scf
+ 463+ 02A1 C9                   ret
+ 464+ 02A2
+ 465+ 02A2              ; -------------------------------------------------------------------------
+ 466+ 02A2              ; Emit a build/runtime identity to ATM's independent debug port #EF.
+ 467+ 02A2              ; Preserves AF, BC and HL.
+ 468+ 02A2              ; -------------------------------------------------------------------------
+ 469+ 02A2              p126_ipc_emit_version:
+ 469+ 02A2
+ 470+ 02A2 F5                   push    af
+ 471+ 02A3 C5                   push    bc
+ 472+ 02A4 E5                   push    hl
+ 473+ 02A5 21 BB 02             ld      hl, p126_ipc_version_text
+ 474+ 02A8 01 EF 00             ld      bc, #00EF
+ 475+ 02AB              .p126_version_loop:
+ 476+ 02AB 7E                   ld      a, (hl)
+ 477+ 02AC 23                   inc     hl
+ 478+ 02AD B7                   or      a
+ 479+ 02AE 28 04                jr      z, .p126_version_done
+ 480+ 02B0 ED 79                out     (c), a
+ 481+ 02B2 18 F7                jr      .p126_version_loop
+ 482+ 02B4              .p126_version_done:
+ 483+ 02B4 E1                   pop     hl
+ 484+ 02B5 C1                   pop     bc
+ 485+ 02B6 F1                   pop     af
+ 486+ 02B7 C9                   ret
+ 487+ 02B8
+ 488+ 02B8              ; Driver state is private to this module. Callers must not modify it.
+ 489+ 02B8 00           p126_ipc_last_status: db 0
+ 490+ 02B9 00           p126_ipc_tx_byte:     db 0
+ 491+ 02BA 00           p126_ipc_rx_byte:     db 0
+ 492+ 02BB
+ 493+ 02BB              p126_ipc_version_text:
+ 494+ 02BB 5B 50 31 32          db "[P126 ATM_IPC v0.2.0]", 13, 10, 0
+ 494+ 02BF 36 20 41 54
+ 494+ 02C3 4D 5F 49 50
+ 494+ 02C7 43 20 76 30
+ 494+ 02CB 2E 32 2E 30
+ 494+ 02CF 5D 0D 0A 00
+ 495+ 02D3
+ 496+ 02D3              ; -------------------------------------------------------------------------
+ 497+ 02D3              ; Send one complete ATM -> NeoGS ABI 1.0 frame through the ZX DMA aperture.
+ 498+ 02D3              ; IN: HL=frame, BC=exact frame size (18..16384).
+ 499+ 02D3              ; OUT: carry clear/A=0 only after NeoGS closes DMA and acknowledges #FF.
+ 500+ 02D3              ; Clobbers AF,BC,DE,HL. Leaves interrupts disabled during/after transfer.
+ 501+ 02D3              ; Source buffer remains caller-owned and must remain stable until return.
+ 502+ 02D3              ; -------------------------------------------------------------------------
+ 503+ 02D3              P126_IPC_DMA_WINDOW EQU #0000
+ 504+ 02D3              P126_IPC_DMA_END    EQU #FF
+ 505+ 02D3
+ 506+ 02D3              p126_ipc_dma_send_frame:
+ 506+ 02D3
+ 507+ 02D3                      ; Preserve the caller's frame pointer and length before any logger
+ 508+ 02D3                      ; call, because the string writer advances HL.
+ 509+ 02D3 3E 01                ld      a,1
+ 510+ 02D5 32 BE 03             ld      (p126_ipc_dma_stage),a
+ 511+ 02D8 22 BA 03             ld      (p126_ipc_dma_source),hl
+ 512+ 02DB ED 43 BC 03          ld      (p126_ipc_dma_size),bc
+ 513+ 02DF 21 C5 07             ld      hl,p126_ipc_log_dma_tx_begin
+ 514+ 02E2 CD 6E 07             call    p126_ipc_debug_string
+ 515+ 02E5 2A BA 03             ld      hl,(p126_ipc_dma_source)
+ 516+ 02E8 ED 4B BC 03          ld      bc,(p126_ipc_dma_size)
+ 517+ 02EC                      ; Match the proven Project125 host path: validate the frame envelope
+ 518+ 02EC                      ; here, but do not spend the transfer startup path recalculating the
+ 519+ 02EC                      ; complete 16 KiB CRC. The frame builder already wrote the CRC; NeoGS
+ 520+ 02EC                      ; performs the authoritative full CRC check after DMA reception.
+ 521+ 02EC CD 1F 02             call    p126_ipc_validate_tx_frame
+ 522+ 02EF 30 3A                jr      nc,.p126_dma_frame_valid
+ 523+ 02F1 32 BF 03             ld      (p126_ipc_dma_error),a
+ 524+ 02F4 F5                   push    af
+ 525+ 02F5 21 00 08             ld      hl,p126_ipc_log_dma_tx_validate_bad
+ 526+ 02F8 CD 6E 07             call    p126_ipc_debug_string
+ 527+ 02FB F1                   pop     af
+ 528+ 02FC                      ; Emit the exact rejected frame envelope so the first failing header
+ 529+ 02FC                      ; field can be identified without guessing or weakening validation.
+ 530+ 02FC CD 39 07             call    p126_ipc_debug_hex_byte
+ 531+ 02FF 21 2A 08             ld      hl,p126_ipc_log_dma_tx_bad_size
+ 532+ 0302 CD 6E 07             call    p126_ipc_debug_string
+ 533+ 0305 2A BC 03             ld      hl,(p126_ipc_dma_size)
+ 534+ 0308 7C                   ld      a,h
+ 535+ 0309 CD 39 07             call    p126_ipc_debug_hex_byte
+ 536+ 030C 7D                   ld      a,l
+ 537+ 030D CD 39 07             call    p126_ipc_debug_hex_byte
+ 538+ 0310 21 31 08             ld      hl,p126_ipc_log_dma_tx_bad_header
+ 539+ 0313 CD 6E 07             call    p126_ipc_debug_string
+ 540+ 0316 DD 2A BA 03          ld      ix,(p126_ipc_dma_source)
+ 541+ 031A 06 12                ld      b,P126_IPC_HEADER_SIZE
+ 542+ 031C              .p126_dma_bad_header_dump:
+ 543+ 031C DD 7E 00             ld      a,(ix+0)
+ 544+ 031F CD 39 07             call    p126_ipc_debug_hex_byte
+ 545+ 0322 DD 23                inc     ix
+ 546+ 0324 10 F6                djnz    .p126_dma_bad_header_dump
+ 547+ 0326 CD 5E 07             call    p126_ipc_debug_crlf
+ 548+ 0329 37                   scf
+ 549+ 032A C9                   ret
+ 550+ 032B              .p126_dma_frame_valid:
+ 551+ 032B 21 DE 07             ld      hl,p126_ipc_log_dma_tx_validate_ok
+ 552+ 032E CD 6E 07             call    p126_ipc_debug_string
+ 553+ 0331 AF                   xor     a
+ 554+ 0332 32 BF 03             ld      (p126_ipc_dma_error),a
+ 555+ 0335
+ 556+ 0335 3E 02                ld      a,2
+ 557+ 0337 32 BE 03             ld      (p126_ipc_dma_stage),a
+ 558+ 033A ED 4B BC 03          ld      bc,(p126_ipc_dma_size)
+ 559+ 033E 78                   ld      a,b
+ 560+ 033F FE 40                cp      #40
+ 561+ 0341 38 0A                jr      c,.p126_dma_size_valid
+ 562+ 0343 C2 B6 03             jp      nz,.p126_dma_bad_size
+ 563+ 0346 79                   ld      a,c
+ 564+ 0347 B7                   or      a
+ 565+ 0348 28 03                jr      z,.p126_dma_size_valid
+ 566+ 034A C3 B6 03             jp      .p126_dma_bad_size
+ 567+ 034D
+ 568+ 034D              .p126_dma_size_valid:
+ 569+ 034D 3E 03                ld      a,3
+ 570+ 034F 32 BE 03             ld      (p126_ipc_dma_stage),a
+ 571+ 0352 21 37 08             ld      hl,p126_ipc_log_dma_tx_e0
+ 572+ 0355 CD 6E 07             call    p126_ipc_debug_string
+ 573+ 0358 3E E0                ld      a,P126_CMD_HOST_FRAME
+ 574+ 035A CD 6F 00             call    p126_ipc_send_command
+ 575+ 035D 30 0A                jr      nc,.p126_dma_e0_ack
+ 576+ 035F F5                   push    af
+ 577+ 0360 21 4B 08             ld      hl,p126_ipc_log_dma_tx_e0_timeout
+ 578+ 0363 CD 6E 07             call    p126_ipc_debug_string
+ 579+ 0366 F1                   pop     af
+ 580+ 0367 37                   scf
+ 581+ 0368 C9                   ret
+ 582+ 0369              .p126_dma_e0_ack:
+ 583+ 0369 21 66 08             ld      hl,p126_ipc_log_dma_tx_ready
+ 584+ 036C CD 6E 07             call    p126_ipc_debug_string
+ 585+ 036F
+ 586+ 036F 3E 04                ld      a,4
+ 587+ 0371 32 BE 03             ld      (p126_ipc_dma_stage),a
+ 588+ 0374 F3                   di
+ 589+ 0375 21 81 08             ld      hl,p126_ipc_log_dma_tx_copy_begin
+ 590+ 0378 CD 6E 07             call    p126_ipc_debug_string
+ 591+ 037B 2A BA 03             ld      hl,(p126_ipc_dma_source)
+ 592+ 037E ED 4B BC 03          ld      bc,(p126_ipc_dma_size)
+ 593+ 0382 11 00 00             ld      de,P126_IPC_DMA_WINDOW
+ 594+ 0385 ED B0                ldir
+ 595+ 0387 21 9C 08             ld      hl,p126_ipc_log_dma_tx_copy_done
+ 596+ 038A CD 6E 07             call    p126_ipc_debug_string
+ 597+ 038D
+ 598+ 038D 3E 05                ld      a,5
+ 599+ 038F 32 BE 03             ld      (p126_ipc_dma_stage),a
+ 600+ 0392 21 B6 08             ld      hl,p126_ipc_log_dma_tx_ff
+ 601+ 0395 CD 6E 07             call    p126_ipc_debug_string
+ 602+ 0398 3E FF                ld      a,P126_IPC_DMA_END
+ 603+ 039A D3 BB                out     (P126_GSCOM),a
+ 604+ 039C CD 38 00             call    p126_ipc_wait_cbit_clear_dma
+ 605+ 039F 30 0A                jr      nc,.p126_dma_ff_ack
+ 606+ 03A1 F5                   push    af
+ 607+ 03A2 21 CA 08             ld      hl,p126_ipc_log_dma_tx_ff_timeout
+ 608+ 03A5 CD 6E 07             call    p126_ipc_debug_string
+ 609+ 03A8 F1                   pop     af
+ 610+ 03A9 37                   scf
+ 611+ 03AA C9                   ret
+ 612+ 03AB              .p126_dma_ff_ack:
+ 613+ 03AB 21 E5 08             ld      hl,p126_ipc_log_dma_tx_done
+ 614+ 03AE CD 6E 07             call    p126_ipc_debug_string
+ 615+ 03B1 AF                   xor     a
+ 616+ 03B2 32 BE 03             ld      (p126_ipc_dma_stage),a
+ 617+ 03B5 C9                   ret
+ 618+ 03B6
+ 619+ 03B6              .p126_dma_bad_size:
+ 620+ 03B6 3E 03                ld      a,P126_STATUS_BAD_FRAME
+ 621+ 03B8 37                   scf
+ 622+ 03B9 C9                   ret
+ 623+ 03BA
+ 624+ 03BA 00 00        p126_ipc_dma_source: dw 0
+ 625+ 03BC 00 00        p126_ipc_dma_size:   dw 0
+ 626+ 03BE              ; 0=success/not started, 1=local frame validation, 2=DMA size,
+ 627+ 03BE              ; 3=E0/READY handshake, 4=payload copy, 5=FF/completion acknowledgement.
+ 628+ 03BE 00           p126_ipc_dma_stage:  db 0
+ 629+ 03BF
+ 630+ 03BF 00           p126_ipc_dma_error: db 0
+ 631+ 03C0
+ 632+ 03C0              ; Reverse DMA diagnostic: NeoGS sends a CRC-protected maximum-size 16 KiB frame.
+ 633+ 03C0              ; The first memory read from the DMA aperture is discarded per hardware docs.
+ 634+ 03C0              ; Destination is the same 16 KiB page-0 buffer used by the forward test.
+ 635+ 03C0              ; Requires ROM visible at ATM 0000h..3FFFh during the reverse transfer.
+ 636+ 03C0              P126_IPC_DMA_RX_TEST_SIZE EQU P126_IPC_MAX_FRAME_SIZE
+ 637+ 03C0              P126_IPC_DMA_RX_BUFFER    EQU #C000
+ 638+ 03C0              p126_ipc_dma_receive_test:
+ 638+ 03C0
+ 639+ 03C0 3E 01                ld      a,1
+ 640+ 03C2 32 65 04             ld      (p126_ipc_dma_rx_stage),a
+ 641+ 03C5 21 01 09             ld      hl,p126_ipc_log_dma_rx_begin
+ 642+ 03C8 CD 6E 07             call    p126_ipc_debug_string
+ 643+ 03CB 3E E1                ld      a,P126_CMD_NGS_FRAME
+ 644+ 03CD CD 6F 00             call    p126_ipc_send_command
+ 645+ 03D0 30 05                jr      nc,.rx_ready
+ 646+ 03D2 3E 01                ld      a,1
+ 647+ 03D4 C3 51 04             jp      .rx_failed
+ 648+ 03D7              .rx_ready:
+ 649+ 03D7                      ; Project125 disables IM1 before the first ROM-aperture read; an
+ 650+ 03D7                      ; interrupt would fetch NeoGS DMA bytes at #0038h instead of ROM.
+ 651+ 03D7 F3                   di
+ 652+ 03D8 21 00 00             ld      hl,0
+ 653+ 03DB 7E                   ld      a,(hl)                  ; required discarded first read
+ 654+ 03DC 21 00 00             ld      hl,0
+ 655+ 03DF 11 00 C0             ld      de,P126_IPC_DMA_RX_BUFFER
+ 656+ 03E2 01 00 40             ld      bc,P126_IPC_DMA_RX_TEST_SIZE
+ 657+ 03E5 ED B0                ldir
+ 658+ 03E7 21 24 09             ld      hl,p126_ipc_log_dma_rx_copy_done
+ 659+ 03EA CD 6E 07             call    p126_ipc_debug_string
+ 660+ 03ED 3E FF                ld      a,P126_CMD_DMA_END
+ 661+ 03EF CD 6F 00             call    p126_ipc_send_command
+ 662+ 03F2 30 05                jr      nc,.rx_end_ack
+ 663+ 03F4 3E 02                ld      a,2
+ 664+ 03F6 C3 51 04             jp      .rx_failed
+ 665+ 03F9              .rx_end_ack:
+ 666+ 03F9 3E 02                ld      a,2
+ 667+ 03FB 32 65 04             ld      (p126_ipc_dma_rx_stage),a
+ 668+ 03FE 21 00 C0             ld      hl,P126_IPC_DMA_RX_BUFFER
+ 669+ 0401 01 00 40             ld      bc,P126_IPC_DMA_RX_TEST_SIZE
+ 670+ 0404 CD B6 00             call    p126_ipc_validate_frame
+ 671+ 0407 30 14                jr      nc,.rx_crc_ok
+ 672+ 0409 32 66 04             ld      (p126_ipc_dma_rx_error),a
+ 673+ 040C 21 68 09             ld      hl,p126_ipc_log_dma_rx_crc_bad
+ 674+ 040F CD 6E 07             call    p126_ipc_debug_string
+ 675+ 0412 3A 66 04             ld      a,(p126_ipc_dma_rx_error)
+ 676+ 0415 CD 39 07             call    p126_ipc_debug_hex_byte
+ 677+ 0418 CD 5E 07             call    p126_ipc_debug_crlf
+ 678+ 041B 37                   scf
+ 679+ 041C C9                   ret
+ 680+ 041D              .rx_crc_ok:
+ 681+ 041D 21 45 09             ld      hl,p126_ipc_log_dma_rx_crc_ok
+ 682+ 0420 CD 6E 07             call    p126_ipc_debug_string
+ 683+ 0423 21 12 C0             ld      hl,P126_IPC_DMA_RX_BUFFER+P126_IPC_HEADER_SIZE
+ 684+ 0426 01 EE 3F             ld      bc,P126_IPC_MAX_PAYLOAD
+ 685+ 0429 1E 00                ld      e,0
+ 686+ 042B              .rx_pattern:
+ 687+ 042B 7B                   ld      a,e
+ 688+ 042C BE                   cp      (hl)
+ 689+ 042D 20 15                jr      nz,.rx_pattern_bad
+ 690+ 042F 23                   inc     hl
+ 691+ 0430 1C                   inc     e
+ 692+ 0431 0B                   dec     bc
+ 693+ 0432 78                   ld      a,b
+ 694+ 0433 B1                   or      c
+ 695+ 0434 20 F5                jr      nz,.rx_pattern
+ 696+ 0436 21 99 09             ld      hl,p126_ipc_log_dma_rx_pattern_ok
+ 697+ 0439 CD 6E 07             call    p126_ipc_debug_string
+ 698+ 043C AF                   xor     a
+ 699+ 043D 32 65 04             ld      (p126_ipc_dma_rx_stage),a
+ 700+ 0440 32 66 04             ld      (p126_ipc_dma_rx_error),a
+ 701+ 0443 C9                   ret
+ 702+ 0444              .rx_pattern_bad:
+ 703+ 0444 3E 03                ld      a,3
+ 704+ 0446 32 66 04             ld      (p126_ipc_dma_rx_error),a
+ 705+ 0449 21 BD 09             ld      hl,p126_ipc_log_dma_rx_pattern_bad
+ 706+ 044C CD 6E 07             call    p126_ipc_debug_string
+ 707+ 044F 37                   scf
+ 708+ 0450 C9                   ret
+ 709+ 0451              .rx_failed:
+ 710+ 0451 32 66 04             ld      (p126_ipc_dma_rx_error),a
+ 711+ 0454 21 DD 09             ld      hl,p126_ipc_log_dma_rx_transport_bad
+ 712+ 0457 CD 6E 07             call    p126_ipc_debug_string
+ 713+ 045A 3A 66 04             ld      a,(p126_ipc_dma_rx_error)
+ 714+ 045D CD 39 07             call    p126_ipc_debug_hex_byte
+ 715+ 0460 CD 5E 07             call    p126_ipc_debug_crlf
+ 716+ 0463 37                   scf
+ 717+ 0464 C9                   ret
+ 718+ 0465 00           p126_ipc_dma_rx_stage: db 0
+ 719+ 0466 00           p126_ipc_dma_rx_error: db 0
+ 720+ 0467
+ 721+ 0467              ; -------------------------------------------------------------------------
+ 722+ 0467              ; Receive and render the one-shot 8086 BIOS stop event.
+ 723+ 0467              ; The request is the existing E1 reverse-DMA control command. Payload bytes
+ 724+ 0467              ; travel only through ZX DMA; DBIT/GSDAT are not used for diagnostics.
+ 725+ 0467              ; OUT: carry clear when a valid event frame was rendered.
+ 726+ 0467              ; -------------------------------------------------------------------------
+ 727+ 0467              p126_ipc_dma_receive_debug_frame:
+ 727+ 0467
+ 728+ 0467 3E E1                ld      a,P126_CMD_NGS_FRAME
+ 729+ 0469 CD 6F 00             call    p126_ipc_send_command
+ 730+ 046C DA 13 05             jp      c,.debug_dma_failed
+ 731+ 046F
+ 732+ 046F                      ; Reverse DMA reads the complete 16 KiB frame from the ROM aperture.
+ 733+ 046F                      ; The first aperture read is discarded by the documented GS ABI.
+ 734+ 046F F3                   di
+ 735+ 0470 21 00 00             ld      hl,0
+ 736+ 0473 7E                   ld      a,(hl)
+ 737+ 0474 21 00 00             ld      hl,0
+ 738+ 0477 11 00 C0             ld      de,P126_IPC_DMA_RX_BUFFER
+ 739+ 047A 01 00 40             ld      bc,P126_IPC_MAX_FRAME_SIZE
+ 740+ 047D ED B0                ldir
+ 741+ 047F
+ 742+ 047F 3E FF                ld      a,P126_CMD_DMA_END
+ 743+ 0481 CD 6F 00             call    p126_ipc_send_command
+ 744+ 0484 DA 13 05             jp      c,.debug_dma_failed
+ 745+ 0487
+ 746+ 0487 21 00 C0             ld      hl,P126_IPC_DMA_RX_BUFFER
+ 747+ 048A 01 00 40             ld      bc,P126_IPC_MAX_FRAME_SIZE
+ 748+ 048D CD B6 00             call    p126_ipc_validate_frame
+ 749+ 0490 DA 13 05             jp      c,.debug_dma_failed
+ 750+ 0493
+ 751+ 0493                      ; Decode the compact stop event from the first five payload bytes.
+ 752+ 0493 3A 12 C0             ld      a,(P126_IPC_DMA_RX_BUFFER+P126_IPC_HEADER_SIZE)
+ 753+ 0496 FE 01                cp      1
+ 754+ 0498 28 47                jr      z,.debug_budget
+ 755+ 049A FE 02                cp      2
+ 756+ 049C 28 48                jr      z,.debug_halted
+ 757+ 049E FE 03                cp      3
+ 758+ 04A0 28 49                jr      z,.debug_fault
+ 759+ 04A2 FE 04                cp      4
+ 760+ 04A4 28 4A                jr      z,.debug_reset_fault
+ 761+ 04A6                      ; Unknown event payload is not a CPU register snapshot. Report
+ 762+ 04A6                      ; the actual frame envelope and first payload bytes instead of
+ 763+ 04A6                      ; misleadingly formatting arbitrary data as CS:IP.
+ 764+ 04A6 21 B3 06             ld      hl,p126_ipc_debug_event_missing
+ 765+ 04A9 CD C8 05             call    p126_ipc_console_string
+ 766+ 04AC 3A 06 C0             ld      a,(P126_IPC_DMA_RX_BUFFER+6)
+ 767+ 04AF CD FC 05             call    p126_ipc_console_hex_byte
+ 768+ 04B2 3A 07 C0             ld      a,(P126_IPC_DMA_RX_BUFFER+7)
+ 769+ 04B5 CD FC 05             call    p126_ipc_console_hex_byte
+ 770+ 04B8 3A 08 C0             ld      a,(P126_IPC_DMA_RX_BUFFER+8)
+ 771+ 04BB CD FC 05             call    p126_ipc_console_hex_byte
+ 772+ 04BE 3E 3A                ld      a,':'
+ 773+ 04C0 CD 09 0A             call    BIOS_DebugConsole_PrintChar
+ 774+ 04C3 3A 12 C0             ld      a,(P126_IPC_DMA_RX_BUFFER+P126_IPC_HEADER_SIZE)
+ 775+ 04C6 CD FC 05             call    p126_ipc_console_hex_byte
+ 776+ 04C9 3A 13 C0             ld      a,(P126_IPC_DMA_RX_BUFFER+P126_IPC_HEADER_SIZE+1)
+ 777+ 04CC CD FC 05             call    p126_ipc_console_hex_byte
+ 778+ 04CF 3A 14 C0             ld      a,(P126_IPC_DMA_RX_BUFFER+P126_IPC_HEADER_SIZE+2)
+ 779+ 04D2 CD FC 05             call    p126_ipc_console_hex_byte
+ 780+ 04D5 3E 0D                ld      a,13
+ 781+ 04D7 CD 09 0A             call    BIOS_DebugConsole_PrintChar
+ 782+ 04DA 3E 0A                ld      a,10
+ 783+ 04DC CD 09 0A             call    BIOS_DebugConsole_PrintChar
+ 784+ 04DF B7                   or      a
+ 785+ 04E0 C9                   ret
+ 786+ 04E1              .debug_budget:
+ 787+ 04E1 21 FD 05             ld      hl,p126_ipc_debug_budget
+ 788+ 04E4 18 0D                jr      .debug_render
+ 789+ 04E6              .debug_halted:
+ 790+ 04E6 21 36 06             ld      hl,p126_ipc_debug_halted
+ 791+ 04E9 18 08                jr      .debug_render
+ 792+ 04EB              .debug_fault:
+ 793+ 04EB 21 59 06             ld      hl,p126_ipc_debug_fault
+ 794+ 04EE 18 03                jr      .debug_render
+ 795+ 04F0              .debug_reset_fault:
+ 796+ 04F0 21 8C 06             ld      hl,p126_ipc_debug_reset_fault
+ 797+ 04F3              .debug_render:
+ 798+ 04F3 CD C8 05             call    p126_ipc_console_string
+ 799+ 04F6 2A 13 C0             ld      hl,(P126_IPC_DMA_RX_BUFFER+P126_IPC_HEADER_SIZE+1)
+ 800+ 04F9 CD D3 05             call    p126_ipc_console_hex16
+ 801+ 04FC 3E 3A                ld      a,':'
+ 802+ 04FE CD 09 0A             call    BIOS_DebugConsole_PrintChar
+ 803+ 0501 2A 15 C0             ld      hl,(P126_IPC_DMA_RX_BUFFER+P126_IPC_HEADER_SIZE+3)
+ 804+ 0504 CD D3 05             call    p126_ipc_console_hex16
+ 805+ 0507 3E 0D                ld      a,13
+ 806+ 0509 CD 09 0A             call    BIOS_DebugConsole_PrintChar
+ 807+ 050C 3E 0A                ld      a,10
+ 808+ 050E CD 09 0A             call    BIOS_DebugConsole_PrintChar
+ 809+ 0511 B7                   or      a
+ 810+ 0512 C9                   ret
+ 811+ 0513
+ 812+ 0513              .debug_dma_failed:
+ 813+ 0513 21 DA 06             ld      hl,p126_ipc_debug_dma_failed
+ 814+ 0516 CD C8 05             call    p126_ipc_console_string
+ 815+ 0519 37                   scf
+ 816+ 051A C9                   ret
+ 817+ 051B
+ 818+ 051B              ; Request one converted frame from NeoGS and apply the RG6 text payload
+ 819+ 051B              ; to the ATM's active page7/page3 text memory.
+ 820+ 051B              p126_ipc_dma_receive_video_frame:
+ 820+ 051B
+ 821+ 051B 3A 06 0A             ld      a,(p126_atm_video_mode)
+ 822+ 051E FE 06                cp      P126_ATM_VIDEO_MODE_RG6_TEXT80X25
+ 823+ 0520 C2 72 05             jp      nz,.video_bad_host_mode
+ 824+ 0523 3E E4                ld      a,P126_CMD_NGS_VIDEO_FRAME
+ 825+ 0525 CD 6F 00             call    p126_ipc_send_command
+ 826+ 0528 DA 76 05             jp      c,.video_command_timeout
+ 827+ 052B
+ 828+ 052B F3                   di
+ 829+ 052C 21 00 00             ld      hl,0
+ 830+ 052F 7E                   ld      a,(hl)
+ 831+ 0530 21 00 00             ld      hl,0
+ 832+ 0533 11 00 C0             ld      de,P126_IPC_DMA_RX_BUFFER
+ 833+ 0536 01 00 40             ld      bc,P126_IPC_MAX_FRAME_SIZE
+ 834+ 0539 ED B0                ldir
+ 835+ 053B
+ 836+ 053B 3E FF                ld      a,P126_CMD_DMA_END
+ 837+ 053D CD 6F 00             call    p126_ipc_send_command
+ 838+ 0540 38 38                jr      c,.video_dma_end_timeout
+ 839+ 0542
+ 840+ 0542 21 00 C0             ld      hl,P126_IPC_DMA_RX_BUFFER
+ 841+ 0545 01 00 40             ld      bc,P126_IPC_MAX_FRAME_SIZE
+ 842+ 0548 CD B6 00             call    p126_ipc_validate_frame
+ 843+ 054B 38 31                jr      c,.video_bad_frame
+ 844+ 054D 3A 07 C0             ld      a,(P126_IPC_DMA_RX_BUFFER+7)
+ 845+ 0550 FE 02                cp      P126_SERVICE_VIDEO
+ 846+ 0552 20 2E                jr      nz,.video_bad_service
+ 847+ 0554 3A 08 C0             ld      a,(P126_IPC_DMA_RX_BUFFER+8)
+ 848+ 0557 FE 02                cp      P126_OP_VIDEO_FRAME
+ 849+ 0559 20 2B                jr      nz,.video_bad_operation
+ 850+ 055B
+ 851+ 055B                      ; Header bytes 14..15 are STATUS (not reserved bytes).
+ 852+ 055B 3A 0E C0             ld      a,(P126_IPC_DMA_RX_BUFFER+14)
+ 853+ 055E 47                   ld      b,a
+ 854+ 055F 3A 0F C0             ld      a,(P126_IPC_DMA_RX_BUFFER+15)
+ 855+ 0562 B0                   or      b
+ 856+ 0563 20 25                jr      nz,.video_remote_error
+ 857+ 0565
+ 858+ 0565 CD 07 0A             call    p126_screen_apply_text_frame
+ 859+ 0568 38 24                jr      c,.video_apply_failed
+ 860+ 056A 21 F8 06             ld      hl,p126_ipc_video_frame_applied
+ 861+ 056D CD C8 05             call    p126_ipc_console_string
+ 862+ 0570 B7                   or      a
+ 863+ 0571 C9                   ret
+ 864+ 0572
+ 865+ 0572              .video_bad_host_mode:
+ 866+ 0572 3E 01                ld      a,#01
+ 867+ 0574 18 1A                jr      .video_report_failure
+ 868+ 0576              .video_command_timeout:
+ 869+ 0576 3E 02                ld      a,#02
+ 870+ 0578 18 16                jr      .video_report_failure
+ 871+ 057A              .video_dma_end_timeout:
+ 872+ 057A 3E 03                ld      a,#03
+ 873+ 057C 18 12                jr      .video_report_failure
+ 874+ 057E              .video_bad_frame:
+ 875+ 057E 3E 04                ld      a,#04
+ 876+ 0580 18 0E                jr      .video_report_failure
+ 877+ 0582              .video_bad_service:
+ 878+ 0582 3E 05                ld      a,#05
+ 879+ 0584 18 0A                jr      .video_report_failure
+ 880+ 0586              .video_bad_operation:
+ 881+ 0586 3E 06                ld      a,#06
+ 882+ 0588 18 06                jr      .video_report_failure
+ 883+ 058A              .video_remote_error:
+ 884+ 058A 3E 07                ld      a,#07
+ 885+ 058C 18 02                jr      .video_report_failure
+ 886+ 058E              .video_apply_failed:
+ 887+ 058E 3E 08                ld      a,#08
+ 888+ 0590              .video_report_failure:
+ 889+ 0590 32 C7 05             ld      (p126_ipc_video_failure_code),a
+ 890+ 0593 21 14 07             ld      hl,p126_ipc_video_dma_failed
+ 891+ 0596 CD C8 05             call    p126_ipc_console_string
+ 892+ 0599 3A C7 05             ld      a,(p126_ipc_video_failure_code)
+ 893+ 059C CD FC 05             call    p126_ipc_console_hex_byte
+ 894+ 059F 3E 3A                ld      a,':'
+ 895+ 05A1 CD 09 0A             call    BIOS_DebugConsole_PrintChar
+ 896+ 05A4 3A 0E C0             ld      a,(P126_IPC_DMA_RX_BUFFER+14)
+ 897+ 05A7 CD FC 05             call    p126_ipc_console_hex_byte
+ 898+ 05AA 3A 0F C0             ld      a,(P126_IPC_DMA_RX_BUFFER+15)
+ 899+ 05AD CD FC 05             call    p126_ipc_console_hex_byte
+ 900+ 05B0 3E 3A                ld      a,':'
+ 901+ 05B2 CD 09 0A             call    BIOS_DebugConsole_PrintChar
+ 902+ 05B5 3A 12 C0             ld      a,(P126_IPC_DMA_RX_BUFFER+P126_IPC_HEADER_SIZE)
+ 903+ 05B8 CD FC 05             call    p126_ipc_console_hex_byte
+ 904+ 05BB 3E 0D                ld      a,13
+ 905+ 05BD CD 09 0A             call    BIOS_DebugConsole_PrintChar
+ 906+ 05C0 3E 0A                ld      a,10
+ 907+ 05C2 CD 09 0A             call    BIOS_DebugConsole_PrintChar
+ 908+ 05C5 37                   scf
+ 909+ 05C6 C9                   ret
+ 910+ 05C7
+ 911+ 05C7 00           p126_ipc_video_failure_code: db 0
+ 912+ 05C8
+ 913+ 05C8              p126_ipc_console_string:
+ 914+ 05C8 7E                   ld      a,(hl)
+ 915+ 05C9 B7                   or      a
+ 916+ 05CA C8                   ret     z
+ 917+ 05CB E5                   push    hl
+ 918+ 05CC CD 09 0A             call    BIOS_DebugConsole_PrintChar
+ 919+ 05CF E1                   pop     hl
+ 920+ 05D0 23                   inc     hl
+ 921+ 05D1 18 F5                jr      p126_ipc_console_string
+ 922+ 05D3
+ 923+ 05D3              p126_ipc_console_hex16:
+ 924+ 05D3 7C                   ld      a,h
+ 925+ 05D4 CD DB 05             call    p126_ipc_console_hex8
+ 926+ 05D7 7D                   ld      a,l
+ 927+ 05D8 C3 DB 05             jp      p126_ipc_console_hex8
+ 928+ 05DB
+ 929+ 05DB              p126_ipc_console_hex8:
+ 930+ 05DB 32 FC 05             ld      (p126_ipc_console_hex_byte),a
+ 931+ 05DE 0F                   rrca
+ 932+ 05DF 0F                   rrca
+ 933+ 05E0 0F                   rrca
+ 934+ 05E1 0F                   rrca
+ 935+ 05E2 E6 0F                and     #0F
+ 936+ 05E4 CD EF 05             call    p126_ipc_console_hex_nibble
+ 937+ 05E7 3A FC 05             ld      a,(p126_ipc_console_hex_byte)
+ 938+ 05EA E6 0F                and     #0F
+ 939+ 05EC C3 EF 05             jp      p126_ipc_console_hex_nibble
+ 940+ 05EF
+ 941+ 05EF              p126_ipc_console_hex_nibble:
+ 942+ 05EF E6 0F                and     #0F
+ 943+ 05F1 C6 30                add     a,'0'
+ 944+ 05F3 FE 3A                cp      '9'+1
+ 945+ 05F5 38 02                jr      c,.console_hex_emit
+ 946+ 05F7 C6 07                add     a,7
+ 947+ 05F9              .console_hex_emit:
+ 948+ 05F9 C3 09 0A             jp      BIOS_DebugConsole_PrintChar
+ 949+ 05FC
+ 950+ 05FC 00           p126_ipc_console_hex_byte: db 0
+ 951+ 05FD 5B 58 38 36  p126_ipc_debug_budget: db "[X86] BIOS PAUSED: 16-INSTRUCTION SLICE COMPLETE; CS:IP=",0
+ 951+ 0601 5D 20 42 49
+ 951+ 0605 4F 53 20 50
+ 951+ 0609 41 55 53 45
+ 951+ 060D 44 3A 20 31
+ 951+ 0611 36 2D 49 4E
+ 951+ 0615 53 54 52 55
+ 951+ 0619 43 54 49 4F
+ 951+ 061D 4E 20 53 4C
+ 951+ 0621 49 43 45 20
+ 951+ 0625 43 4F 4D 50
+ 951+ 0629 4C 45 54 45
+ 951+ 062D 3B 20 43 53
+ 951+ 0631 3A 49 50 3D
+ 951+ 0635 00
+ 952+ 0636 5B 58 38 36  p126_ipc_debug_halted: db "[X86] BIOS HALTED BY GUEST; CS:IP=",0
+ 952+ 063A 5D 20 42 49
+ 952+ 063E 4F 53 20 48
+ 952+ 0642 41 4C 54 45
+ 952+ 0646 44 20 42 59
+ 952+ 064A 20 47 55 45
+ 952+ 064E 53 54 3B 20
+ 952+ 0652 43 53 3A 49
+ 952+ 0656 50 3D 00
+ 953+ 0659 5B 58 38 36  p126_ipc_debug_fault: db "[X86] BIOS STOPPED: OPCODE OR MEMORY FAULT; CS:IP=",0
+ 953+ 065D 5D 20 42 49
+ 953+ 0661 4F 53 20 53
+ 953+ 0665 54 4F 50 50
+ 953+ 0669 45 44 3A 20
+ 953+ 066D 4F 50 43 4F
+ 953+ 0671 44 45 20 4F
+ 953+ 0675 52 20 4D 45
+ 953+ 0679 4D 4F 52 59
+ 953+ 067D 20 46 41 55
+ 953+ 0681 4C 54 3B 20
+ 953+ 0685 43 53 3A 49
+ 953+ 0689 50 3D 00
+ 954+ 068C 5B 58 38 36  p126_ipc_debug_reset_fault: db "[X86] BIOS RESET VECTOR FAILED; CS:IP=",0
+ 954+ 0690 5D 20 42 49
+ 954+ 0694 4F 53 20 52
+ 954+ 0698 45 53 45 54
+ 954+ 069C 20 56 45 43
+ 954+ 06A0 54 4F 52 20
+ 954+ 06A4 46 41 49 4C
+ 954+ 06A8 45 44 3B 20
+ 954+ 06AC 43 53 3A 49
+ 954+ 06B0 50 3D 00
+ 955+ 06B3 5B 58 38 36  p126_ipc_debug_event_missing: db "[X86] BIOS TRACE EVENT INVALID; FRAME=",0
+ 955+ 06B7 5D 20 42 49
+ 955+ 06BB 4F 53 20 54
+ 955+ 06BF 52 41 43 45
+ 955+ 06C3 20 45 56 45
+ 955+ 06C7 4E 54 20 49
+ 955+ 06CB 4E 56 41 4C
+ 955+ 06CF 49 44 3B 20
+ 955+ 06D3 46 52 41 4D
+ 955+ 06D7 45 3D 00
+ 956+ 06DA 5B 58 38 36  p126_ipc_debug_dma_failed: db "[X86] DIAGNOSTIC DMA FAILED",13,10,0
+ 956+ 06DE 5D 20 44 49
+ 956+ 06E2 41 47 4E 4F
+ 956+ 06E6 53 54 49 43
+ 956+ 06EA 20 44 4D 41
+ 956+ 06EE 20 46 41 49
+ 956+ 06F2 4C 45 44 0D
+ 956+ 06F6 0A 00
+ 957+ 06F8 5B 56 49 44  p126_ipc_video_frame_applied: db "[VIDEO] RG6 FRAME APPLIED",13,10,0
+ 957+ 06FC 45 4F 5D 20
+ 957+ 0700 52 47 36 20
+ 957+ 0704 46 52 41 4D
+ 957+ 0708 45 20 41 50
+ 957+ 070C 50 4C 49 45
+ 957+ 0710 44 0D 0A 00
+ 958+ 0714 5B 56 49 44  p126_ipc_video_dma_failed: db "[VIDEO] FRAME RECEIVE/APPLY FAILED",13,10,0
+ 958+ 0718 45 4F 5D 20
+ 958+ 071C 46 52 41 4D
+ 958+ 0720 45 20 52 45
+ 958+ 0724 43 45 49 56
+ 958+ 0728 45 2F 41 50
+ 958+ 072C 50 4C 59 20
+ 958+ 0730 46 41 49 4C
+ 958+ 0734 45 44 0D 0A
+ 958+ 0738 00
+ 959+ 0739
+ 960+ 0739              ; Print A as two hexadecimal digits on ATM's independent #EF stream.
+ 961+ 0739              ; Preserves AF and BC.
+ 962+ 0739              p126_ipc_debug_hex_byte:
+ 963+ 0739 F5                   push    af
+ 964+ 073A C5                   push    bc
+ 965+ 073B 0F                   rrca
+ 966+ 073C 0F                   rrca
+ 967+ 073D 0F                   rrca
+ 968+ 073E 0F                   rrca
+ 969+ 073F CD 4C 07             call    p126_ipc_debug_hex_nibble
+ 970+ 0742 C1                   pop     bc
+ 971+ 0743 F1                   pop     af
+ 972+ 0744 F5                   push    af
+ 973+ 0745 E6 0F                and     #0F
+ 974+ 0747 CD 4C 07             call    p126_ipc_debug_hex_nibble
+ 975+ 074A F1                   pop     af
+ 976+ 074B C9                   ret
+ 977+ 074C
+ 978+ 074C              p126_ipc_debug_hex_nibble:
+ 979+ 074C E6 0F                and     #0F
+ 980+ 074E C6 30                add     a,'0'
+ 981+ 0750 FE 3A                cp      '9'+1
+ 982+ 0752 38 02                jr      c,.p126_ipc_debug_hex_emit
+ 983+ 0754 C6 07                add     a,7
+ 984+ 0756              .p126_ipc_debug_hex_emit:
+ 985+ 0756 C5                   push    bc
+ 986+ 0757 01 EF 00             ld      bc,#00EF
+ 987+ 075A ED 79                out     (c),a
+ 988+ 075C C1                   pop     bc
+ 989+ 075D C9                   ret
+ 990+ 075E
+ 991+ 075E              ; Emit CR/LF on ATM's independent #EF debug channel.
+ 992+ 075E              p126_ipc_debug_crlf:
+ 993+ 075E F5                   push    af
+ 994+ 075F C5                   push    bc
+ 995+ 0760 01 EF 00             ld      bc,#00EF
+ 996+ 0763 3E 0D                ld      a,13
+ 997+ 0765 ED 79                out     (c),a
+ 998+ 0767 3E 0A                ld      a,10
+ 999+ 0769 ED 79                out     (c),a
+1000+ 076B C1                   pop     bc
+1001+ 076C F1                   pop     af
+1002+ 076D C9                   ret
+1003+ 076E
+1004+ 076E              ; ATM-local trace output, on ATM's own physical #EF stream.
+1005+ 076E              ; IN: HL=zero-terminated string. Preserves AF/BC; clobbers HL.
+1006+ 076E              p126_ipc_debug_string:
+1007+ 076E F5                   push    af
+1008+ 076F C5                   push    bc
+1009+ 0770 01 EF 00             ld      bc,#00EF
+1010+ 0773              .p126_ipc_debug_loop:
+1011+ 0773 7E                   ld      a,(hl)
+1012+ 0774 23                   inc     hl
+1013+ 0775 B7                   or      a
+1014+ 0776 28 04                jr      z,.p126_ipc_debug_done
+1015+ 0778 ED 79                out     (c),a
+1016+ 077A 18 F7                jr      .p126_ipc_debug_loop
+1017+ 077C              .p126_ipc_debug_done:
+1018+ 077C C1                   pop     bc
+1019+ 077D F1                   pop     af
+1020+ 077E C9                   ret
+1021+ 077F
+1022+ 077F 5B 41 54 4D  p126_ipc_log_crc_calculated:      db "[ATM IPC] CRC CALCULATED=",0
+1022+ 0783 20 49 50 43
+1022+ 0787 5D 20 43 52
+1022+ 078B 43 20 43 41
+1022+ 078F 4C 43 55 4C
+1022+ 0793 41 54 45 44
+1022+ 0797 3D 00
+1023+ 0799 20 46 52 41  p126_ipc_log_crc_expected:        db " FRAME CRC=",0
+1023+ 079D 4D 45 20 43
+1023+ 07A1 52 43 3D 00
+1024+ 07A5 5B 41 54 4D  p126_ipc_log_bad_magic_ptr: db "[ATM IPC] BAD MAGIC PTR=",0
+1024+ 07A9 20 49 50 43
+1024+ 07AD 5D 20 42 41
+1024+ 07B1 44 20 4D 41
+1024+ 07B5 47 49 43 20
+1024+ 07B9 50 54 52 3D
+1024+ 07BD 00
+1025+ 07BE 20 44 41 54  p126_ipc_log_bad_magic_data: db " DATA=",0
+1025+ 07C2 41 3D 00
+1026+ 07C5 5B 41 54 4D  p126_ipc_log_dma_tx_begin:        db "[ATM IPC] DMA TX BEGIN",13,10,0
+1026+ 07C9 20 49 50 43
+1026+ 07CD 5D 20 44 4D
+1026+ 07D1 41 20 54 58
+1026+ 07D5 20 42 45 47
+1026+ 07D9 49 4E 0D 0A
+1026+ 07DD 00
+1027+ 07DE 5B 41 54 4D  p126_ipc_log_dma_tx_validate_ok:  db "[ATM IPC] FRAME STRUCTURE VALID",13,10,0
+1027+ 07E2 20 49 50 43
+1027+ 07E6 5D 20 46 52
+1027+ 07EA 41 4D 45 20
+1027+ 07EE 53 54 52 55
+1027+ 07F2 43 54 55 52
+1027+ 07F6 45 20 56 41
+1027+ 07FA 4C 49 44 0D
+1027+ 07FE 0A 00
+1028+ 0800 5B 41 54 4D  p126_ipc_log_dma_tx_validate_bad: db "[ATM IPC] FRAME STRUCTURE INVALID status=",0
+1028+ 0804 20 49 50 43
+1028+ 0808 5D 20 46 52
+1028+ 080C 41 4D 45 20
+1028+ 0810 53 54 52 55
+1028+ 0814 43 54 55 52
+1028+ 0818 45 20 49 4E
+1028+ 081C 56 41 4C 49
+1028+ 0820 44 20 73 74
+1028+ 0824 61 74 75 73
+1028+ 0828 3D 00
+1029+ 082A 20 73 69 7A  p126_ipc_log_dma_tx_bad_size:    db " size=",0
+1029+ 082E 65 3D 00
+1030+ 0831 20 68 64 72  p126_ipc_log_dma_tx_bad_header:  db " hdr=",0
+1030+ 0835 3D 00
+1031+ 0837 5B 41 54 4D  p126_ipc_log_dma_tx_e0:           db "[ATM IPC] SEND E0",13,10,0
+1031+ 083B 20 49 50 43
+1031+ 083F 5D 20 53 45
+1031+ 0843 4E 44 20 45
+1031+ 0847 30 0D 0A 00
+1032+ 084B 5B 41 54 4D  p126_ipc_log_dma_tx_e0_timeout:   db "[ATM IPC] E0 ACK TIMEOUT",13,10,0
+1032+ 084F 20 49 50 43
+1032+ 0853 5D 20 45 30
+1032+ 0857 20 41 43 4B
+1032+ 085B 20 54 49 4D
+1032+ 085F 45 4F 55 54
+1032+ 0863 0D 0A 00
+1033+ 0866 5B 41 54 4D  p126_ipc_log_dma_tx_ready:        db "[ATM IPC] E0 ACK / READY",13,10,0
+1033+ 086A 20 49 50 43
+1033+ 086E 5D 20 45 30
+1033+ 0872 20 41 43 4B
+1033+ 0876 20 2F 20 52
+1033+ 087A 45 41 44 59
+1033+ 087E 0D 0A 00
+1034+ 0881 5B 41 54 4D  p126_ipc_log_dma_tx_copy_begin:   db "[ATM IPC] DMA COPY BEGIN",13,10,0
+1034+ 0885 20 49 50 43
+1034+ 0889 5D 20 44 4D
+1034+ 088D 41 20 43 4F
+1034+ 0891 50 59 20 42
+1034+ 0895 45 47 49 4E
+1034+ 0899 0D 0A 00
+1035+ 089C 5B 41 54 4D  p126_ipc_log_dma_tx_copy_done:    db "[ATM IPC] DMA COPY DONE",13,10,0
+1035+ 08A0 20 49 50 43
+1035+ 08A4 5D 20 44 4D
+1035+ 08A8 41 20 43 4F
+1035+ 08AC 50 59 20 44
+1035+ 08B0 4F 4E 45 0D
+1035+ 08B4 0A 00
+1036+ 08B6 5B 41 54 4D  p126_ipc_log_dma_tx_ff:           db "[ATM IPC] SEND FF",13,10,0
+1036+ 08BA 20 49 50 43
+1036+ 08BE 5D 20 53 45
+1036+ 08C2 4E 44 20 46
+1036+ 08C6 46 0D 0A 00
+1037+ 08CA 5B 41 54 4D  p126_ipc_log_dma_tx_ff_timeout:   db "[ATM IPC] FF ACK TIMEOUT",13,10,0
+1037+ 08CE 20 49 50 43
+1037+ 08D2 5D 20 46 46
+1037+ 08D6 20 41 43 4B
+1037+ 08DA 20 54 49 4D
+1037+ 08DE 45 4F 55 54
+1037+ 08E2 0D 0A 00
+1038+ 08E5 5B 41 54 4D  p126_ipc_log_dma_tx_done:         db "[ATM IPC] DMA TX COMPLETE",13,10,0
+1038+ 08E9 20 49 50 43
+1038+ 08ED 5D 20 44 4D
+1038+ 08F1 41 20 54 58
+1038+ 08F5 20 43 4F 4D
+1038+ 08F9 50 4C 45 54
+1038+ 08FD 45 0D 0A 00
+1039+ 0901 5B 41 54 4D  p126_ipc_log_dma_rx_begin:        db "[ATM IPC] DMA RX MAX FRAME BEGIN",13,10,0
+1039+ 0905 20 49 50 43
+1039+ 0909 5D 20 44 4D
+1039+ 090D 41 20 52 58
+1039+ 0911 20 4D 41 58
+1039+ 0915 20 46 52 41
+1039+ 0919 4D 45 20 42
+1039+ 091D 45 47 49 4E
+1039+ 0921 0D 0A 00
+1040+ 0924 5B 41 54 4D  p126_ipc_log_dma_rx_copy_done:    db "[ATM IPC] DMA RX 16K COPY DONE",13,10,0
+1040+ 0928 20 49 50 43
+1040+ 092C 5D 20 44 4D
+1040+ 0930 41 20 52 58
+1040+ 0934 20 31 36 4B
+1040+ 0938 20 43 4F 50
+1040+ 093C 59 20 44 4F
+1040+ 0940 4E 45 0D 0A
+1040+ 0944 00
+1041+ 0945 5B 41 54 4D  p126_ipc_log_dma_rx_crc_ok:       db "[ATM IPC] DMA RX FRAME CRC VALID",13,10,0
+1041+ 0949 20 49 50 43
+1041+ 094D 5D 20 44 4D
+1041+ 0951 41 20 52 58
+1041+ 0955 20 46 52 41
+1041+ 0959 4D 45 20 43
+1041+ 095D 52 43 20 56
+1041+ 0961 41 4C 49 44
+1041+ 0965 0D 0A 00
+1042+ 0968 5B 41 54 4D  p126_ipc_log_dma_rx_crc_bad:      db "[ATM IPC] DMA RX FRAME VALIDATION FAILED STATUS=",0
+1042+ 096C 20 49 50 43
+1042+ 0970 5D 20 44 4D
+1042+ 0974 41 20 52 58
+1042+ 0978 20 46 52 41
+1042+ 097C 4D 45 20 56
+1042+ 0980 41 4C 49 44
+1042+ 0984 41 54 49 4F
+1042+ 0988 4E 20 46 41
+1042+ 098C 49 4C 45 44
+1042+ 0990 20 53 54 41
+1042+ 0994 54 55 53 3D
+1042+ 0998 00
+1043+ 0999 5B 41 54 4D  p126_ipc_log_dma_rx_pattern_ok:   db "[ATM IPC] DMA RX 16K PATTERN PASS",13,10,0
+1043+ 099D 20 49 50 43
+1043+ 09A1 5D 20 44 4D
+1043+ 09A5 41 20 52 58
+1043+ 09A9 20 31 36 4B
+1043+ 09AD 20 50 41 54
+1043+ 09B1 54 45 52 4E
+1043+ 09B5 20 50 41 53
+1043+ 09B9 53 0D 0A 00
+1044+ 09BD 5B 41 54 4D  p126_ipc_log_dma_rx_pattern_bad:  db "[ATM IPC] DMA RX PATTERN FAIL",13,10,0
+1044+ 09C1 20 49 50 43
+1044+ 09C5 5D 20 44 4D
+1044+ 09C9 41 20 52 58
+1044+ 09CD 20 50 41 54
+1044+ 09D1 54 45 52 4E
+1044+ 09D5 20 46 41 49
+1044+ 09D9 4C 0D 0A 00
+1045+ 09DD 5B 41 54 4D  p126_ipc_log_dma_rx_transport_bad: db "[ATM IPC] DMA RX TRANSPORT FAILED STAGE=",0
+1045+ 09E1 20 49 50 43
+1045+ 09E5 5D 20 44 4D
+1045+ 09E9 41 20 52 58
+1045+ 09ED 20 54 52 41
+1045+ 09F1 4E 53 50 4F
+1045+ 09F5 52 54 20 46
+1045+ 09F9 41 49 4C 45
+1045+ 09FD 44 20 53 54
+1045+ 0A01 41 47 45 3D
+1045+ 0A05 00
+1046+ 0A06              ; DMA RX storage aliases the 16 KiB ATM page-0 staging buffer at C000h.
+1047+ 0A06              ; It is intentionally shared with the forward test because the transfers
+1048+ 0A06              ; are sequential and the reverse test overwrites the request after TX.
+1049+ 0A06              p126_ipc_dma_rx_buffer EQU P126_IPC_DMA_RX_BUFFER
+1050+ 0A06
 # file closed: neogs_ipc.asm
- 11   097C              p126_atm_ipc_module_end:
- 12   097C
- 13   097C              ; The standalone IPC audit unit does not link the ATM screen-console module.
- 14   097C              ; Provide audit-only renderer state/entry points so the IPC translation unit
- 15   097C              ; can be assembled independently. The production ATM application links the
- 16   097C              ; real definitions from p126_screen_console.asm.
- 17   097C              p126_atm_video_mode:
- 18   097C 06                   db P126_ATM_VIDEO_MODE_RG6_TEXT80X25
- 19   097D
- 20   097D              p126_screen_apply_text_frame:
- 21   097D AF                   xor     a
- 22   097E C9                   ret
- 23   097F
- 24   097F              BIOS_DebugConsole_PrintChar:
- 25   097F C9                   ret
- 26   0980
- 27   0980                  DISPLAY "P126_ATM_IPC_START=", /H, p126_atm_ipc_module_start
- 28   0980                  DISPLAY "P126_ATM_IPC_END=", /H, p126_atm_ipc_module_end
- 29   0980                  DISPLAY "P126_ATM_IPC_SIZE=", /D, p126_atm_ipc_module_end-p126_atm_ipc_module_start
- 30   0980
- 31   0980                  ASSERT p126_atm_ipc_module_end > p126_atm_ipc_module_start
- 32   0980                  ASSERT p126_atm_ipc_module_end <= #10000
- 33   0980
+  11  0A06              p126_atm_ipc_module_end:
+  12  0A06
+  13  0A06              ; The standalone IPC audit unit does not link the ATM screen-console module.
+  14  0A06              ; Provide audit-only renderer state/entry points so the IPC translation unit
+  15  0A06              ; can be assembled independently. The production ATM application links the
+  16  0A06              ; real definitions from p126_screen_console.asm.
+  17  0A06              p126_atm_video_mode:
+  18  0A06 06                   db P126_ATM_VIDEO_MODE_RG6_TEXT80X25
+  19  0A07
+  20  0A07              p126_screen_apply_text_frame:
+  21  0A07 AF                   xor     a
+  22  0A08 C9                   ret
+  23  0A09
+  24  0A09              BIOS_DebugConsole_PrintChar:
+  25  0A09 C9                   ret
+  26  0A0A
+  27  0A0A                  DISPLAY "P126_ATM_IPC_START=", /H, p126_atm_ipc_module_start
+  28  0A0A                  DISPLAY "P126_ATM_IPC_END=", /H, p126_atm_ipc_module_end
+  29  0A0A                  DISPLAY "P126_ATM_IPC_SIZE=", /D, p126_atm_ipc_module_end-p126_atm_ipc_module_start
+  30  0A0A
+  31  0A0A                  ASSERT p126_atm_ipc_module_end > p126_atm_ipc_module_start
+  32  0A0A                  ASSERT p126_atm_ipc_module_end <= #10000
+  33  0A0A
 # file closed: neogs_ipc_assemble.asm
 
 Value    Label
 ------ - -----------------------------------------------------------
-0x097F   BIOS_DebugConsole_PrintChar
-0x097C   p126_atm_ipc_module_end
+0x0A09   BIOS_DebugConsole_PrintChar
+0x0A06   p126_atm_ipc_module_end
 0x0000   p126_atm_ipc_module_start
 0x0006   P126_ATM_MODE_RG6_TEXT80X25
-0x097C   p126_atm_video_mode
+0x0A06   p126_atm_video_mode
 0x0006   P126_ATM_VIDEO_MODE_RG6_TEXT80X25
 0x0000   P126_CBIT
 0x00E3 X P126_CMD_CAPABILITIES
@@ -1493,12 +1562,12 @@ Value    Label
 0x1000 X P126_IMAGE_X86IO_MAX_SIZE
 0x4000 X P126_IMAGE_X86VGA_MAX_SIZE
 0x4000 X P126_IMAGE_X86VID_MAX_SIZE
-0x0549   p126_ipc_console_hex16
-0x0551   p126_ipc_console_hex8
-0x0572   p126_ipc_console_hex_byte
-0x0565   p126_ipc_console_hex_nibble
-0x056F   p126_ipc_console_hex_nibble.console_hex_emit
-0x053E   p126_ipc_console_string
+0x05D3   p126_ipc_console_hex16
+0x05DB   p126_ipc_console_hex8
+0x05FC   p126_ipc_console_hex_byte
+0x05EF   p126_ipc_console_hex_nibble
+0x05F9   p126_ipc_console_hex_nibble.console_hex_emit
+0x05C8   p126_ipc_console_string
 0x01F2 X p126_ipc_crc16_selftest
 0x0212   p126_ipc_crc16_selftest.p126_crc_test_failed
 0x01FC   p126_ipc_crc16_selftest.p126_crc_test_loop
@@ -1508,28 +1577,28 @@ Value    Label
 0x00B2   p126_ipc_crc16_update.p126_crc_no_xor
 0x01F0   p126_ipc_crc_expected
 0x01EE   p126_ipc_crc_work
-0x0573   p126_ipc_debug_budget
-0x06D4   p126_ipc_debug_crlf
-0x0650   p126_ipc_debug_dma_failed
-0x0629   p126_ipc_debug_event_missing
-0x05CF   p126_ipc_debug_fault
-0x05AC   p126_ipc_debug_halted
-0x06AF   p126_ipc_debug_hex_byte
-0x06C2   p126_ipc_debug_hex_nibble
-0x06CC   p126_ipc_debug_hex_nibble.p126_ipc_debug_hex_emit
-0x0602   p126_ipc_debug_reset_fault
-0x06E4   p126_ipc_debug_string
-0x06F2   p126_ipc_debug_string.p126_ipc_debug_done
-0x06E9   p126_ipc_debug_string.p126_ipc_debug_loop
+0x05FD   p126_ipc_debug_budget
+0x075E   p126_ipc_debug_crlf
+0x06DA   p126_ipc_debug_dma_failed
+0x06B3   p126_ipc_debug_event_missing
+0x0659   p126_ipc_debug_fault
+0x0636   p126_ipc_debug_halted
+0x0739   p126_ipc_debug_hex_byte
+0x074C   p126_ipc_debug_hex_nibble
+0x0756   p126_ipc_debug_hex_nibble.p126_ipc_debug_hex_emit
+0x068C   p126_ipc_debug_reset_fault
+0x076E   p126_ipc_debug_string
+0x077C   p126_ipc_debug_string.p126_ipc_debug_done
+0x0773   p126_ipc_debug_string.p126_ipc_debug_loop
 0x00FF   P126_IPC_DMA_END
 0x03BF   p126_ipc_dma_error
 0x0467 X p126_ipc_dma_receive_debug_frame
-0x04AB   p126_ipc_dma_receive_debug_frame.debug_budget
-0x04DD   p126_ipc_dma_receive_debug_frame.debug_dma_failed
-0x04B5   p126_ipc_dma_receive_debug_frame.debug_fault
-0x04B0   p126_ipc_dma_receive_debug_frame.debug_halted
-0x04BD   p126_ipc_dma_receive_debug_frame.debug_render
-0x04BA   p126_ipc_dma_receive_debug_frame.debug_reset_fault
+0x04E1   p126_ipc_dma_receive_debug_frame.debug_budget
+0x0513   p126_ipc_dma_receive_debug_frame.debug_dma_failed
+0x04EB   p126_ipc_dma_receive_debug_frame.debug_fault
+0x04E6   p126_ipc_dma_receive_debug_frame.debug_halted
+0x04F3   p126_ipc_dma_receive_debug_frame.debug_render
+0x04F0   p126_ipc_dma_receive_debug_frame.debug_reset_fault
 0x03C0 X p126_ipc_dma_receive_test
 0x041D   p126_ipc_dma_receive_test.rx_crc_ok
 0x03F9   p126_ipc_dma_receive_test.rx_end_ack
@@ -1537,8 +1606,16 @@ Value    Label
 0x042B   p126_ipc_dma_receive_test.rx_pattern
 0x0444   p126_ipc_dma_receive_test.rx_pattern_bad
 0x03D7   p126_ipc_dma_receive_test.rx_ready
-0x04E5 X p126_ipc_dma_receive_video_frame
-0x0536   p126_ipc_dma_receive_video_frame.video_dma_failed
+0x051B X p126_ipc_dma_receive_video_frame
+0x058E   p126_ipc_dma_receive_video_frame.video_apply_failed
+0x057E   p126_ipc_dma_receive_video_frame.video_bad_frame
+0x0572   p126_ipc_dma_receive_video_frame.video_bad_host_mode
+0x0586   p126_ipc_dma_receive_video_frame.video_bad_operation
+0x0582   p126_ipc_dma_receive_video_frame.video_bad_service
+0x0576   p126_ipc_dma_receive_video_frame.video_command_timeout
+0x057A   p126_ipc_dma_receive_video_frame.video_dma_end_timeout
+0x058A   p126_ipc_dma_receive_video_frame.video_remote_error
+0x0590   p126_ipc_dma_receive_video_frame.video_report_failure
 0xC000   P126_IPC_DMA_RX_BUFFER
 0xC000 X p126_ipc_dma_rx_buffer
 0x0466   p126_ipc_dma_rx_error
@@ -1563,30 +1640,30 @@ Value    Label
 0x01EC   p126_ipc_frame_size
 0x0012   P126_IPC_HEADER_SIZE
 0x02B8   p126_ipc_last_status
-0x0734   p126_ipc_log_bad_magic_data
-0x071B   p126_ipc_log_bad_magic_ptr
-0x06F5   p126_ipc_log_crc_calculated
-0x070F   p126_ipc_log_crc_expected
-0x0877   p126_ipc_log_dma_rx_begin
-0x089A   p126_ipc_log_dma_rx_copy_done
-0x08DE   p126_ipc_log_dma_rx_crc_bad
-0x08BB   p126_ipc_log_dma_rx_crc_ok
-0x0933   p126_ipc_log_dma_rx_pattern_bad
-0x090F   p126_ipc_log_dma_rx_pattern_ok
-0x0953   p126_ipc_log_dma_rx_transport_bad
-0x07A7   p126_ipc_log_dma_tx_bad_header
-0x07A0   p126_ipc_log_dma_tx_bad_size
-0x073B   p126_ipc_log_dma_tx_begin
-0x07F7   p126_ipc_log_dma_tx_copy_begin
-0x0812   p126_ipc_log_dma_tx_copy_done
-0x085B   p126_ipc_log_dma_tx_done
-0x07AD   p126_ipc_log_dma_tx_e0
-0x07C1   p126_ipc_log_dma_tx_e0_timeout
-0x082C   p126_ipc_log_dma_tx_ff
-0x0840   p126_ipc_log_dma_tx_ff_timeout
-0x07DC   p126_ipc_log_dma_tx_ready
-0x0776   p126_ipc_log_dma_tx_validate_bad
-0x0754   p126_ipc_log_dma_tx_validate_ok
+0x07BE   p126_ipc_log_bad_magic_data
+0x07A5   p126_ipc_log_bad_magic_ptr
+0x077F   p126_ipc_log_crc_calculated
+0x0799   p126_ipc_log_crc_expected
+0x0901   p126_ipc_log_dma_rx_begin
+0x0924   p126_ipc_log_dma_rx_copy_done
+0x0968   p126_ipc_log_dma_rx_crc_bad
+0x0945   p126_ipc_log_dma_rx_crc_ok
+0x09BD   p126_ipc_log_dma_rx_pattern_bad
+0x0999   p126_ipc_log_dma_rx_pattern_ok
+0x09DD   p126_ipc_log_dma_rx_transport_bad
+0x0831   p126_ipc_log_dma_tx_bad_header
+0x082A   p126_ipc_log_dma_tx_bad_size
+0x07C5   p126_ipc_log_dma_tx_begin
+0x0881   p126_ipc_log_dma_tx_copy_begin
+0x089C   p126_ipc_log_dma_tx_copy_done
+0x08E5   p126_ipc_log_dma_tx_done
+0x0837   p126_ipc_log_dma_tx_e0
+0x084B   p126_ipc_log_dma_tx_e0_timeout
+0x08B6   p126_ipc_log_dma_tx_ff
+0x08CA   p126_ipc_log_dma_tx_ff_timeout
+0x0866   p126_ipc_log_dma_tx_ready
+0x0800   p126_ipc_log_dma_tx_validate_bad
+0x07DE   p126_ipc_log_dma_tx_validate_ok
 0x0001   P126_IPC_MAJOR
 0x3FE4 X P126_IPC_MAX_FRAGMENT_DATA
 0x4000   P126_IPC_MAX_FRAME_SIZE
@@ -1629,8 +1706,9 @@ Value    Label
 0x023D   p126_ipc_validate_tx_frame.p126_tx_size_ok
 0x029A   p126_ipc_validate_tx_frame.p126_tx_version
 0x02BB   p126_ipc_version_text
-0x068A   p126_ipc_video_dma_failed
-0x066E X p126_ipc_video_frame_applied
+0x0714   p126_ipc_video_dma_failed
+0x05C7   p126_ipc_video_failure_code
+0x06F8   p126_ipc_video_frame_applied
 0x0006   p126_ipc_wait_cbit_clear
 0x0009   p126_ipc_wait_cbit_clear.p126_cbit_loop
 0x001A   p126_ipc_wait_cbit_clear.p126_cbit_ready
@@ -1663,7 +1741,7 @@ Value    Label
 0x0003 X P126_OP_VIDEO_FRAME_FRAGMENT
 0x0001 X P126_OP_VIDEO_FRAME_REQUEST
 0x0000 X P126_OP_VIDEO_MODE
-0x097D   p126_screen_apply_text_frame
+0x0A07   p126_screen_apply_text_frame
 0x0004 X P126_SERVICE_CLOCK
 0x0006 X P126_SERVICE_CONFIG
 0x0005 X P126_SERVICE_DIAGNOSTICS
