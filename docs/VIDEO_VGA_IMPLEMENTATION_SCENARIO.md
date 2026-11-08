@@ -107,7 +107,7 @@ The VGA overlay now contains:
 - GDC[6] memory-window decode for A0000h-BFFFFh, A0000h-AFFFFh, B0000h-B7FFFh and B8000h-BFFFFh.
 - Four-plane interleaved VRAM access through physical pages30h-3Fh and WIN3/MPAGEX.
 - Chain-4 and chain-2 addressing, four latches, read mode 0/1, write modes 0-3, Sequencer Map Mask, GDC bit mask, Set/Reset and logical operations.
-- A save/restore-safe startup self-test that checks the register interface, mono/colour CRTC aliasing, all four planar write/read planes, and chain-4 access at the final VRAM byte.
+- A save/restore-safe startup self-test that checks the register interface, mono/colour CRTC aliasing, all four planar write/read planes, and chain-4 packed access at the final aperture byte.
 
 The status-register retrace bit is currently a deterministic read-sample toggle so BIOS polling cannot stall while scanline timing is absent. It is a temporary compatibility aid, not a timing-accurate replacement for PCem's svga_poll().
 
