@@ -106,7 +106,7 @@ p126_host_ngs_start_failed:
         ld      a,(p126_neogs_startup_stage)
         out     (c),a
         ; Include the manifest descriptor length and loader error in the
-        ; failure line. Stage V means the file opened but was not 39 bytes.
+        ; failure line. Stage V means the file opened but was not 55 bytes.
         ld      a,' '
         out     (c),a
         ld      a,'L'
