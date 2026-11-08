@@ -7,10 +7,10 @@ Behavioral reference: Project126/PCem only. Project125 is explicitly excluded as
 
 - One IBM-compatible VGA adapter, including its CGA/EGA compatibility modes. No separate CGA/MDA device.
 - Exactly 256 KiB VGA VRAM: NeoGS physical pages 30h–3Fh (0C0000h–0FFFFFh).
-- Guest VGA aperture: A0000h–BFFFFh. The current Project126 dispatcher is linear staging only, not VGA-compatible; it must become register-controlled.
+- Guest VGA aperture: A0000h–BFFFFh. The guest memory dispatcher now routes A0000h–BFFFFh through the X86VGA module; the module applies the active GDC[6] aperture map and VGA plane semantics.
 - VGA BIOS storage remains separate at pages 20h–2Fh; guest option-ROM window C0000h–C7FFFh.
-- ATM presentation storage: pages 40h–41h, 32 KiB total. Use as two 16 KiB frame slots for producer/consumer handoff.
-- Production DMA staging: page 42h, 16 KiB. IPC/session scratch: page 43h. Do not repurpose either allocation.
+- ATM-native converted-frame storage: pages40h–41h, one contiguous 32 KiB frame buffer. It can hold the largest supported ATM graphics frame.
+- Production DMA staging: page42h, 16 KiB. The video service copies the converted frame into this staging page in chunks. IPC/session scratch: page43h. Do not repurpose either allocation.
 - ATM is the owner of physical hardware. All guest x86 ports are software models; all NeoGS↔ATM exchange uses DMA/IPC.
 
 ## 2. Source-of-truth PCem paths
@@ -32,8 +32,8 @@ Owns guest VGA registers, port decode, 256 KiB VRAM, aperture semantics, latches
 - Reads VGA state and VRAM through the VGA module API, never as an assumed linear bitmap.
 - Decodes VGA mode, geometry, pitch, start address, panning, palette and text/planar/packed layout.
 - Consumes a versioned ATM mode descriptor delivered by the host. It must not infer ATM mode from VGA registers.
-- Converts to the exact active ATM memory layout and emits exactly 16384 bytes.
-- Writes only to the inactive page-40/page-41 slot. Publish it only after conversion completes; never modify the slot currently being transferred/displayed.
+- Converts to the exact active ATM memory layout and emits the mode-specific frame size, up to 32768 bytes.
+- Writes the complete converted frame to pages40h–41h. Publish it only after conversion completes; do not modify the frame while DMA is transmitting it.
 - Defines deterministic scaling/colour policy for any VGA mode not natively representable by the selected ATM mode.
 
 ### ATM host and frame service
@@ -42,9 +42,9 @@ ATM reports its current mode and accepts the finished frame. NeoGS video service
 
 ## 4. Transport contract
 
-The DMA aperture is 16 KiB including the 18-byte ABI header; a regular ABI frame carries at most 16366 payload bytes. A 16 KiB image therefore cannot fit into one framed transfer.
+The DMA aperture is 16 KiB including the 18-byte ABI header; a regular ABI frame carries at most 16366 payload bytes. The 16 KiB page42h staging buffer is a transport chunk, not the maximum logical frame size.
 
-Use the existing ordered ABI 1.1 fragmentation extension: 10-byte fragment extension, at most 16356 bytes of frame data per fragment, individual CRC-16/CCITT-FALSE validation, common frame/message ID, ordered reassembly. Keep page 42h as the single DMA staging page and page 43h as scratch. On any timeout, missing fragment, sequence error or CRC failure, retain the previously displayed frame.
+Use the existing ordered ABI 1.1 fragmentation extension: 10-byte fragment extension, at most 16356 bytes of frame data per fragment, individual CRC-16/CCITT-FALSE validation, common frame/message ID and ordered reassembly. Keep page42h as the 16 KiB DMA staging page and page43h as scratch. A maximum 32 KiB logical frame requires three fragments. On timeout, missing fragment, sequence error or CRC failure, reject the frame.
 
 ## 5. Implementation stages
 
@@ -61,10 +61,10 @@ Replace linear A0000h–BFFFFh staging with map select, chain-4/chain-2, plane s
 Port relevant PCem text, planar 4-bpp and packed 8-bpp rendering. Derive geometry, pitch, start address, cursor, blink, panning, palette and display enable from VGA registers. Add deterministic patterns.
 
 ### Stage 4 — ATM mode descriptor and converter
-Derive the descriptor from actual ATM mode-control state and Project126 ATM source/docs. Implement each supported ATM layout separately. Verify exact 16384-byte output and reference vectors; do not invent modes.
+Derive the descriptor from actual ATM mode-control state and Project126 ATM source/docs. Implement each supported ATM layout separately. Verify mode-specific output length (up to 32768 bytes) and reference vectors; do not invent modes.
 
 ### Stage 5 — frame slots and DMA/IPC
-Use pages 40h–41h as alternating 16 KiB frame slots, page 42h as DMA staging, page 43h as scratch. Transfer the logical frame as independently CRC-checked ABI 1.1 fragments. Add timeout/recovery and ownership rules.
+Use pages40h–41h as one 32 KiB converted-frame buffer, page42h as DMA staging and page43h as scratch. Transfer the logical frame as independently CRC-checked ABI 1.1 fragments. Add timeout/recovery and ownership rules.
 
 ### Stage 6 — BIOS and end-to-end tests
 Run BIOS2 INT 10h text/graphics paths. Validate guest register access, aperture, scanout, ATM conversion, reassembly and final ATM placement. Keep the current BIOS2 INT CD stop point unchanged.
@@ -74,7 +74,7 @@ Run BIOS2 INT 10h text/graphics paths. Validate guest register access, aperture,
 - Exactly 262144 bytes of VRAM; all four planes pass read/write/latch tests.
 - Implemented VGA register behavior matches the corresponding PCem paths.
 - BIOS2 INT 10h text and supported graphics tests produce expected VGA scanout.
-- Every supported ATM mode produces exactly 16384 deterministic output bytes.
+- Every supported ATM mode produces its defined deterministic output length (up to 32768 bytes).
 - DMA fragmentation never exceeds the 16 KiB aperture and never mutates an in-flight slot.
 - ATM displays only a fully validated frame; on failure it retains the previous frame.
 - Build logs report component versions, image sizes and test results. Assembly success is not hardware/display verification.
@@ -93,9 +93,9 @@ Run BIOS2 INT 10h text/graphics paths. Validate guest register access, aperture,
 
 ### Current implementation boundary
 
-The current X86VGA code is not yet a complete VGA adapter. Its register/port layer is in place, but VGA aperture memory semantics are the next required implementation step. In particular, do not treat A0000h–BFFFFh as a linear byte array: GDC[6] aperture selection, sequencer chain-4/chain-2, four-plane latches, read mode 1, write modes 0–3, map mask, bit mask and logical operations must be implemented before BIOS graphics or accurate text/graphics scanout can be considered functional.
+The current X86VGA code now has source implementations for register/port access and VGA aperture semantics, including GDC[6] window selection, chain-4/chain-2, four-plane latches, read mode 1 and write modes 0–3. It is still not a complete VGA adapter: scanout/rendering, timing, text cursor/blink and packed/planar pixel conversion remain to be implemented and tested.
 
-The ATM frame converter and 16 KiB frame transport are not implemented yet. The existing BIOS2 INT CD debugging state remains untouched.
+The ATM frame converter and chunked 16 KiB DMA transport are not implemented yet. The existing BIOS2 INT CD debugging state remains untouched.
 
 No SjASMPlus build or emulator run has been performed for these changes yet. The source changes must be assembled and exercised before reporting build or runtime success.
 
