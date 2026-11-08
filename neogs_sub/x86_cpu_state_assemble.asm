@@ -275,6 +275,13 @@ x86_vga_module_start:
 x86_vga_module_end:
         SAVEBIN "build/X86VGA.C",x86_vga_module_start,x86_vga_module_end-x86_vga_module_start
 
+; ATM-native frame conversion is a separate dynamic overlay, ID06/page09.
+        ORG     #8000
+x86_video_module_start:
+        INCLUDE "neogs_sub/x86_video_convert.asm"
+x86_video_module_end:
+        SAVEBIN "build/X86VID.C",x86_video_module_start,x86_video_module_end-x86_video_module_start
+
 ; The stage-0 loader receives only X86CORE.C at logical origin 0000h.
         SAVEBIN "build/x86_cpu_state.bin",0,p126_ngs_ipc_module_end
         SAVEBIN "build/X86CORE.C",0,p126_ngs_ipc_module_end
@@ -301,6 +308,8 @@ x86_vga_module_end:
     DISPLAY "P126_X86_VGA_START=", /H, x86_vga_module_start
     DISPLAY "P126_X86_VGA_END=", /H, x86_vga_module_end
     DISPLAY "P126_X86_VGA_SIZE=", /D, x86_vga_module_end-x86_vga_module_start
+    DISPLAY "P126_X86_VIDEO_END=", /H, x86_video_module_end
+    DISPLAY "P126_X86_VIDEO_SIZE=", /D, x86_video_module_end-x86_video_module_start
     DISPLAY "P126_NGS_IPC_START=", /H, p126_ngs_ipc_module_start
     DISPLAY "P126_NGS_IPC_END=", /H, p126_ngs_ipc_module_end
     DISPLAY "P126_NGS_IPC_SIZE=", /D, p126_ngs_ipc_module_end-p126_ngs_ipc_module_start
@@ -336,3 +345,6 @@ x86_vga_module_end:
     ASSERT x86_vga_module_end > x86_vga_module_start
     ASSERT x86_vga_module_end <= #C000
     ASSERT x86_vga_module_end-x86_vga_module_start <= #4000
+    ASSERT x86_video_module_end > x86_video_module_start
+    ASSERT x86_video_module_end <= #C000
+    ASSERT x86_video_module_end-x86_video_module_start <= P126_IMAGE_X86VID_MAX_SIZE
