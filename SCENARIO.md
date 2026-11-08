@@ -1607,3 +1607,11 @@ The temporary diagnostic is therefore moved back to the first terminator and now
 - The terminal HLT/fault/watchdog paths still capture the same stop event and diagnostics. The initial reset-vector probe remains a one-time operation.
 - Commits: fdef1759f8fd14500f879637978cee5e1f018b27 (persistent sliced BIOS runner), f39aa985d09603e91661e7fe4063738342e8d987 (resident loop schedules slices).
 - Build and ATM target retest are pending. The log does not yet establish the exact reset cause; this change removes the confirmed IPC starvation window but must be validated with a fresh build and target trace.
+
+
+## 2026-11-08 — Diagnose BIOS slice return versus resident restart
+
+- The next ATM trace still shows the resident startup banner/allocator/ABI sequence after BIOS continuous execution begins, followed by HOST READY ACK TIMEOUT. The previous cooperative-slicing change is therefore not yet validated as a fix; the repeated resident banner suggests a second resident entry or a control-flow/stack failure before the first slice returns.
+- Added minimal one-character trace markers in the resident scheduler: `>` after the first BIOS slice call returns, and `+` after each later slice returns. These distinguish a returned CPU slice from a reset/re-entry without adding another resident logging routine.
+- Commit: 930c67415144a05b047fe12734fd91b9a3ce2681.
+- Build and target retest pending. Interpret next trace: BIOS START followed by `>` means first slice returned; repeated resident startup without `>` means the Z80 path did not return normally or the board restarted. `>` followed by `+` means cooperative scheduling is active.
