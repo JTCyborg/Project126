@@ -13,8 +13,8 @@ P126_DEBUG_IO_TRACE EQU 0
 ;   0060h-0063h: PCem-compatible XT keyboard/PPI port handler.
 ;   00E0h: retained 16-bit diagnostic test latch.
 ;   Keyboard FIFO is idle after reset; XT BAT response AAh is queued only
-;   when PB6 has a low-to-high edge. ATM keyboard input remains a future IPC
-;   producer; no physical NeoGS I/O is involved.
+;   when PB6 has a low-to-high edge. ATM scan-code events arrive through
+;   P126_SERVICE_INPUT over DMA IPC; no physical NeoGS I/O is involved.
 ;   DMA transfer engine and PIT clock/IRQ0 are separate services.
 ;
 ; PCem keyboard_xt.c owns the observable 60h-63h handler:
