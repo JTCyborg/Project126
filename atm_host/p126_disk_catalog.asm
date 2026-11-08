@@ -152,23 +152,28 @@ p126_catalog_poll_keyboard::
         ret
 
 .catalog_confirm:
-        xor     a
-        ld      (p126_atm_video_enabled),a
+        ; Keep the ATM catalogue and diagnostic console intact while the
+        ; selected BIOS image is being read and transferred. A failed load
+        ; must return to the same usable menu.
         ld      hl,p126_log_enter_confirmed
         call    p126_catalog_log
         call    p126_bios_load_selected
         jr      c,.catalog_bios_load_failed
+
+        ; IMAGE_FINISH has been acknowledged: BIOS is now installed in the
+        ; NeoGS guest. Only at this point may the ATM boot interface be
+        ; retired and the VGA-owned screen take over.
         xor     a
         ld      (p126_catalog_enabled),a
+        ld      (p126_host_console_ready),a
         ld      a,1
         ld      (p126_catalog_bios_loaded),a
-        ; The catalogue is a one-shot boot UI. Clear it, then request the
-        ; bounded BIOS stop record over the established reverse-DMA path.
-        ; The resident executes the pending BIOS slice before answering E1.
+
+        ; Match Project125's presentation sequence: clear the ATM text page,
+        ; pull the current guest frame over reverse DMA, then render its
+        ; 80x25 character/attribute cells into the ATM native text pages.
         call    BIOS_DebugConsole_Clear
         call    p126_ipc_dma_receive_debug_frame
-        ; The BIOS stop slice has populated VGA text memory. Convert and
-        ; transfer that screen into the active ATM RG6 80x25 text pages.
         call    p126_ipc_dma_receive_video_frame
         jr      c,.catalog_video_not_ready
         ld      a,1

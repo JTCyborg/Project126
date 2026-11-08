@@ -578,6 +578,38 @@ p126_screen_write_guest_cell:
         pop     af
         ret
 
+; Convert IBM VGA text attribute to ATM RG6 hardware attribute.
+; This is the same bit mapping used by 125/zx_main/video_transfer.asm:
+;   VGA fg[2:0] -> ATM INK[2:0]
+;   VGA bg[6:4] -> ATM PAPER[5:3]
+;   VGA intensity[3] -> ATM BRIGHT[6]
+;   VGA blink[7] -> ATM FLASH[7]
+; IN: A=VGA attribute. OUT: A=ATM-native attribute. BC/DE preserved.
+p126_video_map_vga_attribute:
+        push    bc
+        push    de
+        ld      b,a
+        and     7
+        ld      c,a
+        ld      a,b
+        and     #70
+        srl     a
+        ld      d,a
+        ld      a,b
+        and     8
+        rlca
+        rlca
+        rlca
+        ld      e,a
+        ld      a,b
+        and     #80
+        or      d
+        or      e
+        or      c
+        pop     de
+        pop     bc
+        ret
+
 ; Apply the compact RG6 frame received from NeoGS:
 ; payload[0..1999] = character codes, payload[2000..3999] = attributes.
 p126_screen_apply_text_frame::
@@ -600,9 +632,14 @@ p126_screen_apply_text_frame::
         inc     hl
         ld      (p126_screen_frame_char_ptr),hl
         ld      hl,(p126_screen_frame_attr_ptr)
-        ld      b,(hl)
+        ld      a,(hl)
         inc     hl
         ld      (p126_screen_frame_attr_ptr),hl
+        ; VGA attributes are IBM PC colour attributes. Convert them to the
+        ; ATM RG6 attribute layout exactly as Project125 does before writing
+        ; the guest cell (foreground, background, BRIGHT and FLASH bits).
+        call    p126_video_map_vga_attribute
+        ld      b,a
         ld      a,(p126_screen_frame_row)
         ld      d,a
         ld      a,(p126_screen_frame_col)

@@ -785,7 +785,7 @@ p126_ipc_dma_receive_debug_frame::
         ld      a,(P126_IPC_DMA_RX_BUFFER+8)
         call    p126_ipc_console_hex_byte
         ld      a,':'
-        call    BIOS_DebugConsole_PrintChar
+        call    p126_ipc_console_char
         ld      a,(P126_IPC_DMA_RX_BUFFER+P126_IPC_HEADER_SIZE)
         call    p126_ipc_console_hex_byte
         ld      a,(P126_IPC_DMA_RX_BUFFER+P126_IPC_HEADER_SIZE+1)
@@ -793,9 +793,9 @@ p126_ipc_dma_receive_debug_frame::
         ld      a,(P126_IPC_DMA_RX_BUFFER+P126_IPC_HEADER_SIZE+2)
         call    p126_ipc_console_hex_byte
         ld      a,13
-        call    BIOS_DebugConsole_PrintChar
+        call    p126_ipc_console_char
         ld      a,10
-        call    BIOS_DebugConsole_PrintChar
+        call    p126_ipc_console_char
         or      a
         ret
 .debug_budget:
@@ -814,13 +814,13 @@ p126_ipc_dma_receive_debug_frame::
         ld      hl,(P126_IPC_DMA_RX_BUFFER+P126_IPC_HEADER_SIZE+1)
         call    p126_ipc_console_hex16
         ld      a,':'
-        call    BIOS_DebugConsole_PrintChar
+        call    p126_ipc_console_char
         ld      hl,(P126_IPC_DMA_RX_BUFFER+P126_IPC_HEADER_SIZE+3)
         call    p126_ipc_console_hex16
         ld      a,13
-        call    BIOS_DebugConsole_PrintChar
+        call    p126_ipc_console_char
         ld      a,10
-        call    BIOS_DebugConsole_PrintChar
+        call    p126_ipc_console_char
         or      a
         ret
 
@@ -925,30 +925,44 @@ p126_ipc_dma_receive_video_frame::
         ld      a,(p126_ipc_video_failure_code)
         call    p126_ipc_console_hex_byte
         ld      a,':'
-        call    BIOS_DebugConsole_PrintChar
+        call    p126_ipc_console_char
         ld      a,(P126_IPC_DMA_RX_BUFFER+14)
         call    p126_ipc_console_hex_byte
         ld      a,(P126_IPC_DMA_RX_BUFFER+15)
         call    p126_ipc_console_hex_byte
         ld      a,':'
-        call    BIOS_DebugConsole_PrintChar
+        call    p126_ipc_console_char
         ld      a,(P126_IPC_DMA_RX_BUFFER+P126_IPC_HEADER_SIZE)
         call    p126_ipc_console_hex_byte
         ld      a,13
-        call    BIOS_DebugConsole_PrintChar
+        call    p126_ipc_console_char
         ld      a,10
-        call    BIOS_DebugConsole_PrintChar
+        call    p126_ipc_console_char
         scf
         ret
 
 p126_ipc_video_failure_code: db 0
+
+; IPC status text belongs to the boot console only. Once BIOS is
+; installed, keep the ATM text page exclusively owned by the guest VGA frame.
+; IN: A=character. Preserves AF; BC is scratch.
+p126_ipc_console_char:
+        push    af
+        ld      a,(p126_host_console_ready)
+        or      a
+        jr      z,.ipc_console_char_done
+        pop     af
+        jp      BIOS_DebugConsole_PrintChar
+.ipc_console_char_done:
+        pop     af
+        ret
 
 p126_ipc_console_string:
         ld      a,(hl)
         or      a
         ret     z
         push    hl
-        call    BIOS_DebugConsole_PrintChar
+        call    p126_ipc_console_char
         pop     hl
         inc     hl
         jr      p126_ipc_console_string
@@ -978,7 +992,7 @@ p126_ipc_console_hex_nibble:
         jr      c,.console_hex_emit
         add     a,7
 .console_hex_emit:
-        jp      BIOS_DebugConsole_PrintChar
+        jp      p126_ipc_console_char
 
 p126_ipc_console_hex_byte: db 0
 p126_ipc_debug_budget: db "[X86] BIOS PAUSED: 16-INSTRUCTION SLICE COMPLETE; CS:IP=",0
@@ -1026,7 +1040,7 @@ p126_ipc_debug_hex_nibble:
         or      a
         jr      z,.p126_ipc_hex_console_done
         ld      a,(p126_ipc_debug_hex_char)
-        call    BIOS_DebugConsole_PrintChar
+        call    p126_ipc_console_char
 .p126_ipc_hex_console_done:
         pop     bc
         pop     af
@@ -1045,9 +1059,9 @@ p126_ipc_debug_crlf:
         or      a
         jr      z,.p126_ipc_crlf_console_done
         ld      a,13
-        call    BIOS_DebugConsole_PrintChar
+        call    p126_ipc_console_char
         ld      a,10
-        call    BIOS_DebugConsole_PrintChar
+        call    p126_ipc_console_char
 .p126_ipc_crlf_console_done:
         pop     bc
         pop     af
@@ -1072,7 +1086,7 @@ p126_ipc_debug_string:
         jr      z,.p126_ipc_debug_no_console
         pop     hl
         pop     af
-        call    BIOS_DebugConsole_PrintChar
+        call    p126_ipc_console_char
         jr      .p126_ipc_debug_loop
 .p126_ipc_debug_no_console:
         pop     hl
