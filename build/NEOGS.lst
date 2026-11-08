@@ -118,7 +118,7 @@
   32+ 0000              ; WIN1/page 03 owns the operational stack and fixed runtime data.
   33+ 0000              ; WIN2 is the 8000-BFFF overlay aperture, selected through MPAG port 00h.
   34+ 0000              ; MPAG selectors encode ROR8(physical_page), i.e. one RRCA before OUT.
-  35+ 0000              ; Pinned overlays: X86IO page04/selector02, X86ALU page05/selector82, X86DEV page06/selector03, X86EXEC page07/selectorE0.
+  35+ 0000              ; Pinned overlays: X86IO page04/selector02, X86ALU page05/selector82, X86DEV page06/selector03, X86EXEC page07/selector83.
   36+ 0000              ; WIN3 (C000-FFFF) remains exclusively the banked guest physical-memory
   37+ 0000              ; aperture selected through MPAGEX port 10h. Resident code and stack must
   38+ 0000              ; never execute from or be stored in WIN3.
@@ -132,7 +132,7 @@
   46+ 0000              P126_NGS_X86DEV_OVERLAY_PAGE     EQU #06
   47+ 0000              P126_NGS_X86DEV_OVERLAY_SELECTOR EQU #03
   48+ 0000              P126_NGS_X86EXEC_OVERLAY_PAGE    EQU #07
-  49+ 0000              P126_NGS_X86EXEC_OVERLAY_SELECTOR EQU #E0
+  49+ 0000              P126_NGS_X86EXEC_OVERLAY_SELECTOR EQU #83
   50+ 0000              P126_NGS_OVERLAY_TEST_PAGE        EQU P126_NGS_ALU_OVERLAY_PAGE
   51+ 0000              P126_NGS_BANK_WINDOW_INDEX        EQU 3
   52+ 0000              P126_NGS_BANK_WINDOW_BASE         EQU #C000
@@ -193,7 +193,7 @@
  107+ 0000                      ASSERT P126_NGS_X86DEV_OVERLAY_PAGE = #06
  108+ 0000                      ASSERT P126_NGS_X86DEV_OVERLAY_SELECTOR = #03
  109+ 0000                      ASSERT P126_NGS_X86EXEC_OVERLAY_PAGE = #07
- 110+ 0000                      ASSERT P126_NGS_X86EXEC_OVERLAY_SELECTOR = #E0
+ 110+ 0000                      ASSERT P126_NGS_X86EXEC_OVERLAY_SELECTOR = #83
  111+ 0000                      ASSERT P126_NGS_OVERLAY_TEST_PAGE = #05
  112+ 0000                      ASSERT P126_NGS_BANK_WINDOW_INDEX = 3
  113+ 0000                      ASSERT P126_NGS_BANK_WINDOW_BASE = #C000
@@ -2190,7 +2190,7 @@
   50+ 0DB2              ; rejects unknown opcodes rather than silently advancing or corrupting state.
   51+ 0DB2
   52+ 0DB2              x86_cpu_step:
-  53+ 0DB2 3E E0                ld      a,P126_NGS_X86EXEC_OVERLAY_SELECTOR
+  53+ 0DB2 3E 83                ld      a,P126_NGS_X86EXEC_OVERLAY_SELECTOR
   54+ 0DB4 32 0B 21             ld      (p126_overlay_request_selector),a
   55+ 0DB7 DD 21 00 80          ld      ix,#8000
   56+ 0DBB CD DA 1C             call    p126_overlay_call
@@ -3875,7 +3875,7 @@
  985+ 176F              .image_finish_x86exec:
  986+ 176F                      ; Page07 contains the complete 8086 dispatcher. Probe it through the
  987+ 176F                      ; resident WIN2 gate and verify the prior X86IO mapping is restored.
- 988+ 176F 3E E0                ld      a,P126_NGS_X86EXEC_OVERLAY_SELECTOR
+ 988+ 176F 3E 83                ld      a,P126_NGS_X86EXEC_OVERLAY_SELECTOR
  989+ 1771 32 0B 21             ld      (p126_overlay_request_selector),a
  990+ 1774 DD 21 B4 A0          ld      ix,x86_exec_overlay_probe
  991+ 1778 CD DA 1C             call    p126_overlay_call
@@ -13864,7 +13864,7 @@ Value    Label
 0x0006   P126_NGS_X86DEV_OVERLAY_PAGE
 0x0003   P126_NGS_X86DEV_OVERLAY_SELECTOR
 0x0007   P126_NGS_X86EXEC_OVERLAY_PAGE
-0x00E0   P126_NGS_X86EXEC_OVERLAY_SELECTOR
+0x0083   P126_NGS_X86EXEC_OVERLAY_SELECTOR
 0x0004   P126_NGS_X86IO_OVERLAY_PAGE
 0x0002   P126_NGS_X86IO_OVERLAY_SELECTOR
 0x0001   P126_NGS_ZXCMD
