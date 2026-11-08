@@ -344,7 +344,11 @@ x86_io_ppi_read8:
         ld      a,#06
         jr      .ppi_pc_speaker
 .ppi_pc_no_video_id:
-        ld      a,#0D
+        ; Project126 currently has no floppy drive attached. BIOS2 reads
+        ; port 62h with PB3 clear as its equipment low nibble; bit 0 is
+        ; the floppy-present flag. Return 0Ch so POST sees zero drives.
+        ; The PB3-set video identification path below remains unchanged.
+        ld      a,#0C
 .ppi_pc_speaker:
         ; PCem's bit 5 is ppispeakon, driven by PIT channel-2 OUT.
         ; X86DEV is a separate physical overlay: read OUT2 through the
