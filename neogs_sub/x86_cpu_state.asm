@@ -221,6 +221,7 @@ x86_bios_startup_trace:
         call    x86_bios_trace_log_registers
         call    x86_io_dump_bios_table
         call    x86_bios_trace_log_io_counts
+        call    x86_bios_trace_log_pit_state
         call    x86_bios_trace_log_history
         scf
         ret
@@ -515,6 +516,17 @@ x86_bios_trace_log_io_counts:
         ret
 
 ; Dump all 16 records, oldest first. At the watchdog the ring is full.
+
+; X86DEV owns PIT state in a WIN2 overlay; log it only through the overlay gate.
+x86_bios_trace_log_pit_state:
+        push    ix
+        ld      a,P126_NGS_X86DEV_OVERLAY_SELECTOR
+        ld      (p126_overlay_request_selector),a
+        ld      ix,x86_dev_pit_log_state_impl
+        call    p126_overlay_call
+        pop     ix
+        ret
+
 x86_bios_trace_log_history:
         push    af
         push    bc
