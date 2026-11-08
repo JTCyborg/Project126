@@ -294,7 +294,7 @@ p126_neogs_load_manifest:
         ld      de,39
         or      a
         sbc     hl,de
-        jr      nz,.manifest_bad
+        jp      nz,.manifest_bad
         ld      hl,#C000
         ld      de,p126_neogs_manifest
         ld      bc,39
@@ -305,43 +305,43 @@ p126_neogs_load_manifest:
         ld      (p126_neogs_startup_stage),a
         ld      a,(hl)
         cp      'P'
-        jr      nz,.manifest_bad
+        jp      nz,.manifest_bad
         inc     hl
         ld      a,'b'
         ld      (p126_neogs_startup_stage),a
         ld      a,(hl)
         cp      '1'
-        jr      nz,.manifest_bad
+        jp      nz,.manifest_bad
         inc     hl
         ld      a,'c'
         ld      (p126_neogs_startup_stage),a
         ld      a,(hl)
         cp      '2'
-        jr      nz,.manifest_bad
+        jp      nz,.manifest_bad
         inc     hl
         ld      a,'d'
         ld      (p126_neogs_startup_stage),a
         ld      a,(hl)
         cp      '6'
-        jr      nz,.manifest_bad
+        jp      nz,.manifest_bad
         inc     hl
         ld      a,'e'
         ld      (p126_neogs_startup_stage),a
         ld      a,(hl)
         cp      1
-        jr      nz,.manifest_bad
+        jp      nz,.manifest_bad
         inc     hl
         ld      a,'f'
         ld      (p126_neogs_startup_stage),a
         ld      a,(hl)
         cp      4
-        jr      nz,.manifest_bad
+        jp      nz,.manifest_bad
         inc     hl
         ld      a,'g'
         ld      (p126_neogs_startup_stage),a
         ld      a,(hl)
         cp      8
-        jr      nz,.manifest_bad
+        jp      nz,.manifest_bad
 
         ld      hl,p126_neogs_manifest+7
         ld      b,4
@@ -352,25 +352,25 @@ p126_neogs_load_manifest:
         ld      (p126_neogs_startup_stage),a
         ld      a,(hl)
         cp      c
-        jr      nz,.manifest_bad
+        jp      nz,.manifest_bad
         inc     hl
         ld      a,'i'
         ld      (p126_neogs_startup_stage),a
         ld      a,(hl)
         cp      d
-        jr      nz,.manifest_bad
+        jp      nz,.manifest_bad
         inc     hl
         ld      a,'j'
         ld      (p126_neogs_startup_stage),a
         ld      a,(hl)
         cp      1
-        jr      nz,.manifest_bad
+        jp      nz,.manifest_bad
         inc     hl
         ld      a,'k'
         ld      (p126_neogs_startup_stage),a
         ld      a,(hl)
         or      a
-        jr      nz,.manifest_bad
+        jp      nz,.manifest_bad
         inc     hl
         ld      a,'l'
         ld      (p126_neogs_startup_stage),a
@@ -386,10 +386,10 @@ p126_neogs_load_manifest:
         pop     af
         cp      #40
         jr      c,.manifest_size_ok
-        jr      nz,.manifest_bad
+        jp      nz,.manifest_bad
         ld      a,e
         or      a
-        jr      nz,.manifest_bad
+        jp      nz,.manifest_bad
 .manifest_size_ok:
         inc     hl
         inc     hl
