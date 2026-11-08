@@ -12189,13 +12189,13 @@
  810+ 856C CD 70 85             call    x86_dev_pit_mode3_load_phase
  811+ 856F C9                   ret
  812+ 8570
- 813+ 8570              ; PCem pit_over() uses floor(N/2) while OUT is low and ceil(N/2)
- 814+ 8570              ; while OUT is high. This matters for odd divisors (e.g. 02F9h).
+ 813+ 8570              ; PCem pit_over(): OUT-high phase is floor(N/2); OUT-low phase
+ 814+ 8570              ; is ceil(N/2). This distinction matters for odd divisors (e.g. 02F9h).
  815+ 8570              x86_dev_pit_mode3_load_phase:
  816+ 8570 2A EF 8A             ld      hl,(x86_dev_pit_half2)
  817+ 8573 3A E8 8A             ld      a,(x86_dev_pit_out2)
  818+ 8576 B7                   or      a
- 819+ 8577 28 08                jr      z,.pit_mode3_phase_store
+ 819+ 8577 20 08                jr      nz,.pit_mode3_phase_store
  820+ 8579 3A CA 8A             ld      a,(x86_dev_pit_reload+4)
  821+ 857C E6 01                and     1
  822+ 857E 28 01                jr      z,.pit_mode3_phase_store
@@ -12351,15 +12351,15 @@
  972+ 86C8 3A E8 8A             ld      a,(x86_dev_pit_out2)
  973+ 86CB FE 01                cp      1
  974+ 86CD C2 87 87             jp      nz,.pit_selftest_fail
- 975+ 86D0                      ; Odd mode-3 divisor 5: OUT-high phase is ceil(5/2)=3 PIT
- 976+ 86D0                      ; clocks, OUT-low phase is floor(5/2)=2. PCem pit_over() uses
- 977+ 86D0                      ; these distinct durations. A falling GATE must preserve OUT low.
+ 975+ 86D0                      ; Odd mode-3 divisor 5: PCem pit_over() holds OUT high for
+ 976+ 86D0                      ; floor(5/2)=2 PIT clocks and OUT low for ceil(5/2)=3.
+ 977+ 86D0                      ; A falling GATE must preserve the current OUT-low state.
  978+ 86D0 3E 05                ld      a,5
  979+ 86D2 CD 4D 82             call    x86_dev_pit_write8
  980+ 86D5 AF                   xor     a
  981+ 86D6 CD 4D 82             call    x86_dev_pit_write8
  982+ 86D9 2A ED 8A             ld      hl,(x86_dev_pit_count2)
- 983+ 86DC 11 03 00             ld      de,3
+ 983+ 86DC 11 02 00             ld      de,2
  984+ 86DF B7                   or      a
  985+ 86E0 ED 52                sbc     hl,de
  986+ 86E2 C2 87 87             jp      nz,.pit_selftest_fail
@@ -12379,7 +12379,7 @@
 1000+ 8704 FE 01                cp      1
 1001+ 8706 C2 87 87             jp      nz,.pit_selftest_fail
 1002+ 8709 2A ED 8A             ld      hl,(x86_dev_pit_count2)
-1003+ 870C 11 03 00             ld      de,3
+1003+ 870C 11 02 00             ld      de,2
 1004+ 870F B7                   or      a
 1005+ 8710 ED 52                sbc     hl,de
 1006+ 8712 C2 87 87             jp      nz,.pit_selftest_fail
