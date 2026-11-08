@@ -777,10 +777,10 @@ p126_ipc_dma_receive_debug_frame::
 p126_ipc_dma_receive_video_frame::
         ld      a,(p126_atm_video_mode)
         cp      P126_ATM_VIDEO_MODE_RG6_TEXT80X25
-        jr      nz,.video_dma_failed
+        jp      nz,.video_dma_failed
         ld      a,P126_CMD_NGS_VIDEO_FRAME
         call    p126_ipc_send_command
-        jr      c,.video_dma_failed
+        jp      c,.video_dma_failed
 
         di
         ld      hl,0
