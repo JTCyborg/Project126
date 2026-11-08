@@ -201,6 +201,7 @@ x86_bios_startup_trace:
         ld      (x86_bios_trace_executed),hl
         xor     a
         ld      (x86_bios_trace_unexpected_cs_once),a
+        ld      (x86_bios_trace_eebf_once),a
         ld      a,1
         ld      (x86_bios_trace_active),a
 .run_slice:
@@ -211,6 +212,30 @@ x86_bios_startup_trace:
         call    x86_cpu_step
         jp      c,.trace_fault
         call    x86_bios_trace_capture_instruction
+        ; One-shot history snapshot at the known BIOS2 runaway address.
+        ; F000:EEBF is physical FEEBF, inside the system BIOS window.
+        ld      a,(x86_bios_trace_eebf_once)
+        or      a
+        jr      nz,.trace_eebf_done
+        ld      hl,(x86_reg_cs)
+        ld      de,#F000
+        or      a
+        sbc     hl,de
+        jr      nz,.trace_eebf_done
+        ld      hl,(x86_reg_ip)
+        ld      de,#EEBF
+        or      a
+        sbc     hl,de
+        jr      nz,.trace_eebf_done
+        ld      a,1
+        ld      (x86_bios_trace_eebf_once),a
+        push    hl
+        ld      hl,x86_bios_trace_eebf_log
+        call    p126_ngs_resident_log
+        call    x86_bios_trace_log_registers
+        call    x86_bios_trace_log_history
+        pop     hl
+.trace_eebf_done:
         ; Capture the first transition away from the BIOS reset segment.
         ; This is a diagnostic only: it does not alter guest CPU state.
         ld      hl,(x86_reg_cs)
@@ -979,6 +1004,7 @@ x86_bios_trace_history: BLOCK 16*13,0
 x86_bios_trace_remaining: dw 0,0
 x86_bios_trace_executed:  dw 0
 x86_bios_trace_active:    db 0
+x86_bios_trace_eebf_once: db 0
 x86_bios_trace_unexpected_cs_once: db 0
 x86_bios_trace_unexpected_cs_log:
         db "[X86 TRACE] FIRST UNEXPECTED CS CHANGE",13,10,0
@@ -995,6 +1021,7 @@ x86_bios_trace_progress_cx: db " CX=",0
 x86_bios_trace_progress_di: db " DI=",0
 x86_bios_trace_progress_es: db " ES=",0
 x86_bios_trace_progress_flags: db " FLAGS=",0
+x86_bios_trace_eebf_log: db "[X86 TRACE] FIRST F000:EEBF SNAPSHOT",13,10,0
 x86_bios_trace_fault_log: db "[NGS] X86 BIOS TRACE STOP: OPCODE OR MEMORY FAULT",13,10,0
 x86_bios_trace_halted_log: db "[NGS] X86 BIOS EXECUTION HALTED BY GUEST",13,10,0
 x86_bios_trace_watchdog_log: db "[NGS] X86 BIOS DIAGNOSTIC STOP",13,10,0
