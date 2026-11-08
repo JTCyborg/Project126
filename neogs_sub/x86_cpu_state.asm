@@ -1224,11 +1224,7 @@ x86_guest_mem_read8:
 .ram:
         jp      x86_guest_ram_read8
 .vram:
-        ld      a,P126_NGS_GUEST_VRAM_PAGE_BIAS
-        call    x86_guest_mem_select_page
-        ld      a,(hl)
-        or      a
-        ret
+        jp      x86_vga_mem_read8
 .vgabios:
         ld      a,P126_NGS_GUEST_VGABIOS_PAGE_BIAS
         call    x86_guest_mem_select_page
@@ -1361,12 +1357,8 @@ x86_guest_mem_write8:
         ld      a,(x86_mem_data)
         jp      x86_guest_ram_write8
 .vram:
-        ld      a,P126_NGS_GUEST_VRAM_PAGE_BIAS
-        call    x86_guest_mem_select_page
         ld      a,(x86_mem_data)
-        ld      (hl),a
-        or      a
-        ret
+        jp      x86_vga_mem_write8
 
 ; Generic WIN3 selector. IN A=page bias; OUT HL=C000h|(guest_address&3FFFh).
 ; Clobbers AF, BC, HL. The caller's page bias is consumed here.
