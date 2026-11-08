@@ -767,6 +767,28 @@ x86_io_write8_impl_device:
         ret
 .io_write8_ppi:
         ld      (x86_io_write_value),a
+        ; Trace the exact guest DOR write at the common device dispatcher.
+        ; This distinguishes a CPU OUT path issue from FDC decode/IRQ logic.
+        ld      hl,(x86_io_port)
+        ld      de,#03F2
+        or      a
+        sbc     hl,de
+        jr      nz,.io_write8_dispatch
+        push    af
+        push    bc
+        push    de
+        push    hl
+        ld      hl,x86_io_fdc_dispatch_log
+        call    x86_io_log_string
+        ld      a,(x86_io_write_value)
+        call    x86_io_log_hex8
+        ld      a,10
+        call    x86_io_log_char
+        pop     hl
+        pop     de
+        pop     bc
+        pop     af
+.io_write8_dispatch:
         ld      hl,(x86_io_port)
         ld      a,(x86_io_write_value)
         call    x86_io_ata_write8
@@ -1585,6 +1607,7 @@ x86_io_log_nibble:
         call    x86_io_log_char
         ret
 
+x86_io_fdc_dispatch_log: db "[FDC] DOR DISPATCH VALUE=",0
 x86_io_fdc_irq6_raise_log: db "[FDC] IRQ6 R DOR/IRR/IMR/PEND=",0
 x86_io_pic_irq6_ack_log: db "[PIC] IRQ6 ACK ISR/IRR/PEND=",0
 x86_io_log_prefix:    db "[IO] ",0
