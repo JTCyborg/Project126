@@ -562,6 +562,9 @@ p126_ngs_ipc_dispatch_once::
         ld      a,(p126_ngs_exec_overlay_ready)
         or      a
         jr      z,.ngs_frame_trace_ready
+        ld      a,(p126_ngs_vga_overlay_ready)
+        or      a
+        jr      z,.ngs_frame_trace_ready
         ld      a,(p126_ngs_bios_image_ready)
         or      a
         jr      z,.ngs_frame_trace_ready
@@ -1047,6 +1050,10 @@ p126_ngs_image_finish:
         or      a
         sbc     hl,de
         jr      nz,.image_finish_vga_probe_bad
+        ; Initialize VGA state only after the dynamic module passed its probe.
+        ld      a,5
+        ld      ix,x86_vga_reset_impl
+        call    p126_overlay_call_module
         ld      a,1
         ld      (p126_ngs_vga_overlay_ready),a
         ld      hl,p126_ngs_vga_overlay_installed_log
