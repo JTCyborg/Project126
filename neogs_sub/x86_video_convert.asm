@@ -5,7 +5,7 @@
 ; Initial ATM target: RG6 80x25 text, compact frame layout:
 ;   bytes 0000..07CF = 2000 character codes
 ;   bytes 07D0..0F9F = 2000 attribute bytes
-; The complete 4000-byte frame is stored in physical pages40h..41h.
+; The current 4000-byte RG6 frame is written directly into page42h at payload offset 18, ready for reverse DMA. Pages40h..41h remain available for larger future frame formats.
 ; =========================================================================
 
 x86_video_overlay_probe:
