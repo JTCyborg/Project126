@@ -17,6 +17,16 @@ p126_ngs_ipc_module_end:
 ; or replacing the production CPU implementation.
 ; The production resident image defines this in p126_overlay_gate.asm.
 p126_overlay_current_selector: db #80
+p126_overlay_request_selector: db #80
+
+; Audit-only gate and X86EXEC probe symbols. Production links the real
+; resident WIN2 gate and page-07 dispatcher from the main NeoGS assembly.
+p126_overlay_call:
+        ret
+
+x86_exec_overlay_probe:
+        ld      a,#E7
+        ret
 
 ; Standalone IPC assembly substitutes a local no-op for the production gate target.
 x86_io_reset:
