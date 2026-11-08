@@ -672,6 +672,8 @@ p126_ngs_image_begin:
         jr      z,.image_begin_x86exec
         cp      P126_IMAGE_KIND_X86VGA
         jr      z,.image_begin_x86vga
+        cp      P126_IMAGE_KIND_X86VID
+        jr      z,.image_begin_x86vid
         jp      .image_begin_bad
 
 .image_begin_sysbios:
@@ -761,6 +763,22 @@ p126_ngs_image_begin:
         jr      z,.image_begin_common
         jp      .image_begin_bad
 
+.image_begin_x86vid:
+        ; Dynamic ATM video converter is installed on allocator page09h.
+        ld      a,(#C015)
+        cp      P126_NGS_X86VID_OVERLAY_PAGE
+        jp      nz,.image_begin_bad
+        ld      hl,(#C016)
+        ld      a,h
+        or      l
+        jp      z,.image_begin_bad
+        ld      de,P126_IMAGE_X86VID_MAX_SIZE
+        or      a
+        sbc     hl,de
+        jr      c,.image_begin_common
+        jr      z,.image_begin_common
+        jp      .image_begin_bad
+
 .image_begin_common:
         ; MPAGEX selector is ROR8(physical page), independent of WIN2 selector.
         ld      a,(#C015)
@@ -808,9 +826,15 @@ p126_ngs_image_begin:
         jr      .image_begin_ack
 .image_begin_not_x86exec:
         cp      P126_IMAGE_KIND_X86VGA
-        jr      nz,.image_begin_ack
+        jr      nz,.image_begin_not_x86vga
         xor     a
         ld      (p126_ngs_vga_overlay_ready),a
+        jr      .image_begin_ack
+.image_begin_not_x86vga:
+        cp      P126_IMAGE_KIND_X86VID
+        jr      nz,.image_begin_ack
+        xor     a
+        ld      (p126_ngs_vid_overlay_ready),a
 .image_begin_ack:
         xor     a
         out     (P126_NGS_CLRCBIT),a
@@ -1096,7 +1120,7 @@ p126_ngs_image_finish:
 
 .image_finish_x86vga:
         cp      P126_IMAGE_KIND_X86VGA
-        jp      nz,.image_finish_bad
+        jr      nz,.image_finish_x86vid
         ; Register the dynamic page only after fragment readback has passed.
         ld      a,5
         ld      b,#08
@@ -1131,6 +1155,32 @@ p126_ngs_image_finish:
         jr      .image_finish_log
 .image_finish_vga_probe_bad:
         ld      a,5
+        call    p126_overlay_unregister_dynamic
+        jp      .image_finish_bad
+
+.image_finish_x86vid:
+        cp      P126_IMAGE_KIND_X86VID
+        jp      nz,.image_finish_bad
+        ; Converter module is separately registered on dynamic page09h.
+        ld      a,P126_NGS_X86VID_MODULE_ID
+        ld      b,P126_NGS_X86VID_OVERLAY_PAGE
+        call    p126_overlay_register_dynamic
+        jp      c,.image_finish_bad
+        ld      a,P126_NGS_X86VID_MODULE_ID
+        ld      ix,x86_video_overlay_probe
+        call    p126_overlay_call_module
+        cp      #56
+        jr      nz,.image_finish_vid_probe_bad
+        ld      de,#A55A
+        or      a
+        sbc     hl,de
+        jr      nz,.image_finish_vid_probe_bad
+        ld      a,1
+        ld      (p126_ngs_vid_overlay_ready),a
+        ld      hl,p126_ngs_image_finish_log
+        jr      .image_finish_log
+.image_finish_vid_probe_bad:
+        ld      a,P126_NGS_X86VID_MODULE_ID
         call    p126_overlay_unregister_dynamic
         jp      .image_finish_bad
 
@@ -1396,6 +1446,7 @@ p126_ngs_alu_overlay_ready:  db 0
 p126_ngs_dev_overlay_ready:  db 0
 p126_ngs_exec_overlay_ready: db 0
 p126_ngs_vga_overlay_ready:  db 0
+p126_ngs_vid_overlay_ready:  db 0
 p126_ngs_video_mode_ready:   db 0
 p126_ngs_video_mode_desc:    defs P126_VIDEO_MODE_DESC_SIZE,0
 p126_ngs_image_id:           dw 0
