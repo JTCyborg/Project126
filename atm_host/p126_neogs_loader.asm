@@ -221,26 +221,34 @@ p126_neogs_startup::
         ret     c
 
         ; The resident now owns GSCOM and is polling the ABI 1.0 DMA endpoint.
-        ; Install the catalogued overlay images before BIOS execution.
-        ld      a,'I'
-        ld      (p126_neogs_startup_stage),a
-        call    p126_neogs_load_io_overlay
+        ; Iterate the module descriptors instead of maintaining four separate
+        ; startup call sites. Each descriptor is cross-checked with X86MODS.M.
+        ld      hl,p126_neogs_module_table
+        ld      b,4
+.p126_neogs_module_loop:
+        ld      a,(hl)                 ; module ID
+        ld      (p126_neogs_manifest_module_id),a
+        inc     hl
+        ld      a,(hl)                 ; IMAGE kind
+        ld      (p126_neogs_overlay_kind),a
+        inc     hl
+        ld      e,(hl)                 ; maximum size
+        inc     hl
+        ld      d,(hl)
+        inc     hl
+        ld      (p126_neogs_overlay_max_size),de
+        ld      e,(hl)                 ; TR-DOS filename pointer
+        inc     hl
+        ld      d,(hl)
+        inc     hl
+        push    hl                     ; next descriptor
+        ex      de,hl
+        ld      a,(p126_neogs_overlay_kind)
+        ld      de,(p126_neogs_overlay_max_size)
+        call    p126_neogs_load_fixed_overlay
+        pop     hl
         ret     c
-
-        ld      a,'A'
-        ld      (p126_neogs_startup_stage),a
-        call    p126_neogs_load_alu_overlay
-        ret     c
-
-        ld      a,'D'
-        ld      (p126_neogs_startup_stage),a
-        call    p126_neogs_load_dev_overlay
-        ret     c
-
-        ld      a,'X'
-        ld      (p126_neogs_startup_stage),a
-        call    p126_neogs_load_exec_overlay
-        ret     c
+        djnz    .p126_neogs_module_loop
 
 .p126_neogs_startup_done:
         ld      a,'0'
@@ -380,7 +388,12 @@ p126_neogs_verify_overlay_manifest:
         jr      nz,.manifest_verify_bad
         ld      a,4
 .manifest_verify_id:
-        ld      (p126_neogs_manifest_module_id),a
+        ; Descriptor ID and IMAGE kind must identify the same module.
+        ld      b,a
+        ld      a,(p126_neogs_manifest_module_id)
+        cp      b
+        jr      nz,.manifest_verify_bad
+        ld      a,b
         dec     a
         add     a,a
         add     a,a
@@ -447,33 +460,9 @@ p126_neogs_verify_overlay_manifest:
 ; subsequent sectors directly into the following 256-byte slots. This avoids
 ; a second staging buffer and preserves the 18-byte frame header.
 ; -------------------------------------------------------------------------
-p126_neogs_load_io_overlay:
-        ld      hl,p126_neogs_io_name
-        ld      a,P126_IMAGE_KIND_X86IO
-        ld      de,P126_IMAGE_X86IO_MAX_SIZE
-        jp      p126_neogs_load_fixed_overlay
-
-p126_neogs_load_alu_overlay:
-        ld      hl,p126_neogs_alu_name
-        ld      a,P126_IMAGE_KIND_X86ALU
-        ld      de,P126_IMAGE_X86ALU_MAX_SIZE
-        jp      p126_neogs_load_fixed_overlay
-
-p126_neogs_load_dev_overlay:
-        ld      hl,p126_neogs_dev_name
-        ld      a,P126_IMAGE_KIND_X86DEV
-        ld      de,P126_IMAGE_X86DEV_MAX_SIZE
-        jp      p126_neogs_load_fixed_overlay
-
-p126_neogs_load_exec_overlay:
-        ld      hl,p126_neogs_exec_name
-        ld      a,P126_IMAGE_KIND_X86EXEC
-        ld      de,P126_IMAGE_X86EXEC_MAX_SIZE
-        jp      p126_neogs_load_fixed_overlay
-
-; Shared fixed-profile loader. IN: HL=TR-DOS 8-byte name, A=IMAGE kind,
-; DE=maximum accepted size. The receiver selects the fixed physical page
-; from the image kind; every image uses the same CRC-checked DMA transaction.
+; Shared module loader. IN: HL=TR-DOS 8-byte name, A=IMAGE kind,
+; DE=maximum accepted size. The manifest verifier binds the descriptor ID,
+; exact file length and CRC before the DMA transaction is allowed to start.
 p126_neogs_load_fixed_overlay:
         ld      (p126_neogs_overlay_kind),a
         ld      (p126_neogs_overlay_max_size),de
@@ -1090,6 +1079,17 @@ p126_neogs_io_name:   db "X86IO   "
 p126_neogs_alu_name:  db "X86ALU  "
 p126_neogs_dev_name:  db "X86DEV  "
 p126_neogs_exec_name: db "X86EXEC "
+; Descriptor: module ID, IMAGE kind, max size (u16), filename pointer.
+; Page placement remains receiver-defined by the current IMAGE kind ABI.
+p126_neogs_module_table:
+        db      1,P126_IMAGE_KIND_X86IO
+        dw      P126_IMAGE_X86IO_MAX_SIZE,p126_neogs_io_name
+        db      2,P126_IMAGE_KIND_X86ALU
+        dw      P126_IMAGE_X86ALU_MAX_SIZE,p126_neogs_alu_name
+        db      3,P126_IMAGE_KIND_X86DEV
+        dw      P126_IMAGE_X86DEV_MAX_SIZE,p126_neogs_dev_name
+        db      4,P126_IMAGE_KIND_X86EXEC
+        dw      P126_IMAGE_X86EXEC_MAX_SIZE,p126_neogs_exec_name
 p126_neogs_manifest_name: db "X86MODS "
 p126_neogs_file_extension: db 'C'
 p126_neogs_manifest_valid: db 0
