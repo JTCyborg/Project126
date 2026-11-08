@@ -600,8 +600,10 @@ p126_screen_apply_text_frame::
         ld      b,(hl)
         inc     hl
         ld      (p126_screen_frame_attr_ptr),hl
-        ld      d,(p126_screen_frame_row)
-        ld      e,(p126_screen_frame_col)
+        ld      a,(p126_screen_frame_row)
+        ld      d,a
+        ld      a,(p126_screen_frame_col)
+        ld      e,a
         call    p126_screen_write_guest_cell
         ld      a,(p126_screen_frame_col)
         inc     a
