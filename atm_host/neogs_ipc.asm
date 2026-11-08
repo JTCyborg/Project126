@@ -746,9 +746,17 @@ p126_ipc_dma_receive_debug_frame::
 
         ; Reverse DMA reads the complete 16 KiB frame from the ROM aperture.
         ; The first aperture read is discarded by the documented GS ABI.
+        ; The receive buffer is the ATM page-0 staging area at C000h.
+        ; Do not rely on whichever WIN3 page a preceding device/DMA operation
+        ; happened to leave selected: explicitly restore the same mapping used
+        ; by the Project125 video pull path before the dummy read and LDIR.
+        ld      a,P126_HOST_PAGE0
+        ld      bc,#FFF7
+        out     (c),a
+
         di
         ld      hl,0
-        ld      a,(hl)
+        ld      a,(hl)                  ; mandatory reverse-DMA pipeline read
         ld      hl,0
         ld      de,P126_IPC_DMA_RX_BUFFER
         ld      bc,P126_IPC_MAX_FRAME_SIZE
