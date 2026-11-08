@@ -230,7 +230,7 @@ p126_neogs_startup::
         ; Iterate the module descriptors instead of maintaining four separate
         ; startup call sites. Each descriptor is cross-checked with X86MODS.M.
         ld      hl,p126_neogs_module_table
-        ld      b,4
+        ld      b,5
 .p126_neogs_module_loop:
         ld      a,(hl)                 ; module ID
         ld      (p126_neogs_manifest_module_id),a
@@ -272,7 +272,7 @@ p126_neogs_startup::
 
 ; -------------------------------------------------------------------------
 ; Version-1 X86MODS.M loader and validator.
-; Layout: 7-byte header followed by four 8-byte records:
+; Layout: 7-byte header followed by five 8-byte records:
 ; id, physical page, flags, reserved, size16, CRC16/CCITT-FALSE.
 ; -------------------------------------------------------------------------
 p126_neogs_load_manifest:
@@ -291,13 +291,13 @@ p126_neogs_load_manifest:
         ld      a,'V'
         ld      (p126_neogs_startup_stage),a
         ld      hl,(p126_neogs_file_length)
-        ld      de,39
+        ld      de,47
         or      a
         sbc     hl,de
         jp      nz,.manifest_bad
         ld      hl,#C000
         ld      de,p126_neogs_manifest
-        ld      bc,39
+        ld      bc,47
         ldir
 
         ld      hl,p126_neogs_manifest
@@ -334,7 +334,7 @@ p126_neogs_load_manifest:
         ld      a,'f'
         ld      (p126_neogs_startup_stage),a
         ld      a,(hl)
-        cp      4
+        cp      5
         jp      nz,.manifest_bad
         inc     hl
         ld      a,'g'
@@ -344,7 +344,7 @@ p126_neogs_load_manifest:
         jp      nz,.manifest_bad
 
         ld      hl,p126_neogs_manifest+7
-        ld      b,4
+        ld      b,5
         ld      c,1
         ld      d,4
 .manifest_record_loop:
@@ -436,8 +436,13 @@ p126_neogs_verify_overlay_manifest:
         jr      .manifest_verify_id
 .manifest_verify_exec:
         cp      P126_IMAGE_KIND_X86EXEC
-        jr      nz,.manifest_verify_bad
+        jr      nz,.manifest_verify_vga
         ld      a,4
+        jr      .manifest_verify_id
+.manifest_verify_vga:
+        cp      P126_IMAGE_KIND_X86VGA
+        jr      nz,.manifest_verify_bad
+        ld      a,5
 .manifest_verify_id:
         ; Descriptor ID and IMAGE kind must identify the same module.
         ld      b,a
@@ -1137,6 +1142,7 @@ p126_neogs_io_name:   db "X86IO   "
 p126_neogs_alu_name:  db "X86ALU  "
 p126_neogs_dev_name:  db "X86DEV  "
 p126_neogs_exec_name: db "X86EXEC "
+p126_neogs_vga_name:  db "X86VGA  "
 ; Descriptor: module ID, IMAGE kind, physical page, max size (u16),
 ; filename pointer and diagnostic stage character.
 p126_neogs_module_table:
@@ -1152,6 +1158,9 @@ p126_neogs_module_table:
         db      4,P126_IMAGE_KIND_X86EXEC,#07
         dw      P126_IMAGE_X86EXEC_MAX_SIZE,p126_neogs_exec_name
         db      'X'
+        db      5,P126_IMAGE_KIND_X86VGA,#08
+        dw      P126_IMAGE_X86VGA_MAX_SIZE,p126_neogs_vga_name
+        db      'V'
 p126_neogs_manifest_name: db "X86MODS "
 p126_neogs_file_extension: db 'C'
 p126_neogs_manifest_valid: db 0
@@ -1160,7 +1169,7 @@ p126_neogs_manifest_record_index: db 0
 p126_neogs_manifest_record_size: dw 0
 p126_neogs_manifest_record_ptr: dw 0
 p126_neogs_manifest_crc_work: dw 0
-p126_neogs_manifest: defs 39,0
+p126_neogs_manifest: defs 47,0
 p126_neogs_overlay_size: dw 0
 p126_neogs_overlay_max_size: dw 0
 p126_neogs_overlay_kind: db 0
@@ -1174,6 +1183,8 @@ p126_neogs_dev_log_begin: db "[NGS HOST] X86DEV IMAGE BEGIN",13,10,0
 p126_neogs_dev_log_ready: db "[NGS HOST] X86DEV IMAGE TX COMPLETE",13,10,0
 p126_neogs_exec_log_begin: db "[NGS HOST] X86EXEC IMAGE BEGIN",13,10,0
 p126_neogs_exec_log_ready: db "[NGS HOST] X86EXEC IMAGE TX COMPLETE",13,10,0
+p126_neogs_vga_log_begin: db "[NGS HOST] X86VGA IMAGE BEGIN",13,10,0
+p126_neogs_vga_log_ready: db "[NGS HOST] X86VGA IMAGE TX COMPLETE",13,10,0
 p126_neogs_name_ptr: dw 0
 p126_neogs_file_length: dw 0
 p126_neogs_core_length: dw 0
