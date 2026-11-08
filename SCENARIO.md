@@ -1537,6 +1537,7 @@ The temporary diagnostic is therefore moved back to the first terminator and now
 
 
 ## 2026-11-08 — Guest CPU clock and PIT timebase
+- Сохранение host Z80-регистров вокруг timing overlay: IX восстанавливается в resident dispatcher; BC/HL сохраняются внутри X86DEV timing entry. Диагностические сообщения приёма сокращены до `[NGS] RX OK/BAD`, сохраняя смысл и дополнительный запас в пределах resident page.
 - Для соблюдения 16-КиБ лимита resident image timing routine вызывается из CPU dispatcher напрямую через штатный overlay gate; промежуточная resident-обёртка удалена. Укорочены две повторяющиеся строки frame-диагностики до `[NGS] FRAME OK/BAD` (семантика сообщений сохранена), что освобождает ещё 16 байт.
 
 - Исправлена компоновка временного учёта: декодирование длительности гостевой инструкции перенесено в X86DEV overlay. Resident X86CORE вызывает его только через штатный `p126_overlay_call`; прямой вызов кода по адресу оверлея из resident-кода запрещён. Это также освобождает место в фиксированном 16-КиБ resident-образе.
