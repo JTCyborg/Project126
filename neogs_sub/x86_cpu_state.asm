@@ -473,13 +473,16 @@ x86_bios_trace_capture_instruction:
 x86_bios_trace_log_io_counts:
         push    af
         push    hl
+        ; X86IO is a page04 overlay: its counters must be snapshotted
+        ; through the resident gate, never read directly while WIN2 is elsewhere.
+        call    x86_io_snapshot_counters
         ld      hl,x86_bios_trace_io_prefix
         call    p126_ngs_resident_log
-        ld      hl,(x86_io_count_in)
+        ld      hl,(x86_bios_trace_io_in_snapshot)
         call    x86_bios_trace_emit_hex16
         ld      hl,x86_bios_trace_io_out_text
         call    p126_ngs_resident_log
-        ld      hl,(x86_io_count_out)
+        ld      hl,(x86_bios_trace_io_out_snapshot)
         call    x86_bios_trace_emit_hex16
         ld      hl,(x86_io_port)
         call    x86_bios_trace_emit_hex16
@@ -785,6 +788,8 @@ x86_bios_trace_dump_flags: db 0
 x86_bios_trace_dump_opcode: db 0
 x86_bios_trace_io_prefix: db "[IO COUNT] IN=",0
 x86_bios_trace_io_out_text: db " OUT= P=",0
+x86_bios_trace_io_in_snapshot: dw 0
+x86_bios_trace_io_out_snapshot: dw 0
 x86_bios_trace_history_title: db "[X86 HIST] LAST 16 INSTRUCTIONS (OLDEST FIRST)",13,10,0
 x86_bios_trace_history_prefix: db "[X86 HIST] ",0
 x86_bios_trace_history_si_text: db " SI=",0
