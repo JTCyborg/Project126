@@ -1310,6 +1310,8 @@ x86_vga_calc_write_plane_value:
 ; HL=start byte address, DE=row stride in bytes; carry set if not text aperture.
 x86_vga_get_text_snapshot_impl:
         ld      a,(x86_vga_gdc+6)
+        bit     0,a
+        jp      nz,.text_snapshot_bad
         and     #0C
         cp      0
         jp      z,.text_snapshot_colour
