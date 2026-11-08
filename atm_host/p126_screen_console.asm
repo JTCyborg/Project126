@@ -319,13 +319,13 @@ BIOS_DebugConsole_PrintChar::
         push    de
         push    hl
         cp      13
-        jr      z, .p126_console_cr
+        jp      z, .p126_console_cr
         cp      10
-        jr      z, .p126_console_lf
+        jp      z, .p126_console_lf
         cp      8
-        jr      z, .p126_console_bs
+        jp      z, .p126_console_bs
         cp      32
-        jr      c, .p126_console_done
+        jp      c, .p126_console_done
         cp      128
         jr      c, .p126_console_char_ok
         ld      a, '?'
