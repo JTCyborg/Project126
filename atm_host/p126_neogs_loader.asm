@@ -1146,6 +1146,45 @@ p126_neogs_wait_dbit_set:
         or      a
         ret
 
+; Send the current ATM video mode to NeoGS after the host has finished
+; shadow-port setup. Descriptor v1 is: version, RG mode, width, height,
+; pixel/layout format, flags, logical frame size (u16).
+p126_neogs_send_video_mode::
+        push    bc
+        push    de
+        push    hl
+        ld      hl,P126_BIOS_FRAME+P126_IPC_HEADER_SIZE
+        ld      a,P126_VIDEO_DESC_VERSION
+        ld      (hl),a
+        inc     hl
+        ld      a,(p126_atm_video_mode)
+        ld      (hl),a
+        inc     hl
+        ld      a,P126_ATM_TEXT_WIDTH
+        ld      (hl),a
+        inc     hl
+        ld      a,P126_ATM_TEXT_HEIGHT
+        ld      (hl),a
+        inc     hl
+        ld      a,P126_VIDEO_FORMAT_TEXT80X25
+        ld      (hl),a
+        inc     hl
+        xor     a
+        ld      (hl),a
+        inc     hl
+        ld      hl,P126_ATM_TEXT_FRAME_SIZE
+        ld      (P126_BIOS_FRAME+P126_IPC_HEADER_SIZE+6),hl
+        xor     a
+        ld      (p126_bios_frame_flags),a
+        ld      a,P126_OP_VIDEO_MODE
+        ld      bc,P126_VIDEO_MODE_DESC_SIZE
+        ld      de,1
+        call    p126_bios_send_video_frame
+        pop     hl
+        pop     de
+        pop     bc
+        ret
+
 p126_neogs_boot_name: db "P126BOOT"
 p126_neogs_core_name: db "X86CORE "
 p126_neogs_io_name:   db "X86IO   "
