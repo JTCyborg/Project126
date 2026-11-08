@@ -628,6 +628,11 @@ p126_neogs_load_fixed_overlay:
         ld      hl,p126_neogs_dev_log_begin
         jr      .fixed_overlay_log_begin
 .fixed_overlay_log_exec_begin:
+        cp      P126_IMAGE_KIND_X86VGA
+        jr      nz,.fixed_overlay_log_vga_begin
+        ld      hl,p126_neogs_vga_log_begin
+        jr      .fixed_overlay_log_begin
+.fixed_overlay_log_vga_begin:
         ld      hl,p126_neogs_exec_log_begin
 .fixed_overlay_log_begin:
         call    p126_neogs_log_text
@@ -695,6 +700,11 @@ p126_neogs_load_fixed_overlay:
         ld      hl,p126_neogs_dev_log_ready
         jr      .fixed_overlay_log_ready
 .fixed_overlay_log_exec_ready:
+        cp      P126_IMAGE_KIND_X86VGA
+        jr      nz,.fixed_overlay_log_vga_ready
+        ld      hl,p126_neogs_vga_log_ready
+        jr      .fixed_overlay_log_ready
+.fixed_overlay_log_vga_ready:
         ld      hl,p126_neogs_exec_log_ready
 .fixed_overlay_log_ready:
         call    p126_neogs_log_text
