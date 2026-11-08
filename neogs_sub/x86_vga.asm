@@ -96,35 +96,35 @@ x86_vga_io_read8_impl:
         ld      hl,(x86_vga_port)
         ld      a,l
         cp      #C0
-        jr      z,.read_attr_address
+        jp      z,.read_attr_address
         cp      #C1
-        jr      z,.read_attr_data
+        jp      z,.read_attr_data
         cp      #C2
-        jr      z,.read_input_status0
+        jp      z,.read_input_status0
         cp      #C4
-        jr      z,.read_seq_address
+        jp      z,.read_seq_address
         cp      #C5
-        jr      z,.read_seq_data
+        jp      z,.read_seq_data
         cp      #C6
-        jr      z,.read_dac_mask
+        jp      z,.read_dac_mask
         cp      #C7
-        jr      z,.read_dac_state
+        jp      z,.read_dac_state
         cp      #C8
-        jr      z,.read_dac_write_index
+        jp      z,.read_dac_write_index
         cp      #C9
-        jr      z,.read_dac_data
+        jp      z,.read_dac_data
         cp      #CC
-        jr      z,.read_misc_output
+        jp      z,.read_misc_output
         cp      #CE
-        jr      z,.read_gdc_address
+        jp      z,.read_gdc_address
         cp      #CF
-        jr      z,.read_gdc_data
+        jp      z,.read_gdc_data
         cp      #D4
-        jr      z,.read_crtc_address
+        jp      z,.read_crtc_address
         cp      #D5
-        jr      z,.read_crtc_data
+        jp      z,.read_crtc_data
         cp      #DA
-        jr      z,.read_input_status1
+        jp      z,.read_input_status1
         ld      a,#FF
         or      a
         ret
@@ -155,7 +155,7 @@ x86_vga_io_read8_impl:
         ld      a,(x86_vga_dac+2)
         add     a,b
         cp      #50
-        jr      nc,.read_input_status0_bright
+        jp      nc,.read_input_status0_bright
         ld      a,#10
         or      a
         ret
@@ -217,7 +217,7 @@ x86_vga_io_read8_impl:
 .read_crtc_data:
         ld      a,(x86_vga_crtcreg)
         bit     5,a
-        jr      nz,.read_crtc_open_bus
+        jp      nz,.read_crtc_open_bus
         and     #7F
         ld      e,a
         ld      d,0
@@ -239,7 +239,7 @@ x86_vga_io_read8_impl:
         xor     #08
         ld      (x86_vga_cgastat),a
         bit     0,a
-        jr      nz,.status_clear_blink
+        jp      nz,.status_clear_blink
         xor     #30
         ld      (x86_vga_cgastat),a
         or      a
@@ -312,18 +312,18 @@ x86_vga_io_write8_impl:
         ld      (x86_vga_attrff),a
         ld      a,(x86_vga_attraddr)
         cp      #12
-        jr      nz,.write_attr_palette
+        jp      nz,.write_attr_palette
         ld      a,(x86_vga_write_value)
         and     #0F
         ld      (x86_vga_plane_mask),a
 .write_attr_palette:
         ld      a,(x86_vga_attraddr)
         cp      #10
-        jr      z,.write_attr_rebuild_palette
+        jp      z,.write_attr_rebuild_palette
         cp      #14
-        jr      z,.write_attr_rebuild_palette
+        jp      z,.write_attr_rebuild_palette
         cp      #10
-        jr      c,.write_attr_rebuild_palette
+        jp      c,.write_attr_rebuild_palette
         or      a
         ret
 .write_attr_rebuild_palette:
@@ -344,7 +344,7 @@ x86_vga_io_write8_impl:
 .write_seq_data:
         ld      a,(x86_vga_seqaddr)
         cp      #10
-        jr      nc,.write_seq_ignored
+        jp      nc,.write_seq_ignored
         and     #0F
         ld      e,a
         ld      d,0
@@ -355,28 +355,28 @@ x86_vga_io_write8_impl:
         ld      a,(x86_vga_seqaddr)
         and     #0F
         cp      2
-        jr      nz,.write_seq_not_mapmask
+        jp      nz,.write_seq_not_mapmask
         ld      a,(x86_vga_write_value)
         and     #0F
         ld      (x86_vga_writemask),a
-        jr      .write_seq_ignored
+        jp      .write_seq_ignored
 .write_seq_not_mapmask:
         cp      4
-        jr      nz,.write_seq_ignored
+        jp      nz,.write_seq_ignored
         ld      a,(x86_vga_write_value)
         bit     3,a
-        jr      z,.write_seq_no_chain4
+        jp      z,.write_seq_no_chain4
         ld      a,1
-        jr      .write_seq_chain4
+        jp      .write_seq_chain4
 .write_seq_no_chain4:
         xor     a
 .write_seq_chain4:
         ld      (x86_vga_chain4),a
         ld      a,(x86_vga_write_value)
         bit     2,a
-        jr      z,.write_seq_chain2_on
+        jp      z,.write_seq_chain2_on
         xor     a
-        jr      .write_seq_chain2_store
+        jp      .write_seq_chain2_store
 .write_seq_chain2_on:
         ld      a,1
 .write_seq_chain2_store:
@@ -430,20 +430,20 @@ x86_vga_io_write8_impl:
         ld      a,(x86_vga_gdcaddr)
         and     #0F
         cp      2
-        jr      nz,.write_gdc_not_compare
+        jp      nz,.write_gdc_not_compare
         ld      a,(x86_vga_write_value)
         ld      (x86_vga_colourcompare),a
-        jr      .write_gdc_done
+        jp      .write_gdc_done
 .write_gdc_not_compare:
         cp      4
-        jr      nz,.write_gdc_not_readplane
+        jp      nz,.write_gdc_not_readplane
         ld      a,(x86_vga_write_value)
         and     3
         ld      (x86_vga_readplane),a
-        jr      .write_gdc_done
+        jp      .write_gdc_done
 .write_gdc_not_readplane:
         cp      5
-        jr      nz,.write_gdc_not_mode
+        jp      nz,.write_gdc_not_mode
         ld      a,(x86_vga_write_value)
         and     3
         ld      (x86_vga_writemode),a
@@ -453,10 +453,10 @@ x86_vga_io_write8_impl:
         ld      a,(x86_vga_write_value)
         and     #10
         ld      (x86_vga_chain2_read),a
-        jr      .write_gdc_done
+        jp      .write_gdc_done
 .write_gdc_not_mode:
         cp      7
-        jr      nz,.write_gdc_done
+        jp      nz,.write_gdc_done
         ld      a,(x86_vga_write_value)
         ld      (x86_vga_colournocare),a
 .write_gdc_done:
@@ -471,21 +471,21 @@ x86_vga_io_write8_impl:
 .write_crtc_data:
         ld      a,(x86_vga_crtcreg)
         bit     5,a
-        jr      nz,.write_crtc_ignored
+        jp      nz,.write_crtc_ignored
         and     #7F
         ld      (x86_vga_index_temp),a
         cp      7
-        jr      z,.write_crtc_overflow
+        jp      z,.write_crtc_overflow
         cp      7
-        jr      nc,.write_crtc_store
+        jp      nc,.write_crtc_store
         ld      a,(x86_vga_crtc+17)
         bit     7,a
-        jr      nz,.write_crtc_ignored
-        jr      .write_crtc_store
+        jp      nz,.write_crtc_ignored
+        jp      .write_crtc_store
 .write_crtc_overflow:
         ld      a,(x86_vga_crtc+17)
         bit     7,a
-        jr      z,.write_crtc_store
+        jp      z,.write_crtc_store
         ld      a,(x86_vga_crtc+7)
         and     #EF
         ld      b,a
@@ -512,17 +512,17 @@ x86_vga_io_write8_impl:
 x86_vga_normalize_port:
         ld      a,h
         cp      3
-        jr      nz,.port_bad
+        jp      nz,.port_bad
         ld      a,l
         cp      #C0
-        jr      c,.port_mono_alias
+        jp      c,.port_mono_alias
         cp      #D0
-        jr      c,.port_good
+        jp      c,.port_good
         cp      #E0
-        jr      nc,.port_bad
+        jp      nc,.port_bad
         ld      a,(x86_vga_miscout)
         bit     0,a
-        jr      nz,.port_good
+        jp      nz,.port_good
         ; The fixed 3D0-3DF handler remains installed; when mono is active
         ; this colour block aliases to the inactive 3B0-3BF range and reads
         ; as open bus / ignores writes, rather than falling through to a
@@ -531,14 +531,14 @@ x86_vga_normalize_port:
         xor     #60
         ld      l,a
         ld      (x86_vga_port),hl
-        jr      .port_good
+        jp      .port_good
 .port_mono_alias:
         ld      a,l
         cp      #B0
-        jr      c,.port_bad
+        jp      c,.port_bad
         ld      a,(x86_vga_miscout)
         bit     0,a
-        jr      nz,.port_bad
+        jp      nz,.port_bad
         ld      a,l
         xor     #60
         ld      l,a
@@ -555,7 +555,7 @@ x86_vga_normalize_port:
 x86_vga_rebuild_attr_palette:
         ld      a,(x86_vga_attr+16)
         bit     7,a
-        jr      z,.attr_palette_6bit
+        jp      z,.attr_palette_6bit
         ld      a,(x86_vga_attr+20)
         and     #0F
         rlca
@@ -643,12 +643,12 @@ x86_vga_dac_read_component:
         ld      a,(x86_vga_dac_pos)
         inc     a
         cp      3
-        jr      c,.dac_read_next
+        jp      c,.dac_read_next
         xor     a
         ld      (x86_vga_dac_pos),a
         ld      hl,x86_vga_dac_read
         inc     (hl)
-        jr      .dac_read_return
+        jp      .dac_read_return
 .dac_read_next:
         ld      (x86_vga_dac_pos),a
 .dac_read_return:
@@ -660,7 +660,7 @@ x86_vga_dac_read_component:
 x86_vga_dac_write_component:
         ld      a,(x86_vga_dac_pos)
         cp      0
-        jr      nz,.dac_write_green
+        jp      nz,.dac_write_green
         ld      a,(x86_vga_write_value)
         and     #3F
         ld      (x86_vga_dac_r),a
@@ -669,7 +669,7 @@ x86_vga_dac_write_component:
         ret
 .dac_write_green:
         cp      1
-        jr      nz,.dac_write_blue
+        jp      nz,.dac_write_blue
         ld      a,(x86_vga_write_value)
         and     #3F
         ld      (x86_vga_dac_g),a
@@ -709,7 +709,7 @@ x86_vga_dac_write_component:
 
 x86_vga_mem_read8_impl:
         call    x86_vga_aperture_offset
-        jr      nc,.mem_read_mapped
+        jp      nc,.mem_read_mapped
         ld      a,#FF
         or      a
         ret
@@ -717,10 +717,10 @@ x86_vga_mem_read8_impl:
         ld      (x86_vga_guest_offset),hl
         ld      a,(x86_vga_chain4)
         or      a
-        jr      nz,.mem_read_chain4
+        jp      nz,.mem_read_chain4
         ld      a,(x86_vga_chain2_read)
         or      a
-        jr      nz,.mem_read_chain2
+        jp      nz,.mem_read_chain2
 
         ; Planar read: latch all four planes, then return selected plane or
         ; the colour-compare result according to GDC[5].3.
@@ -730,7 +730,7 @@ x86_vga_mem_read8_impl:
         call    x86_vga_restore_vram_base
         ld      a,(x86_vga_readmode)
         or      a
-        jr      nz,.mem_read_compare
+        jp      nz,.mem_read_compare
         ld      a,(x86_vga_readplane)
         and     3
         call    x86_vga_add_plane_offset
@@ -790,23 +790,23 @@ x86_vga_mem_read8_impl:
 x86_vga_mem_write8_impl:
         ld      (x86_vga_write_value),a
         call    x86_vga_aperture_offset
-        jr      nc,.mem_write_mapped
+        jp      nc,.mem_write_mapped
         or      a
         ret
 .mem_write_mapped:
         ld      (x86_vga_guest_offset),hl
         ld      a,(x86_vga_chain4)
         or      a
-        jr      nz,.mem_write_chain4
+        jp      nz,.mem_write_chain4
         ld      a,(x86_vga_chain2_write)
         or      a
-        jr      nz,.mem_write_chain2
+        jp      nz,.mem_write_chain2
 
         ; Normal planar write uses Sequencer Map Mask.
         ld      a,(x86_vga_writemask)
         ld      (x86_vga_write_plane_mask),a
         call    x86_vga_make_planar_offset
-        jr      .mem_write_base_ready
+        jp      .mem_write_base_ready
 
 .mem_write_chain4:
         ; Chain-4 selects exactly one plane from address bits 1:0.
@@ -825,7 +825,7 @@ x86_vga_mem_write8_impl:
         ld      l,a
         ld      (x86_vga_guest_offset),hl
         call    x86_vga_make_direct_offset
-        jr      .mem_write_base_ready
+        jp      .mem_write_base_ready
 
 .mem_write_chain2:
         ; Chain-2 enables only planes 0/2 for even addresses and 1/3 for odd.
@@ -833,7 +833,7 @@ x86_vga_mem_write8_impl:
         and     #05
         ld      hl,(x86_vga_guest_offset)
         bit     0,l
-        jr      z,.mem_write_chain2_mask_ready
+        jp      z,.mem_write_chain2_mask_ready
         add     a,a
 .mem_write_chain2_mask_ready:
         ld      (x86_vga_write_plane_mask),a
@@ -850,7 +850,7 @@ x86_vga_mem_write8_impl:
         ld      (x86_vga_effective_mask),a
         ld      a,(x86_vga_writemode)
         cp      3
-        jr      nz,.mem_write_mask_ready
+        jp      nz,.mem_write_mask_ready
         ld      a,(x86_vga_effective_mask)
         ld      b,a
         ld      a,(x86_vga_rotated_value)
@@ -869,7 +869,7 @@ x86_vga_mem_write8_impl:
         ld      b,a
         ld      a,(x86_vga_write_plane_mask)
         and     b
-        jr      z,.mem_write_plane_skip
+        jp      z,.mem_write_plane_skip
         call    x86_vga_calc_source
         ld      (x86_vga_source_value),a
         call    x86_vga_calc_write_plane_value
@@ -883,7 +883,7 @@ x86_vga_mem_write8_impl:
         inc     a
         ld      (x86_vga_plane_index),a
         cp      4
-        jr      c,.mem_write_plane_loop
+        jp      c,.mem_write_plane_loop
         or      a
         ret
 
@@ -894,23 +894,23 @@ x86_vga_aperture_offset:
         ld      a,(x86_vga_gdc+6)
         and     #0C
         cp      0
-        jr      z,.aperture_128k
+        jp      z,.aperture_128k
         cp      4
-        jr      z,.aperture_64k
+        jp      z,.aperture_64k
         cp      8
-        jr      z,.aperture_b0000
-        jr      .aperture_b8000
+        jp      z,.aperture_b0000
+        jp      .aperture_b8000
 .aperture_128k:
         ld      a,(x86_phys_addr+2)
         cp      #0A
-        jr      z,.aperture_base_a
+        jp      z,.aperture_base_a
         cp      #0B
-        jr      nz,.aperture_bad
-        jr      .aperture_base_a
+        jp      nz,.aperture_bad
+        jp      .aperture_base_a
 .aperture_64k:
         ld      a,(x86_phys_addr+2)
         cp      #0A
-        jr      nz,.aperture_bad
+        jp      nz,.aperture_bad
 .aperture_base_a:
         ld      a,(x86_phys_addr+1)
         ld      h,a
@@ -921,10 +921,10 @@ x86_vga_aperture_offset:
 .aperture_b0000:
         ld      a,(x86_phys_addr+2)
         cp      #0B
-        jr      nz,.aperture_bad
+        jp      nz,.aperture_bad
         ld      a,(x86_phys_addr+1)
         cp      #80
-        jr      nc,.aperture_bad
+        jp      nc,.aperture_bad
         ld      h,a
         ld      a,(x86_phys_addr)
         ld      l,a
@@ -933,10 +933,10 @@ x86_vga_aperture_offset:
 .aperture_b8000:
         ld      a,(x86_phys_addr+2)
         cp      #0B
-        jr      nz,.aperture_bad
+        jp      nz,.aperture_bad
         ld      a,(x86_phys_addr+1)
         cp      #80
-        jr      c,.aperture_bad
+        jp      c,.aperture_bad
         sub     #80
         ld      h,a
         ld      a,(x86_phys_addr)
@@ -1092,12 +1092,12 @@ x86_vga_compare_latches:
         ld      (x86_vga_compare_accum),a
         ld      a,(x86_vga_colournocare)
         bit     0,a
-        jr      z,.compare_plane1
+        jp      z,.compare_plane1
         ld      a,(x86_vga_latches)
         ld      b,a
         ld      a,(x86_vga_colourcompare)
         bit     0,a
-        jr      z,.compare_plane0_care
+        jp      z,.compare_plane0_care
         ld      a,b
         cpl
         ld      b,a
@@ -1108,12 +1108,12 @@ x86_vga_compare_latches:
 .compare_plane1:
         ld      a,(x86_vga_colournocare)
         bit     1,a
-        jr      z,.compare_plane2
+        jp      z,.compare_plane2
         ld      a,(x86_vga_latches+1)
         ld      b,a
         ld      a,(x86_vga_colourcompare)
         bit     1,a
-        jr      z,.compare_plane1_care
+        jp      z,.compare_plane1_care
         ld      a,b
         cpl
         ld      b,a
@@ -1124,12 +1124,12 @@ x86_vga_compare_latches:
 .compare_plane2:
         ld      a,(x86_vga_colournocare)
         bit     2,a
-        jr      z,.compare_plane3
+        jp      z,.compare_plane3
         ld      a,(x86_vga_latches+2)
         ld      b,a
         ld      a,(x86_vga_colourcompare)
         bit     2,a
-        jr      z,.compare_plane2_care
+        jp      z,.compare_plane2_care
         ld      a,b
         cpl
         ld      b,a
@@ -1140,12 +1140,12 @@ x86_vga_compare_latches:
 .compare_plane3:
         ld      a,(x86_vga_colournocare)
         bit     3,a
-        jr      z,.compare_done
+        jp      z,.compare_done
         ld      a,(x86_vga_latches+3)
         ld      b,a
         ld      a,(x86_vga_colourcompare)
         bit     3,a
-        jr      z,.compare_plane3_care
+        jp      z,.compare_plane3_care
         ld      a,b
         cpl
         ld      b,a
@@ -1185,19 +1185,19 @@ x86_vga_calc_source:
         ld      b,(hl)
         ld      a,(x86_vga_writemode)
         cp      1
-        jr      z,.source_latch
+        jp      z,.source_latch
         cp      2
-        jr      z,.source_mode2
+        jp      z,.source_mode2
         cp      3
-        jr      z,.source_set_reset
+        jp      z,.source_set_reset
         ; Mode 0: use Set/Reset only when the corresponding enable bit is set.
         ld      a,(x86_vga_gdc+1)
         and     b
-        jr      z,.source_rotated
+        jp      z,.source_rotated
 .source_set_reset:
         ld      a,(x86_vga_gdc)
         and     b
-        jr      z,.source_zero
+        jp      z,.source_zero
         ld      a,#FF
         ret
 .source_zero:
@@ -1209,7 +1209,7 @@ x86_vga_calc_source:
 .source_mode2:
         ld      a,(x86_vga_write_value)
         and     b
-        jr      z,.source_zero
+        jp      z,.source_zero
         ld      a,#FF
         ret
 .source_latch:
@@ -1226,7 +1226,7 @@ x86_vga_calc_source:
 x86_vga_calc_write_plane_value:
         ld      a,(x86_vga_writemode)
         cp      1
-        jr      nz,.write_plane_logic
+        jp      nz,.write_plane_logic
         ld      a,(x86_vga_plane_index)
         ld      e,a
         ld      d,0
@@ -1247,26 +1247,26 @@ x86_vga_calc_write_plane_value:
         ld      a,(x86_vga_gdc+3)
         and     #18
         cp      8
-        jr      z,.write_plane_and
+        jp      z,.write_plane_and
         cp      #10
-        jr      z,.write_plane_or
+        jp      z,.write_plane_or
         cp      #18
-        jr      z,.write_plane_xor
-        jr      .write_plane_mask
+        jp      z,.write_plane_xor
+        jp      .write_plane_mask
 .write_plane_and:
         ld      a,(x86_vga_logical_result)
         ld      b,a
         ld      a,(x86_vga_latch_temp)
         and     b
         ld      (x86_vga_logical_result),a
-        jr      .write_plane_mask
+        jp      .write_plane_mask
 .write_plane_or:
         ld      a,(x86_vga_logical_result)
         ld      b,a
         ld      a,(x86_vga_latch_temp)
         or      b
         ld      (x86_vga_logical_result),a
-        jr      .write_plane_mask
+        jp      .write_plane_mask
 .write_plane_xor:
         ld      a,(x86_vga_logical_result)
         ld      b,a
