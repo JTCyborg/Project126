@@ -74,9 +74,8 @@ x86_vga_reset_impl:
         ld      (x86_vga_miscout),a
         xor     a
         ld      (x86_vga_chain4),a
-        ld      (x86_vga_chain2_read),a
-        inc     a
         ld      (x86_vga_chain2_write),a
+        ld      (x86_vga_chain2_read),a
         ld      (x86_vga_readmode),a
         ld      (x86_vga_writemode),a
         ld      (x86_vga_readplane),a
@@ -1390,6 +1389,22 @@ x86_vga_attr:                  defs 32,0
 x86_vga_seq:                   defs 64,0
 x86_vga_dac:                   defs 768,0
 x86_vga_egapal:                defs 16,0
+x86_vga_guest_offset:          dw 0
+x86_vga_guest_offset_saved:    dw 0
+x86_vga_vram_offset:           defs 3,0
+x86_vga_vram_base:             defs 3,0
+x86_vga_vram_data:             db 0
+x86_vga_latches:               defs 4,0
+x86_vga_write_plane_mask:      db 0
+x86_vga_selected_plane:        db 0
+x86_vga_plane_index:           db 0
+x86_vga_effective_mask:        db 0
+x86_vga_source_value:          db 0
+x86_vga_logical_result:        db 0
+x86_vga_latch_temp:            db 0
+x86_vga_compare_accum:         db 0
+x86_vga_rotated_value:         db 0
+x86_vga_plane_bits:            db 1,2,4,8
 
         ASSERT X86_VGA_VRAM_BYTES = #40000
         ASSERT X86_VGA_VRAM_PAGE_COUNT*#4000 = X86_VGA_VRAM_BYTES
