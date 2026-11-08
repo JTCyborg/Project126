@@ -1467,6 +1467,41 @@ x86_vga_register_selftest_impl:
         cp      3
         jp      nz,.vga_test_fail
 
+        ; CRTC index/data and the mono/colour alias switch from MiscOut.
+        ld      hl,#03D4
+        ld      a,#0C
+        call    x86_vga_io_write8_impl
+        jp      c,.vga_test_fail
+        ld      hl,#03D5
+        ld      a,#44
+        call    x86_vga_io_write8_impl
+        jp      c,.vga_test_fail
+        ld      hl,#03D5
+        call    x86_vga_io_read8_impl
+        cp      #44
+        jp      nz,.vga_test_fail
+        ld      hl,#03C2
+        xor     a
+        call    x86_vga_io_write8_impl
+        jp      c,.vga_test_fail
+        ld      hl,#03B4
+        ld      a,#0C
+        call    x86_vga_io_write8_impl
+        jp      c,.vga_test_fail
+        ld      hl,#03B5
+        ld      a,#33
+        call    x86_vga_io_write8_impl
+        jp      c,.vga_test_fail
+        ld      hl,#03B5
+        call    x86_vga_io_read8_impl
+        cp      #33
+        jp      nz,.vga_test_fail
+        ; The inactive colour block remains claimed by VGA and reads open bus.
+        ld      hl,#03D5
+        call    x86_vga_io_read8_impl
+        cp      #FF
+        jp      nz,.vga_test_fail
+
         ; DAC RGB write/read sequencing (standard six-bit DAC components).
         ld      hl,#03C8
         ld      a,2
