@@ -941,19 +941,22 @@ p126_ipc_dma_receive_video_frame::
         ld      a,(p126_ipc_video_failure_code)
         call    p126_ipc_console_hex_byte
         ld      a,':'
-        call    BIOS_DebugConsole_PrintChar
+        ld      bc,#00EF
+        out     (c),a
         ld      a,(P126_IPC_DMA_RX_BUFFER+14)
         call    p126_ipc_console_hex_byte
         ld      a,(P126_IPC_DMA_RX_BUFFER+15)
         call    p126_ipc_console_hex_byte
         ld      a,':'
-        call    BIOS_DebugConsole_PrintChar
+        ld      bc,#00EF
+        out     (c),a
         ld      a,(P126_IPC_DMA_RX_BUFFER+P126_IPC_HEADER_SIZE)
         call    p126_ipc_console_hex_byte
+        ld      bc,#00EF
         ld      a,13
-        call    BIOS_DebugConsole_PrintChar
+        out     (c),a
         ld      a,10
-        call    BIOS_DebugConsole_PrintChar
+        out     (c),a
         scf
         ret
 
