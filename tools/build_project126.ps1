@@ -195,7 +195,7 @@ try {
         [uint16]$moduleCrc = Get-P126Crc16 $moduleBytes
         $moduleManifest.Add([byte]$profile.Id)
         $moduleManifest.Add([byte]$profile.Page)
-        $moduleManifest.Add([byte]1) # pinned module
+        $moduleManifest.Add([byte]1) # explicit verified placement; ID05 is dynamically registered
         $moduleManifest.Add([byte]0) # reserved in format v1
         $moduleManifest.Add([byte]($moduleBytes.Length -band 0xFF))
         $moduleManifest.Add([byte](($moduleBytes.Length -shr 8) -band 0xFF))
