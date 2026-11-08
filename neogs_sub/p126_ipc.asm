@@ -397,8 +397,8 @@ p126_ngs_ipc_dma_send_video_frame:
         ldir
         ld      hl,#C012+P126_VIDEO_TEXT80_FRAME_SIZE
         ld      bc,P126_IPC_MAX_PAYLOAD-P126_VIDEO_TEXT80_FRAME_SIZE
-        xor     a
 .video_frame_pad:
+        xor     a
         ld      (hl),a
         inc     hl
         dec     bc
