@@ -287,9 +287,8 @@ p126_neogs_load_manifest:
         ld      (p126_neogs_file_extension),a
         call    p126_neogs_open_file
         ret     c
+        ; V remains active only while checking the exact 39-byte file size.
         ld      a,'V'
-        ld      (p126_neogs_startup_stage),a
-        ld      a,'L'
         ld      (p126_neogs_startup_stage),a
         ld      hl,(p126_neogs_file_length)
         ld      de,39
