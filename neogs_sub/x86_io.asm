@@ -274,6 +274,9 @@ x86_io_overlay_nested_gate_probe_impl:
 
 ; Read one byte from the guest I/O bus. A=read value.
 x86_io_read8_impl:
+        ; HL is the guest port passed by the resident gate. This routine
+        ; runs only after X86IO is mapped, so the overlay-local latch is safe.
+        ld      (x86_io_port),hl
         ld      hl,(x86_io_count_in)
         inc     hl
         ld      (x86_io_count_in),hl
@@ -718,6 +721,8 @@ x86_io_ppi_decode:
 
 ; Write one byte to the guest I/O bus. A=value.
 x86_io_write8_impl:
+        ; HL is the guest port passed by the resident gate.
+        ld      (x86_io_port),hl
         ld      hl,(x86_io_count_out)
         inc     hl
         ld      (x86_io_count_out),hl
@@ -1498,6 +1503,8 @@ x86_io_ata_write_data16:
         ret
 
 x86_io_read16_impl:
+        ; HL is the guest port passed by the resident gate.
+        ld      (x86_io_port),hl
         ld      hl,(x86_io_count_in)
         inc     hl
         ld      (x86_io_count_in),hl
@@ -1537,6 +1544,8 @@ x86_io_read16_impl:
 ; Write a 16-bit value. The 00E0h test device has a native word latch;
 ; other ports use PCem's byte fallback at port and port+1.
 x86_io_write16_impl:
+        ; DE is the guest port and HL is the guest AX value.
+        ld      (x86_io_port),de
         ld      (x86_io_word_value),hl
         ld      hl,(x86_io_count_out)
         inc     hl
