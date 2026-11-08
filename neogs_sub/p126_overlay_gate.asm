@@ -604,6 +604,34 @@ x86_vga_mem_write8:
         pop     ix
         ret
 
+x86_vga_get_text_snapshot:
+        push    af
+        push    ix
+        ld      a,P126_NGS_X86VGA_OVERLAY_PAGE
+        rrca
+        ld      (p126_overlay_request_selector),a
+        pop     ix
+        pop     af
+        push    ix
+        ld      ix,x86_vga_get_text_snapshot_impl
+        call    p126_overlay_call
+        pop     ix
+        ret
+
+x86_vga_read_text_cell:
+        push    af
+        push    ix
+        ld      a,P126_NGS_X86VGA_OVERLAY_PAGE
+        rrca
+        ld      (p126_overlay_request_selector),a
+        pop     ix
+        pop     af
+        push    ix
+        ld      ix,x86_vga_read_text_cell_impl
+        call    p126_overlay_call
+        pop     ix
+        ret
+
 x86_vga_reset:
         push    af
         push    ix
