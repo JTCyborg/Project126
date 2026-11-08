@@ -484,7 +484,7 @@ x86_bios_trace_log_io_counts:
         call    p126_ngs_resident_log
         ld      hl,(x86_bios_trace_io_out_snapshot)
         call    x86_bios_trace_emit_hex16
-        ld      hl,(x86_io_port)
+        ld      hl,(x86_bios_trace_io_port_snapshot)
         call    x86_bios_trace_emit_hex16
         ld      a,(x86_reg_ax)
         call    x86_bios_trace_emit_hex8
@@ -790,6 +790,7 @@ x86_bios_trace_io_prefix: db "[IO COUNT] IN=",0
 x86_bios_trace_io_out_text: db " OUT= P=",0
 x86_bios_trace_io_in_snapshot: dw 0
 x86_bios_trace_io_out_snapshot: dw 0
+x86_bios_trace_io_port_snapshot: dw 0
 x86_bios_trace_history_title: db "[X86 HIST] LAST 16 INSTRUCTIONS (OLDEST FIRST)",13,10,0
 x86_bios_trace_history_prefix: db "[X86 HIST] ",0
 x86_bios_trace_history_si_text: db " SI=",0
