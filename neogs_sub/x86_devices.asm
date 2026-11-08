@@ -943,6 +943,10 @@ x86_dev_pit_selftest_impl:
         xor     a
         call    x86_dev_pit_write8
         jp      c,.pit_selftest_fail
+        ; Force a real low-to-high GATE edge; the previous mode-3 test
+        ; leaves GATE2 high, so writing 1 again would not retrigger mode 1.
+        xor     a
+        call    x86_dev_pit_gate2_write
         ld      a,1
         call    x86_dev_pit_gate2_write
         ld      a,(x86_dev_pit_out2)
