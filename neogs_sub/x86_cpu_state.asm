@@ -174,30 +174,38 @@ x86_bios_reset_vector_probe:
 ; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED: x86_bios_diag_dst_1ff0: db 0
 ; OBSOLETE IMAGE-COPY DIAGNOSTIC DISABLED: 
 x86_bios_startup_trace:
+        ; Run BIOS in bounded slices so the resident IPC dispatcher remains
+        ; responsive during long RAM-sizing and PIT polling loops.
+        ld      a,(x86_bios_trace_active)
+        or      a
+        jr      nz,.run_slice
         call    x86_bios_reset_vector_probe
         jr      nc,.reset_vector_ok
         ld      a,4
         call    x86_bios_trace_capture_event
+        xor     a
+        ld      (x86_bios_trace_active),a
+        scf
         ret
 .reset_vector_ok:
         xor     a
         ld      (x86_bios_trace_event_status),a
-        ld      (x86_bios_trace_first_count),a
         ld      hl,x86_bios_trace_start_log
         call    p126_ngs_resident_log
-        ; Run BIOS POST through long RAM-sizing loops. The 16-bit instruction
-        ; watchdog below remains the runaway-execution safety limit.
         ld      hl,#FFFF
         ld      (x86_bios_trace_remaining),hl
         ld      hl,0
         ld      (x86_bios_trace_executed),hl
+        ld      a,1
+        ld      (x86_bios_trace_active),a
+.run_slice:
+        ; 64 instructions per pass; service IPC between slices.
+        ld      a,64
+        ld      (x86_bios_trace_slice_remaining),a
 .trace_loop:
-        ; OBSOLETE: per-instruction fetch probe disabled after BIOS image/readback validation.
         call    x86_cpu_step
         jr      c,.trace_fault
         call    x86_bios_trace_capture_instruction
-        ; BIOS table-exit marker disabled: allow RAM initialization to execute.
-        ; OBSOLETE: first-32 register dump disabled; terminal fault snapshot remains active.
         ld      hl,(x86_bios_trace_executed)
         inc     hl
         ld      (x86_bios_trace_executed),hl
@@ -212,42 +220,44 @@ x86_bios_startup_trace:
         ld      (x86_bios_trace_remaining),hl
         ld      a,h
         or      l
+        jr      z,.trace_watchdog
+        ld      a,(x86_bios_trace_slice_remaining)
+        dec     a
+        ld      (x86_bios_trace_slice_remaining),a
         jr      nz,.trace_loop
-        ld      a,5
-        call    x86_bios_trace_capture_event
-        ld      hl,x86_bios_trace_watchdog_log
-        call    p126_ngs_resident_log
-        call    x86_bios_trace_log_cs_ip
-        call    x86_bios_trace_log_registers
-        call    x86_io_dump_bios_table
-        call    x86_bios_trace_log_io_counts
-
-        call    x86_bios_trace_log_history
-        scf
+        or      a
         ret
+.trace_watchdog:
+        ld      a,5
+        ld      hl,x86_bios_trace_watchdog_log
+        jr      .trace_stop
 .trace_fault:
         ld      a,3
-        call    x86_bios_trace_capture_event
         ld      hl,x86_bios_trace_fault_log
-        call    p126_ngs_resident_log
-        call    x86_bios_trace_log_cs_ip
-        call    x86_bios_trace_log_registers
-        call    x86_bios_trace_log_io_counts
-
-        call    x86_bios_trace_log_history
-        scf
-        ret
+        jr      .trace_stop
 .trace_halted:
         ld      a,2
-        call    x86_bios_trace_capture_event
         ld      hl,x86_bios_trace_halted_log
+.trace_stop:
+        ld      (x86_bios_trace_stop_kind),a
+        xor     a
+        ld      (x86_bios_trace_active),a
+        push    hl
+        ld      a,(x86_bios_trace_stop_kind)
+        call    x86_bios_trace_capture_event
+        pop     hl
         call    p126_ngs_resident_log
         call    x86_bios_trace_log_cs_ip
         call    x86_bios_trace_log_registers
         call    x86_bios_trace_log_io_counts
-
+        ld      a,(x86_bios_trace_stop_kind)
+        cp      5
+        call    z,x86_io_dump_bios_table
         call    x86_bios_trace_log_history
-        or      a
+        ld      a,(x86_bios_trace_stop_kind)
+        cp      2
+        ret     z
+        scf
         ret
 
 ; Capture one completed instruction in a 16-entry circular history.
@@ -609,28 +619,6 @@ x86_bios_trace_log_history:
         pop     af
         ret
 
-; Arm a two-instruction diagnostic stop when CMP AL,FF reaches the
-; first BIOS table terminator. SI=E0B0 or E0B1 covers both image alignments.
-; The next instruction is JZ; the existing history dump then records whether
-; the branch landed at E0BF or fell through to E073.
-x86_bios_trace_marker_arm:
-        ld      hl,(x86_exec_instruction_start_ip)
-        ld      de,#E06F
-        or      a
-        sbc     hl,de
-        ret     nz
-        ; Stop after the second table's CMP/JZ/XOR DH,03/JNZ sequence.
-        ; This verifies that both BIOS tables complete and that the loop
-        ; exits into the first RAM-initialization instruction at E0C4.
-        ld      hl,(x86_reg_si)
-        ld      de,#E0BB
-        or      a
-        sbc     hl,de
-        ret     nz
-        ld      hl,4
-        ld      (x86_bios_trace_remaining),hl
-        ret
-
 ; Capture a compact stop event for the DMA diagnostics response.
 ; A=1 slice budget, 2 guest HLT, 3 opcode/memory fault, 4 reset-vector fault.
 x86_bios_trace_capture_event:
@@ -778,7 +766,6 @@ x86_bios_trace_probe_error0: db 0
 x86_bios_trace_probe_error1: db 0
 x86_bios_trace_probe_prefix: db "[X86 FETCH] B0=",0
 x86_bios_trace_probe_second: db " B1=",0
-x86_bios_trace_first_count: db 0
 x86_bios_trace_first_number: db 0
 x86_bios_trace_first_phys: db 0,0,0
 x86_bios_trace_first_region: db 0
@@ -833,6 +820,9 @@ x86_bios_trace_history: BLOCK 16*9,0
 
 x86_bios_trace_remaining: dw 0
 x86_bios_trace_executed:  dw 0
+x86_bios_trace_active:    db 0
+x86_bios_trace_slice_remaining: db 0
+x86_bios_trace_stop_kind: db 0
 x86_bios_trace_start_log: db "[NGS] X86 BIOS CONTINUOUS EXECUTION START",13,10,0
 x86_bios_trace_cs_ip_prefix: db "[X86] CS:IP=",0
 x86_bios_trace_fault_log: db "[NGS] X86 BIOS TRACE STOP: OPCODE OR MEMORY FAULT",13,10,0
