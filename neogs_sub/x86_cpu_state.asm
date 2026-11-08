@@ -218,6 +218,12 @@ x86_bios_startup_trace:
         or      a
         sbc     hl,de
         jr      z,.trace_cs_expected
+        ; 0030h is the BIOS's intentional RETF into its stack trampoline.
+        ld      hl,(x86_reg_cs)
+        ld      de,#0030
+        or      a
+        sbc     hl,de
+        jr      z,.trace_cs_expected
         ld      a,(x86_bios_trace_unexpected_cs_once)
         or      a
         jr      nz,.trace_cs_expected
@@ -226,6 +232,26 @@ x86_bios_startup_trace:
         push    hl
         ld      hl,x86_bios_trace_unexpected_cs_log
         call    p126_ngs_resident_log
+        ld      hl,x86_bios_trace_far_target_prefix
+        call    p126_ngs_resident_log
+        ld      a,(x86_exec_far_jmp_target_valid)
+        or      a
+        jr      z,.trace_no_far_target
+        ld      hl,(x86_exec_far_jmp_target_cs)
+        call    x86_bios_trace_emit_hex16
+        ld      a,':'
+        call    x86_bios_trace_emit_char
+        ld      hl,(x86_exec_far_jmp_target_ip)
+        call    x86_bios_trace_emit_hex16
+        jr      .trace_far_target_done
+.trace_no_far_target:
+        ld      hl,x86_bios_trace_far_target_none
+        call    p126_ngs_resident_log
+.trace_far_target_done:
+        ld      a,13
+        call    x86_bios_trace_emit_char
+        ld      a,10
+        call    x86_bios_trace_emit_char
         call    x86_bios_trace_log_cs_ip
         call    x86_bios_trace_log_registers
         pop     hl
@@ -955,7 +981,11 @@ x86_bios_trace_executed:  dw 0
 x86_bios_trace_active:    db 0
 x86_bios_trace_unexpected_cs_once: db 0
 x86_bios_trace_unexpected_cs_log:
-        db "[X86 TRACE] FIRST CS CHANGE FROM F000",13,10,0
+        db "[X86 TRACE] FIRST UNEXPECTED CS CHANGE",13,10,0
+x86_bios_trace_far_target_prefix:
+        db "[X86 TRACE] LAST EA TARGET=",0
+x86_bios_trace_far_target_none:
+        db "NONE",0
 x86_bios_trace_slice_remaining: db 0
 x86_bios_trace_stop_kind: db 0
 x86_bios_trace_start_log: db "[NGS] X86 BIOS CONTINUOUS EXECUTION START",13,10,0
