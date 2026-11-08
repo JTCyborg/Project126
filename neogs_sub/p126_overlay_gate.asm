@@ -231,6 +231,154 @@ p126_overlay_allocator_selftest:
         scf
         ret
 
+; -------------------------------------------------------------------------
+; Resident module registry for dynamically placed overlays.
+; IDs 1..4 are pinned (X86IO/X86ALU/X86DEV/X86EXEC). IDs 5..15 may own
+; one allocator page in 08h..0Fh. The registry stores physical page numbers;
+; call dispatch derives the WIN2 selector only at the point of use.
+;
+; p126_overlay_register_dynamic: IN A=module ID (5..15), B=physical page (08..0F).
+; p126_overlay_unregister_dynamic: IN A=module ID (5..15).
+; p126_overlay_call_module: IN A=loaded module ID, IX=entry in 8000h..BFFFh.
+; -------------------------------------------------------------------------
+p126_overlay_register_dynamic:
+        cp      5
+        jr      c,.module_register_range_error
+        cp      16
+        jr      nc,.module_register_range_error
+        ld      (p126_overlay_manager_id),a
+        ld      a,b
+        cp      8
+        jr      c,.module_register_range_error
+        cp      16
+        jr      nc,.module_register_range_error
+        ld      (p126_overlay_manager_page),a
+
+        ; Reject an already-registered module ID.
+        ld      a,(p126_overlay_manager_id)
+        ld      e,a
+        ld      d,0
+        ld      hl,p126_overlay_module_page_table
+        add     hl,de
+        ld      a,(hl)
+        or      a
+        jr      nz,.module_register_busy
+
+        ; Claim the exact physical page in the existing allocator bitmap.
+        ld      a,(p126_overlay_manager_page)
+        sub     7
+        ld      e,a
+        ld      d,0
+        ld      hl,p126_overlay_alloc_state
+        add     hl,de
+        ld      a,(hl)
+        or      a
+        jr      nz,.module_register_busy
+        ld      a,1
+        ld      (hl),a
+
+        ; Publish the registry entry only after the allocator claim succeeds.
+        ld      a,(p126_overlay_manager_id)
+        ld      e,a
+        ld      d,0
+        ld      hl,p126_overlay_module_page_table
+        add     hl,de
+        ld      a,(p126_overlay_manager_page)
+        ld      (hl),a
+        xor     a
+        ret
+.module_register_busy:
+        ld      a,P126_STATUS_BUSY
+        scf
+        ret
+.module_register_range_error:
+        ld      a,P126_STATUS_ADDRESS_RANGE
+        scf
+        ret
+
+p126_overlay_unregister_dynamic:
+        cp      5
+        jr      c,.module_unregister_range_error
+        cp      16
+        jr      nc,.module_unregister_range_error
+        ld      (p126_overlay_manager_id),a
+        ld      e,a
+        ld      d,0
+        ld      hl,p126_overlay_module_page_table
+        add     hl,de
+        ld      a,(hl)
+        or      a
+        jr      z,.module_unregister_not_loaded
+        call    p126_overlay_release_page
+        ret     c
+
+        ; Clear the registry only after the allocator confirms release.
+        ld      a,(p126_overlay_manager_id)
+        ld      e,a
+        ld      d,0
+        ld      hl,p126_overlay_module_page_table
+        add     hl,de
+        xor     a
+        ld      (hl),a
+        ret
+.module_unregister_not_loaded:
+        ld      a,P126_STATUS_NO_SERVICE
+        scf
+        ret
+.module_unregister_range_error:
+        ld      a,P126_STATUS_ADDRESS_RANGE
+        scf
+        ret
+
+p126_overlay_call_module:
+        cp      1
+        jr      c,.module_call_not_loaded
+        cp      16
+        jr      nc,.module_call_not_loaded
+        ld      (p126_overlay_manager_id),a
+        ld      e,a
+        ld      d,0
+        ld      hl,p126_overlay_module_page_table
+        add     hl,de
+        ld      a,(hl)
+        or      a
+        jr      z,.module_call_not_loaded
+        rrca
+        ld      (p126_overlay_request_selector),a
+        ld      a,(p126_overlay_manager_id)
+        jp      p126_overlay_call
+.module_call_not_loaded:
+        ld      a,P126_STATUS_NO_SERVICE
+        scf
+        ret
+
+; Startup regression: register ID05 on page08, verify lookup, unregister it,
+; then prove the allocator can immediately reuse page08.
+p126_overlay_manager_selftest:
+        ld      a,5
+        ld      b,8
+        call    p126_overlay_register_dynamic
+        ret     c
+        ld      a,(p126_overlay_module_page_table+5)
+        cp      8
+        jr      nz,.module_manager_test_bad
+        ld      a,5
+        call    p126_overlay_unregister_dynamic
+        ret     c
+        ld      a,(p126_overlay_module_page_table+5)
+        or      a
+        jr      nz,.module_manager_test_bad
+        call    p126_overlay_allocate_page
+        jr      c,.module_manager_test_bad
+        cp      8
+        jr      nz,.module_manager_test_bad
+        call    p126_overlay_release_page
+        ret
+.module_manager_test_bad:
+        ld      a,P126_STATUS_BAD_FRAME
+        scf
+        ret
+
 ; Compatibility entry points for the existing X86IO ABI. All use the same
 ; gate, so X86IO remains callable while another overlay owns WIN2.
 x86_io_reset:
@@ -575,5 +723,11 @@ p126_overlay_request_selector: db #80
 p126_overlay_gate_entry:       dw 0
 p126_overlay_gate_saved_hl:    dw 0
 p126_overlay_call_pages:       defs P126_OVERLAY_MAX_CALL_DEPTH,0
+; Index is the module ID. IDs01..04 are permanently pinned to pages04..07.
+p126_overlay_module_page_table:
+        db 0,#04,#05,#06,#07
+        defs 11,0
+p126_overlay_manager_id:       db 0
+p126_overlay_manager_page:     db 0
 p126_overlay_alloc_state:      defs 9,0
 p126_overlay_allocator_test_pages: defs 8,0
