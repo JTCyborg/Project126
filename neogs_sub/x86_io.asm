@@ -1030,6 +1030,11 @@ x86_io_snapshot_counters_impl:
         ld      (x86_bios_trace_io_out43_snapshot),hl
         ld      hl,(x86_io_ppi_out61_count)
         ld      (x86_bios_trace_io_out61_snapshot),hl
+        ; X86IO is mapped on page04. Nested gate logs X86DEV page06.
+        ld      a,P126_NGS_X86DEV_OVERLAY_SELECTOR
+        ld      (p126_overlay_request_selector),a
+        ld      ix,x86_dev_pit_log_state_impl
+        call    p126_overlay_call
         ret
 
 x86_io_count_in:  dw 0

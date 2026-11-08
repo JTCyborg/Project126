@@ -1591,3 +1591,10 @@ The temporary diagnostic is therefore moved back to the first terminator and now
 - Added 16-bit counters for PIT tick service calls and actual mode-3 OUT2 transitions. They reset with the PIT and do not change timing or guest-visible register behavior.
 - The diagnostic is emitted from inside X86DEV while its page is mapped; resident CPU-state code does not dereference overlay data directly. This preserves the overlay ownership rule used by the I/O counter snapshot.
 - Purpose: distinguish a missing/incorrect BIOS divisor, stalled guest-cycle accounting, stopped GATE2, and a mode-3 counter/OUT transition failure. Build and ATM/NeoGS retest are pending; no BIOS POST pass is claimed.
+
+
+## 2026-11-08 — Keep PIT diagnostics out of the resident image
+
+- Moved the PIT watchdog log invocation into the existing X86IO counter-snapshot implementation. While page04 is mapped, it calls the X86DEV logger on page06 through the supported nested overlay gate, then returns to page04.
+- Removed the additional resident CPU-state wrapper and its three stop-path call sites. PIT state remains logged for watchdog, fault and HALT traces because each path already invokes the I/O counter snapshot.
+- This avoids increasing the fixed X86CORE image and addresses the 16-byte overflow at the `#4000` IPC boundary without relaxing the assertion or changing module placement.
