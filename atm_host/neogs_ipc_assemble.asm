@@ -11,8 +11,16 @@ p126_atm_ipc_module_start:
 p126_atm_ipc_module_end:
 
 ; The standalone IPC audit unit does not link the ATM screen-console module.
-; Resolve its external renderer symbol with an audit-only stub. The production
-; ATM application links the real BIOS_DebugConsole_PrintChar implementation.
+; Provide audit-only renderer state/entry points so the IPC translation unit
+; can be assembled independently. The production ATM application links the
+; real definitions from p126_screen_console.asm.
+p126_atm_video_mode:
+        db P126_ATM_VIDEO_MODE_RG6_TEXT80X25
+
+p126_screen_apply_text_frame:
+        xor     a
+        ret
+
 BIOS_DebugConsole_PrintChar:
         ret
 
