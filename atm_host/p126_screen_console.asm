@@ -584,7 +584,7 @@ p126_screen_apply_text_frame::
         jp      nz,.apply_text_bad
         ld      hl,P126_IPC_DMA_RX_BUFFER+P126_IPC_HEADER_SIZE
         ld      (p126_screen_frame_char_ptr),hl
-        ld      hl,P126_IPC_DMA_RX_BUFFER+P126_IPC_HEADER_SIZE+P126_VIDEO_TEXT80_WIDTH*P126_VIDEO_TEXT80_HEIGHT
+        ld      hl,P126_IPC_DMA_RX_BUFFER+P126_IPC_HEADER_SIZE+P126_VIDEO_TEXT80_CELLS
         ld      (p126_screen_frame_attr_ptr),hl
         xor     a
         ld      (p126_screen_frame_row),a
