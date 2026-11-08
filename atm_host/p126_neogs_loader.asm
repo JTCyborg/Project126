@@ -230,7 +230,7 @@ p126_neogs_startup::
         ; Iterate the module descriptors instead of maintaining four separate
         ; startup call sites. Each descriptor is cross-checked with X86MODS.M.
         ld      hl,p126_neogs_module_table
-        ld      b,5
+        ld      b,6
 .p126_neogs_module_loop:
         ld      a,(hl)                 ; module ID
         ld      (p126_neogs_manifest_module_id),a
@@ -291,7 +291,7 @@ p126_neogs_load_manifest:
         ld      a,'V'
         ld      (p126_neogs_startup_stage),a
         ld      hl,(p126_neogs_file_length)
-        ld      de,47
+        ld      de,55
         or      a
         sbc     hl,de
         jp      nz,.manifest_bad
@@ -334,7 +334,7 @@ p126_neogs_load_manifest:
         ld      a,'f'
         ld      (p126_neogs_startup_stage),a
         ld      a,(hl)
-        cp      5
+        cp      6
         jp      nz,.manifest_bad
         inc     hl
         ld      a,'g'
@@ -344,9 +344,9 @@ p126_neogs_load_manifest:
         jp      nz,.manifest_bad
 
         ld      hl,p126_neogs_manifest+7
-        ld      b,5
+        ld      b,6
         ld      c,1
-        ld      d,4
+        ld      d,6
 .manifest_record_loop:
         ld      a,c
         ld      (p126_neogs_manifest_record_index),a
@@ -441,8 +441,13 @@ p126_neogs_verify_overlay_manifest:
         jr      .manifest_verify_id
 .manifest_verify_vga:
         cp      P126_IMAGE_KIND_X86VGA
-        jr      nz,.manifest_verify_bad
+        jr      nz,.manifest_verify_vid
         ld      a,5
+        jr      .manifest_verify_id
+.manifest_verify_vid:
+        cp      P126_IMAGE_KIND_X86VID
+        jr      nz,.manifest_verify_bad
+        ld      a,6
 .manifest_verify_id:
         ; Descriptor ID and IMAGE kind must identify the same module.
         ld      b,a
@@ -628,6 +633,11 @@ p126_neogs_load_fixed_overlay:
         ld      hl,p126_neogs_dev_log_begin
         jr      .fixed_overlay_log_begin
 .fixed_overlay_log_exec_begin:
+        cp      P126_IMAGE_KIND_X86VID
+        jr      nz,.fixed_overlay_log_vid_begin
+        ld      hl,p126_neogs_vid_log_begin
+        jr      .fixed_overlay_log_begin
+.fixed_overlay_log_vid_begin:
         cp      P126_IMAGE_KIND_X86VGA
         jr      nz,.fixed_overlay_log_vga_begin
         ld      hl,p126_neogs_vga_log_begin
@@ -700,6 +710,11 @@ p126_neogs_load_fixed_overlay:
         ld      hl,p126_neogs_dev_log_ready
         jr      .fixed_overlay_log_ready
 .fixed_overlay_log_exec_ready:
+        cp      P126_IMAGE_KIND_X86VID
+        jr      nz,.fixed_overlay_log_vid_ready
+        ld      hl,p126_neogs_vid_log_ready
+        jr      .fixed_overlay_log_ready
+.fixed_overlay_log_vid_ready:
         cp      P126_IMAGE_KIND_X86VGA
         jr      nz,.fixed_overlay_log_vga_ready
         ld      hl,p126_neogs_vga_log_ready
@@ -1192,6 +1207,7 @@ p126_neogs_alu_name:  db "X86ALU  "
 p126_neogs_dev_name:  db "X86DEV  "
 p126_neogs_exec_name: db "X86EXEC "
 p126_neogs_vga_name:  db "X86VGA  "
+p126_neogs_vid_name:  db "X86VID  "
 ; Descriptor: module ID, IMAGE kind, physical page, max size (u16),
 ; filename pointer and diagnostic stage character.
 p126_neogs_module_table:
@@ -1210,6 +1226,9 @@ p126_neogs_module_table:
         db      5,P126_IMAGE_KIND_X86VGA,#08
         dw      P126_IMAGE_X86VGA_MAX_SIZE,p126_neogs_vga_name
         db      'V'
+        db      6,P126_IMAGE_KIND_X86VID,#09
+        dw      P126_IMAGE_X86VID_MAX_SIZE,p126_neogs_vid_name
+        db      'C'
 p126_neogs_manifest_name: db "X86MODS "
 p126_neogs_file_extension: db 'C'
 p126_neogs_manifest_valid: db 0
@@ -1218,7 +1237,7 @@ p126_neogs_manifest_record_index: db 0
 p126_neogs_manifest_record_size: dw 0
 p126_neogs_manifest_record_ptr: dw 0
 p126_neogs_manifest_crc_work: dw 0
-p126_neogs_manifest: defs 47,0
+p126_neogs_manifest: defs 55,0
 p126_neogs_overlay_size: dw 0
 p126_neogs_overlay_max_size: dw 0
 p126_neogs_overlay_kind: db 0
@@ -1234,6 +1253,8 @@ p126_neogs_exec_log_begin: db "[NGS HOST] X86EXEC IMAGE BEGIN",13,10,0
 p126_neogs_exec_log_ready: db "[NGS HOST] X86EXEC IMAGE TX COMPLETE",13,10,0
 p126_neogs_vga_log_begin: db "[NGS HOST] X86VGA IMAGE BEGIN",13,10,0
 p126_neogs_vga_log_ready: db "[NGS HOST] X86VGA IMAGE TX COMPLETE",13,10,0
+p126_neogs_vid_log_begin: db "[NGS HOST] X86VID IMAGE BEGIN",13,10,0
+p126_neogs_vid_log_ready: db "[NGS HOST] X86VID IMAGE TX COMPLETE",13,10,0
 p126_neogs_name_ptr: dw 0
 p126_neogs_file_length: dw 0
 p126_neogs_core_length: dw 0
