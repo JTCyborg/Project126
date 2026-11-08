@@ -1537,6 +1537,7 @@ The temporary diagnostic is therefore moved back to the first terminator and now
 
 
 ## 2026-11-08 — Guest CPU clock and PIT timebase
+- Для соблюдения 16-КиБ лимита resident image timing routine вызывается из CPU dispatcher напрямую через штатный overlay gate; промежуточная resident-обёртка удалена. Укорочены две повторяющиеся строки frame-диагностики до `[NGS] FRAME OK/BAD` (семантика сообщений сохранена), что освобождает ещё 16 байт.
 
 - Исправлена компоновка временного учёта: декодирование длительности гостевой инструкции перенесено в X86DEV overlay. Resident X86CORE вызывает его только через штатный `p126_overlay_call`; прямой вызов кода по адресу оверлея из resident-кода запрещён. Это также освобождает место в фиксированном 16-КиБ resident-образе.
 - Полная сборка должна подтвердить, что resident IPC/core снова укладывается до `#4000`, а X86DEV overlay остаётся в окне `#8000-#BFFF`.
