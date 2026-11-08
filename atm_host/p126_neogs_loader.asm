@@ -208,6 +208,9 @@ p126_neogs_startup::
         jr      .p126_neogs_core_stream
 
 .p126_neogs_core_stream_done:
+        ; Separate payload transfer from the final resident-ready handshake.
+        ld      a,'B'
+        ld      (p126_neogs_startup_stage),a
         ; As in Project125, receive the resident-ready ACK only after every
         ; payload byte has completed its DBIT-consumed handshake.
         call    p126_neogs_receive_byte
@@ -215,6 +218,9 @@ p126_neogs_startup::
         cp      P126_NGS_ACK_DONE
         jp      nz,p126_neogs_transport_error
 
+        ; Separate the final ACK from manifest file I/O/validation.
+        ld      a,'M'
+        ld      (p126_neogs_startup_stage),a
         ; Load and validate the versioned module directory before installing
         ; any overlay. It is the build-produced source of size/CRC/page metadata.
         call    p126_neogs_load_manifest
@@ -270,6 +276,9 @@ p126_neogs_startup::
 ; id, physical page, flags, reserved, size16, CRC16/CCITT-FALSE.
 ; -------------------------------------------------------------------------
 p126_neogs_load_manifest:
+        ; Lowercase sub-stages identify the manifest open and validation path.
+        ld      a,'m'
+        ld      (p126_neogs_startup_stage),a
         xor     a
         ld      (p126_neogs_manifest_valid),a
         ld      hl,p126_neogs_manifest_name
@@ -278,6 +287,8 @@ p126_neogs_load_manifest:
         ld      (p126_neogs_file_extension),a
         call    p126_neogs_open_file
         ret     c
+        ld      a,'V'
+        ld      (p126_neogs_startup_stage),a
         ld      hl,(p126_neogs_file_length)
         ld      de,39
         or      a
