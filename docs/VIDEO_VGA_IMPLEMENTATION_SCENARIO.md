@@ -78,3 +78,23 @@ Run BIOS2 INT 10h text/graphics paths. Validate guest register access, aperture,
 - DMA fragmentation never exceeds the 16 KiB aperture and never mutates an in-flight slot.
 - ATM displays only a fully validated frame; on failure it retains the previous frame.
 - Build logs report component versions, image sizes and test results. Assembly success is not hardware/display verification.
+
+## 7. Implementation progress (2026-11-08)
+
+### Completed in source (not yet build-verified)
+
+- Added X86VGA as dynamic module ID05 / physical page08, separate from the 4 KiB X86DEV overlay.
+- Extended the build output, TR-DOS disk packaging, five-record X86MODS manifest, host loader and NeoGS IMAGE receiver for X86VGA.
+- IMAGE_FINISH registers page08 only after the received image has passed the existing physical-page readback check; the resident then calls the module through the overlay gate.
+- Added an overlay probe and register-file self-test. The test covers Sequencer, Attribute Controller flip-flop, Graphics Controller and DAC RGB read/write sequencing.
+- Added VGA guest I/O dispatch for ports 3C0h–3DFh, including active mono/colour CRTC aliasing and the PCem-visible register read/write side effects.
+- Added resident overlay-gate wrappers so X86IO reaches VGA without directly accessing an inactive WIN2 page.
+- Added build-time VGA overlay size assertions and TR-DOS entry validation.
+
+### Current implementation boundary
+
+The current X86VGA code is not yet a complete VGA adapter. Its register/port layer is in place, but VGA aperture memory semantics are the next required implementation step. In particular, do not treat A0000h–BFFFFh as a linear byte array: GDC[6] aperture selection, sequencer chain-4/chain-2, four-plane latches, read mode 1, write modes 0–3, map mask, bit mask and logical operations must be implemented before BIOS graphics or accurate text/graphics scanout can be considered functional.
+
+The ATM frame converter and 16 KiB frame transport are not implemented yet. The existing BIOS2 INT CD debugging state remains untouched.
+
+No SjASMPlus build or emulator run has been performed for these changes yet. The source changes must be assembled and exercised before reporting build or runtime success.
