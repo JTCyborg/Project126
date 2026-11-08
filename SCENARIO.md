@@ -1598,3 +1598,12 @@ The temporary diagnostic is therefore moved back to the first terminator and now
 - Moved the PIT watchdog log invocation into the existing X86IO counter-snapshot implementation. While page04 is mapped, it calls the X86DEV logger on page06 through the supported nested overlay gate, then returns to page04.
 - Removed the additional resident CPU-state wrapper and its three stop-path call sites. PIT state remains logged for watchdog, fault and HALT traces because each path already invokes the I/O counter snapshot.
 - This avoids increasing the fixed X86CORE image and addresses the 16-byte overflow at the `#4000` IPC boundary without relaxing the assertion or changing module placement.
+
+
+## 2026-11-08 — Keep BIOS POST cooperative with the ATM IPC loop
+
+- The target log reached BIOS reset-vector fetch and decoded the far jump to F000:E05B, then stopped making progress and the resident bootstrap/boot-ACK diagnostics appeared again. The resident loop previously called the complete 65,535-instruction BIOS runner synchronously after IMAGE_FINISH; while it ran, the resident IPC dispatcher could not service further ATM commands.
+- Changed BIOS execution to persistent 64-instruction slices. The guest CPU state, instruction watchdog and trace history persist between calls; the resident main loop services one pending IPC frame between slices. This does not inject guest interrupts or alter guest instruction semantics.
+- The terminal HLT/fault/watchdog paths still capture the same stop event and diagnostics. The initial reset-vector probe remains a one-time operation.
+- Commits: fdef1759f8fd14500f879637978cee5e1f018b27 (persistent sliced BIOS runner), f39aa985d09603e91661e7fe4063738342e8d987 (resident loop schedules slices).
+- Build and ATM target retest are pending. The log does not yet establish the exact reset cause; this change removes the confirmed IPC starvation window but must be validated with a fresh build and target trace.
