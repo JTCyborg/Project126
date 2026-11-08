@@ -186,6 +186,12 @@ p126_host_ngs_start_done:
         ld      hl, p126_log_rtc_done
         call    p126_host_debug_string
 
+        ; RTC gate close restores DOSEN through the ROM trampoline, which
+        ; can leave the ATM windows on a different page selection. Reassert
+        ; the host code page and page-0 IPC staging buffer before building
+        ; the first frame at #C000.
+        call    p126_screen_restore_host_pages
+
         ; Publish the actual host video mode to NeoGS before the converter
         ; is allowed to produce an ATM-native frame.
         call    p126_neogs_send_video_mode
