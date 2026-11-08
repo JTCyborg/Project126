@@ -426,6 +426,22 @@ x86_dev_write8:
         pop     ix
         ret
 
+; PIT channel-2 GATE2 pin update. IN: A=PB0 (0/1).
+; The implementation resides in X86DEV page06; this resident wrapper
+; preserves AF across WIN2 switching and supports nested X86IO -> X86DEV.
+x86_dev_pit_gate2_write:
+        push    af
+        push    ix
+        ld      a,P126_NGS_X86DEV_OVERLAY_SELECTOR
+        ld      (p126_overlay_request_selector),a
+        pop     ix
+        pop     af
+        push    ix
+        ld      ix,x86_dev_pit_gate2_write_impl
+        call    p126_overlay_call
+        pop     ix
+        ret
+
 ; X86ALU public entry points; implementations live on physical page 05h.
 x86_alu_add8:
         push    af

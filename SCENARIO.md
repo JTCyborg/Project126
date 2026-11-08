@@ -1625,3 +1625,11 @@ The temporary diagnostic is therefore moved back to the first terminator and now
 - The sample is emitted after the tick update, does not access an inactive overlay, does not alter PIT register/timing semantics, and is suppressed after the first record until PIT reset. It is not emitted by the register self-test unless guest channel 2 remains configured and clocked after reset.
 - Interpretation: no record means BIOS did not complete/load channel 2 with GATE2 high, or guest-cycle advancement did not deliver 32 PIT clocks; a record with `T` advanced but `C/X` static identifies a channel counter/mode implementation gap; a mode/divisor/GATE mismatch identifies guest programming or PPI control behavior.
 - Assembly and ATM/NeoGS validation are pending. This diagnostic does not claim full PIT compatibility: channel 2 timing currently advances only modes 0 and 3, and IRQ0/channels 0–1 remain incomplete.
+
+
+## 2026-11-08 — Route XT port 61h GATE2 writes through the X86DEV overlay gate
+
+- Fixed the X86IO port-61h handler: PB0 is the PIT channel-2 GATE input, but the handler previously called the X86DEV implementation label directly while X86IO page04 was mapped. That bypassed WIN2 overlay switching and could execute bytes from the wrong physical page.
+- Added a resident `x86_dev_pit_gate2_write` wrapper. It preserves AF (the PB0 level) and enters the X86DEV page through `p126_overlay_call`; renamed the page-local implementation to `x86_dev_pit_gate2_write_impl` and updated its same-overlay internal callers.
+- PCem comparison: `PCem/keyboard_xt.c::keyboard_xt_write()` stores port 61h PB, sets `speaker_gated = val & 1`, and calls `pit_set_gate(&pit, 2, val & 1)`. `PCem/pit.c::pit_set_gate_no_timer()` handles the GATE edge; for mode 3, a low-to-high edge reloads the count, sets OUT high, and enables counting, while the low level disables counting. Project126 retains its cycle-driven clock model but now delivers the same PB0 edge to the actual X86DEV PIT state.
+- This is a source-level correction only. Assembly and ATM/NeoGS runtime validation are still required; no BIOS POST pass is claimed.

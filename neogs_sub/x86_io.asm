@@ -754,7 +754,8 @@ x86_io_ppi_write8:
 .ppi_pb_store:
         ld      a,c
         ld      (x86_io_ppi_pb),a
-        ; PB0 is PIT channel-2 GATE, matching PCem keyboard_xt_write().
+        ; PB0 is PIT channel-2 GATE. X86DEV is a separate WIN2 overlay;
+        ; use its resident gate instead of calling its inactive page directly.
         push    bc
         and     1
         call    x86_dev_pit_gate2_write

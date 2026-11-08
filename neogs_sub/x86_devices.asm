@@ -569,7 +569,7 @@ x86_dev_pit_reset_impl:
 
 ; PCem pit_set_gate() edge behavior for XT speaker channel 2.
 ; A=PB0/GATE2 level. No clock is advanced by this static pin model.
-x86_dev_pit_gate2_write:
+x86_dev_pit_gate2_write_impl:
         and     1
         ld      b,a
         ld      a,(x86_dev_pit_gate2)
@@ -938,7 +938,7 @@ x86_dev_pit_selftest_impl:
         call    x86_dev_pit_write8
         jp      c,.pit_selftest_fail
         ld      a,1
-        call    x86_dev_pit_gate2_write
+        call    x86_dev_pit_gate2_write_impl
         ld      b,4
         call    x86_dev_pit_advance_cycles
         ld      a,(x86_dev_pit_out2)
@@ -990,9 +990,9 @@ x86_dev_pit_selftest_impl:
         ; Force a real low-to-high GATE edge; the previous mode-3 test
         ; leaves GATE2 high, so writing 1 again would not retrigger mode 1.
         xor     a
-        call    x86_dev_pit_gate2_write
+        call    x86_dev_pit_gate2_write_impl
         ld      a,1
-        call    x86_dev_pit_gate2_write
+        call    x86_dev_pit_gate2_write_impl
         ld      a,(x86_dev_pit_out2)
         or      a
         jp      nz,.pit_selftest_fail
