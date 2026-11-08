@@ -144,6 +144,55 @@ try {
     }
     Write-Host "[BUILD] P126_GS105A_BOOTSTRAP v0.1.0 bytes=$bootstrapBytes"
 
+    # Build the versioned module directory from the exact overlay binaries.
+    # CRC-16/CCITT-FALSE matches the Project126 IPC checksum primitive.
+    function Get-P126Crc16([byte[]]$Bytes) {
+        [int]$crc = 0xFFFF
+        foreach ($value in $Bytes) {
+            $crc = $crc -bxor ([int]$value -shl 8)
+            for ($bit = 0; $bit -lt 8; $bit++) {
+                if (($crc -band 0x8000) -ne 0) {
+                    $crc = (($crc -shl 1) -band 0xFFFF) -bxor 0x1021
+                } else {
+                    $crc = ($crc -shl 1) -band 0xFFFF
+                }
+            }
+        }
+        return [uint16]$crc
+    }
+
+    $moduleProfiles = @(
+        @{ Id = 1; Page = 4; File = "X86IO.C" },
+        @{ Id = 2; Page = 5; File = "X86ALU.C" },
+        @{ Id = 3; Page = 6; File = "X86DEV.C" }
+    )
+    [System.Collections.Generic.List[byte]]$moduleManifest = [System.Collections.Generic.List[byte]]::new()
+    # Header: "P126", format revision, record count, record size.
+    $moduleManifest.AddRange([byte[]](0x50, 0x31, 0x32, 0x36, 1, $moduleProfiles.Count, 8))
+    foreach ($profile in $moduleProfiles) {
+        $modulePath = Join-Path $build $profile.File
+        if (-not (Test-Path $modulePath)) {
+            throw "Module manifest input is missing: $modulePath"
+        }
+        [byte[]]$moduleBytes = [System.IO.File]::ReadAllBytes($modulePath)
+        if ($moduleBytes.Length -lt 1 -or $moduleBytes.Length -gt 0x4000) {
+            throw "$($profile.File) exceeds one physical 16 KiB overlay page."
+        }
+        [uint16]$moduleCrc = Get-P126Crc16 $moduleBytes
+        $moduleManifest.Add([byte]$profile.Id)
+        $moduleManifest.Add([byte]$profile.Page)
+        $moduleManifest.Add([byte]1) # pinned module
+        $moduleManifest.Add([byte]0) # reserved in format v1
+        $moduleManifest.Add([byte]($moduleBytes.Length -band 0xFF))
+        $moduleManifest.Add([byte](($moduleBytes.Length -shr 8) -band 0xFF))
+        $moduleManifest.Add([byte]($moduleCrc -band 0xFF))
+        $moduleManifest.Add([byte](($moduleCrc -shr 8) -band 0xFF))
+        Write-Host ("[MODULE] id={0} page={1:X2} bytes={2} crc16={3:X4}" -f $profile.Id, $profile.Page, $moduleBytes.Length, $moduleCrc)
+    }
+    $manifestPath = Join-Path $build "X86MODS.MF"
+    [System.IO.File]::WriteAllBytes($manifestPath, $moduleManifest.ToArray())
+    Write-Host "[MODULE] X86MODS.MF bytes=$($moduleManifest.Count) records=$($moduleProfiles.Count)"
+
     # The TR-DOS image is always rebuilt from scratch. Never keep an old disk
     # image if the assembler or a required project file fails.
     Remove-Item -Force -ErrorAction SilentlyContinue $diskImage
@@ -199,6 +248,7 @@ try {
         @{ Name = "X86IO   C"; Label = "X86IO.C" },
         @{ Name = "X86ALU  C"; Label = "X86ALU.C" },
         @{ Name = "X86DEV  C"; Label = "X86DEV.C" },
+        @{ Name = "X86MODS M"; Label = "X86MODS.M"; ExpectedLength = 31; ExpectedSectors = 1 },
         @{ Name = "P126BOOTC"; Label = "P126BOOT.C" },
         @{ Name = "BIOS1   C"; Label = "BIOS1.C"; ExpectedLength = 8192; ExpectedSectors = 32 },
         @{ Name = "BIOS2   C"; Label = "BIOS2.C"; ExpectedLength = 8192; ExpectedSectors = 32 },
