@@ -1,11 +1,11 @@
 ; =========================================================================
 ; PROJECT126 — shared DMA/IPC ABI constants
-; Version: P126 DMA/IPC ABI 1.0
+; Version: P126 DMA/IPC ABI 1.1
 ; This file contains protocol constants only; no host or NeoGS port I/O.
 ; =========================================================================
 
 P126_IPC_MAJOR             EQU 1
-P126_IPC_MINOR             EQU 0
+P126_IPC_MINOR             EQU 1
 P126_IPC_HEADER_SIZE       EQU 18
 P126_IPC_MAX_FRAME_SIZE    EQU #4000
 P126_IPC_MAX_PAYLOAD       EQU P126_IPC_MAX_FRAME_SIZE-P126_IPC_HEADER_SIZE
@@ -90,10 +90,13 @@ P126_CRC16_CHECK_H        EQU #29
 P126_CRC16_CHECK_L        EQU #B1
 
 
-; IMAGE service v1.0 fixed image profiles.
-; SYSBIOS: 8 KiB image to physical page 10h.
-; X86IO: fixed-origin 8000h overlay to physical page 04h, maximum 4 KiB.
-; X86ALU: fixed-origin 8000h overlay to physical page 05h, maximum 4 KiB.
+; IMAGE service v1.1 image profiles.
+; IMAGE_BEGIN payload: message-id u16, image-kind u8, physical-page u8,
+; exact image-size u16. The receiver validates kind/page policy and derives
+; the WIN3/MPAGEX selector from ROR8(physical-page).
+; SYSBIOS: 8 KiB image to physical page 10h. X86 overlays retain their
+; pinned page assignments 04h..07h until the resident module manager owns
+; allocation of the dynamic page range.
 P126_IMAGE_KIND_SYSBIOS      EQU #00
 P126_IMAGE_KIND_X86IO        EQU #01
 P126_IMAGE_KIND_X86ALU       EQU #02

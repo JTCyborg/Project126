@@ -543,14 +543,14 @@ p126_neogs_load_fixed_overlay:
         jr      .fixed_overlay_sector_loop
 
 .fixed_overlay_data_ready:
-        ; IMAGE_BEGIN: id=1, fixed kind, reserved=0, exact u16 byte length.
+        ; IMAGE_BEGIN: id=1, kind, physical destination page, exact u16 byte length.
         ld      a,1
         ld      (#C012),a
         xor     a
         ld      (#C013),a
         ld      a,(p126_neogs_overlay_kind)
         ld      (#C014),a
-        xor     a
+        ld      a,(p126_neogs_overlay_page)
         ld      (#C015),a
         ld      hl,(p126_neogs_overlay_size)
         ld      (#C016),hl

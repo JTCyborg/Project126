@@ -575,18 +575,16 @@ p126_ngs_ipc_dispatch_once::
         ret
 
 ; -------------------------------------------------------------------------
-; IMAGE service — SYSBIOS and two fixed-origin overlay profiles.
-; Every image is one CRC-validated fragment. SYSBIOS installs at page 10h;
-; X86IO installs at page 04h, X86ALU at page 05h.
+; IMAGE service ABI 1.1. The host supplies a physical destination page
+; in IMAGE_BEGIN; the receiver validates the kind/page policy and derives
+; the WIN3/MPAGEX selector instead of hard-wiring a selector per image kind.
+; SYSBIOS remains pinned to page 10h; current X86 modules remain pinned 04h-07h.
 ; -------------------------------------------------------------------------
 p126_ngs_image_begin:
         ld      hl,p126_ngs_image_begin_log
         call    p126_ngs_ipc_log
         ld      a,(#C00C)
         cp      6
-        jp      nz,.image_begin_bad
-        ld      a,(#C015)
-        or      a
         jp      nz,.image_begin_bad
 
         ; Message ID is currently 0001h for each serialized image transaction.
@@ -610,16 +608,20 @@ p126_ngs_image_begin:
         jp      .image_begin_bad
 
 .image_begin_sysbios:
+        ld      a,(#C015)
+        cp      #10
+        jp      nz,.image_begin_bad
         ld      hl,(#C016)
         ld      de,P126_IMAGE_SYSBIOS_SIZE
         or      a
         sbc     hl,de
         jp      nz,.image_begin_bad
-        ld      a,#08                  ; WIN3 selector for physical page 10h
-        ld      (p126_ngs_image_dest_selector),a
         jr      .image_begin_common
 
 .image_begin_x86io:
+        ld      a,(#C015)
+        cp      P126_NGS_X86IO_OVERLAY_PAGE
+        jp      nz,.image_begin_bad
         ld      hl,(#C016)
         ld      a,h
         or      l
@@ -627,15 +629,14 @@ p126_ngs_image_begin:
         ld      de,P126_IMAGE_X86IO_MAX_SIZE
         or      a
         sbc     hl,de
-        jr      c,.image_x86io_size_ok
-        jr      z,.image_x86io_size_ok
+        jr      c,.image_begin_common
+        jr      z,.image_begin_common
         jp      .image_begin_bad
-.image_x86io_size_ok:
-        ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR ; WIN3 selector for physical page 04h
-        ld      (p126_ngs_image_dest_selector),a
-        jr      .image_begin_common
 
 .image_begin_x86alu:
+        ld      a,(#C015)
+        cp      P126_NGS_ALU_OVERLAY_PAGE
+        jp      nz,.image_begin_bad
         ld      hl,(#C016)
         ld      a,h
         or      l
@@ -643,15 +644,14 @@ p126_ngs_image_begin:
         ld      de,P126_IMAGE_X86ALU_MAX_SIZE
         or      a
         sbc     hl,de
-        jr      c,.image_x86alu_size_ok
-        jr      z,.image_x86alu_size_ok
+        jr      c,.image_begin_common
+        jr      z,.image_begin_common
         jp      .image_begin_bad
-.image_x86alu_size_ok:
-        ld      a,P126_NGS_ALU_OVERLAY_SELECTOR
-        ld      (p126_ngs_image_dest_selector),a
-        jr      .image_begin_common
 
 .image_begin_x86dev:
+        ld      a,(#C015)
+        cp      P126_NGS_X86DEV_OVERLAY_PAGE
+        jp      nz,.image_begin_bad
         ld      hl,(#C016)
         ld      a,h
         or      l
@@ -659,15 +659,14 @@ p126_ngs_image_begin:
         ld      de,P126_IMAGE_X86DEV_MAX_SIZE
         or      a
         sbc     hl,de
-        jr      c,.image_x86dev_size_ok
-        jr      z,.image_x86dev_size_ok
-        jr      .image_begin_bad
-.image_x86dev_size_ok:
-        ld      a,P126_NGS_X86DEV_OVERLAY_SELECTOR
-        ld      (p126_ngs_image_dest_selector),a
-        jr      .image_begin_common
+        jr      c,.image_begin_common
+        jr      z,.image_begin_common
+        jp      .image_begin_bad
 
 .image_begin_x86exec:
+        ld      a,(#C015)
+        cp      P126_NGS_X86EXEC_OVERLAY_PAGE
+        jp      nz,.image_begin_bad
         ld      hl,(#C016)
         ld      a,h
         or      l
@@ -675,15 +674,15 @@ p126_ngs_image_begin:
         ld      de,P126_IMAGE_X86EXEC_MAX_SIZE
         or      a
         sbc     hl,de
-        jr      c,.image_x86exec_size_ok
-        jr      z,.image_x86exec_size_ok
+        jr      c,.image_begin_common
+        jr      z,.image_begin_common
         jp      .image_begin_bad
-.image_x86exec_size_ok:
-        ld      a,P126_NGS_X86EXEC_OVERLAY_SELECTOR
-        ld      (p126_ngs_image_dest_selector),a
-        jr      .image_begin_common
 
 .image_begin_common:
+        ; MPAGEX selector is ROR8(physical page), independent of WIN2 selector.
+        ld      a,(#C015)
+        rrca
+        ld      (p126_ngs_image_dest_selector),a
         ld      hl,(#C012)
         ld      (p126_ngs_image_id),hl
         ld      hl,(#C016)
