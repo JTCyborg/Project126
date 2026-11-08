@@ -117,7 +117,79 @@ x86_alu_sub16_impl:
         ld      a,c
         ld      (x86_alu_high_flags),a
         ld      hl,(x86_alu_word_result)
-        call    x86_alu_merge_word_flags
+        call    x86_alu_merge_sub_word_flags
+        ret
+
+; SUB16 flags are derived from the complete 16-bit operands/result.
+; Calculate the architectural 8086 sign and overflow conditions directly.
+x86_alu_merge_sub_word_flags:
+        ; CF = unsigned lhs < rhs.
+        ld      de,(x86_alu_word_rhs)
+        ld      hl,(x86_alu_word_lhs)
+        or      a
+        sbc     hl,de
+        ld      a,0
+        jr      nc,.sub16_cf_saved
+        inc     a
+.sub16_cf_saved:
+        ld      (x86_alu_carry_in),a
+
+        ld      hl,(x86_reg_flags)
+        ld      a,l
+        and     X86_ALU_KEEP_FLAGS_LO
+        ld      l,a
+        ld      a,h
+        and     X86_ALU_KEEP_FLAGS_HI
+        ld      h,a
+        set     1,l
+        ld      a,(x86_alu_carry_in)
+        or      a
+        jr      z,.sub16_cf_done
+        set     0,l
+.sub16_cf_done:
+        ; AF = borrow from bit 3, captured by the low-byte SUB.
+        ld      a,(x86_alu_low_flags)
+        bit     4,a
+        jr      z,.sub16_no_af
+        set     4,l
+.sub16_no_af:
+        ; SF = bit 15 of the 16-bit result.
+        ld      a,(x86_alu_word_result+1)
+        bit     7,a
+        jr      z,.sub16_no_sf
+        set     7,l
+.sub16_no_sf:
+        ; OF = ((lhs ^ rhs) & (lhs ^ result) & 8000h) != 0.
+        ld      a,(x86_alu_word_lhs+1)
+        ld      b,a
+        ld      a,(x86_alu_word_rhs+1)
+        xor     b
+        ld      c,a
+        ld      a,(x86_alu_word_lhs+1)
+        ld      b,a
+        ld      a,(x86_alu_word_result+1)
+        xor     b
+        and     c
+        bit     7,a
+        jr      z,.sub16_no_of
+        set     3,h
+.sub16_no_of:
+        ; ZF = complete 16-bit result is zero.
+        ld      a,(x86_alu_word_result)
+        ld      b,a
+        ld      a,(x86_alu_word_result+1)
+        or      b
+        jr      nz,.sub16_no_zf
+        set     6,l
+.sub16_no_zf:
+        ; PF = even parity of the low result byte.
+        ld      a,(x86_alu_word_result)
+        and     a
+        jp      po,.sub16_no_pf
+        set     2,l
+.sub16_no_pf:
+        ld      (x86_reg_flags),hl
+        ld      hl,(x86_alu_word_result)
         ret
 
 x86_alu_merge_word_flags:
@@ -628,6 +700,27 @@ x86_alu_selftest:
         jp      nz,.fail
         bit     6,l
         jp      nz,.fail
+
+        ; 0001 - 8002 = 7FFF: no 16-bit sign, carry or overflow.
+        ; This is the exact subtraction/JS boundary exercised by BIOS2.
+        ld      hl,#0001
+        ld      de,#8002
+        call    x86_alu_sub16_impl
+        ld      de,#7FFF
+        or      a
+        sbc     hl,de
+        jp      nz,.fail
+        ld      hl,(x86_reg_flags)
+        bit     3,h
+        jp      nz,.fail
+        bit     7,l
+        jp      nz,.fail
+        bit     0,l
+        jp      nz,.fail
+        bit     6,l
+        jp      nz,.fail
+        bit     4,l
+        jp      z,.fail
 
         ; 0000 - 0001 = FFFF: borrow, sign, AF and even parity.
         ld      hl,#0000
