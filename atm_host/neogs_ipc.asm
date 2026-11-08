@@ -777,7 +777,10 @@ p126_ipc_dma_receive_debug_frame::
         call    p126_ipc_console_hex_byte
         ld      a,(P126_IPC_DMA_RX_BUFFER+P126_IPC_HEADER_SIZE+2)
         call    p126_ipc_console_hex_byte
-        call    p126_ipc_debug_crlf
+        ld      a,13
+        call    BIOS_DebugConsole_PrintChar
+        ld      a,10
+        call    BIOS_DebugConsole_PrintChar
         or      a
         ret
 .debug_budget:
