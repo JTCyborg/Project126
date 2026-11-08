@@ -396,6 +396,10 @@ p126_ngs_ipc_dma_send_video_error_frame:
         ld      de,#C000
         ld      bc,P126_IPC_HEADER_SIZE
         ldir
+        ld      hl,(p126_ngs_video_frame_sequence)
+        inc     hl
+        ld      (p126_ngs_video_frame_sequence),hl
+        ld      (#C00A),hl
         ld      hl,#C012
         ld      bc,P126_IPC_MAX_PAYLOAD
 .video_error_pad:
@@ -418,6 +422,10 @@ p126_ngs_ipc_dma_send_video_frame:
         ld      de,#C000
         ld      bc,P126_IPC_HEADER_SIZE
         ldir
+        ld      hl,(p126_ngs_video_frame_sequence)
+        inc     hl
+        ld      (p126_ngs_video_frame_sequence),hl
+        ld      (#C00A),hl
         ld      hl,#C012+P126_VIDEO_TEXT80_FRAME_SIZE
         ld      bc,P126_IPC_MAX_PAYLOAD-P126_VIDEO_TEXT80_FRAME_SIZE
 .video_frame_pad:
@@ -1533,6 +1541,7 @@ p126_ngs_vga_overlay_ready:  db 0
 p126_ngs_vid_overlay_ready:  db 0
 p126_ngs_video_mode_ready:   db 0
 p126_ngs_video_mode_desc:    defs P126_VIDEO_MODE_DESC_SIZE,0
+p126_ngs_video_frame_sequence: dw 0
 p126_ngs_image_id:           dw 0
 p126_ngs_image_size:         dw 0
 p126_ngs_image_kind:         db 0
