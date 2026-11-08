@@ -816,7 +816,8 @@ p126_ipc_dma_receive_debug_frame::
         ret
 
 ; Request one converted frame from NeoGS and apply the RG6 text payload
-; to the ATM's active page7/page3 text memory.
+; to the ATM's active page7/page3 text memory. A NO_OPERATION/F2 response is
+; a normal pending state until the BIOS programs a supported VGA text mode.
 p126_ipc_dma_receive_video_frame::
         ld      a,(p126_atm_video_mode)
         cp      P126_ATM_VIDEO_MODE_RG6_TEXT80X25
@@ -881,8 +882,25 @@ p126_ipc_dma_receive_video_frame::
         ld      a,#06
         jr      .video_report_failure
 .video_remote_error:
+        ; X86VID uses NO_OPERATION/F2 while VGA has not yet reached a
+        ; supported text state (for example, during BIOS RAM testing).
+        ; This is a deferred frame, not a transport failure: keep polling so
+        ; the first valid BIOS text screen can be applied later.
+        ld      a,(P126_IPC_DMA_RX_BUFFER+14)
+        cp     P126_STATUS_NO_OPERATION
+        jr      nz,.video_remote_error_report
+        ld      a,(P126_IPC_DMA_RX_BUFFER+15)
+        or      a
+        jr      nz,.video_remote_error_report
+        ld      a,(P126_IPC_DMA_RX_BUFFER+P126_IPC_HEADER_SIZE)
+        cp      #F2
+        jr      z,.video_frame_pending
+.video_remote_error_report:
         ld      a,#07
         jr      .video_report_failure
+.video_frame_pending:
+        xor     a
+        ret
 .video_apply_failed:
         ld      a,#08
 .video_report_failure:
