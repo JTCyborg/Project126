@@ -4476,7 +4476,9 @@ x86_exec_io_instruction:
 .io_port_from_dx:
         ld      hl,(x86_reg_dx)
 .io_port_ready:
-        ld      (x86_io_port),hl
+        ; HL carries the guest port into the resident overlay gate.
+        ; x86_io_port belongs to the X86IO overlay and must only be
+        ; written after that overlay has been mapped.
         ld      a,(x86_exec_io_opcode)
         and     2
         jr      nz,.io_output
@@ -4520,6 +4522,8 @@ x86_exec_io_instruction:
         or      a
         ret
 .io_output_word:
+        ; DE carries the port across the overlay gate; HL carries AX.
+        ex      de,hl
         ld      hl,(x86_reg_ax)
         ld      (x86_io_log_value),hl
         call    x86_io_write16
