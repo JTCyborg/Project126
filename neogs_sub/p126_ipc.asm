@@ -615,6 +615,44 @@ p126_ngs_ipc_dispatch_once::
         or      a
         ret
 
+.p126_ngs_dispatch_input:
+        ld      a,(#C008)
+        cp      P126_OP_INPUT_KEYBOARD
+        jp      nz,.input_keyboard_bad
+        ld      hl,(#C00C)
+        ld      de,1
+        or      a
+        sbc     hl,de
+        jp      nz,.input_keyboard_bad
+        ld      a,(p126_ngs_io_overlay_ready)
+        or      a
+        jp      z,.input_keyboard_bad
+        ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
+        ld      (p126_overlay_request_selector),a
+        ld      ix,x86_io_keyboard_push_impl
+        ld      a,(#C012)
+        call    p126_overlay_call
+        jr      c,.input_keyboard_full
+        ld      hl,p126_ngs_input_keyboard_log
+        call    p126_ngs_ipc_log
+        xor     a
+        out     (P126_NGS_CLRCBIT),a
+        ld      a,1
+        or      a
+        ret
+.input_keyboard_full:
+        xor     a
+        out     (P126_NGS_CLRCBIT),a
+        ld      a,P126_STATUS_BUSY
+        scf
+        ret
+.input_keyboard_bad:
+        xor     a
+        out     (P126_NGS_CLRCBIT),a
+        ld      a,P126_STATUS_BAD_FRAME
+        scf
+        ret
+
 .p126_ngs_dispatch_video:
         ld      a,(#C008)
         cp      P126_OP_VIDEO_MODE
