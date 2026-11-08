@@ -410,6 +410,10 @@ p126_ngs_ipc_dma_send_video_error_frame:
         ld      a,b
         or      c
         jr      nz,.video_error_pad
+        ; Payload byte 0 carries the exact VIDEO failure reason:
+        ; E0=overlay, E1=descriptor, F1=mode, F2=VGA state, F3=converter.
+        ld      a,(p126_ngs_video_error_code)
+        ld      (#C012),a
         jp      p126_ngs_ipc_dma_send_staged_frame
 
 ; The converter has already written 4000 bytes at page42h:C012h. Complete
@@ -639,17 +643,24 @@ p126_ngs_ipc_dispatch_once::
 .p126_ngs_dispatch_video_frame:
         ld      a,(p126_ngs_vid_overlay_ready)
         or      a
-        jr      z,.video_frame_not_ready
+        jr      nz,.video_dispatch_mode_check
+        ld      a,#E0                    ; X86VID overlay not installed
+        jr      .video_dispatch_error
+.video_dispatch_mode_check:
         ld      a,(p126_ngs_video_mode_ready)
         or      a
-        jr      z,.video_frame_not_ready
+        jr      nz,.video_dispatch_convert
+        ld      a,#E1                    ; ATM mode descriptor missing
+        jr      .video_dispatch_error
+.video_dispatch_convert:
         call    x86_video_convert
-        jr      c,.video_frame_not_ready
-        jp      p126_ngs_ipc_dma_send_video_frame
-.video_frame_not_ready:
-        ; Always complete the reverse-DMA transaction with an explicit VIDEO
-        ; error response. The ATM receiver must never wait on a missing frame.
+        jr      nc,.video_dispatch_success
+        ; Preserve the converter's F1/F2/F3 reason in the error payload.
+.video_dispatch_error:
+        ld      (p126_ngs_video_error_code),a
         jp      p126_ngs_ipc_dma_send_video_error_frame
+.video_dispatch_success:
+        jp      p126_ngs_ipc_dma_send_video_frame
 
 .p126_ngs_dispatch_ngs_frame:
         ; The host may request the stop record immediately after IMAGE_FINISH.
@@ -1541,6 +1552,7 @@ p126_ngs_vga_overlay_ready:  db 0
 p126_ngs_vid_overlay_ready:  db 0
 p126_ngs_video_mode_ready:   db 0
 p126_ngs_video_mode_desc:    defs P126_VIDEO_MODE_DESC_SIZE,0
+p126_ngs_video_error_code:   db 0
 p126_ngs_video_frame_sequence: dw 0
 p126_ngs_image_id:           dw 0
 p126_ngs_image_size:         dw 0
