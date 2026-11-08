@@ -975,5 +975,12 @@ x86_io_keyboard_tail: db 0
 x86_io_keyboard_count: db 0
 x86_io_keyboard_last: db 0
 
+x86_io_snapshot_counters_impl:
+        ld      hl,(x86_io_count_in)
+        ld      (x86_bios_trace_io_in_snapshot),hl
+        ld      hl,(x86_io_count_out)
+        ld      (x86_bios_trace_io_out_snapshot),hl
+        ret
+
 x86_io_count_in:  dw 0
 x86_io_count_out: dw 0
