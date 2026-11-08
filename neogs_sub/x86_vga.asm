@@ -534,8 +534,17 @@ x86_vga_normalize_port:
         jp      .port_good
 .port_mono_alias:
         ld      a,l
-        cp      #B0
+        cp      #A0
         jp      c,.port_bad
+        cp      #B0
+        jp      nc,.port_mono_b_range
+        ; PCem enables the full 3A0-3BF block in monochrome mode; 3A0-3AF
+        ; are decoded as open bus by svga_in/svga_out.
+        ld      a,(x86_vga_miscout)
+        bit     0,a
+        jp      nz,.port_bad
+        jp      .port_good
+.port_mono_b_range:
         ld      a,(x86_vga_miscout)
         bit     0,a
         jp      nz,.port_bad
