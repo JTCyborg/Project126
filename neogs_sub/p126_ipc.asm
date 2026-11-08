@@ -352,6 +352,19 @@ P126_NGS_ZXCMD       EQU #01
 ; Reverse DMA maximum-frame response for ABI command E1h (NGS_FRAME).
 ; Source is the complete 16 KiB physical page 42h at 108000h.
 p126_ngs_ipc_dma_send_test_frame::
+        ; Prefer a freshly converted ATM-native frame when both the converter
+        ; and the host mode descriptor are ready. Keep the diagnostic frame as
+        ; the fallback used during early boot and converter bring-up.
+        ld      a,(p126_ngs_vid_overlay_ready)
+        or      a
+        jp      z,.send_diagnostic_frame
+        ld      a,(p126_ngs_video_mode_ready)
+        or      a
+        jp      z,.send_diagnostic_frame
+        call    x86_video_convert
+        jp      c,.send_diagnostic_frame
+        jp      p126_ngs_ipc_dma_send_video_frame
+.send_diagnostic_frame:
         ; Build the deterministic reverse frame directly in production page
         ; 42h through WIN3, then DMA-read it from physical address 108000h.
         ; Match Project125 WIN3 selection: MPAGEX (#10), page encoded by RRCA.
@@ -383,6 +396,32 @@ p126_ngs_ipc_dma_send_test_frame::
         ld      hl,(x86_bios_trace_event_ip)
         ld      (#C015),hl
 
+        jp      p126_ngs_ipc_dma_send_staged_frame
+
+; The converter has already written 4000 bytes at page42h:C012h. Complete
+; the fixed-size DMA frame with a VIDEO response header and zero padding.
+p126_ngs_ipc_dma_send_video_frame:
+        ld      a,P126_NGS_DMA_PROD_PAGE
+        rrca
+        out     (P126_NGS_MPAGEX_PORT),a
+        ld      hl,p126_ngs_ipc_video_header
+        ld      de,#C000
+        ld      bc,P126_IPC_HEADER_SIZE
+        ldir
+        ld      hl,#C012+P126_VIDEO_TEXT80_FRAME_SIZE
+        ld      bc,P126_IPC_MAX_PAYLOAD-P126_VIDEO_TEXT80_FRAME_SIZE
+        xor     a
+.video_frame_pad:
+        ld      (hl),a
+        inc     hl
+        dec     bc
+        ld      a,b
+        or      c
+        jr      nz,.video_frame_pad
+        jp      p126_ngs_ipc_dma_send_staged_frame
+
+; Shared CRC and reverse-DMA transport for the diagnostics and VIDEO frames.
+p126_ngs_ipc_dma_send_staged_frame:
         ; CRC covers header[0..15] followed by all 16366 payload bytes.
         ld      hl,#FFFF
         ld      de,#C000
@@ -481,6 +520,15 @@ p126_ngs_ipc_dma_send_test_frame::
         pop     af
         scf
         ret
+
+p126_ngs_ipc_video_header:
+        db 'P','1','2','6'
+        db P126_IPC_MAJOR,P126_IPC_MINOR
+        db P126_MSG_RESPONSE,P126_SERVICE_VIDEO,P126_OP_VIDEO_FRAME,0
+        db #02,#00
+        db #EE,#3F
+        db #00,#00
+        db #00,#00
 
 p126_ngs_ipc_dma_test_header:
         db 'P','1','2','6'
