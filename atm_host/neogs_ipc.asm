@@ -1,6 +1,6 @@
 ; =========================================================================
 ; PROJECT126 — ATM Turbo 2+ / NeoGS host-side IPC driver
-; Version: P126_ATM_IPC v0.2.0
+; Version: P126_ATM_IPC v0.3.0
 ;
 ; This is ATM Z80 code. It runs on the 7 MHz host CPU.
 ; NeoGS is an independent Z80 and has its own private debug port #EF.
