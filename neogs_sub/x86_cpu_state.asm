@@ -202,6 +202,8 @@ x86_bios_startup_trace:
         xor     a
         ld      (x86_bios_trace_unexpected_cs_once),a
         ld      (x86_bios_trace_eebf_once),a
+        ld      (x86_bios_trace_checksum_entry_once),a
+        ld      (x86_bios_trace_low_ip_once),a
         ld      a,1
         ld      (x86_bios_trace_active),a
 .run_slice:
@@ -212,6 +214,53 @@ x86_bios_startup_trace:
         call    x86_cpu_step
         jp      c,.trace_fault
         call    x86_bios_trace_capture_instruction
+        ; Watch the BIOS checksum routine entry and the first transfer below
+        ; the configured 8 KiB system-BIOS window.
+        ld      a,(x86_bios_trace_checksum_entry_once)
+        or      a
+        jr      nz,.trace_checksum_entry_done
+        ld      hl,(x86_reg_cs)
+        ld      de,#F000
+        or      a
+        sbc     hl,de
+        jr      nz,.trace_checksum_entry_done
+        ld      hl,(x86_reg_ip)
+        ld      de,#F9E1
+        or      a
+        sbc     hl,de
+        jr      nz,.trace_checksum_entry_done
+        ld      a,1
+        ld      (x86_bios_trace_checksum_entry_once),a
+        push    hl
+        ld      hl,x86_bios_trace_checksum_entry_log
+        call    p126_ngs_resident_log
+        call    x86_bios_trace_log_cs_ip
+        call    x86_bios_trace_log_registers
+        call    x86_bios_trace_log_history
+        pop     hl
+.trace_checksum_entry_done:
+        ld      a,(x86_bios_trace_low_ip_once)
+        or      a
+        jr      nz,.trace_low_ip_done
+        ld      hl,(x86_reg_cs)
+        ld      de,#F000
+        or      a
+        sbc     hl,de
+        jr      nz,.trace_low_ip_done
+        ld      hl,(x86_reg_ip)
+        ld      a,h
+        cp      #E0
+        jr      nc,.trace_low_ip_done
+        ld      a,1
+        ld      (x86_bios_trace_low_ip_once),a
+        push    hl
+        ld      hl,x86_bios_trace_low_ip_log
+        call    p126_ngs_resident_log
+        call    x86_bios_trace_log_cs_ip
+        call    x86_bios_trace_log_registers
+        call    x86_bios_trace_log_history
+        pop     hl
+.trace_low_ip_done:
         ; One-shot history snapshot at the known BIOS2 runaway address.
         ; F000:EEBF is physical FEEBF, inside the system BIOS window.
         ld      a,(x86_bios_trace_eebf_once)
@@ -1012,6 +1061,8 @@ x86_bios_trace_executed:  dw 0
 x86_bios_trace_active:    db 0
 x86_bios_trace_eebf_once: db 0
 x86_bios_trace_unexpected_cs_once: db 0
+x86_bios_trace_checksum_entry_once: db 0
+x86_bios_trace_low_ip_once: db 0
 x86_bios_trace_unexpected_cs_log:
         db "[X86 TRACE] FIRST UNEXPECTED CS CHANGE",13,10,0
 x86_bios_trace_far_target_prefix:
@@ -1029,6 +1080,8 @@ x86_bios_trace_progress_es: db " ES=",0
 x86_bios_trace_progress_flags: db " FLAGS=",0
 x86_bios_trace_progress_opcode: db " OP=",0
 x86_bios_trace_eebf_log: db "[X86 TRACE] FIRST F000:EEBF SNAPSHOT",13,10,0
+x86_bios_trace_checksum_entry_log: db "[X86 TRACE] CHECKSUM ROUTINE ENTRY F000:F9E1",13,10,0
+x86_bios_trace_low_ip_log: db "[X86 TRACE] FIRST EXECUTION BELOW BIOS WINDOW",13,10,0
 x86_bios_trace_fault_log: db "[NGS] X86 BIOS TRACE STOP: OPCODE OR MEMORY FAULT",13,10,0
 x86_bios_trace_halted_log: db "[NGS] X86 BIOS EXECUTION HALTED BY GUEST",13,10,0
 x86_bios_trace_watchdog_log: db "[NGS] X86 BIOS DIAGNOSTIC STOP",13,10,0
