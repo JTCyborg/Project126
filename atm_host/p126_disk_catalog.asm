@@ -83,7 +83,7 @@ p126_catalog_poll_keyboard::
 
         ld      a, (p126_catalog_key)
         bit     4, a
-        jr      nz,.catalog_confirm
+        jp      nz,.catalog_confirm
         bit     2, a
         jp      nz,.catalog_page_up
         bit     3, a
@@ -250,7 +250,7 @@ p126_catalog_scan_keys:
         ld      bc, #FEFE
         in      a, (c)
         bit     0, a
-        jr      nz, .catalog_keys_done
+        jp      nz, .catalog_keys_done
 
         ; Row #EF: key 7 (bit 3) = up, key 6 (bit 4) = down.
         ld      bc, #EFFE
@@ -512,7 +512,7 @@ p126_catalog_draw:
         ld      a, P126_CATALOG_FIRST_ROW
         ld      c, 1
         call    BIOS_DebugConsole_PrintAt
-        jr      .catalog_draw_done
+        jp      .catalog_draw_done
 
 .catalog_draw_rows:
         xor     a
