@@ -190,7 +190,6 @@ x86_bios_startup_trace:
 .reset_vector_ok:
         xor     a
         ld      (x86_bios_trace_event_status),a
-        ld      (x86_bios_trace_first_count),a
         ld      hl,x86_bios_trace_start_log
         call    p126_ngs_resident_log
         ld      hl,#FFFF
@@ -229,44 +228,36 @@ x86_bios_startup_trace:
         or      a
         ret
 .trace_watchdog:
-        xor     a
-        ld      (x86_bios_trace_active),a
         ld      a,5
-        call    x86_bios_trace_capture_event
         ld      hl,x86_bios_trace_watchdog_log
-        call    p126_ngs_resident_log
-        call    x86_bios_trace_log_cs_ip
-        call    x86_bios_trace_log_registers
-        call    x86_io_dump_bios_table
-        call    x86_bios_trace_log_io_counts
-        call    x86_bios_trace_log_history
-        scf
-        ret
+        jr      .trace_stop
 .trace_fault:
-        xor     a
-        ld      (x86_bios_trace_active),a
         ld      a,3
-        call    x86_bios_trace_capture_event
         ld      hl,x86_bios_trace_fault_log
-        call    p126_ngs_resident_log
-        call    x86_bios_trace_log_cs_ip
-        call    x86_bios_trace_log_registers
-        call    x86_bios_trace_log_io_counts
-        call    x86_bios_trace_log_history
-        scf
-        ret
+        jr      .trace_stop
 .trace_halted:
+        ld      a,2
+        ld      hl,x86_bios_trace_halted_log
+.trace_stop:
+        ld      (x86_bios_trace_stop_kind),a
         xor     a
         ld      (x86_bios_trace_active),a
-        ld      a,2
+        push    hl
+        ld      a,(x86_bios_trace_stop_kind)
         call    x86_bios_trace_capture_event
-        ld      hl,x86_bios_trace_halted_log
+        pop     hl
         call    p126_ngs_resident_log
         call    x86_bios_trace_log_cs_ip
         call    x86_bios_trace_log_registers
         call    x86_bios_trace_log_io_counts
+        ld      a,(x86_bios_trace_stop_kind)
+        cp      5
+        call    z,x86_io_dump_bios_table
         call    x86_bios_trace_log_history
-        or      a
+        ld      a,(x86_bios_trace_stop_kind)
+        cp      2
+        ret     z
+        scf
         ret
 
 ; Capture one completed instruction in a 16-entry circular history.
@@ -628,28 +619,6 @@ x86_bios_trace_log_history:
         pop     af
         ret
 
-; Arm a two-instruction diagnostic stop when CMP AL,FF reaches the
-; first BIOS table terminator. SI=E0B0 or E0B1 covers both image alignments.
-; The next instruction is JZ; the existing history dump then records whether
-; the branch landed at E0BF or fell through to E073.
-x86_bios_trace_marker_arm:
-        ld      hl,(x86_exec_instruction_start_ip)
-        ld      de,#E06F
-        or      a
-        sbc     hl,de
-        ret     nz
-        ; Stop after the second table's CMP/JZ/XOR DH,03/JNZ sequence.
-        ; This verifies that both BIOS tables complete and that the loop
-        ; exits into the first RAM-initialization instruction at E0C4.
-        ld      hl,(x86_reg_si)
-        ld      de,#E0BB
-        or      a
-        sbc     hl,de
-        ret     nz
-        ld      hl,4
-        ld      (x86_bios_trace_remaining),hl
-        ret
-
 ; Capture a compact stop event for the DMA diagnostics response.
 ; A=1 slice budget, 2 guest HLT, 3 opcode/memory fault, 4 reset-vector fault.
 x86_bios_trace_capture_event:
@@ -797,7 +766,6 @@ x86_bios_trace_probe_error0: db 0
 x86_bios_trace_probe_error1: db 0
 x86_bios_trace_probe_prefix: db "[X86 FETCH] B0=",0
 x86_bios_trace_probe_second: db " B1=",0
-x86_bios_trace_first_count: db 0
 x86_bios_trace_first_number: db 0
 x86_bios_trace_first_phys: db 0,0,0
 x86_bios_trace_first_region: db 0
@@ -854,6 +822,7 @@ x86_bios_trace_remaining: dw 0
 x86_bios_trace_executed:  dw 0
 x86_bios_trace_active:    db 0
 x86_bios_trace_slice_remaining: db 0
+x86_bios_trace_stop_kind: db 0
 x86_bios_trace_start_log: db "[NGS] X86 BIOS CONTINUOUS EXECUTION START",13,10,0
 x86_bios_trace_cs_ip_prefix: db "[X86] CS:IP=",0
 x86_bios_trace_fault_log: db "[NGS] X86 BIOS TRACE STOP: OPCODE OR MEMORY FAULT",13,10,0
