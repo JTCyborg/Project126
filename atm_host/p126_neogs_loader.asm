@@ -245,7 +245,9 @@ p126_neogs_startup::
         ex      de,hl
         ld      a,(p126_neogs_overlay_kind)
         ld      de,(p126_neogs_overlay_max_size)
+        push    bc                     ; loader/IPC routines may use B
         call    p126_neogs_load_fixed_overlay
+        pop     bc
         pop     hl
         ret     c
         djnz    .p126_neogs_module_loop
