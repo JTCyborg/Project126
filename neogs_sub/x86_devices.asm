@@ -810,13 +810,13 @@ x86_dev_pit_tick_channel2:
         call    x86_dev_pit_mode3_load_phase
         ret
 
-; PCem pit_over() uses floor(N/2) while OUT is low and ceil(N/2)
-; while OUT is high. This matters for odd divisors (e.g. 02F9h).
+; PCem pit_over(): OUT-high phase is floor(N/2); OUT-low phase
+; is ceil(N/2). This distinction matters for odd divisors (e.g. 02F9h).
 x86_dev_pit_mode3_load_phase:
         ld      hl,(x86_dev_pit_half2)
         ld      a,(x86_dev_pit_out2)
         or      a
-        jr      z,.pit_mode3_phase_store
+        jr      nz,.pit_mode3_phase_store
         ld      a,(x86_dev_pit_reload+4)
         and     1
         jr      z,.pit_mode3_phase_store
@@ -972,15 +972,15 @@ x86_dev_pit_selftest_impl:
         ld      a,(x86_dev_pit_out2)
         cp      1
         jp      nz,.pit_selftest_fail
-        ; Odd mode-3 divisor 5: OUT-high phase is ceil(5/2)=3 PIT
-        ; clocks, OUT-low phase is floor(5/2)=2. PCem pit_over() uses
-        ; these distinct durations. A falling GATE must preserve OUT low.
+        ; Odd mode-3 divisor 5: PCem pit_over() holds OUT high for
+        ; floor(5/2)=2 PIT clocks and OUT low for ceil(5/2)=3.
+        ; A falling GATE must preserve the current OUT-low state.
         ld      a,5
         call    x86_dev_pit_write8
         xor     a
         call    x86_dev_pit_write8
         ld      hl,(x86_dev_pit_count2)
-        ld      de,3
+        ld      de,2
         or      a
         sbc     hl,de
         jp      nz,.pit_selftest_fail
@@ -1000,7 +1000,7 @@ x86_dev_pit_selftest_impl:
         cp      1
         jp      nz,.pit_selftest_fail
         ld      hl,(x86_dev_pit_count2)
-        ld      de,3
+        ld      de,2
         or      a
         sbc     hl,de
         jp      nz,.pit_selftest_fail
