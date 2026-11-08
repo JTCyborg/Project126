@@ -215,6 +215,7 @@ x86_bios_startup_trace:
         ld      a,l
         or      a
         call    z,x86_bios_trace_log_cs_ip
+        call    z,x86_bios_trace_log_progress
         ld      a,(x86_halted)
         or      a
         jr      nz,.trace_halted
@@ -673,6 +674,45 @@ x86_bios_trace_log_cs_ip:
         pop     af
         ret
 
+; Periodic architectural snapshot while the BIOS is running.
+; The RAM-sizing loop must advance BH toward B0h and CX toward zero.
+; Keeping these values beside CS:IP distinguishes a slow REP from a stuck
+; ADD BH,4/CMP BH,B0/JNZ loop without flooding the terminal per iteration.
+x86_bios_trace_log_progress:
+        push    af
+        push    bc
+        push    de
+        push    hl
+        ld      hl,x86_bios_trace_progress_prefix
+        call    p126_ngs_resident_log
+        ld      hl,(x86_reg_bx)
+        call    x86_bios_trace_emit_hex16
+        ld      hl,x86_bios_trace_progress_cx
+        call    p126_ngs_resident_log
+        ld      hl,(x86_reg_cx)
+        call    x86_bios_trace_emit_hex16
+        ld      hl,x86_bios_trace_progress_di
+        call    p126_ngs_resident_log
+        ld      hl,(x86_reg_di)
+        call    x86_bios_trace_emit_hex16
+        ld      hl,x86_bios_trace_progress_es
+        call    p126_ngs_resident_log
+        ld      hl,(x86_reg_es)
+        call    x86_bios_trace_emit_hex16
+        ld      hl,x86_bios_trace_progress_flags
+        call    p126_ngs_resident_log
+        ld      hl,(x86_reg_flags)
+        call    x86_bios_trace_emit_hex16
+        ld      a,13
+        call    x86_bios_trace_emit_char
+        ld      a,10
+        call    x86_bios_trace_emit_char
+        pop     hl
+        pop     de
+        pop     bc
+        pop     af
+        ret
+
 ; IN HL=word. Emits four uppercase hexadecimal digits.
 x86_bios_trace_emit_hex16:
         ld      a,h
@@ -845,6 +885,11 @@ x86_bios_trace_slice_remaining: db 0
 x86_bios_trace_stop_kind: db 0
 x86_bios_trace_start_log: db "[NGS] X86 BIOS CONTINUOUS EXECUTION START",13,10,0
 x86_bios_trace_cs_ip_prefix: db "[X86] CS:IP=",0
+x86_bios_trace_progress_prefix: db "[X86 RAMTEST] BX=",0
+x86_bios_trace_progress_cx: db " CX=",0
+x86_bios_trace_progress_di: db " DI=",0
+x86_bios_trace_progress_es: db " ES=",0
+x86_bios_trace_progress_flags: db " FLAGS=",0
 x86_bios_trace_fault_log: db "[NGS] X86 BIOS TRACE STOP: OPCODE OR MEMORY FAULT",13,10,0
 x86_bios_trace_halted_log: db "[NGS] X86 BIOS EXECUTION HALTED BY GUEST",13,10,0
 x86_bios_trace_watchdog_log: db "[NGS] X86 BIOS DIAGNOSTIC STOP",13,10,0
