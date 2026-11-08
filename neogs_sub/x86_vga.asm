@@ -1305,6 +1305,108 @@ x86_vga_calc_write_plane_value:
         or      c
         ret
 
+; Text-mode snapshot and cell API used by the ATM frame converter.
+; Snapshot OUT: A=text aperture middle byte (00h mono / 80h colour),
+; HL=start byte address, DE=row stride in bytes; carry set if not text aperture.
+x86_vga_get_text_snapshot_impl:
+        ld      a,(x86_vga_gdc+6)
+        and     #0C
+        cp      0
+        jp      z,.text_snapshot_colour
+        cp      8
+        jp      z,.text_snapshot_mono
+        cp      #0C
+        jp      z,.text_snapshot_colour
+        scf
+        ret
+.text_snapshot_colour:
+        ld      a,#80
+        jp      .text_snapshot_base
+.text_snapshot_mono:
+        xor     a
+.text_snapshot_base:
+        ld      (x86_vga_text_base_mid),a
+        ld      a,(x86_vga_chain4)
+        or      a
+        jp      nz,.text_snapshot_bad
+        ld      a,(x86_vga_gdc+5)
+        and     #60
+        jp      nz,.text_snapshot_bad
+
+        ; CRTC start address is in words; the host text aperture is byte-based.
+        ld      a,(x86_vga_crtc+12)
+        ld      h,a
+        ld      a,(x86_vga_crtc+13)
+        ld      l,a
+        add     hl,hl
+        ld      (x86_vga_text_start),hl
+        ; CRTC offset is also in words; multiply by two for byte stride.
+        ld      a,(x86_vga_crtc+19)
+        ld      l,a
+        ld      h,0
+        add     hl,hl
+        ex      de,hl
+        ld      hl,(x86_vga_text_start)
+        ld      a,(x86_vga_text_base_mid)
+        or      a
+        ret
+.text_snapshot_bad:
+        scf
+        ret
+
+; IN: A=aperture middle byte (00h B0000 / 80h B8000), HL=byte offset.
+; OUT: A=character, D=attribute. Uses chain-2 read semantics temporarily.
+x86_vga_read_text_cell_impl:
+        ld      (x86_vga_text_base_mid),a
+        ld      (x86_vga_text_offset),hl
+        ld      hl,(x86_phys_addr)
+        ld      (x86_vga_text_saved_phys),hl
+        ld      a,(x86_phys_addr+2)
+        ld      (x86_vga_text_saved_phys+2),a
+        ld      a,(x86_vga_chain2_read)
+        ld      (x86_vga_text_saved_chain2),a
+        ld      a,(x86_vga_readplane)
+        ld      (x86_vga_text_saved_readplane),a
+
+        ld      a,1
+        ld      (x86_vga_chain2_read),a
+        xor     a
+        ld      (x86_vga_readplane),a
+        call    x86_vga_set_text_phys_addr
+        call    x86_vga_mem_read8_impl
+        ld      (x86_vga_text_char),a
+
+        ld      hl,(x86_vga_text_offset)
+        inc     hl
+        ld      (x86_vga_text_offset),hl
+        call    x86_vga_set_text_phys_addr
+        call    x86_vga_mem_read8_impl
+        ld      d,a
+
+        ld      hl,(x86_vga_text_saved_phys)
+        ld      (x86_phys_addr),hl
+        ld      a,(x86_vga_text_saved_phys+2)
+        ld      (x86_phys_addr+2),a
+        ld      a,(x86_vga_text_saved_chain2)
+        ld      (x86_vga_chain2_read),a
+        ld      a,(x86_vga_text_saved_readplane)
+        ld      (x86_vga_readplane),a
+        ld      a,(x86_vga_text_char)
+        or      a
+        ret
+
+x86_vga_set_text_phys_addr:
+        ld      hl,(x86_vga_text_offset)
+        ld      a,(x86_vga_text_base_mid)
+        add     a,h
+        ld      (x86_phys_addr+1),a
+        ld      a,#0B
+        adc     a,0
+        ld      (x86_phys_addr+2),a
+        ld      a,l
+        ld      (x86_phys_addr),a
+        ret
+
 ; Save/restore-safe aperture regression. It tests planar writes to all four
 ; interleaved planes, selected-plane reads, then chain-4 packed access at the
 ; final 64 KiB aperture byte (AFFFFh -> packed VRAM offset 0FFFFh; planar path reaches 3FFFCh).
@@ -1623,6 +1725,13 @@ x86_vga_latch_temp:            db 0
 x86_vga_compare_accum:         db 0
 x86_vga_rotated_value:         db 0
 x86_vga_plane_bits:            db 1,2,4,8
+x86_vga_text_base_mid:         db 0
+x86_vga_text_start:            dw 0
+x86_vga_text_offset:           dw 0
+x86_vga_text_saved_phys:       defs 3,0
+x86_vga_text_saved_chain2:     db 0
+x86_vga_text_saved_readplane:  db 0
+x86_vga_text_char:             db 0
 x86_vga_test_saved_phys:       defs 3,0
 x86_vga_test_saved_vram:       defs 5,0
 x86_vga_test_failed:           db 0
