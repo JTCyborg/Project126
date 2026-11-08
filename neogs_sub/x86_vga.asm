@@ -1329,6 +1329,14 @@ x86_vga_aperture_selftest_impl:
         call    x86_vga_increment_vram_offset
         call    x86_vga_vram_read_at_offset
         ld      (x86_vga_test_saved_vram+3),a
+        ; Chain-4 addresses the packed byte offset directly (FFFFh), so
+        ; preserve that byte separately from the planar 3FFFCh..3FFFFh group.
+        ld      hl,#FFFF
+        ld      (x86_vga_vram_offset),hl
+        xor     a
+        ld      (x86_vga_vram_offset+2),a
+        call    x86_vga_vram_read_at_offset
+        ld      (x86_vga_test_saved_vram+4),a
 
         ; Select guest AFFFFh and standard planar write mode 0.
         ld      hl,#FFFF
@@ -1409,6 +1417,13 @@ x86_vga_aperture_selftest_impl:
         call    x86_vga_vram_write_at_offset
         call    x86_vga_increment_vram_offset
         ld      a,(x86_vga_test_saved_vram+3)
+        ld      (x86_vga_vram_data),a
+        call    x86_vga_vram_write_at_offset
+        ld      hl,#FFFF
+        ld      (x86_vga_vram_offset),hl
+        xor     a
+        ld      (x86_vga_vram_offset+2),a
+        ld      a,(x86_vga_test_saved_vram+4)
         ld      (x86_vga_vram_data),a
         call    x86_vga_vram_write_at_offset
 
@@ -1609,7 +1624,7 @@ x86_vga_compare_accum:         db 0
 x86_vga_rotated_value:         db 0
 x86_vga_plane_bits:            db 1,2,4,8
 x86_vga_test_saved_phys:       defs 3,0
-x86_vga_test_saved_vram:       defs 4,0
+x86_vga_test_saved_vram:       defs 5,0
 x86_vga_test_failed:           db 0
 
         ASSERT X86_VGA_VRAM_BYTES = #40000
