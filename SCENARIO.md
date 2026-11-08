@@ -1566,3 +1566,11 @@ The temporary diagnostic is therefore moved back to the first terminator and now
 - Dynamic channel-2 timing still covers only modes 0 and 3. Mode 2 and the remaining PIT channels/IRQ0 are not implemented; if the BIOS configures channel 2 in mode 2, that is a separate functional gap to implement after observing the corrected target trace.
 - The local build reported resident image end `#4078`, exceeding the `#4000` ceiling by `#78` bytes. Condensed redundant IPC diagnostic labels, saving 131 assembled data bytes while retaining the distinct receive/validation/install stages. Expected resident image end from the reported map is therefore `#3FF5`; the user's next SjASMPlus build must confirm the actual result and all assertions.
 - Commits: PIT self-test edge correction `3397e9c35fb6df6d0684d14c9c93dced702bf20b`; IPC diagnostic compaction `a8d8e7c446c5736292c4caaabb372e952e66ccd7`. Assembly and ATM/NeoGS retest are pending; no build pass or BIOS POST pass is claimed.
+
+
+## 2026-11-08 — Fix X86IO overlay counter diagnostics
+
+- The BIOS watchdog previously read `x86_io_count_in` and `x86_io_count_out` directly from resident X86CPU code even though those words live inside the page04 X86IO overlay. WIN2 is not guaranteed to map page04 when the watchdog runs, so the reported `IN` / `OUT` values were not trustworthy; the missing `OUT` digits in the target log must not be interpreted as proof that no guest OUT instruction executed.
+- Added `x86_io_snapshot_counters` as a resident overlay-gate API. The X86IO implementation copies both counters into resident X86CPU diagnostic storage while page04 is mapped; the watchdog then formats only those resident snapshots.
+- This is a diagnostics correctness fix, not a PIT behavior change. The current BIOS wait at `F000:FA18` remains unresolved until a new target log reports reliable I/O totals and the next targeted port-write trace can be selected.
+- Commits: `616a47c08fdbdbcd3161ea5f929bcceaa03b34e5` (resident snapshot use), `a4782887a108efe3e4db5826c8cf1d36fff125ed` (X86IO snapshot routine), `0e985da3c13eb1efb4546a0f673b7fa4f6069b41` (overlay-gate API). Assembly and ATM/NeoGS target retest are pending; no build or BIOS POST pass is claimed.
