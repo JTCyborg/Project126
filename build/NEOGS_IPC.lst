@@ -662,11 +662,11 @@
  376+ 022A                      ; Payload[0] = stop reason, [1..2] = CS, [3..4] = IP.
  377+ 022A                      ; The remainder is zero-filled; the complete fixed-size DMA frame
  378+ 022A                      ; remains protected by the shared ABI CRC.
- 379+ 022A 3A 17 0E             ld      a,(x86_bios_trace_event_status)
+ 379+ 022A 3A 22 0E             ld      a,(x86_bios_trace_event_status)
  380+ 022D 32 12 C0             ld      (#C012),a
- 381+ 0230 2A 18 0E             ld      hl,(x86_bios_trace_event_cs)
+ 381+ 0230 2A 23 0E             ld      hl,(x86_bios_trace_event_cs)
  382+ 0233 22 13 C0             ld      (#C013),hl
- 383+ 0236 2A 1A 0E             ld      hl,(x86_bios_trace_event_ip)
+ 383+ 0236 2A 25 0E             ld      hl,(x86_bios_trace_event_ip)
  384+ 0239 22 15 C0             ld      (#C015),hl
  385+ 023C
  386+ 023C C3 95 02             jp      p126_ngs_ipc_dma_send_staged_frame
@@ -959,7 +959,7 @@ p126_ipc.asm(646): error: Label not found: x86_video_convert
  671+ 0409 28 07                jr      z,.ngs_frame_trace_ready
  672+ 040B AF                   xor     a
  673+ 040C 32 62 0A             ld      (p126_ngs_bios_image_ready),a
- 674+ 040F CD 1D 0E             call    x86_bios_startup_trace
+ 674+ 040F CD 28 0E             call    x86_bios_startup_trace
  675+ 0412              .ngs_frame_trace_ready:
  676+ 0412 21 32 0D             ld      hl,p126_ngs_ipc_log_dma_rx_request
  677+ 0415 CD FB 0D             call    p126_ngs_ipc_log
@@ -1433,7 +1433,7 @@ p126_ipc.asm(646): error: Label not found: x86_video_convert
 1145+ 0784 3E 3C                ld      a,#3C
 1146+ 0786 37                   scf
 1147+ 0787 21 34 12             ld      hl,#1234
-1148+ 078A CD 14 0E             call    x86_alu_overlay_probe
+1148+ 078A CD 1F 0E             call    x86_alu_overlay_probe
 1149+ 078D FE A5                cp      #A5
 1150+ 078F 20 1A                jr      nz,.image_finish_alu_probe_bad
 1151+ 0791 11 A5 5A             ld      de,#5AA5
@@ -1457,7 +1457,7 @@ p126_ipc.asm(646): error: Label not found: x86_video_convert
 1169+ 07B6 20 27                jr      nz,.image_finish_x86exec
 1170+ 07B8                      ; Page06 must be callable through the resident gate and return to the
 1171+ 07B8                      ; prior page04 selector. Run both register-model self-tests before ready.
-1172+ 07B8 CD 13 0E             call    x86_dev_reset
+1172+ 07B8 CD 1E 0E             call    x86_dev_reset
 1173+ 07BB FE 5A                cp      #5A
 1174+ 07BD 20 1D                jr      nz,.image_finish_dev_probe_bad
 1175+ 07BF 11 D1 06             ld      de,#06D1
@@ -1467,7 +1467,7 @@ p126_ipc.asm(646): error: Label not found: x86_video_convert
 1179+ 07C7 3A 0C 0E             ld      a,(p126_overlay_current_selector)
 1180+ 07CA FE 02                cp      P126_NGS_X86IO_OVERLAY_SELECTOR
 1181+ 07CC 20 0E                jr      nz,.image_finish_dev_probe_bad
-1182+ 07CE CD 13 0E             call    x86_dev_reset
+1182+ 07CE CD 1E 0E             call    x86_dev_reset
 1183+ 07D1 3E 01                ld      a,1
 1184+ 07D3 32 65 0A             ld      (p126_ngs_dev_overlay_ready),a
 1185+ 07D6 21 A0 0A             ld      hl,p126_ngs_image_finish_log
@@ -1482,7 +1482,7 @@ p126_ipc.asm(646): error: Label not found: x86_video_convert
 1194+ 07E3                      ; resident WIN2 gate and verify the prior X86IO mapping is restored.
 1195+ 07E3 3E 83                ld      a,P126_NGS_X86EXEC_OVERLAY_SELECTOR
 1196+ 07E5 32 0D 0E             ld      (p126_overlay_request_selector),a
-1197+ 07E8 DD 21 0F 0E          ld      ix,x86_exec_overlay_probe
+1197+ 07E8 DD 21 1A 0E          ld      ix,x86_exec_overlay_probe
 1198+ 07EC CD 0E 0E             call    p126_overlay_call
 1199+ 07EF FE E7                cp      #E7
 1200+ 07F1 20 12                jr      nz,.image_finish_exec_probe_bad
@@ -1504,15 +1504,12 @@ p126_ipc.asm(646): error: Label not found: x86_video_convert
 1216+ 0813                      ; Register the dynamic page only after fragment readback has passed.
 1217+ 0813 3E 05                ld      a,5
 1218+ 0815 06 08                ld      b,#08
-p126_ipc.asm(1219): error: Label not found: p126_overlay_register_dynamic
-1219+ 0817 CD 00 00             call    p126_overlay_register_dynamic
+1219+ 0817 CD 0F 0E             call    p126_overlay_register_dynamic
 1220+ 081A DA A2 08             jp      c,.image_finish_bad
 1221+ 081D                      ; Probe through the normal resident gate before publishing READY.
 1222+ 081D 3E 05                ld      a,5
-p126_ipc.asm(1223): error: Label not found: x86_vga_overlay_probe
-1223+ 081F DD 21 00 00          ld      ix,x86_vga_overlay_probe
-p126_ipc.asm(1224): error: Label not found: p126_overlay_call_module
-1224+ 0823 CD 00 00             call    p126_overlay_call_module
+1223+ 081F DD 21 15 0E          ld      ix,x86_vga_overlay_probe
+1224+ 0823 CD 13 0E             call    p126_overlay_call_module
 1225+ 0826 FE 56                cp      #56
 1226+ 0828 20 30                jr      nz,.image_finish_vga_probe_bad
 1227+ 082A 11 5A A5             ld      de,#A55A
@@ -1521,15 +1518,11 @@ p126_ipc.asm(1224): error: Label not found: p126_overlay_call_module
 1230+ 0830 20 28                jr      nz,.image_finish_vga_probe_bad
 1231+ 0832                      ; Initialize VGA state only after the dynamic module passed its probe.
 1232+ 0832 3E 05                ld      a,5
-p126_ipc.asm(1233): error: Label not found: x86_vga_reset_impl
-1233+ 0834 DD 21 00 00          ld      ix,x86_vga_reset_impl
-p126_ipc.asm(1234): error: Label not found: p126_overlay_call_module
-1234+ 0838 CD 00 00             call    p126_overlay_call_module
+1233+ 0834 DD 21 16 0E          ld      ix,x86_vga_reset_impl
+1234+ 0838 CD 13 0E             call    p126_overlay_call_module
 1235+ 083B 3E 05                ld      a,5
-p126_ipc.asm(1236): error: Label not found: x86_vga_register_selftest_impl
-1236+ 083D DD 21 00 00          ld      ix,x86_vga_register_selftest_impl
-p126_ipc.asm(1237): error: Label not found: p126_overlay_call_module
-1237+ 0841 CD 00 00             call    p126_overlay_call_module
+1236+ 083D DD 21 17 0E          ld      ix,x86_vga_register_selftest_impl
+1237+ 0841 CD 13 0E             call    p126_overlay_call_module
 1238+ 0844 FE 5A                cp      #5A
 1239+ 0846 20 12                jr      nz,.image_finish_vga_probe_bad
 1240+ 0848 11 5A A5             ld      de,#A55A
@@ -1542,8 +1535,7 @@ p126_ipc.asm(1237): error: Label not found: p126_overlay_call_module
 1247+ 0858 18 3E                jr      .image_finish_log
 1248+ 085A              .image_finish_vga_probe_bad:
 1249+ 085A 3E 05                ld      a,5
-p126_ipc.asm(1250): error: Label not found: p126_overlay_unregister_dynamic
-1250+ 085C CD 00 00             call    p126_overlay_unregister_dynamic
+1250+ 085C CD 11 0E             call    p126_overlay_unregister_dynamic
 1251+ 085F C3 A2 08             jp      .image_finish_bad
 1252+ 0862
 1253+ 0862              .image_finish_x86vid:
@@ -1552,14 +1544,11 @@ p126_ipc.asm(1250): error: Label not found: p126_overlay_unregister_dynamic
 1256+ 0867                      ; Converter module is separately registered on dynamic page09h.
 1257+ 0867 3E 06                ld      a,P126_NGS_X86VID_MODULE_ID
 1258+ 0869 06 09                ld      b,P126_NGS_X86VID_OVERLAY_PAGE
-p126_ipc.asm(1259): error: Label not found: p126_overlay_register_dynamic
-1259+ 086B CD 00 00             call    p126_overlay_register_dynamic
+1259+ 086B CD 0F 0E             call    p126_overlay_register_dynamic
 1260+ 086E DA A2 08             jp      c,.image_finish_bad
 1261+ 0871 3E 06                ld      a,P126_NGS_X86VID_MODULE_ID
-p126_ipc.asm(1262): error: Label not found: x86_video_overlay_probe
-1262+ 0873 DD 21 00 00          ld      ix,x86_video_overlay_probe
-p126_ipc.asm(1263): error: Label not found: p126_overlay_call_module
-1263+ 0877 CD 00 00             call    p126_overlay_call_module
+1262+ 0873 DD 21 18 0E          ld      ix,x86_video_overlay_probe
+1263+ 0877 CD 13 0E             call    p126_overlay_call_module
 1264+ 087A FE 56                cp      #56
 1265+ 087C 20 12                jr      nz,.image_finish_vid_probe_bad
 1266+ 087E 11 5A A5             ld      de,#A55A
@@ -1572,8 +1561,7 @@ p126_ipc.asm(1263): error: Label not found: p126_overlay_call_module
 1273+ 088E 18 08                jr      .image_finish_log
 1274+ 0890              .image_finish_vid_probe_bad:
 1275+ 0890 3E 06                ld      a,P126_NGS_X86VID_MODULE_ID
-p126_ipc.asm(1276): error: Label not found: p126_overlay_unregister_dynamic
-1276+ 0892 CD 00 00             call    p126_overlay_unregister_dynamic
+1276+ 0892 CD 11 0E             call    p126_overlay_unregister_dynamic
 1277+ 0895 C3 A2 08             jp      .image_finish_bad
 1278+ 0898
 1279+ 0898              .image_finish_log:
@@ -1804,7 +1792,7 @@ p126_ipc.asm(1276): error: Label not found: p126_overlay_unregister_dynamic
 1504+ 0A02
 1505+ 0A02              p126_ngs_overlay_gate_test_code:
 1506+ 0A02 CD                   db      #CD
-1507+ 0A03 12 0E                dw      x86_io_reset
+1507+ 0A03 1D 0E                dw      x86_io_reset
 1508+ 0A05 C9                   db      #C9
 1509+ 0A06              p126_ngs_overlay_gate_old_code:
 1510+ 0A06 00 00 00 00          defs    4,0
@@ -2199,44 +2187,68 @@ p126_ipc.asm(1276): error: Label not found: p126_overlay_unregister_dynamic
   19  0E0C 80           p126_overlay_current_selector: db #80
   20  0E0D 80           p126_overlay_request_selector: db #80
   21  0E0E
-  22  0E0E              ; Audit-only gate and X86EXEC probe symbols. Production links the real
-  23  0E0E              ; resident WIN2 gate and page-07 dispatcher from the main NeoGS assembly.
+  22  0E0E              ; Audit-only overlay manager/gate and X86EXEC probe symbols. Production
+  23  0E0E              ; links the real resident WIN2 gate and module registry from the main image.
   24  0E0E              p126_overlay_call:
   25  0E0E C9                   ret
   26  0E0F
-  27  0E0F              x86_exec_overlay_probe:
-  28  0E0F 3E E7                ld      a,#E7
-  29  0E11 C9                   ret
-  30  0E12
-  31  0E12              ; Standalone IPC assembly substitutes a local no-op for the production gate target.
-  32  0E12              x86_io_reset:
-  33  0E12 C9                   ret
-  34  0E13
-  35  0E13              ; Standalone IPC audit substitutes the fixed-origin X86DEV reset entry.
-  36  0E13              x86_dev_reset:
-  37  0E13 C9                   ret
-  38  0E14
-  39  0E14              ; Standalone IPC audit substitutes the fixed-origin ALU probe entry.
-  40  0E14              x86_alu_overlay_probe:
-  41  0E14 3E A5                ld      a,#A5
-  42  0E16 C9                   ret
-  43  0E17
-  44  0E17 00           x86_bios_trace_event_status: db 0
-  45  0E18 00 00        x86_bios_trace_event_cs:     dw 0
-  46  0E1A 00 00        x86_bios_trace_event_ip:     dw 0
-  47  0E1C              x86_bios_image_diag:
-  48  0E1C C9                   ret
-  49  0E1D
-  50  0E1D              x86_bios_startup_trace:
-  51  0E1D C9                   ret
-  52  0E1E
-  53  0E1E                  DISPLAY "P126_NGS_IPC_START=", /H, p126_ngs_ipc_module_start
-  54  0E1E                  DISPLAY "P126_NGS_IPC_END=", /H, p126_ngs_ipc_module_end
-  55  0E1E                  DISPLAY "P126_NGS_IPC_SIZE=", /D, p126_ngs_ipc_module_end-p126_ngs_ipc_module_start
-  56  0E1E
-  57  0E1E                  ASSERT p126_ngs_ipc_module_end > p126_ngs_ipc_module_start
-  58  0E1E                  ASSERT p126_ngs_ipc_module_end <= #10000
-  59  0E1E
+  27  0E0F              p126_overlay_register_dynamic:
+  28  0E0F B7                   or      a
+  29  0E10 C9                   ret
+  30  0E11              p126_overlay_unregister_dynamic:
+  31  0E11 B7                   or      a
+  32  0E12 C9                   ret
+  33  0E13              p126_overlay_call_module:
+  34  0E13 B7                   or      a
+  35  0E14 C9                   ret
+  36  0E15
+  37  0E15              ; Address-only audit substitutes for entry points that live in X86VGA/page08
+  38  0E15              ; and X86VID/page09 in the production image. Their actual code is assembled
+  39  0E15              ; into X86VGA.C and X86VID.C by x86_cpu_state_assemble.asm.
+  40  0E15              x86_vga_overlay_probe:
+  41  0E15 C9                   ret
+  42  0E16              x86_vga_reset_impl:
+  43  0E16 C9                   ret
+  44  0E17              x86_vga_register_selftest_impl:
+  45  0E17 C9                   ret
+  46  0E18              x86_video_overlay_probe:
+  47  0E18 C9                   ret
+  48  0E19              x86_video_convert_impl:
+  49  0E19 C9                   ret
+  50  0E1A
+  51  0E1A              x86_exec_overlay_probe:
+  52  0E1A 3E E7                ld      a,#E7
+  53  0E1C C9                   ret
+  54  0E1D
+  55  0E1D              ; Standalone IPC assembly substitutes a local no-op for the production gate target.
+  56  0E1D              x86_io_reset:
+  57  0E1D C9                   ret
+  58  0E1E
+  59  0E1E              ; Standalone IPC audit substitutes the fixed-origin X86DEV reset entry.
+  60  0E1E              x86_dev_reset:
+  61  0E1E C9                   ret
+  62  0E1F
+  63  0E1F              ; Standalone IPC audit substitutes the fixed-origin ALU probe entry.
+  64  0E1F              x86_alu_overlay_probe:
+  65  0E1F 3E A5                ld      a,#A5
+  66  0E21 C9                   ret
+  67  0E22
+  68  0E22 00           x86_bios_trace_event_status: db 0
+  69  0E23 00 00        x86_bios_trace_event_cs:     dw 0
+  70  0E25 00 00        x86_bios_trace_event_ip:     dw 0
+  71  0E27              x86_bios_image_diag:
+  72  0E27 C9                   ret
+  73  0E28
+  74  0E28              x86_bios_startup_trace:
+  75  0E28 C9                   ret
+  76  0E29
+  77  0E29                  DISPLAY "P126_NGS_IPC_START=", /H, p126_ngs_ipc_module_start
+  78  0E29                  DISPLAY "P126_NGS_IPC_END=", /H, p126_ngs_ipc_module_end
+  79  0E29                  DISPLAY "P126_NGS_IPC_SIZE=", /D, p126_ngs_ipc_module_end-p126_ngs_ipc_module_start
+  80  0E29
+  81  0E29                  ASSERT p126_ngs_ipc_module_end > p126_ngs_ipc_module_start
+  82  0E29                  ASSERT p126_ngs_ipc_module_end <= #10000
+  83  0E29
 # file closed: p126_ipc_assemble.asm
 
 Value    Label
@@ -2568,8 +2580,11 @@ Value    Label
 0x0001 X P126_OP_VIDEO_FRAME_REQUEST
 0x0000   P126_OP_VIDEO_MODE
 0x0E0E   p126_overlay_call
+0x0E13   p126_overlay_call_module
 0x0E0C   p126_overlay_current_selector
+0x0E0F   p126_overlay_register_dynamic
 0x0E0D   p126_overlay_request_selector
+0x0E11   p126_overlay_unregister_dynamic
 0x0004 X P126_SERVICE_CLOCK
 0x0006 X P126_SERVICE_CONFIG
 0x0005   P126_SERVICE_DIAGNOSTICS
@@ -2601,12 +2616,17 @@ Value    Label
 0x0FA0   P126_VIDEO_TEXT80_FRAME_SIZE
 0x0019   P126_VIDEO_TEXT80_HEIGHT
 0x0050   P126_VIDEO_TEXT80_WIDTH
-0x0E14   x86_alu_overlay_probe
-0x0E1C X x86_bios_image_diag
-0x0E1D   x86_bios_startup_trace
-0x0E18   x86_bios_trace_event_cs
-0x0E1A   x86_bios_trace_event_ip
-0x0E17   x86_bios_trace_event_status
-0x0E13   x86_dev_reset
-0x0E0F   x86_exec_overlay_probe
-0x0E12   x86_io_reset
+0x0E1F   x86_alu_overlay_probe
+0x0E27 X x86_bios_image_diag
+0x0E28   x86_bios_startup_trace
+0x0E23   x86_bios_trace_event_cs
+0x0E25   x86_bios_trace_event_ip
+0x0E22   x86_bios_trace_event_status
+0x0E1E   x86_dev_reset
+0x0E1A   x86_exec_overlay_probe
+0x0E1D   x86_io_reset
+0x0E15   x86_vga_overlay_probe
+0x0E17   x86_vga_register_selftest_impl
+0x0E16   x86_vga_reset_impl
+0x0E19 X x86_video_convert_impl
+0x0E18   x86_video_overlay_probe
