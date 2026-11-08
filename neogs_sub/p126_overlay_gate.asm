@@ -312,6 +312,21 @@ x86_io_write16:
         pop     ix
         ret
 
+; Copy page04 I/O counters into resident X86CPU diagnostic storage.
+; Direct reads from X86IO labels are invalid when WIN2 maps another overlay.
+x86_io_snapshot_counters:
+        push    af
+        push    ix
+        ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
+        ld      (p126_overlay_request_selector),a
+        pop     ix
+        pop     af
+        push    ix
+        ld      ix,x86_io_snapshot_counters_impl
+        call    p126_overlay_call
+        pop     ix
+        ret
+
 x86_io_log_access:
         push    af
         push    ix
