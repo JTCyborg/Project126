@@ -38,8 +38,8 @@ P126_NGS_RESERVED_PAGES      EQU #7C
 ; WIN3 (C000-FFFF) remains exclusively the banked guest physical-memory
 ; aperture selected through MPAGEX port 10h. Resident code and stack must
 ; never execute from or be stored in WIN3.
-; X86VGA is the first dynamic overlay: ID05 on page08. Its 256 KiB VRAM
-; remains separately allocated in physical pages30h..3Fh.
+; X86VGA is dynamic overlay ID05/page08; X86VID is ID06/page09 and converts
+; VGA text state into ATM-native frames. VGA VRAM remains in pages30h..3Fh.
 P126_NGS_OVERLAY_WINDOW_INDEX     EQU 2
 P126_NGS_OVERLAY_WINDOW_BASE      EQU #8000
 P126_NGS_OVERLAY_WINDOW_PORT      EQU #00
