@@ -62,6 +62,7 @@ x86_io_reset_impl:
         ld      (x86_io_pic_vector_base),a
         call    x86_io_pic_selftest_impl
         call    x86_io_fdc_reset_impl
+        call    x86_io_ata_reset_impl
         call    x86_dev_reset
         call    x86_vga_reset
         ret
@@ -289,6 +290,9 @@ x86_io_read8_impl_device:
         ld      a,(x86_io_test_latch)
         ret
 .io_read8_ppi:
+        ld      hl,(x86_io_port)
+        call    x86_io_ata_read8
+        ret     nc
         ld      hl,(x86_io_port)
         call    x86_io_fdc_read8
         ret     nc
@@ -736,6 +740,10 @@ x86_io_write8_impl_device:
         ld      (x86_io_write_value),a
         ld      hl,(x86_io_port)
         ld      a,(x86_io_write_value)
+        call    x86_io_ata_write8
+        ret     nc
+        ld      hl,(x86_io_port)
+        ld      a,(x86_io_write_value)
         call    x86_io_fdc_write8
         ret     nc
         ld      hl,(x86_io_port)
@@ -1034,6 +1042,284 @@ x86_io_fdc_command_complete:
         or      a
         ret
 
+; Primary ATA task-file stub: drive 0 present, medium/image absent.
+; IDENTIFY DEVICE returns zero capacity; read/write commands return ABRT.
+; Guest software model only; no physical device or host file access.
+x86_io_ata_reset_impl:
+        xor     a
+        ld      (x86_io_ata_error),a
+        ld      (x86_io_ata_count),a
+        ld      (x86_io_ata_sector),a
+        ld      (x86_io_ata_cyl_low),a
+        ld      (x86_io_ata_cyl_high),a
+        ld      (x86_io_ata_drive),a
+        ld      (x86_io_ata_command),a
+        ld      (x86_io_ata_ident_index),a
+        ld      (x86_io_ata_ident_active),a
+        ld      (x86_io_ata_control),a
+        ld      a,#50
+        ld      (x86_io_ata_status),a
+        ret
+
+; HL=port. Carry clear means handled.
+x86_io_ata_read8:
+        ld      a,h
+        cp      #01
+        jp      nz,.ata_read_alt
+        ld      a,l
+        cp      #F1
+        jp      z,.ata_read_error
+        cp      #F2
+        jp      z,.ata_read_count
+        cp      #F3
+        jp      z,.ata_read_sector
+        cp      #F4
+        jp      z,.ata_read_cyl_low
+        cp      #F5
+        jp      z,.ata_read_cyl_high
+        cp      #F6
+        jp      z,.ata_read_drive
+        cp      #F7
+        jp      z,.ata_read_status
+        scf
+        ret
+.ata_read_alt:
+        ld      a,h
+        cp      #03
+        jp      nz,.ata_read_unhandled
+        ld      a,l
+        cp      #F6
+        jp      nz,.ata_read_unhandled
+.ata_read_status:
+        ld      a,(x86_io_ata_status)
+        or      a
+        ret
+.ata_read_error:
+        ld      a,(x86_io_ata_error)
+        or      a
+        ret
+.ata_read_count:
+        ld      a,(x86_io_ata_count)
+        or      a
+        ret
+.ata_read_sector:
+        ld      a,(x86_io_ata_sector)
+        or      a
+        ret
+.ata_read_cyl_low:
+        ld      a,(x86_io_ata_cyl_low)
+        or      a
+        ret
+.ata_read_cyl_high:
+        ld      a,(x86_io_ata_cyl_high)
+        or      a
+        ret
+.ata_read_drive:
+        ld      a,(x86_io_ata_drive)
+        or      a
+        ret
+.ata_read_unhandled:
+        scf
+        ret
+
+x86_io_ata_write8:
+        ld      (x86_io_ata_write_value),a
+        ld      a,h
+        cp      #01
+        jp      nz,.ata_write_alt
+        ld      a,l
+        cp      #F1
+        jp      z,.ata_write_error
+        cp      #F2
+        jp      z,.ata_write_count
+        cp      #F3
+        jp      z,.ata_write_sector
+        cp      #F4
+        jp      z,.ata_write_cyl_low
+        cp      #F5
+        jp      z,.ata_write_cyl_high
+        cp      #F6
+        jp      z,.ata_write_drive
+        cp      #F7
+        jp      z,.ata_write_command
+        scf
+        ret
+.ata_write_alt:
+        ld      a,h
+        cp      #03
+        jp      nz,.ata_write_unhandled
+        ld      a,l
+        cp      #F6
+        jp      nz,.ata_write_unhandled
+        ld      a,(x86_io_ata_write_value)
+        ld      (x86_io_ata_control),a
+        bit     2,a
+        jp      z,.ata_write_alt_done
+        ld      a,#80
+        ld      (x86_io_ata_status),a
+.ata_write_alt_done:
+        or      a
+        ret
+.ata_write_unhandled:
+        scf
+        ret
+.ata_write_error:
+        ld      a,(x86_io_ata_write_value)
+        ld      (x86_io_ata_error),a
+        or      a
+        ret
+.ata_write_count:
+        ld      a,(x86_io_ata_write_value)
+        ld      (x86_io_ata_count),a
+        or      a
+        ret
+.ata_write_sector:
+        ld      a,(x86_io_ata_write_value)
+        ld      (x86_io_ata_sector),a
+        or      a
+        ret
+.ata_write_cyl_low:
+        ld      a,(x86_io_ata_write_value)
+        ld      (x86_io_ata_cyl_low),a
+        or      a
+        ret
+.ata_write_cyl_high:
+        ld      a,(x86_io_ata_write_value)
+        ld      (x86_io_ata_cyl_high),a
+        or      a
+        ret
+.ata_write_drive:
+        ld      a,(x86_io_ata_write_value)
+        ld      (x86_io_ata_drive),a
+        or      a
+        ret
+.ata_write_command:
+        ld      a,(x86_io_ata_write_value)
+        ld      (x86_io_ata_command),a
+        cp      #EC
+        jp      z,.ata_identify
+        cp      #20
+        jp      z,.ata_no_media
+        cp      #21
+        jp      z,.ata_no_media
+        cp      #24
+        jp      z,.ata_no_media
+        cp      #25
+        jp      z,.ata_no_media
+        cp      #30
+        jp      z,.ata_no_media
+        cp      #31
+        jp      z,.ata_no_media
+        cp      #34
+        jp      z,.ata_no_media
+        cp      #35
+        jp      z,.ata_no_media
+        cp      #C4
+        jp      z,.ata_no_media
+        cp      #C5
+        jp      z,.ata_no_media
+        cp      #91
+        jp      z,.ata_command_ok
+        cp      #10
+        jp      z,.ata_command_ok
+        cp      #70
+        jp      z,.ata_command_ok
+        cp      #90
+        jp      z,.ata_diagnostic
+        jp      .ata_abort
+.ata_identify:
+        xor     a
+        ld      (x86_io_ata_ident_index),a
+        ld      a,1
+        ld      (x86_io_ata_ident_active),a
+        xor     a
+        ld      (x86_io_ata_error),a
+        ld      a,#58
+        ld      (x86_io_ata_status),a
+        or      a
+        ret
+.ata_no_media:
+        xor     a
+        ld      (x86_io_ata_ident_active),a
+        ld      a,#04
+        ld      (x86_io_ata_error),a
+        ld      a,#51
+        ld      (x86_io_ata_status),a
+        or      a
+        ret
+.ata_diagnostic:
+        ld      a,1
+        ld      (x86_io_ata_error),a
+.ata_command_ok:
+        ld      a,#50
+        ld      (x86_io_ata_status),a
+        or      a
+        ret
+.ata_abort:
+        ld      a,#04
+        ld      (x86_io_ata_error),a
+        ld      a,#51
+        ld      (x86_io_ata_status),a
+        or      a
+        ret
+
+; ATA data register: native word path for IN AX,DX / OUT DX,AX.
+x86_io_ata_read_data16:
+        ld      a,(x86_io_ata_ident_active)
+        or      a
+        jp      nz,.ata_data_ident
+        ld      hl,#FFFF
+        ret
+.ata_data_ident:
+        ld      a,(x86_io_ata_ident_index)
+        ld      b,a
+        inc     a
+        ld      (x86_io_ata_ident_index),a
+        or      a
+        jp      nz,.ata_ident_index_valid
+        xor     a
+        ld      (x86_io_ata_ident_active),a
+        ld      a,#50
+        ld      (x86_io_ata_status),a
+.ata_ident_index_valid:
+        ld      a,b
+        or      a
+        jp      z,.ata_ident_word0
+        cp      27
+        jp      c,.ata_ident_zero
+        cp      47
+        jp      nc,.ata_ident_zero
+        sub     27
+        add     a,a
+        ld      e,a
+        ld      d,0
+        ld      hl,x86_io_ata_model
+        add     hl,de
+        ld      a,(hl)
+        ld      h,a
+        inc     hl
+        ld      a,(hl)
+        ld      l,a
+        ret
+.ata_ident_word0:
+        ld      hl,#0040
+        ret
+.ata_ident_zero:
+        ld      hl,0
+        ret
+
+x86_io_ata_write_data16:
+        ld      a,(x86_io_ata_ident_active)
+        or      a
+        ret     z
+        xor     a
+        ld      (x86_io_ata_ident_active),a
+        ld      a,#04
+        ld      (x86_io_ata_error),a
+        ld      a,#51
+        ld      (x86_io_ata_status),a
+        ret
+
 x86_io_read16_impl:
         ld      hl,(x86_io_count_in)
         inc     hl
@@ -1046,6 +1332,14 @@ x86_io_read16_impl:
         ld      hl,(x86_io_test_latch)
         ret
 .io_read16_split:
+        ld      hl,(x86_io_port)
+        ld      de,#01F0
+        or      a
+        sbc     hl,de
+        jp      nz,.io_read16_split_bytes
+        call    x86_io_ata_read_data16
+        ret
+.io_read16_split_bytes:
         ld      hl,(x86_io_port)
         ld      (x86_io_saved_port),hl
         call    x86_io_read8_impl_device
@@ -1079,6 +1373,15 @@ x86_io_write16_impl:
         ld      (x86_io_test_latch),hl
         ret
 .io_write16_split:
+        ld      hl,(x86_io_port)
+        ld      de,#01F0
+        or      a
+        sbc     hl,de
+        jp      nz,.io_write16_split_bytes
+        ld      hl,(x86_io_word_value)
+        call    x86_io_ata_write_data16
+        ret
+.io_write16_split_bytes:
         ld      hl,(x86_io_port)
         ld      (x86_io_saved_port),hl
         ld      a,(x86_io_word_value)
@@ -1225,6 +1528,21 @@ x86_io_saved_port: dw 0
 x86_io_word_value: dw 0
 x86_io_word_low: db 0
 x86_io_word_high: db 0
+
+x86_io_ata_error: db 0
+x86_io_ata_count: db 0
+x86_io_ata_sector: db 0
+x86_io_ata_cyl_low: db 0
+x86_io_ata_cyl_high: db 0
+x86_io_ata_drive: db 0
+x86_io_ata_command: db 0
+x86_io_ata_status: db #50
+x86_io_ata_ident_index: db 0
+x86_io_ata_ident_active: db 0
+x86_io_ata_control: db 0
+x86_io_ata_write_value: db 0
+; ATA IDENTIFY model string, bytes swapped within each returned word.
+x86_io_ata_model: db "RPJEOCT126 MEPTY HDD                    "
 
 x86_io_fdc_dor: db 0
 x86_io_fdc_cmd: db 0
