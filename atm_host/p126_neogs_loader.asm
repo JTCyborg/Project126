@@ -348,6 +348,8 @@ p126_neogs_load_manifest:
         ld      c,1
         ld      d,4
 .manifest_record_loop:
+        ld      a,c
+        ld      (p126_neogs_manifest_record_index),a
         ld      a,'h'
         ld      (p126_neogs_startup_stage),a
         ld      a,(hl)
@@ -375,8 +377,10 @@ p126_neogs_load_manifest:
         ld      a,'l'
         ld      (p126_neogs_startup_stage),a
         ld      e,(hl)
+        ld      (p126_neogs_manifest_record_size),e
         inc     hl
         ld      a,(hl)
+        ld      (p126_neogs_manifest_record_size+1),a
         inc     hl
         or      e
         jr      z,.manifest_bad
@@ -1150,6 +1154,8 @@ p126_neogs_manifest_name: db "X86MODS "
 p126_neogs_file_extension: db 'C'
 p126_neogs_manifest_valid: db 0
 p126_neogs_manifest_module_id: db 0
+p126_neogs_manifest_record_index: db 0
+p126_neogs_manifest_record_size: dw 0
 p126_neogs_manifest_record_ptr: dw 0
 p126_neogs_manifest_crc_work: dw 0
 p126_neogs_manifest: defs 39,0
