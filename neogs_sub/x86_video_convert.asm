@@ -128,21 +128,18 @@ x86_video_convert_impl:
         ret
 
 ; IN: HL=logical frame offset (0..7FFFh), A=byte.
-; OUT: writes through WIN3 to physical pages40h..41h.
+; OUT: writes the current RG6 frame into page42h after the 18-byte ABI
+; header. The sender later fills the header/padding and DMA-transfers this
+; exact 16 KiB staging buffer.
 x86_video_write_frame_byte:
         ld      (x86_video_frame_data),a
         ld      (x86_video_frame_offset),hl
-        ld      a,h
-        srl     a
-        srl     a
-        srl     a
-        srl     a
-        srl     a
-        srl     a
-        add     a,#40
+        ld      a,P126_NGS_DMA_PROD_PAGE
         rrca
         out     (P126_NGS_BANK_WINDOW_PORT),a
         ld      hl,(x86_video_frame_offset)
+        ld      de,P126_IPC_HEADER_SIZE
+        add     hl,de
         ld      a,h
         and     #3F
         or      #C0
