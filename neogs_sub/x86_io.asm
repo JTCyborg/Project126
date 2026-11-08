@@ -754,11 +754,12 @@ x86_io_ppi_write8:
 .ppi_pb_store:
         ld      a,c
         ld      (x86_io_ppi_pb),a
-        ; PB0 is PIT channel-2 GATE. X86DEV is a separate WIN2 overlay;
-        ; use its resident gate instead of calling its inactive page directly.
+        ; PB0 is PIT channel-2 GATE. Route the pin update through the
+        ; existing resident X86DEV write API (port 61h software model).
         push    bc
-        and     1
-        call    x86_dev_pit_gate2_write
+        ld      hl,#0061
+        ld      a,c
+        call    x86_dev_write8
         pop     bc
         ld      a,c
         bit     7,a

@@ -15,6 +15,15 @@ x86_dev_read8_impl:
 x86_dev_write8_impl:
         ld      (x86_dev_port),hl
         ld      (x86_dev_write_value),a
+        ; XT system-control PB is modelled by X86IO; PB0's PIT GATE2
+        ; pin is serviced here so the X86IO caller uses the normal overlay API.
+        ld      hl,(x86_dev_port)
+        ld      de,#0061
+        or      a
+        sbc     hl,de
+        jr      z,.write_port61
+        ld      hl,(x86_dev_port)
+        ld      a,(x86_dev_write_value)
         call    x86_dev_dma_write8
         ret     nc
         ld      a,(x86_dev_write_value)
@@ -22,6 +31,12 @@ x86_dev_write8_impl:
         ret     nc
         ld      a,(x86_dev_write_value)
         jp      x86_dev_board_write8
+.write_port61:
+        ld      a,(x86_dev_write_value)
+        and     1
+        call    x86_dev_pit_gate2_write_impl
+        or      a
+        ret
 
 x86_dev_reset_impl:
         call    x86_dev_dma_reset_impl
