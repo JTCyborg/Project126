@@ -232,6 +232,9 @@ p126_neogs_startup::
         ld      a,(hl)                 ; IMAGE kind
         ld      (p126_neogs_overlay_kind),a
         inc     hl
+        ld      a,(hl)                 ; physical overlay page
+        ld      (p126_neogs_overlay_page),a
+        inc     hl
         ld      e,(hl)                 ; maximum size
         inc     hl
         ld      d,(hl)
@@ -240,6 +243,9 @@ p126_neogs_startup::
         ld      e,(hl)                 ; TR-DOS filename pointer
         inc     hl
         ld      d,(hl)
+        inc     hl
+        ld      a,(hl)                 ; preserve startup diagnostic stage
+        ld      (p126_neogs_startup_stage),a
         inc     hl
         push    hl                     ; next descriptor
         ex      de,hl
@@ -403,8 +409,15 @@ p126_neogs_verify_overlay_manifest:
         add     hl,de
         ld      (p126_neogs_manifest_record_ptr),hl
 
-        ; Exact size must agree with the directory record.
+        ; The build descriptor and manifest must agree on physical placement.
         inc     hl
+        ld      a,(hl)
+        ld      b,a
+        ld      a,(p126_neogs_overlay_page)
+        cp      b
+        jr      nz,.manifest_verify_bad
+
+        ; Exact size must agree with the directory record.
         inc     hl
         inc     hl
         inc     hl
@@ -1078,17 +1091,21 @@ p126_neogs_io_name:   db "X86IO   "
 p126_neogs_alu_name:  db "X86ALU  "
 p126_neogs_dev_name:  db "X86DEV  "
 p126_neogs_exec_name: db "X86EXEC "
-; Descriptor: module ID, IMAGE kind, max size (u16), filename pointer.
-; Page placement remains receiver-defined by the current IMAGE kind ABI.
+; Descriptor: module ID, IMAGE kind, physical page, max size (u16),
+; filename pointer and diagnostic stage character.
 p126_neogs_module_table:
-        db      1,P126_IMAGE_KIND_X86IO
+        db      1,P126_IMAGE_KIND_X86IO,#04
         dw      P126_IMAGE_X86IO_MAX_SIZE,p126_neogs_io_name
-        db      2,P126_IMAGE_KIND_X86ALU
+        db      'I'
+        db      2,P126_IMAGE_KIND_X86ALU,#05
         dw      P126_IMAGE_X86ALU_MAX_SIZE,p126_neogs_alu_name
-        db      3,P126_IMAGE_KIND_X86DEV
+        db      'A'
+        db      3,P126_IMAGE_KIND_X86DEV,#06
         dw      P126_IMAGE_X86DEV_MAX_SIZE,p126_neogs_dev_name
-        db      4,P126_IMAGE_KIND_X86EXEC
+        db      'D'
+        db      4,P126_IMAGE_KIND_X86EXEC,#07
         dw      P126_IMAGE_X86EXEC_MAX_SIZE,p126_neogs_exec_name
+        db      'X'
 p126_neogs_manifest_name: db "X86MODS "
 p126_neogs_file_extension: db 'C'
 p126_neogs_manifest_valid: db 0
@@ -1099,6 +1116,7 @@ p126_neogs_manifest: defs 39,0
 p126_neogs_overlay_size: dw 0
 p126_neogs_overlay_max_size: dw 0
 p126_neogs_overlay_kind: db 0
+p126_neogs_overlay_page: db 0
 p126_neogs_overlay_data_ptr: dw #C11C
 p126_neogs_io_log_begin: db "[NGS HOST] X86IO IMAGE BEGIN",13,10,0
 p126_neogs_io_log_ready: db "[NGS HOST] X86IO IMAGE TX COMPLETE",13,10,0
