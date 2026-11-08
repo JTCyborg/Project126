@@ -61,7 +61,7 @@ try {
 
         Remove-Item -Force -ErrorAction SilentlyContinue $binary, $listing, $map
         if ($unit.Name -eq "NeoGS") {
-            Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $build "X86CORE.C"), (Join-Path $build "X86IO.C"), (Join-Path $build "X86ALU.C"), (Join-Path $build "X86DEV.C"), (Join-Path $build "X86EXEC.C")
+            Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $build "X86CORE.C"), (Join-Path $build "X86IO.C"), (Join-Path $build "X86ALU.C"), (Join-Path $build "X86DEV.C"), (Join-Path $build "X86EXEC.C"), (Join-Path $build "X86VGA.C")
         }
 
         Write-Host "[BUILD] Project126 $($unit.Name) assembly"
@@ -97,7 +97,8 @@ try {
             $aluOverlay = Join-Path $build "X86ALU.C"
             $devOverlay = Join-Path $build "X86DEV.C"
             $execOverlay = Join-Path $build "X86EXEC.C"
-            foreach ($image in @($residentImage, $ioOverlay, $aluOverlay, $devOverlay, $execOverlay)) {
+            $vgaOverlay = Join-Path $build "X86VGA.C"
+            foreach ($image in @($residentImage, $ioOverlay, $aluOverlay, $devOverlay, $execOverlay, $vgaOverlay)) {
                 if (-not (Test-Path $image)) {
                     throw "Required split NeoGS image was not produced: $image"
                 }
@@ -107,6 +108,7 @@ try {
             $aluOverlayBytes = (Get-Item $aluOverlay).Length
             $devOverlayBytes = (Get-Item $devOverlay).Length
             $execOverlayBytes = (Get-Item $execOverlay).Length
+            $vgaOverlayBytes = (Get-Item $vgaOverlay).Length
             if ($residentBytes -lt 1 -or $residentBytes -gt 0x4000) {
                 throw "X86CORE.C size $residentBytes is outside the 1..16384-byte WIN0 limit."
             }
@@ -127,6 +129,10 @@ try {
                 throw "X86EXEC.C size $execOverlayBytes is outside the 1..16384-byte page-07 overlay profile."
             }
             Write-Host "[BUILD] X86EXEC.C overlay bytes=$execOverlayBytes / 16384"
+            if ($vgaOverlayBytes -lt 1 -or $vgaOverlayBytes -gt 0x4000) {
+                throw "X86VGA.C size $vgaOverlayBytes is outside the 1..16384-byte dynamic page-08 overlay profile."
+            }
+            Write-Host "[BUILD] X86VGA.C dynamic overlay bytes=$vgaOverlayBytes / 16384"
         }
 
         Write-Host "[BUILD] $($unit.Version) audit-bytes=$size"
@@ -171,7 +177,8 @@ try {
         @{ Id = 1; Page = 4; File = "X86IO.C" },
         @{ Id = 2; Page = 5; File = "X86ALU.C" },
         @{ Id = 3; Page = 6; File = "X86DEV.C" },
-        @{ Id = 4; Page = 7; File = "X86EXEC.C" }
+        @{ Id = 4; Page = 7; File = "X86EXEC.C" },
+        @{ Id = 5; Page = 8; File = "X86VGA.C" }
     )
     [System.Collections.Generic.List[byte]]$moduleManifest = [System.Collections.Generic.List[byte]]::new()
     # Header: "P126", format revision, record count, record size.
@@ -256,7 +263,8 @@ try {
         @{ Name = "X86ALU  C"; Label = "X86ALU.C" },
         @{ Name = "X86DEV  C"; Label = "X86DEV.C" },
         @{ Name = "X86EXEC C"; Label = "X86EXEC.C" },
-        @{ Name = "X86MODS C"; Label = "X86MODS.C"; ExpectedLength = 39; ExpectedSectors = 1 },
+        @{ Name = "X86VGA  C"; Label = "X86VGA.C" },
+        @{ Name = "X86MODS C"; Label = "X86MODS.C"; ExpectedLength = 47; ExpectedSectors = 1 },
         @{ Name = "P126BOOTC"; Label = "P126BOOT.C" },
         @{ Name = "BIOS1   C"; Label = "BIOS1.C"; ExpectedLength = 8192; ExpectedSectors = 32 },
         @{ Name = "BIOS2   C"; Label = "BIOS2.C"; ExpectedLength = 8192; ExpectedSectors = 32 },
