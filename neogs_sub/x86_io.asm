@@ -288,6 +288,9 @@ x86_io_read8_impl_device:
         ret
 .io_read8_ppi:
         ld      hl,(x86_io_port)
+        call    x86_vga_io_read8
+        ret     nc
+        ld      hl,(x86_io_port)
         call    x86_dev_read8
         ret     nc
         call    x86_io_pic_read8
@@ -724,6 +727,10 @@ x86_io_write8_impl_device:
         ret
 .io_write8_ppi:
         ld      (x86_io_write_value),a
+        ld      hl,(x86_io_port)
+        ld      a,(x86_io_write_value)
+        call    x86_vga_io_write8
+        ret     nc
         ld      hl,(x86_io_port)
         ld      a,(x86_io_write_value)
         call    x86_dev_write8
