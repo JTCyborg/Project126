@@ -21,6 +21,11 @@ p126_screen_apply_text_frame:
         xor     a
         ret
 
+; The IPC audit unit has no linked host-main state. The production build
+; resolves this flag from project126_main.asm after console initialization.
+p126_host_console_ready:
+        db 0
+
 BIOS_DebugConsole_PrintChar:
         ret
 
