@@ -233,6 +233,7 @@ x86_bios_startup_trace:
         call    x86_bios_trace_log_cs_ip
         call    x86_bios_trace_log_registers
         call    x86_bios_trace_log_io_counts
+        call    x86_bios_trace_log_pit_state
         call    x86_bios_trace_log_history
         scf
         ret
@@ -244,6 +245,7 @@ x86_bios_startup_trace:
         call    x86_bios_trace_log_cs_ip
         call    x86_bios_trace_log_registers
         call    x86_bios_trace_log_io_counts
+        call    x86_bios_trace_log_pit_state
         call    x86_bios_trace_log_history
         or      a
         ret
