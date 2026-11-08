@@ -1,6 +1,6 @@
 ; =========================================================================
 ; PROJECT126 — ATM / NeoGS IPC public interface
-; Version: P126_ATM_IPC_API v0.2.0
+; Version: P126_ATM_IPC_API v0.3.0
 ;
 ; Include this file in ATM-side Z80 modules that call neogs_ipc.asm.
 ; Physical transport: GSCOM/GSSTAT (#BB), GSDAT (#B3), GSCTR (#33).
