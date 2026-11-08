@@ -568,6 +568,11 @@ p126_ipc_dma_send_frame::
 .p126_dma_size_valid:
         ld      a,3
         ld      (p126_ipc_dma_stage),a
+        ; Emit COPY BEGIN before arming the receiver. Once E0 is acknowledged,
+        ; do not spend any time in the screen-console logger: the receiver's
+        ; DMA watchdog is already running and LDIR must start immediately.
+        ld      hl,p126_ipc_log_dma_tx_copy_begin
+        call    p126_ipc_debug_string
         ld      hl,p126_ipc_log_dma_tx_e0
         call    p126_ipc_debug_string
         ; DMA setup on NeoGS includes page selection and DMA register writes.
@@ -584,14 +589,11 @@ p126_ipc_dma_send_frame::
         scf
         ret
 .p126_dma_e0_ack:
-        ld      hl,p126_ipc_log_dma_tx_ready
-        call    p126_ipc_debug_string
-
+        ; E0 cleared CBIT: NeoGS is already waiting for the first DMA byte.
+        ; No console output or other slow work is allowed before LDIR.
         ld      a,4
         ld      (p126_ipc_dma_stage),a
         di
-        ld      hl,p126_ipc_log_dma_tx_copy_begin
-        call    p126_ipc_debug_string
         ld      hl,(p126_ipc_dma_source)
         ld      bc,(p126_ipc_dma_size)
         ld      de,P126_IPC_DMA_WINDOW
