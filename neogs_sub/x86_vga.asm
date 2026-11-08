@@ -1470,13 +1470,26 @@ x86_vga_get_text_snapshot_impl:
         add     hl,de
         add     hl,hl
         ld      (x86_vga_text_start),hl
-        ; PCem advances ma by rowoffset<<3; convert ma units to CPU bytes.
+        ; PCem VGA text advances by CRTC Offset (register 13h) in MA
+        ; units, while standalone MDA advances by the displayed columns
+        ; (CRTC register 01h) on each character row.
+        ld      a,(x86_vga_mda_compat)
+        or      a
+        jr      z,.text_snapshot_vga_stride
+        ld      a,(x86_vga_crtc+1)
+        ld      l,a
+        ld      h,0
+        add     hl,hl                   ; MDA row stride = columns * 2 bytes
+        ex      de,hl
+        jr      .text_snapshot_stride_ready
+.text_snapshot_vga_stride:
         ld      a,(x86_vga_crtc+19)
         ld      l,a
         ld      h,0
         add     hl,hl
         add     hl,hl
         ex      de,hl
+.text_snapshot_stride_ready:
         ld      hl,(x86_vga_text_start)
         ld      a,(x86_vga_text_base_mid)
         or      a
