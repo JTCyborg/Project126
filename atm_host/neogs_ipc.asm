@@ -772,6 +772,52 @@ p126_ipc_dma_receive_debug_frame::
         scf
         ret
 
+; Request one converted frame from NeoGS and apply the RG6 text payload
+; to the ATM's active page7/page3 text memory.
+p126_ipc_dma_receive_video_frame::
+        ld      a,(p126_atm_video_mode)
+        cp      P126_ATM_VIDEO_MODE_RG6_TEXT80X25
+        jr      nz,.video_dma_failed
+        ld      a,P126_CMD_NGS_FRAME
+        call    p126_ipc_send_command
+        jr      c,.video_dma_failed
+
+        di
+        ld      hl,0
+        ld      a,(hl)
+        ld      hl,0
+        ld      de,P126_IPC_DMA_RX_BUFFER
+        ld      bc,P126_IPC_MAX_FRAME_SIZE
+        ldir
+
+        ld      a,P126_CMD_DMA_END
+        call    p126_ipc_send_command
+        jr      c,.video_dma_failed
+
+        ld      hl,P126_IPC_DMA_RX_BUFFER
+        ld      bc,P126_IPC_MAX_FRAME_SIZE
+        call    p126_ipc_validate_frame
+        jr      c,.video_dma_failed
+        ld      a,(P126_IPC_DMA_RX_BUFFER+7)
+        cp      P126_SERVICE_VIDEO
+        jr      nz,.video_dma_failed
+        ld      a,(P126_IPC_DMA_RX_BUFFER+8)
+        cp      P126_OP_VIDEO_FRAME
+        jr      nz,.video_dma_failed
+
+        call    p126_screen_apply_text_frame
+        jr      c,.video_dma_failed
+        ld      hl,p126_ipc_video_frame_applied
+        call    p126_ipc_console_string
+        or      a
+        ret
+
+.video_dma_failed:
+        ld      hl,p126_ipc_video_dma_failed
+        call    p126_ipc_console_string
+        scf
+        ret
+
 p126_ipc_console_string:
         ld      a,(hl)
         or      a
@@ -816,6 +862,8 @@ p126_ipc_debug_fault: db "[X86] BIOS STOPPED: OPCODE OR MEMORY FAULT; CS:IP=",0
 p126_ipc_debug_reset_fault: db "[X86] BIOS RESET VECTOR FAILED; CS:IP=",0
 p126_ipc_debug_event_missing: db "[X86] BIOS TRACE EVENT MISSING; CS:IP=",0
 p126_ipc_debug_dma_failed: db "[X86] DIAGNOSTIC DMA FAILED",13,10,0
+p126_ipc_video_frame_applied: db "[VIDEO] RG6 FRAME APPLIED",13,10,0
+p126_ipc_video_dma_failed: db "[VIDEO] FRAME RECEIVE/APPLY FAILED",13,10,0
 
 ; Print A as two hexadecimal digits on ATM's independent #EF stream.
 ; Preserves AF and BC.
