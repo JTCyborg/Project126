@@ -310,51 +310,22 @@ p126_catalog_wait_release:
         ret
 
 ; -------------------------------------------------------------------------
-; Forward one-key-at-a-time Spectrum matrix transitions to the virtual XT
-; keyboard. The BIOS is the consumer; the menu owns the matrix before load.
-; Make codes are sent on press and bit-7 break codes on release.
+; Poll the complete Spectrum matrix and forward one state transition per
+; host idle pass. The 40-byte state table supports simultaneous modifiers
+; and ordinary keys; make codes are sent on press, bit-7 break codes on up.
 ; -------------------------------------------------------------------------
 p126_host_poll_x86_keyboard:
         ld      a,(p126_catalog_bios_loaded)
         or      a
         ret     z
-        call    p126_x86_keyboard_scan
-        ld      (p126_x86_keyboard_current),a
-        ld      a,(p126_x86_keyboard_held)
-        ld      b,a
-        ld      a,(p126_x86_keyboard_current)
-        cp      b
-        ret     z
-
-        ; Release the previous key before publishing a different make code.
-        ld      a,b
-        or      a
-        jr      z,.keyboard_make
-        or      #80
-        call    p126_ipc_send_keyboard_event
-        ret     c
-        xor     a
-        ld      (p126_x86_keyboard_held),a
-
-.keyboard_make:
-        ld      a,(p126_x86_keyboard_current)
-        or      a
-        ret     z
-        call    p126_ipc_send_keyboard_event
-        ret     c
-        ld      a,(p126_x86_keyboard_current)
-        ld      (p126_x86_keyboard_held),a
-        ret
-
-; Return the first pressed key as an IBM XT set-1 scan code, or A=0.
-; Matrix rows are the standard Spectrum active-low rows, columns 0..4.
-p126_x86_keyboard_scan:
         push    bc
         push    de
         push    hl
         push    ix
+        push    iy
         ld      hl,p126_x86_keyboard_rows
         ld      ix,p126_x86_keyboard_codes
+        ld      iy,p126_x86_keyboard_state
         ld      d,8
 .keyboard_row:
         ld      a,(hl)
@@ -364,34 +335,83 @@ p126_x86_keyboard_scan:
         in      a,(c)
         cpl
         and     #1F
-        jr      nz,.keyboard_row_hit
-        ld      bc,5
-        add     ix,bc
-        dec     d
-        jr      nz,.keyboard_row
-        xor     a
-        jr      .keyboard_scan_done
-
-.keyboard_row_hit:
-        ld      e,0
+        ld      e,a
+        ld      b,5
 .keyboard_column:
-        srl     a
-        jr      c,.keyboard_column_found
-        inc     e
-        jr      .keyboard_column
-.keyboard_column_found:
-        push    de
-        ld      d,0
-        add     ix,de
+        srl     e
+        jr      c,.keyboard_key_pressed
+        ld      a,(iy+0)
+        or      a
+        jr      z,.keyboard_key_next
         ld      a,(ix+0)
-        pop     de
-
-.keyboard_scan_done:
+        or      #80
+        push    bc
+        push    de
+        push    hl
+        push    ix
+        push    iy
+        call    p126_ipc_send_keyboard_event
+        jr      c,.keyboard_send_failed
+        pop     iy
         pop     ix
         pop     hl
         pop     de
         pop     bc
+        xor     a
+        ld      (iy+0),a
+        jr      .keyboard_event_done
+
+.keyboard_key_pressed:
+        ld      a,(iy+0)
         or      a
+        jr      nz,.keyboard_key_next
+        ld      a,(ix+0)
+        push    bc
+        push    de
+        push    hl
+        push    ix
+        push    iy
+        call    p126_ipc_send_keyboard_event
+        jr      c,.keyboard_send_failed
+        pop     iy
+        pop     ix
+        pop     hl
+        pop     de
+        pop     bc
+        ld      a,1
+        ld      (iy+0),a
+        jr      .keyboard_event_done
+
+.keyboard_send_failed:
+        pop     iy
+        pop     ix
+        pop     hl
+        pop     de
+        pop     bc
+        jr      .keyboard_scan_done
+
+.keyboard_key_next:
+        inc     ix
+        inc     iy
+        djnz    .keyboard_column
+        dec     d
+        jr      nz,.keyboard_row
+
+.keyboard_scan_done:
+        pop     iy
+        pop     ix
+        pop     hl
+        pop     de
+        pop     bc
+        ret
+
+.keyboard_event_done:
+        ; One DMA event per pass keeps the resident IPC loop responsive.
+        pop     iy
+        pop     ix
+        pop     hl
+        pop     de
+        pop     bc
         ret
 
 p126_x86_keyboard_rows:
@@ -413,8 +433,7 @@ p126_x86_keyboard_codes:
         db #1C,#26,#25,#24,#23
         ; SPACE, SYMBOL SHIFT, M, N, B
         db #39,#38,#32,#31,#30
-p126_x86_keyboard_held:    db 0
-p126_x86_keyboard_current: db 0
+p126_x86_keyboard_state: defs 40,0
 
 ; -------------------------------------------------------------------------
 ; TR-DOS directory read.
