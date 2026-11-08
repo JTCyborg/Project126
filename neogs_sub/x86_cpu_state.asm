@@ -217,12 +217,15 @@ x86_bios_startup_trace:
         ld      a,(x86_bios_trace_eebf_once)
         or      a
         jr      nz,.trace_eebf_done
-        ld      hl,(x86_reg_cs)
+        ; Match the instruction's captured entry address, not post-step
+        ; CS:IP. x86_cpu_step advances IP before returning, so comparing the
+        ; architectural registers here misses the instruction at EEBF.
+        ld      hl,(x86_exec_instruction_start_cs)
         ld      de,#F000
         or      a
         sbc     hl,de
         jr      nz,.trace_eebf_done
-        ld      hl,(x86_reg_ip)
+        ld      hl,(x86_exec_instruction_start_ip)
         ld      de,#EEBF
         or      a
         sbc     hl,de
