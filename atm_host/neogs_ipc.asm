@@ -804,6 +804,11 @@ p126_ipc_dma_receive_video_frame::
         ld      a,(P126_IPC_DMA_RX_BUFFER+8)
         cp      P126_OP_VIDEO_FRAME
         jr      nz,.video_dma_failed
+        ld      a,(P126_IPC_DMA_RX_BUFFER+14)
+        ld      b,a
+        ld      a,(P126_IPC_DMA_RX_BUFFER+15)
+        or      b
+        jr      nz,.video_dma_failed
 
         call    p126_screen_apply_text_frame
         jr      c,.video_dma_failed
