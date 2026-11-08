@@ -1025,7 +1025,7 @@ x86_vga_vram_read_at_offset:
         srl     a
         and     3
         add     a,b
-        add     #30
+        add     a,#30
         rrca
         out     (P126_NGS_BANK_WINDOW_PORT),a
         ld      a,(x86_vga_vram_offset+1)
@@ -1051,7 +1051,7 @@ x86_vga_vram_write_at_offset:
         srl     a
         and     3
         add     a,b
-        add     #30
+        add     a,#30
         rrca
         out     (P126_NGS_BANK_WINDOW_PORT),a
         ld      a,(x86_vga_vram_offset+1)
