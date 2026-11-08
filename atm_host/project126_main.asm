@@ -200,6 +200,12 @@ p126_host_ngs_start_done:
         call    p126_host_debug_string
         jr      p126_host_video_mode_done
 p126_host_video_mode_sent:
+        ; The mode descriptor is now installed on NeoGS. Start requesting
+        ; guest VGA frames; without this latch the idle loop never polls E4.
+        ld      a,1
+        ld      (p126_atm_video_enabled),a
+        xor     a
+        ld      (p126_host_video_poll_counter),a
         ld      hl,p126_log_video_mode_sent
         call    p126_host_debug_string
 p126_host_video_mode_done:
@@ -212,8 +218,7 @@ p126_host_video_mode_done:
         call    p126_host_debug_string
         ; VGA owns the complete ATM display. Start from a clean screen and
         ; do not paint the diagnostic dashboard over the guest BIOS output.
-        call    BIOS_DebugConsole_Init
-        call    BIOS_DebugConsole_Clear
+        call    p126_screen_clear_guest_display
         xor     a
         ld      (p126_host_console_ready),a
         ld      hl, p126_log_console_done

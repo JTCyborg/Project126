@@ -170,7 +170,7 @@ BIOS_DebugConsole_Init::
         ld      (Console_Y), a
         ret
 
-BIOS_DebugConsole_Clear::
+p126_screen_clear_guest_display::
         push    af
         push    bc
         push    de
@@ -203,12 +203,6 @@ BIOS_DebugConsole_Clear::
         ldir
 
         call    p126_screen_restore_host_pages
-        xor     a
-        ld      (bios_dbg_row), a
-        ld      (bios_dbg_col), a
-        ld      (Console_X), a
-        ld      a, BIOS_DEBUG_TOP
-        ld      (Console_Y), a
         pop     hl
         pop     de
         pop     bc
