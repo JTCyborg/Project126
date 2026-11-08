@@ -297,6 +297,21 @@ x86_io_read8_impl_device:
         ld      a,#FF
         ret
 
+; Read PIT channel-2 OUT from X86DEV while X86IO owns WIN2.
+; This is a nested resident-gate call; direct X86DEV data references are invalid.
+x86_io_ppi_read_pit_out2:
+        push    af
+        push    ix
+        ld      a,P126_NGS_X86DEV_OVERLAY_SELECTOR
+        ld      (p126_overlay_request_selector),a
+        pop     ix
+        pop     af
+        push    ix
+        ld      ix,x86_dev_pit_out2_read_impl
+        call    p126_overlay_call
+        pop     ix
+        ret
+
 ; Read one byte from PPI 8255. Carry set means port is not in PPI decode.
 x86_io_ppi_read8:
         call    x86_io_ppi_decode
@@ -327,10 +342,11 @@ x86_io_ppi_read8:
 .ppi_pc_no_video_id:
         ld      a,#0D
 .ppi_pc_speaker:
-        ; PCem's bit 5 is ppispeakon, driven by PIT channel-2 OUT,
-        ; not by PB0/PB1. Reflect the emulated OUT2 state.
+        ; PCem's bit 5 is ppispeakon, driven by PIT channel-2 OUT.
+        ; X86DEV is a separate physical overlay: read OUT2 through the
+        ; resident gate rather than dereferencing its inactive-page data.
         ld      b,a
-        ld      a,(x86_dev_pit_out2)
+        call    x86_io_ppi_read_pit_out2
         or      a
         ld      a,b
         jr      z,.ppi_pc_return

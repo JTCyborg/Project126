@@ -243,6 +243,13 @@ x86_dev_pit_decode:
         scf
         ret
 
+; Cross-overlay accessor: OUT2 is returned in A, carry clear.
+; Call only through p126_overlay_call while X86DEV/page06 is selected.
+x86_dev_pit_out2_read_impl:
+        ld      a,(x86_dev_pit_out2)
+        or      a
+        ret
+
 x86_dev_pit_read8:
         call    x86_dev_pit_decode
         ret     c
