@@ -59,6 +59,11 @@ x86_vga_reset_impl:
         ld      bc,767
         ld      (hl),a
         ldir
+        ld      hl,x86_vga_egapal
+        ld      de,x86_vga_egapal+1
+        ld      bc,15
+        ld      (hl),a
+        ldir
         ld      a,#FF
         ld      (x86_vga_dac_mask),a
         xor     a
@@ -69,8 +74,9 @@ x86_vga_reset_impl:
         ld      (x86_vga_miscout),a
         xor     a
         ld      (x86_vga_chain4),a
-        ld      (x86_vga_chain2_write),a
         ld      (x86_vga_chain2_read),a
+        inc     a
+        ld      (x86_vga_chain2_write),a
         ld      (x86_vga_readmode),a
         ld      (x86_vga_writemode),a
         ld      (x86_vga_readplane),a
@@ -386,6 +392,8 @@ x86_vga_io_write8_impl:
         or      a
         ret
 .write_dac_data:
+        xor     a
+        ld      (x86_vga_dac_status),a
         call    x86_vga_dac_write_component
         or      a
         ret
