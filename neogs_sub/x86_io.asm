@@ -309,6 +309,20 @@ x86_io_read8_impl_device:
         ret     nc
         call    x86_io_ppi_read8
         ret     nc
+        ; Report the first access to an undecoded guest I/O port.
+        ; Keep this one-shot: BIOS polling loops must not flood the console.
+        ld      a,(x86_io_unhandled_logged)
+        or      a
+        jr      nz,.io_read8_unhandled_return
+        inc     a
+        ld      (x86_io_unhandled_logged),a
+        ld      hl,x86_io_unhandled_read_text
+        call    x86_io_log_string
+        ld      hl,(x86_io_port)
+        call    x86_io_log_hex16
+        ld      hl,x86_io_unhandled_value_text
+        call    x86_io_log_string
+.io_read8_unhandled_return:
         ld      a,#FF
         ret
 
@@ -1706,6 +1720,9 @@ x86_io_bios_table_data_text: db " DATA@DS:SI-1=",0
 x86_io_pic_selftest_pass: db "[NGS] X86 PIC REGISTER SELFTEST PASS",13,10,0
 x86_io_pic_selftest_fail: db "[NGS] X86 PIC REGISTER SELFTEST FAIL",13,10,0
 
+x86_io_unhandled_read_text: db "[IO] UNHANDLED IN8 P=",0
+x86_io_unhandled_value_text: db " V=FF",13,10,0
+x86_io_unhandled_logged: db 0
 x86_io_port: dw 0
 x86_io_diag_offset: dw 0
 x86_io_diag_remaining: db 0
