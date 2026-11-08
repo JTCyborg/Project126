@@ -606,6 +606,8 @@ p126_ngs_ipc_dispatch_once::
         jr      z,.p126_ngs_dispatch_image
         cp      P126_SERVICE_VIDEO
         jr      z,.p126_ngs_dispatch_video
+        cp      P126_SERVICE_INPUT
+        jr      z,.p126_ngs_dispatch_input
         ; Diagnostics currently has no additional side effects.
         xor     a
         out     (P126_NGS_CLRCBIT),a
