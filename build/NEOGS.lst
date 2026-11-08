@@ -3000,7 +3000,7 @@
   40++12C3              ; GSCOM control-plane commands. Valid only under Project126 resident firmware.
   41++12C3              P126_CMD_HOST_FRAME       EQU #E0
   42++12C3              P126_CMD_NGS_FRAME        EQU #E1
-  43++12C3              P126_CMD_NGS_VIDEO_FRAME  EQU #E2
+  43++12C3              P126_CMD_NGS_VIDEO_FRAME  EQU #E4
   44++12C3              P126_CMD_RESYNC           EQU #E2
   45++12C3              P126_CMD_CAPABILITIES     EQU #E3
   46++12C3              P126_CMD_DMA_END          EQU #FF
@@ -3035,60 +3035,62 @@
   75++12C3              P126_VIDEO_DESC_VERSION    EQU 1
   76++12C3              P126_VIDEO_FORMAT_TEXT80X25 EQU 1
   77++12C3              P126_ATM_MODE_RG6_TEXT80X25 EQU 6
-  78++12C3              P126_VIDEO_TEXT80_WIDTH    EQU 80
-  79++12C3              P126_VIDEO_TEXT80_HEIGHT   EQU 25
-  80++12C3              P126_VIDEO_TEXT80_CELLS    EQU 2000
-  81++12C3              P126_VIDEO_TEXT80_FRAME_SIZE EQU 4000
-  82++12C3
-  83++12C3              ; Response status codes (16-bit values).
-  84++12C3              P126_STATUS_OK            EQU #0000
-  85++12C3              P126_STATUS_BAD_MAGIC     EQU #0001
-  86++12C3              P126_STATUS_BAD_VERSION   EQU #0002
-  87++12C3              P126_STATUS_BAD_FRAME     EQU #0003
-  88++12C3              P126_STATUS_CRC_ERROR     EQU #0004
-  89++12C3              P126_STATUS_SEQUENCE      EQU #0005
-  90++12C3              P126_STATUS_NO_SERVICE    EQU #0006
-  91++12C3              P126_STATUS_NO_OPERATION  EQU #0007
-  92++12C3              P126_STATUS_NO_BUFFER     EQU #0008
-  93++12C3              P126_STATUS_HOST_IO       EQU #0009
-  94++12C3              P126_STATUS_TIMEOUT       EQU #000A
-  95++12C3              P126_STATUS_CANCELLED     EQU #000B
-  96++12C3              P126_STATUS_ADDRESS_RANGE EQU #000C
-  97++12C3              P126_STATUS_BUSY          EQU #000D
-  98++12C3              P126_STATUS_RESET_REQUIRED EQU #000E
-  99++12C3              P126_STATUS_BAD_FRAGMENT  EQU #000F
- 100++12C3
- 101++12C3              ; CRC-16/CCITT-FALSE.
- 102++12C3              P126_CRC16_POLY           EQU #1021
- 103++12C3              P126_CRC16_INITIAL_H      EQU #FF
- 104++12C3              P126_CRC16_INITIAL_L      EQU #FF
- 105++12C3              P126_CRC16_CHECK_H        EQU #29
- 106++12C3              P126_CRC16_CHECK_L        EQU #B1
- 107++12C3
- 108++12C3
- 109++12C3              ; IMAGE service v1.1 image profiles.
- 110++12C3              ; IMAGE_BEGIN payload: message-id u16, image-kind u8, physical-page u8,
- 111++12C3              ; exact image-size u16. The receiver validates kind/page policy and derives
- 112++12C3              ; the WIN3/MPAGEX selector from ROR8(physical-page).
- 113++12C3              ; SYSBIOS: 8 KiB image to physical page 10h. X86 overlays retain their
- 114++12C3              ; pinned page assignments 04h..07h until the resident module manager owns
- 115++12C3              ; allocation of the dynamic page range.
- 116++12C3              P126_IMAGE_KIND_SYSBIOS      EQU #00
- 117++12C3              P126_IMAGE_KIND_X86IO        EQU #01
- 118++12C3              P126_IMAGE_KIND_X86ALU       EQU #02
- 119++12C3              P126_IMAGE_KIND_X86DEV       EQU #03
- 120++12C3              P126_IMAGE_KIND_X86EXEC      EQU #04
- 121++12C3              P126_IMAGE_KIND_X86VGA       EQU #05
- 122++12C3              P126_IMAGE_KIND_X86VID       EQU #06
- 123++12C3              P126_IMAGE_X86IO_MAX_SIZE    EQU #1000
- 124++12C3              P126_IMAGE_X86ALU_MAX_SIZE   EQU #1000
- 125++12C3              P126_IMAGE_X86DEV_MAX_SIZE   EQU #1000
- 126++12C3              P126_IMAGE_X86EXEC_MAX_SIZE  EQU #4000
- 127++12C3              P126_IMAGE_X86VGA_MAX_SIZE   EQU #4000
- 128++12C3              P126_IMAGE_X86VID_MAX_SIZE   EQU #4000
- 129++12C3              P126_IMAGE_SYSBIOS_SIZE      EQU #2000
- 130++12C3              P126_IMAGE_FRAGMENT_EXT_SIZE EQU 10
- 131++12C3
+  78++12C3              ; Public ATM-side renderer mode name used by the screen-console and IPC modules.
+  79++12C3              P126_ATM_VIDEO_MODE_RG6_TEXT80X25 EQU P126_ATM_MODE_RG6_TEXT80X25
+  80++12C3              P126_VIDEO_TEXT80_WIDTH    EQU 80
+  81++12C3              P126_VIDEO_TEXT80_HEIGHT   EQU 25
+  82++12C3              P126_VIDEO_TEXT80_CELLS    EQU 2000
+  83++12C3              P126_VIDEO_TEXT80_FRAME_SIZE EQU 4000
+  84++12C3
+  85++12C3              ; Response status codes (16-bit values).
+  86++12C3              P126_STATUS_OK            EQU #0000
+  87++12C3              P126_STATUS_BAD_MAGIC     EQU #0001
+  88++12C3              P126_STATUS_BAD_VERSION   EQU #0002
+  89++12C3              P126_STATUS_BAD_FRAME     EQU #0003
+  90++12C3              P126_STATUS_CRC_ERROR     EQU #0004
+  91++12C3              P126_STATUS_SEQUENCE      EQU #0005
+  92++12C3              P126_STATUS_NO_SERVICE    EQU #0006
+  93++12C3              P126_STATUS_NO_OPERATION  EQU #0007
+  94++12C3              P126_STATUS_NO_BUFFER     EQU #0008
+  95++12C3              P126_STATUS_HOST_IO       EQU #0009
+  96++12C3              P126_STATUS_TIMEOUT       EQU #000A
+  97++12C3              P126_STATUS_CANCELLED     EQU #000B
+  98++12C3              P126_STATUS_ADDRESS_RANGE EQU #000C
+  99++12C3              P126_STATUS_BUSY          EQU #000D
+ 100++12C3              P126_STATUS_RESET_REQUIRED EQU #000E
+ 101++12C3              P126_STATUS_BAD_FRAGMENT  EQU #000F
+ 102++12C3
+ 103++12C3              ; CRC-16/CCITT-FALSE.
+ 104++12C3              P126_CRC16_POLY           EQU #1021
+ 105++12C3              P126_CRC16_INITIAL_H      EQU #FF
+ 106++12C3              P126_CRC16_INITIAL_L      EQU #FF
+ 107++12C3              P126_CRC16_CHECK_H        EQU #29
+ 108++12C3              P126_CRC16_CHECK_L        EQU #B1
+ 109++12C3
+ 110++12C3
+ 111++12C3              ; IMAGE service v1.1 image profiles.
+ 112++12C3              ; IMAGE_BEGIN payload: message-id u16, image-kind u8, physical-page u8,
+ 113++12C3              ; exact image-size u16. The receiver validates kind/page policy and derives
+ 114++12C3              ; the WIN3/MPAGEX selector from ROR8(physical-page).
+ 115++12C3              ; SYSBIOS: 8 KiB image to physical page 10h. X86 overlays retain their
+ 116++12C3              ; pinned page assignments 04h..07h until the resident module manager owns
+ 117++12C3              ; allocation of the dynamic page range.
+ 118++12C3              P126_IMAGE_KIND_SYSBIOS      EQU #00
+ 119++12C3              P126_IMAGE_KIND_X86IO        EQU #01
+ 120++12C3              P126_IMAGE_KIND_X86ALU       EQU #02
+ 121++12C3              P126_IMAGE_KIND_X86DEV       EQU #03
+ 122++12C3              P126_IMAGE_KIND_X86EXEC      EQU #04
+ 123++12C3              P126_IMAGE_KIND_X86VGA       EQU #05
+ 124++12C3              P126_IMAGE_KIND_X86VID       EQU #06
+ 125++12C3              P126_IMAGE_X86IO_MAX_SIZE    EQU #1000
+ 126++12C3              P126_IMAGE_X86ALU_MAX_SIZE   EQU #1000
+ 127++12C3              P126_IMAGE_X86DEV_MAX_SIZE   EQU #1000
+ 128++12C3              P126_IMAGE_X86EXEC_MAX_SIZE  EQU #4000
+ 129++12C3              P126_IMAGE_X86VGA_MAX_SIZE   EQU #4000
+ 130++12C3              P126_IMAGE_X86VID_MAX_SIZE   EQU #4000
+ 131++12C3              P126_IMAGE_SYSBIOS_SIZE      EQU #2000
+ 132++12C3              P126_IMAGE_FRAGMENT_EXT_SIZE EQU 10
+ 133++12C3
 # file closed: p126_ipc_protocol.inc
    7+ 12C3
    8+ 12C3              ; CRC-16/CCITT-FALSE byte update.
@@ -3671,7 +3673,7 @@
  580+ 1642
  581+ 1642 FE E1                cp      P126_CMD_NGS_FRAME
  582+ 1644 CA B0 16             jp      z,.p126_ngs_dispatch_ngs_frame
- 583+ 1647 FE E2                cp      P126_CMD_NGS_VIDEO_FRAME
+ 583+ 1647 FE E4                cp      P126_CMD_NGS_VIDEO_FRAME
  584+ 1649 CA 99 16             jp      z,.p126_ngs_dispatch_video_frame
  585+ 164C
  586+ 164C                      ; Unknown command: release the doorbell and report a defined error.
@@ -16198,11 +16200,12 @@
 Value    Label
 ------ - -----------------------------------------------------------
 0x0006   P126_ATM_MODE_RG6_TEXT80X25
+0x0006 X P126_ATM_VIDEO_MODE_RG6_TEXT80X25
 0x00E3 X P126_CMD_CAPABILITIES
 0x00FF X P126_CMD_DMA_END
 0x00E0   P126_CMD_HOST_FRAME
 0x00E1   P126_CMD_NGS_FRAME
-0x00E2   P126_CMD_NGS_VIDEO_FRAME
+0x00E4   P126_CMD_NGS_VIDEO_FRAME
 0x00E2 X P126_CMD_RESYNC
 0x0029 X P126_CRC16_CHECK_H
 0x00B1 X P126_CRC16_CHECK_L
