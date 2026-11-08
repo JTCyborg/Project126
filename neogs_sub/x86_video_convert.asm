@@ -87,7 +87,8 @@ x86_video_convert_impl:
         ld      hl,(x86_video_cell_offset)
         call    x86_vga_read_text_cell
         ld      (x86_video_char),a
-        ld      (x86_video_attr),d
+        ld      a,d
+        ld      (x86_video_attr),a
 
         ; Character plane followed by attribute plane.
         ld      hl,(x86_video_frame_index)
