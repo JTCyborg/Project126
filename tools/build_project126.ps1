@@ -61,7 +61,7 @@ try {
 
         Remove-Item -Force -ErrorAction SilentlyContinue $binary, $listing, $map
         if ($unit.Name -eq "NeoGS") {
-            Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $build "X86CORE.C"), (Join-Path $build "X86IO.C"), (Join-Path $build "X86ALU.C"), (Join-Path $build "X86DEV.C"), (Join-Path $build "X86EXEC.C"), (Join-Path $build "X86VGA.C")
+            Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $build "X86CORE.C"), (Join-Path $build "X86IO.C"), (Join-Path $build "X86ALU.C"), (Join-Path $build "X86DEV.C"), (Join-Path $build "X86EXEC.C"), (Join-Path $build "X86VGA.C"), (Join-Path $build "X86VID.C")
         }
 
         Write-Host "[BUILD] Project126 $($unit.Name) assembly"
@@ -98,7 +98,8 @@ try {
             $devOverlay = Join-Path $build "X86DEV.C"
             $execOverlay = Join-Path $build "X86EXEC.C"
             $vgaOverlay = Join-Path $build "X86VGA.C"
-            foreach ($image in @($residentImage, $ioOverlay, $aluOverlay, $devOverlay, $execOverlay, $vgaOverlay)) {
+            $videoOverlay = Join-Path $build "X86VID.C"
+            foreach ($image in @($residentImage, $ioOverlay, $aluOverlay, $devOverlay, $execOverlay, $vgaOverlay, $videoOverlay)) {
                 if (-not (Test-Path $image)) {
                     throw "Required split NeoGS image was not produced: $image"
                 }
@@ -109,6 +110,7 @@ try {
             $devOverlayBytes = (Get-Item $devOverlay).Length
             $execOverlayBytes = (Get-Item $execOverlay).Length
             $vgaOverlayBytes = (Get-Item $vgaOverlay).Length
+            $videoOverlayBytes = (Get-Item $videoOverlay).Length
             if ($residentBytes -lt 1 -or $residentBytes -gt 0x4000) {
                 throw "X86CORE.C size $residentBytes is outside the 1..16384-byte WIN0 limit."
             }
@@ -133,6 +135,10 @@ try {
                 throw "X86VGA.C size $vgaOverlayBytes is outside the 1..16384-byte dynamic page-08 overlay profile."
             }
             Write-Host "[BUILD] X86VGA.C dynamic overlay bytes=$vgaOverlayBytes / 16384"
+            if ($videoOverlayBytes -lt 1 -or $videoOverlayBytes -gt 0x4000) {
+                throw "X86VID.C size $videoOverlayBytes is outside the 1..16384-byte dynamic page-09 overlay profile."
+            }
+            Write-Host "[BUILD] X86VID.C dynamic overlay bytes=$videoOverlayBytes / 16384"
         }
 
         Write-Host "[BUILD] $($unit.Version) audit-bytes=$size"
@@ -178,7 +184,8 @@ try {
         @{ Id = 2; Page = 5; File = "X86ALU.C" },
         @{ Id = 3; Page = 6; File = "X86DEV.C" },
         @{ Id = 4; Page = 7; File = "X86EXEC.C" },
-        @{ Id = 5; Page = 8; File = "X86VGA.C" }
+        @{ Id = 5; Page = 8; File = "X86VGA.C" },
+        @{ Id = 6; Page = 9; File = "X86VID.C" }
     )
     [System.Collections.Generic.List[byte]]$moduleManifest = [System.Collections.Generic.List[byte]]::new()
     # Header: "P126", format revision, record count, record size.
@@ -195,7 +202,7 @@ try {
         [uint16]$moduleCrc = Get-P126Crc16 $moduleBytes
         $moduleManifest.Add([byte]$profile.Id)
         $moduleManifest.Add([byte]$profile.Page)
-        $moduleManifest.Add([byte]1) # explicit verified placement; ID05 is dynamically registered
+        $moduleManifest.Add([byte]1) # explicit verified placement; ID05/ID06 are dynamically registered
         $moduleManifest.Add([byte]0) # reserved in format v1
         $moduleManifest.Add([byte]($moduleBytes.Length -band 0xFF))
         $moduleManifest.Add([byte](($moduleBytes.Length -shr 8) -band 0xFF))
@@ -264,7 +271,8 @@ try {
         @{ Name = "X86DEV  C"; Label = "X86DEV.C" },
         @{ Name = "X86EXEC C"; Label = "X86EXEC.C" },
         @{ Name = "X86VGA  C"; Label = "X86VGA.C" },
-        @{ Name = "X86MODS C"; Label = "X86MODS.C"; ExpectedLength = 47; ExpectedSectors = 1 },
+        @{ Name = "X86VID  C"; Label = "X86VID.C" },
+        @{ Name = "X86MODS C"; Label = "X86MODS.C"; ExpectedLength = 55; ExpectedSectors = 1 },
         @{ Name = "P126BOOTC"; Label = "P126BOOT.C" },
         @{ Name = "BIOS1   C"; Label = "BIOS1.C"; ExpectedLength = 8192; ExpectedSectors = 32 },
         @{ Name = "BIOS2   C"; Label = "BIOS2.C"; ExpectedLength = 8192; ExpectedSectors = 32 },
