@@ -1099,6 +1099,15 @@ x86_io_fdc_signal_ready:
         jr      c,.fdc_ready_done
         or      #80
         call    x86_guest_mem_write8
+        ; No physical spindle exists in the empty-drive model. Mark drive A
+        ; as already spun up so BIOS motor-start delay loops are skipped.
+        ld      hl,#0040
+        ld      de,#003F
+        call    x86_cpu_calc_phys
+        call    x86_guest_mem_read8
+        jr      c,.fdc_ready_done
+        or      #01
+        call    x86_guest_mem_write8
 .fdc_ready_done:
         pop     hl
         pop     de
