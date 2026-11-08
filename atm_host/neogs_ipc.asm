@@ -570,8 +570,12 @@ p126_ipc_dma_send_frame::
         ld      (p126_ipc_dma_stage),a
         ld      hl,p126_ipc_log_dma_tx_e0
         call    p126_ipc_debug_string
+        ; DMA setup on NeoGS includes page selection and DMA register writes.
+        ; Use the long completion watchdog here as well as for FF: the ordinary
+        ; command timeout can expire while the receiver is still arming DMA.
         ld      a,P126_CMD_HOST_FRAME
-        call    p126_ipc_send_command
+        out     (P126_GSCOM),a
+        call    p126_ipc_wait_cbit_clear_dma
         jr      nc,.p126_dma_e0_ack
         push    af
         ld      hl,p126_ipc_log_dma_tx_e0_timeout
