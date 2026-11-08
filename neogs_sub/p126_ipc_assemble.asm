@@ -19,9 +19,33 @@ p126_ngs_ipc_module_end:
 p126_overlay_current_selector: db #80
 p126_overlay_request_selector: db #80
 
-; Audit-only gate and X86EXEC probe symbols. Production links the real
-; resident WIN2 gate and page-07 dispatcher from the main NeoGS assembly.
+; Audit-only overlay manager/gate and X86EXEC probe symbols. Production
+; links the real resident WIN2 gate and module registry from the main image.
 p126_overlay_call:
+        ret
+
+p126_overlay_register_dynamic:
+        or      a
+        ret
+p126_overlay_unregister_dynamic:
+        or      a
+        ret
+p126_overlay_call_module:
+        or      a
+        ret
+
+; Address-only audit substitutes for entry points that live in X86VGA/page08
+; and X86VID/page09 in the production image. Their actual code is assembled
+; into X86VGA.C and X86VID.C by x86_cpu_state_assemble.asm.
+x86_vga_overlay_probe:
+        ret
+x86_vga_reset_impl:
+        ret
+x86_vga_register_selftest_impl:
+        ret
+x86_video_overlay_probe:
+        ret
+x86_video_convert_impl:
         ret
 
 x86_exec_overlay_probe:
