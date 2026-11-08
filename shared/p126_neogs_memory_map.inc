@@ -16,6 +16,8 @@ P126_NGS_VGABIOS_PAGE        EQU #20
 P126_NGS_VGABIOS_PAGES       EQU #10
 P126_NGS_VRAM_PAGE           EQU #30
 P126_NGS_VRAM_PAGES          EQU #10
+; One ATM-native converted frame buffer, up to 32 KiB (pages40h-41h).
+; Page42h remains the separate 16 KiB DMA staging/chunk buffer.
 P126_NGS_FRAME_PAGE          EQU #40
 P126_NGS_FRAME_PAGES         EQU 2
 P126_NGS_DMA_PAGE            EQU #42
