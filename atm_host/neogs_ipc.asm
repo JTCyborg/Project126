@@ -758,8 +758,28 @@ p126_ipc_dma_receive_debug_frame::
         jr      z,.debug_fault
         cp      4
         jr      z,.debug_reset_fault
+        ; Unknown event payload is not a CPU register snapshot. Report
+        ; the actual frame envelope and first payload bytes instead of
+        ; misleadingly formatting arbitrary data as CS:IP.
         ld      hl,p126_ipc_debug_event_missing
-        jr      .debug_render
+        call    p126_ipc_console_string
+        ld      a,(P126_IPC_DMA_RX_BUFFER+6)
+        call    p126_ipc_console_hex_byte
+        ld      a,(P126_IPC_DMA_RX_BUFFER+7)
+        call    p126_ipc_console_hex_byte
+        ld      a,(P126_IPC_DMA_RX_BUFFER+8)
+        call    p126_ipc_console_hex_byte
+        ld      a,':'
+        call    BIOS_DebugConsole_PrintChar
+        ld      a,(P126_IPC_DMA_RX_BUFFER+P126_IPC_HEADER_SIZE)
+        call    p126_ipc_console_hex_byte
+        ld      a,(P126_IPC_DMA_RX_BUFFER+P126_IPC_HEADER_SIZE+1)
+        call    p126_ipc_console_hex_byte
+        ld      a,(P126_IPC_DMA_RX_BUFFER+P126_IPC_HEADER_SIZE+2)
+        call    p126_ipc_console_hex_byte
+        call    p126_ipc_debug_crlf
+        or      a
+        ret
 .debug_budget:
         ld      hl,p126_ipc_debug_budget
         jr      .debug_render
@@ -797,10 +817,10 @@ p126_ipc_dma_receive_debug_frame::
 p126_ipc_dma_receive_video_frame::
         ld      a,(p126_atm_video_mode)
         cp      P126_ATM_VIDEO_MODE_RG6_TEXT80X25
-        jp      nz,.video_dma_failed
+        jp      nz,.video_bad_host_mode
         ld      a,P126_CMD_NGS_VIDEO_FRAME
         call    p126_ipc_send_command
-        jp      c,.video_dma_failed
+        jp      c,.video_command_timeout
 
         di
         ld      hl,0
@@ -812,34 +832,80 @@ p126_ipc_dma_receive_video_frame::
 
         ld      a,P126_CMD_DMA_END
         call    p126_ipc_send_command
-        jr      c,.video_dma_failed
+        jr      c,.video_dma_end_timeout
 
         ld      hl,P126_IPC_DMA_RX_BUFFER
         ld      bc,P126_IPC_MAX_FRAME_SIZE
         call    p126_ipc_validate_frame
-        jr      c,.video_dma_failed
+        jr      c,.video_bad_frame
         ld      a,(P126_IPC_DMA_RX_BUFFER+7)
         cp      P126_SERVICE_VIDEO
-        jr      nz,.video_dma_failed
+        jr      nz,.video_bad_service
         ld      a,(P126_IPC_DMA_RX_BUFFER+8)
         cp      P126_OP_VIDEO_FRAME
-        jr      nz,.video_dma_failed
+        jr      nz,.video_bad_operation
+
+        ; Header bytes 14..15 are STATUS (not reserved bytes).
         ld      a,(P126_IPC_DMA_RX_BUFFER+14)
         ld      b,a
         ld      a,(P126_IPC_DMA_RX_BUFFER+15)
         or      b
-        jr      nz,.video_dma_failed
+        jr      nz,.video_remote_error
 
         call    p126_screen_apply_text_frame
-        jr      c,.video_dma_failed
+        jr      c,.video_apply_failed
+        ld      hl,p126_ipc_video_frame_applied
+        call    p126_ipc_console_string
         or      a
         ret
 
-.video_dma_failed:
+.video_bad_host_mode:
+        ld      a,#01
+        jr      .video_report_failure
+.video_command_timeout:
+        ld      a,#02
+        jr      .video_report_failure
+.video_dma_end_timeout:
+        ld      a,#03
+        jr      .video_report_failure
+.video_bad_frame:
+        ld      a,#04
+        jr      .video_report_failure
+.video_bad_service:
+        ld      a,#05
+        jr      .video_report_failure
+.video_bad_operation:
+        ld      a,#06
+        jr      .video_report_failure
+.video_remote_error:
+        ld      a,#07
+        jr      .video_report_failure
+.video_apply_failed:
+        ld      a,#08
+.video_report_failure:
+        ld      (p126_ipc_video_failure_code),a
         ld      hl,p126_ipc_video_dma_failed
         call    p126_ipc_console_string
+        ld      a,(p126_ipc_video_failure_code)
+        call    p126_ipc_console_hex_byte
+        ld      a,':'
+        call    BIOS_DebugConsole_PrintChar
+        ld      a,(P126_IPC_DMA_RX_BUFFER+14)
+        call    p126_ipc_console_hex_byte
+        ld      a,(P126_IPC_DMA_RX_BUFFER+15)
+        call    p126_ipc_console_hex_byte
+        ld      a,':'
+        call    BIOS_DebugConsole_PrintChar
+        ld      a,(P126_IPC_DMA_RX_BUFFER+P126_IPC_HEADER_SIZE)
+        call    p126_ipc_console_hex_byte
+        ld      a,13
+        call    BIOS_DebugConsole_PrintChar
+        ld      a,10
+        call    BIOS_DebugConsole_PrintChar
         scf
         ret
+
+p126_ipc_video_failure_code: db 0
 
 p126_ipc_console_string:
         ld      a,(hl)
