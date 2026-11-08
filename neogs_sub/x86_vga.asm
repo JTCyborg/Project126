@@ -1346,7 +1346,9 @@ x86_vga_get_text_snapshot_impl:
 
         ; Match PCem svga_poll()/svga_render_text_80():
         ; ma_latch = CRTC[0Ch:0Dh] + ((CRTC[08h]&60h)>>5)
-        ; byte address = ma_latch>>1; row stride = CRTC[13h]<<2.
+        ; frame MA adds ((CRTC[05h]&60h)>>5), then renderer scales MA<<2.
+        ; The CPU text aperture byte address is frame_MA<<1;
+        ; row stride is CRTC[13h]<<2 bytes.
         ld      a,(x86_vga_crtc+12)
         ld      h,a
         ld      a,(x86_vga_crtc+13)
@@ -1372,8 +1374,7 @@ x86_vga_get_text_snapshot_impl:
         ld      e,a
         ld      d,0
         add     hl,de
-        srl     h
-        rr      l
+        add     hl,hl
         ld      (x86_vga_text_start),hl
         ; PCem advances ma by rowoffset<<3; convert ma units to CPU bytes.
         ld      a,(x86_vga_crtc+19)
