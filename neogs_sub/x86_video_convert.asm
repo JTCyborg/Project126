@@ -52,6 +52,27 @@ x86_video_convert_impl:
         ld      (x86_video_row_offset),hl
         ld      (x86_video_stride),de
 
+        ; The CPU text aperture is 32 KiB. Reject a CRTC start/stride that
+        ; would make the 80x25 capture cross into the VGA BIOS window.
+        ld      hl,(x86_video_stride)
+        ld      de,160
+        or      a
+        sbc     hl,de
+        jp      c,.video_convert_unsupported
+        ld      hl,(x86_video_row_offset)
+        ld      de,(x86_video_stride)
+        ld      b,P126_VIDEO_TEXT80_HEIGHT-1
+.video_convert_bounds:
+        add     hl,de
+        jp      c,.video_convert_unsupported
+        djnz    .video_convert_bounds
+        ld      de,160
+        add     hl,de
+        jp      c,.video_convert_unsupported
+        ld      a,h
+        cp      #80
+        jp      nc,.video_convert_unsupported
+
         ld      hl,0
         ld      (x86_video_frame_index),hl
         xor     a
