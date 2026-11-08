@@ -235,6 +235,9 @@ x86_alu_merge_word_flags:
         set     2,l
 .word_no_pf:
         ld      (x86_reg_flags),hl
+        ; The 16-bit ALU API returns the arithmetic result in HL.
+        ; Restore it after building/storing the guest FLAGS word above.
+        ld      hl,(x86_alu_word_result)
         ret
 
 ; Translate Z80 ADD/SUB result flags to the corresponding 8086 flags.
