@@ -62,6 +62,7 @@ x86_io_reset_impl:
         ld      (x86_io_pic_vector_base),a
         call    x86_io_pic_selftest_impl
         call    x86_dev_reset
+        call    x86_vga_reset
         ret
 
 ; Register-level regression for the 8259A master model. It is run after the
