@@ -1024,27 +1024,6 @@ x86_io_fdc_write8:
 .fdc_write_done:
         or      a
         ret
-; Set the XT BIOS Data Area FDC completion flag (0040:003E bit 7).
-; This is a deliberate empty-controller readiness stub, not a real IRQ path.
-x86_io_fdc_signal_ready:
-        push    af
-        push    bc
-        push    de
-        push    hl
-        ld      hl,#0040
-        ld      de,#003E
-        call    x86_cpu_calc_phys
-        call    x86_guest_mem_read8
-        jr      c,.fdc_ready_done
-        or      #80
-        call    x86_guest_mem_write8
-.fdc_ready_done:
-        pop     hl
-        pop     de
-        pop     bc
-        pop     af
-        ret
-
 .fdc_write_fifo:
         ld      a,(x86_io_fdc_remaining)
         or      a
@@ -1105,6 +1084,27 @@ x86_io_fdc_signal_ready:
         xor     a
         ld      (x86_io_fdc_result_index),a
         jr      .fdc_write_done
+
+; Set the XT BIOS Data Area FDC completion flag (0040:003E bit 7).
+; Deliberate empty-controller readiness stub; the IRQ6 model remains below.
+x86_io_fdc_signal_ready:
+        push    af
+        push    bc
+        push    de
+        push    hl
+        ld      hl,#0040
+        ld      de,#003E
+        call    x86_cpu_calc_phys
+        call    x86_guest_mem_read8
+        jr      c,.fdc_ready_done
+        or      #80
+        call    x86_guest_mem_write8
+.fdc_ready_done:
+        pop     hl
+        pop     de
+        pop     bc
+        pop     af
+        ret
 
 x86_io_fdc_command_complete:
         xor     a
