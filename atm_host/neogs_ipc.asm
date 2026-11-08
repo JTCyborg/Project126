@@ -596,24 +596,33 @@ p126_ipc_dma_send_frame::
         ld      bc,(p126_ipc_dma_size)
         ld      de,P126_IPC_DMA_WINDOW
         ldir
-        ld      hl,p126_ipc_log_dma_tx_copy_done
-        call    p126_ipc_debug_string
 
+        ; Send DMA END immediately after the final byte. Screen-console
+        ; mirroring is deliberately deferred: per-character console writes
+        ; here can let NeoGS' bounded DMA receiver watchdog expire.
         ld      a,5
         ld      (p126_ipc_dma_stage),a
-        ld      hl,p126_ipc_log_dma_tx_ff
-        call    p126_ipc_debug_string
         ld      a,P126_IPC_DMA_END
         out     (P126_GSCOM),a
         call    p126_ipc_wait_cbit_clear_dma
         jr      nc,.p126_dma_ff_ack
         push    af
+        ld      hl,p126_ipc_log_dma_tx_copy_done
+        call    p126_ipc_debug_string
+        ld      hl,p126_ipc_log_dma_tx_ff
+        call    p126_ipc_debug_string
         ld      hl,p126_ipc_log_dma_tx_ff_timeout
         call    p126_ipc_debug_string
         pop     af
         scf
         ret
 .p126_dma_ff_ack:
+        ; It is safe to update both debug streams after NeoGS has completed
+        ; the frame receive and service dispatch.
+        ld      hl,p126_ipc_log_dma_tx_copy_done
+        call    p126_ipc_debug_string
+        ld      hl,p126_ipc_log_dma_tx_ff
+        call    p126_ipc_debug_string
         ld      hl,p126_ipc_log_dma_tx_done
         call    p126_ipc_debug_string
         xor     a
