@@ -98,3 +98,17 @@ The current X86VGA code is not yet a complete VGA adapter. Its register/port lay
 The ATM frame converter and 16 KiB frame transport are not implemented yet. The existing BIOS2 INT CD debugging state remains untouched.
 
 No SjASMPlus build or emulator run has been performed for these changes yet. The source changes must be assembled and exercised before reporting build or runtime success.
+
+### Stage 1/2 source progress
+
+The VGA overlay now contains:
+- PCem-style port register file for Attribute Controller, Sequencer, Graphics Controller, CRTC and DAC.
+- CRTC mono/colour alias decode, CRTC write protection, Attribute Controller flip-flop reset on 3DAh reads, DAC component sequencing and palette derivation.
+- GDC[6] memory-window decode for A0000h-BFFFFh, A0000h-AFFFFh, B0000h-B7FFFh and B8000h-BFFFFh.
+- Four-plane interleaved VRAM access through physical pages30h-3Fh and WIN3/MPAGEX.
+- Chain-4 and chain-2 addressing, four latches, read mode 0/1, write modes 0-3, Sequencer Map Mask, GDC bit mask, Set/Reset and logical operations.
+- A save/restore-safe startup self-test that checks the register interface, mono/colour CRTC aliasing, all four planar write/read planes, and chain-4 access at the final VRAM byte.
+
+The status-register retrace bit is currently a deterministic read-sample toggle so BIOS polling cannot stall while scanline timing is absent. It is a temporary compatibility aid, not a timing-accurate replacement for PCem's svga_poll().
+
+The memory aperture is now routed through X86VGA; the previous linear page-bias mapping is no longer used for A0000h-BFFFFh.
