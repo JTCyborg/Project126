@@ -23,6 +23,9 @@ x86_vga_overlay_probe:
 x86_vga_reset_impl:
         xor     a
         ld      (x86_vga_miscout),a
+        ld      (x86_vga_mda_compat),a
+        ld      (x86_vga_mda_ctrl),a
+        ld      (x86_vga_mda_status_toggle),a
         ld      (x86_vga_crtcreg),a
         ld      (x86_vga_seqaddr),a
         ld      (x86_vga_gdcaddr),a
@@ -100,6 +103,22 @@ x86_vga_reset_impl:
 ; The caller dispatches unhandled ports to the remaining software devices.
 x86_vga_io_read8_impl:
         ld      (x86_vga_port),hl
+        ; Standalone PCem MDA decodes 3B0h-3BFh independently of MiscOut.
+        ld      de,#03B8
+        or      a
+        sbc     hl,de
+        jr      z,.read_mda_control
+        ld      hl,(x86_vga_port)
+        ld      de,#03B9
+        or      a
+        sbc     hl,de
+        jr      z,.read_mda_open_bus
+        ld      hl,(x86_vga_port)
+        ld      de,#03BA
+        or      a
+        sbc     hl,de
+        jr      z,.read_mda_status
+        ld      hl,(x86_vga_port)
         call    x86_vga_normalize_port
         ret     c
         ld      hl,(x86_vga_port)
@@ -136,6 +155,21 @@ x86_vga_io_read8_impl:
         jp      z,.read_input_status1
         ld      a,#FF
         or      a
+        ret
+.read_mda_control:
+        ; PCem vid_mda.c has no 3B8h read case: return open bus.
+        ld      a,#FF
+        or      a
+        ret
+.read_mda_open_bus:
+        ld      a,#FF
+        or      a
+        ret
+.read_mda_status:
+        ld      a,(x86_vga_mda_status_toggle)
+        xor     #08
+        ld      (x86_vga_mda_status_toggle),a
+        or      #F0
         ret
 .read_attr_address:
         ld      a,(x86_vga_attraddr)
@@ -262,6 +296,18 @@ x86_vga_io_read8_impl:
 x86_vga_io_write8_impl:
         ld      (x86_vga_write_value),a
         ld      (x86_vga_port),hl
+        ; PCem vid_mda.c: 3B8h controls the MDA adapter. Its 4 KiB text
+        ; RAM is mirrored through B0000h-B7FFFh and uses odd/even char/attr.
+        ld      de,#03B8
+        or      a
+        sbc     hl,de
+        jr      z,.write_mda_control
+        ld      hl,(x86_vga_port)
+        ld      de,#03B9
+        or      a
+        sbc     hl,de
+        jr      z,.write_mda_ignored
+        ld      hl,(x86_vga_port)
         call    x86_vga_normalize_port
         ret     c
         ld      hl,(x86_vga_port)
@@ -290,6 +336,30 @@ x86_vga_io_write8_impl:
         jp      z,.write_crtc_address
         cp      #D5
         jp      z,.write_crtc_data
+        or      a
+        ret
+.write_mda_control:
+        ld      a,(x86_vga_write_value)
+        ld      (x86_vga_mda_ctrl),a
+        ld      a,1
+        ld      (x86_vga_mda_compat),a
+        ld      a,8
+        ld      (x86_vga_gdc+6),a
+        xor     a
+        ld      (x86_vga_gdc+5),a
+        ld      a,#FF
+        ld      (x86_vga_gdc+8),a
+        ld      a,5
+        ld      (x86_vga_writemask),a
+        ld      a,1
+        ld      (x86_vga_chain2_write),a
+        ld      (x86_vga_chain2_read),a
+        xor     a
+        ld      (x86_vga_chain4),a
+        ld      (x86_vga_readplane),a
+        or      a
+        ret
+.write_mda_ignored:
         or      a
         ret
 
@@ -553,9 +623,7 @@ x86_vga_normalize_port:
         jp      nz,.port_bad
         jp      .port_good
 .port_mono_b_range:
-        ld      a,(x86_vga_miscout)
-        bit     0,a
-        jp      nz,.port_bad
+        ; Standalone MDA owns 3B0h-3BFh regardless of VGA MiscOut.
         ld      a,l
         xor     #60
         ld      l,a
@@ -908,6 +976,23 @@ x86_vga_mem_write8_impl:
 ; Returns HL=window-relative address and carry clear, or carry set if this
 ; physical address is outside the currently selected aperture.
 x86_vga_aperture_offset:
+        ld      a,(x86_vga_mda_compat)
+        or      a
+        jr      z,.aperture_vga_decode
+        ; PCem MDA maps 32 KiB at B0000h onto a mirrored 4 KiB store.
+        ld      a,(x86_phys_addr+2)
+        cp      #0B
+        jp      nz,.aperture_bad
+        ld      a,(x86_phys_addr+1)
+        cp      #80
+        jp      nc,.aperture_bad
+        and     #0F
+        ld      h,a
+        ld      a,(x86_phys_addr)
+        ld      l,a
+        or      a
+        ret
+.aperture_vga_decode:
         ld      a,(x86_vga_gdc+6)
         and     #0C
         cp      0
@@ -1658,6 +1743,28 @@ x86_vga_register_selftest_impl:
         cp      3
         jp      nz,.vga_test_fail
 
+        ; Standalone MDA compatibility: mode control, mono CRTC and text RAM.
+        ld      hl,#03B8
+        ld      a,#29
+        call    x86_vga_io_write8_impl
+        jp      c,.vga_test_fail
+        ld      hl,#03B8
+        call    x86_vga_io_read8_impl
+        cp      #FF
+        jp      nz,.vga_test_fail
+        ld      hl,#03B4
+        ld      a,#0C
+        call    x86_vga_io_write8_impl
+        jp      c,.vga_test_fail
+        ld      hl,#03B5
+        ld      a,#33
+        call    x86_vga_io_write8_impl
+        jp      c,.vga_test_fail
+        ld      hl,#03B5
+        call    x86_vga_io_read8_impl
+        cp      #33
+        jp      nz,.vga_test_fail
+
         ; CRTC index/data and the mono/colour alias switch from MiscOut.
         ld      hl,#03D4
         ld      a,#0C
@@ -1739,6 +1846,9 @@ x86_vga_register_selftest_impl:
 x86_vga_port:                  dw 0
 x86_vga_write_value:           db 0
 x86_vga_miscout:               db 1
+x86_vga_mda_compat:            db 0
+x86_vga_mda_ctrl:              db 0
+x86_vga_mda_status_toggle:     db 0
 x86_vga_crtcreg:               db 0
 x86_vga_seqaddr:               db 0
 x86_vga_gdcaddr:               db 0
