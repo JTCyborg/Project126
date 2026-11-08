@@ -382,7 +382,7 @@ p126_log_console_done:  db "[BOOT] CONSOLE INIT DONE",13,10,0
 p126_log_catalog_return: db "[BOOT] CATALOG INIT RETURN",13,10,0
 
 p126_host_version_text:
-        db "[P126 ATM HOST v0.1.0]", 13, 10, 0
+        db "[P126 ATM HOST v0.2.0]", 13, 10, 0
 
         INCLUDE "atm_host/ds12887_rtc.asm"
         INCLUDE "atm_host/neogs_ipc.asm"
