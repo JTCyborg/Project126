@@ -1422,7 +1422,7 @@ x86_vga_read_text_cell_impl:
         ld      (x86_vga_text_offset),hl
         call    x86_vga_set_text_phys_addr
         call    x86_vga_mem_read8_impl
-        ld      d,a
+        ld      (x86_vga_text_attr),a
 
         ld      hl,(x86_vga_text_saved_phys)
         ld      (x86_phys_addr),hl
@@ -1436,6 +1436,8 @@ x86_vga_read_text_cell_impl:
         ld      de,x86_vga_latches
         ld      bc,4
         ldir
+        ld      a,(x86_vga_text_attr)
+        ld      d,a
         ld      a,(x86_vga_text_char)
         or      a
         ret
@@ -1778,6 +1780,7 @@ x86_vga_text_saved_chain2:     db 0
 x86_vga_text_saved_readplane:  db 0
 x86_vga_text_saved_latches:    defs 4,0
 x86_vga_text_char:             db 0
+x86_vga_text_attr:             db 0
 x86_vga_test_saved_phys:       defs 3,0
 x86_vga_test_saved_vram:       defs 5,0
 x86_vga_test_failed:           db 0
