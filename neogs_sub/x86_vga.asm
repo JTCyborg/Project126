@@ -1404,6 +1404,10 @@ x86_vga_read_text_cell_impl:
         ld      (x86_vga_text_saved_chain2),a
         ld      a,(x86_vga_readplane)
         ld      (x86_vga_text_saved_readplane),a
+        ld      hl,x86_vga_latches
+        ld      de,x86_vga_text_saved_latches
+        ld      bc,4
+        ldir
 
         ld      a,1
         ld      (x86_vga_chain2_read),a
@@ -1428,6 +1432,10 @@ x86_vga_read_text_cell_impl:
         ld      (x86_vga_chain2_read),a
         ld      a,(x86_vga_text_saved_readplane)
         ld      (x86_vga_readplane),a
+        ld      hl,x86_vga_text_saved_latches
+        ld      de,x86_vga_latches
+        ld      bc,4
+        ldir
         ld      a,(x86_vga_text_char)
         or      a
         ret
@@ -1768,6 +1776,7 @@ x86_vga_text_offset:           dw 0
 x86_vga_text_saved_phys:       defs 3,0
 x86_vga_text_saved_chain2:     db 0
 x86_vga_text_saved_readplane:  db 0
+x86_vga_text_saved_latches:    defs 4,0
 x86_vga_text_char:             db 0
 x86_vga_test_saved_phys:       defs 3,0
 x86_vga_test_saved_vram:       defs 5,0
