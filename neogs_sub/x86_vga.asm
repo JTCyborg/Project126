@@ -1336,7 +1336,7 @@ x86_vga_get_text_snapshot_impl:
         or      a
         jp      nz,.text_snapshot_bad
         ld      a,(x86_vga_gdc+5)
-        and     #60
+        and     #6B
         jp      nz,.text_snapshot_bad
         ; PCem selects the 40-column text renderer from Sequencer Clocking
         ; Mode bit3. This ATM text descriptor is 80 columns.
