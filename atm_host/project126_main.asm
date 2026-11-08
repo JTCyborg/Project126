@@ -186,6 +186,17 @@ p126_host_ngs_start_done:
         ld      hl, p126_log_rtc_done
         call    p126_host_debug_string
 
+        ; Publish the actual host video mode to NeoGS before the converter
+        ; is allowed to produce an ATM-native frame.
+        call    p126_neogs_send_video_mode
+        jr      nc,p126_host_video_mode_sent
+        ld      hl,p126_log_video_mode_failed
+        call    p126_host_debug_string
+        jr      p126_host_video_mode_done
+p126_host_video_mode_sent:
+        ld      hl,p126_log_video_mode_sent
+        call    p126_host_debug_string
+p126_host_video_mode_done:
         ld      hl, p126_host_version_text
         call    p126_host_debug_string
         call    p126_host_log_prefix
@@ -340,6 +351,8 @@ p126_log_trdos_done:    db "[BOOT] TRDOS DIRECTORY READ RETURN",13,10,0
 p126_log_video_begin:   db "[BOOT] ATM VIDEO INIT BEGIN",13,10,0
 p126_log_video_done:    db "[BOOT] ATM VIDEO INIT DONE",13,10,0
 p126_log_rtc_done:      db "[BOOT] RTC PROBE RETURN",13,10,0
+p126_log_video_mode_sent: db "[BOOT] ATM VIDEO MODE SENT TO NEOGS",13,10,0
+p126_log_video_mode_failed: db "[BOOT] ATM VIDEO MODE SEND FAILED",13,10,0
 p126_log_console_begin: db "[BOOT] CONSOLE INIT BEGIN",13,10,0
 p126_log_console_done:  db "[BOOT] CONSOLE INIT DONE",13,10,0
 p126_log_catalog_return: db "[BOOT] CATALOG INIT RETURN",13,10,0
