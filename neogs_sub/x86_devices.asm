@@ -619,6 +619,8 @@ x86_dev_pit_gate2_write:
 ; Minimal 8086 cycle accounting for the BIOS PIT polling path.
 ; B receives the estimated guest cycles and advances the 8253 timebase.
 x86_dev_charge_guest_instruction_impl:
+        push    bc
+        push    hl
         ld      b,4
         ld      a,(x86_exec_opcode)
         cp      #E4
@@ -689,6 +691,8 @@ x86_dev_charge_guest_instruction_impl:
         ld      b,18
 .charge_done:
         call    x86_dev_pit_advance_cycles
+        pop     hl
+        pop     bc
         ret
 
 x86_dev_pit_advance_cycles:
