@@ -61,6 +61,7 @@ x86_io_reset_impl:
         ld      a,#08
         ld      (x86_io_pic_vector_base),a
         call    x86_io_pic_selftest_impl
+        call    x86_io_fdc_reset_impl
         call    x86_dev_reset
         call    x86_vga_reset
         ret
@@ -289,6 +290,9 @@ x86_io_read8_impl_device:
         ret
 .io_read8_ppi:
         ld      hl,(x86_io_port)
+        call    x86_io_fdc_read8
+        ret     nc
+        ld      hl,(x86_io_port)
         call    x86_vga_io_read8
         ret     nc
         ld      hl,(x86_io_port)
@@ -344,11 +348,9 @@ x86_io_ppi_read8:
         ld      a,#06
         jr      .ppi_pc_speaker
 .ppi_pc_no_video_id:
-        ; Project126 currently has no floppy drive attached. BIOS2 reads
-        ; port 62h with PB3 clear as its equipment low nibble; bit 0 is
-        ; the floppy-present flag. Return 0Ch so POST sees zero drives.
-        ; The PB3-set video identification path below remains unchanged.
-        ld      a,#0C
+        ; PCem XT profile: no-FPU identification. Equipment bit 0 keeps
+        ; the fitted A: drive visible to the BIOS.
+        ld      a,#0D
 .ppi_pc_speaker:
         ; PCem's bit 5 is ppispeakon, driven by PIT channel-2 OUT.
         ; X86DEV is a separate physical overlay: read OUT2 through the
@@ -734,6 +736,10 @@ x86_io_write8_impl_device:
         ld      (x86_io_write_value),a
         ld      hl,(x86_io_port)
         ld      a,(x86_io_write_value)
+        call    x86_io_fdc_write8
+        ret     nc
+        ld      hl,(x86_io_port)
+        ld      a,(x86_io_write_value)
         call    x86_vga_io_write8
         ret     nc
         ld      hl,(x86_io_port)
@@ -823,6 +829,211 @@ x86_io_ppi_write8:
 
 ; Read a 16-bit value. PCem io.c fallback for 8-bit devices reads port and
 ; port+1; the 00E0h test device retains its explicit 16-bit latch behavior.
+; Minimal NEC765-compatible XT floppy controller: A: exists, no disk.
+; Only guest ports are modelled. No physical device or host file access.
+x86_io_fdc_reset_impl:
+        xor     a
+        ld      (x86_io_fdc_dor),a
+        ld      (x86_io_fdc_cmd),a
+        ld      (x86_io_fdc_remaining),a
+        ld      (x86_io_fdc_param_count),a
+        ld      (x86_io_fdc_result_count),a
+        ld      (x86_io_fdc_result_index),a
+        ld      (x86_io_fdc_sense_st0),a
+        ld      (x86_io_fdc_sense_pc),a
+        ret
+
+x86_io_fdc_read8:
+        ld      a,h
+        cp      #03
+        jr      nz,.fdc_read_unhandled
+        ld      a,l
+        cp      #F2
+        jr      z,.fdc_read_dor
+        cp      #F4
+        jr      z,.fdc_read_msr
+        cp      #F5
+        jr      z,.fdc_read_fifo
+        cp      #F7
+        jr      z,.fdc_read_dir
+.fdc_read_unhandled:
+        scf
+        ret
+.fdc_read_dor:
+        ld      a,(x86_io_fdc_dor)
+        or      a
+        ret
+.fdc_read_msr:
+        ld      a,(x86_io_fdc_result_count)
+        or      a
+        ld      a,#80
+        ret     z
+        ld      a,#D0
+        ret
+.fdc_read_dir:
+        ld      a,#81
+        or      a
+        ret
+.fdc_read_fifo:
+        ld      a,(x86_io_fdc_result_count)
+        or      a
+        jr      z,.fdc_read_empty
+        ld      a,(x86_io_fdc_result_index)
+        ld      e,a
+        ld      d,0
+        ld      hl,x86_io_fdc_result
+        add     hl,de
+        ld      a,(hl)
+        push    af
+        ld      a,(x86_io_fdc_result_index)
+        inc     a
+        ld      (x86_io_fdc_result_index),a
+        ld      a,(x86_io_fdc_result_count)
+        dec     a
+        ld      (x86_io_fdc_result_count),a
+        pop     af
+        or      a
+        ret
+.fdc_read_empty:
+        ld      a,#FF
+        or      a
+        ret
+
+x86_io_fdc_write8:
+        ld      (x86_io_fdc_write_value),a
+        ld      a,h
+        cp      #03
+        jr      nz,.fdc_write_unhandled
+        ld      a,l
+        cp      #F2
+        jr      z,.fdc_write_dor
+        cp      #F5
+        jr      z,.fdc_write_fifo
+.fdc_write_unhandled:
+        scf
+        ret
+.fdc_write_dor:
+        ld      a,(x86_io_fdc_dor)
+        and     #04
+        ld      b,a
+        ld      a,(x86_io_fdc_write_value)
+        ld      (x86_io_fdc_dor),a
+        and     #04
+        jr      z,.fdc_write_done
+        ld      a,b
+        or      a
+        jr      nz,.fdc_write_done
+        ld      a,#C0
+        ld      (x86_io_fdc_sense_st0),a
+        xor     a
+        ld      (x86_io_fdc_sense_pc),a
+        ld      a,6
+        call    x86_io_pic_raise_impl
+.fdc_write_done:
+        or      a
+        ret
+.fdc_write_fifo:
+        ld      a,(x86_io_fdc_remaining)
+        or      a
+        jr      z,.fdc_write_command
+        ld      a,(x86_io_fdc_param_count)
+        ld      e,a
+        ld      d,0
+        ld      hl,x86_io_fdc_params
+        add     hl,de
+        ld      a,(x86_io_fdc_write_value)
+        ld      (hl),a
+        ld      a,(x86_io_fdc_param_count)
+        inc     a
+        ld      (x86_io_fdc_param_count),a
+        ld      a,(x86_io_fdc_remaining)
+        dec     a
+        ld      (x86_io_fdc_remaining),a
+        jr      nz,.fdc_write_done
+        jp      x86_io_fdc_command_complete
+.fdc_write_command:
+        ld      a,(x86_io_fdc_write_value)
+        and     #1F
+        ld      (x86_io_fdc_cmd),a
+        xor     a
+        ld      (x86_io_fdc_param_count),a
+        ld      a,(x86_io_fdc_cmd)
+        cp      #08
+        jr      z,.fdc_write_sense
+        cp      #03
+        jr      z,.fdc_need_two
+        cp      #0F
+        jr      z,.fdc_need_two
+        cp      #07
+        jr      z,.fdc_need_one
+        cp      #06
+        jr      z,.fdc_need_eight
+        cp      #05
+        jr      z,.fdc_need_eight
+        jr      .fdc_write_done
+.fdc_need_two:
+        ld      a,2
+        jr      .fdc_set_remaining
+.fdc_need_one:
+        ld      a,1
+        jr      .fdc_set_remaining
+.fdc_need_eight:
+        ld      a,8
+.fdc_set_remaining:
+        ld      (x86_io_fdc_remaining),a
+        jr      .fdc_write_done
+.fdc_write_sense:
+        ld      a,(x86_io_fdc_sense_st0)
+        ld      (x86_io_fdc_result),a
+        ld      a,(x86_io_fdc_sense_pc)
+        ld      (x86_io_fdc_result+1),a
+        ld      a,2
+        ld      (x86_io_fdc_result_count),a
+        xor     a
+        ld      (x86_io_fdc_result_index),a
+        jr      .fdc_write_done
+
+x86_io_fdc_command_complete:
+        xor     a
+        ld      (x86_io_fdc_remaining),a
+        ld      a,(x86_io_fdc_cmd)
+        cp      #03
+        jr      z,.fdc_command_done
+        cp      #07
+        jr      z,.fdc_seek_or_recal_done
+        cp      #0F
+        jr      z,.fdc_seek_or_recal_done
+        ld      a,#40
+        ld      (x86_io_fdc_result),a
+        ld      a,#04
+        ld      (x86_io_fdc_result+1),a
+        xor     a
+        ld      (x86_io_fdc_result+2),a
+        ld      a,(x86_io_fdc_params+1)
+        ld      (x86_io_fdc_result+3),a
+        ld      a,(x86_io_fdc_params+2)
+        ld      (x86_io_fdc_result+4),a
+        ld      a,(x86_io_fdc_params+3)
+        ld      (x86_io_fdc_result+5),a
+        ld      a,(x86_io_fdc_params+4)
+        ld      (x86_io_fdc_result+6),a
+        ld      a,7
+        ld      (x86_io_fdc_result_count),a
+        xor     a
+        ld      (x86_io_fdc_result_index),a
+        jr      .fdc_raise_irq
+.fdc_seek_or_recal_done:
+        ld      a,#68
+        ld      (x86_io_fdc_sense_st0),a
+        xor     a
+        ld      (x86_io_fdc_sense_pc),a
+.fdc_raise_irq:
+        ld      a,6
+        call    x86_io_pic_raise_impl
+.fdc_command_done:
+        or      a
+        ret
+
 x86_io_read16_impl:
         ld      hl,(x86_io_count_in)
         inc     hl
@@ -1014,6 +1225,18 @@ x86_io_saved_port: dw 0
 x86_io_word_value: dw 0
 x86_io_word_low: db 0
 x86_io_word_high: db 0
+
+x86_io_fdc_dor: db 0
+x86_io_fdc_cmd: db 0
+x86_io_fdc_remaining: db 0
+x86_io_fdc_param_count: db 0
+x86_io_fdc_write_value: db 0
+x86_io_fdc_result_count: db 0
+x86_io_fdc_result_index: db 0
+x86_io_fdc_sense_st0: db 0
+x86_io_fdc_sense_pc: db 0
+x86_io_fdc_params: defs 8,0
+x86_io_fdc_result: defs 7,0
 
 x86_io_ppi_pb: db 0
 x86_io_ppi_write_value: db 0
