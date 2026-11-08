@@ -1334,6 +1334,16 @@ x86_vga_get_text_snapshot_impl:
         ld      a,(x86_vga_chain4)
         or      a
         jp      nz,.text_snapshot_bad
+        ; VGA text memory must use odd/even addressing on both the host
+        ; write path (Sequencer Memory Mode) and the host read path
+        ; (Graphics Controller Mode). Do not reinterpret a planar/linear
+        ; graphics aperture as character/attribute pairs.
+        ld      a,(x86_vga_chain2_write)
+        or      a
+        jp      z,.text_snapshot_bad
+        ld      a,(x86_vga_chain2_read)
+        or      a
+        jp      z,.text_snapshot_bad
         ld      a,(x86_vga_gdc+5)
         and     #6B
         jp      nz,.text_snapshot_bad
