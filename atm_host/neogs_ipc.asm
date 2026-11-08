@@ -849,6 +849,13 @@ p126_ipc_dma_receive_video_frame::
         call    p126_ipc_send_command
         jp      c,.video_command_timeout
 
+        ; Match Project125: receive into physical ATM page 0 at C000h.
+        ; Explicitly select it here because prior DMA/device paths may leave
+        ; another RAM page mapped into WIN3.
+        ld      a,P126_HOST_PAGE0
+        ld      bc,#FFF7
+        out     (c),a
+
         di
         ld      hl,0
         ld      a,(hl)
