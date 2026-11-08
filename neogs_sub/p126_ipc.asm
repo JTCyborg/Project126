@@ -1271,7 +1271,7 @@ p126_ngs_ipc_log_dma_host_end:    db "[NGS] DMA HOST END",13,10,0
 p126_ngs_ipc_log_dma_timeout:     db "[NGS] DMA TIMEOUT",13,10,0
 p126_ngs_ipc_log_bad_length:      db "[NGS] DMA BAD LENGTH",13,10,0
 p126_ngs_ipc_log_dma_stopped:     db "[NGS] DMA STOPPED",13,10,0
-p126_ngs_ipc_log_dma_page42_premapped: db "[NGS] DMA P42 PRE",13,10,0
+p126_ngs_ipc_log_dma_page42_premapped: db "[NGS] P42 PRE",13,10,0
 p126_ngs_ipc_log_dma_page42_mapped: db "[NGS] DMA P42 MAP",13,10,0
 p126_ngs_ipc_log_dma_end:         db "[NGS] DMA END",13,10,0
 p126_ngs_ipc_log_dma_addr:        db "[NGS] DMA ADDR=",0
