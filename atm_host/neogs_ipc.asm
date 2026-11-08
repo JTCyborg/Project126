@@ -959,15 +959,17 @@ p126_ipc_dma_receive_video_frame::
 
 p126_ipc_video_failure_code: db 0
 
+; IPC diagnostics are routed only to ATM debug port #EF.
+; The guest BIOS exclusively owns the visible 80x25 ATM screen.
 p126_ipc_console_string:
+        ld      bc,#00EF
+.p126_ipc_console_string_loop:
         ld      a,(hl)
+        inc     hl
         or      a
         ret     z
-        push    hl
-        call    BIOS_DebugConsole_PrintChar
-        pop     hl
-        inc     hl
-        jr      p126_ipc_console_string
+        out     (c),a
+        jr      .p126_ipc_console_string_loop
 
 p126_ipc_console_hex16:
         ld      a,h
@@ -991,10 +993,12 @@ p126_ipc_console_hex_nibble:
         and     #0F
         add     a,'0'
         cp      '9'+1
-        jr      c,.console_hex_emit
+        jr      c,.p126_ipc_console_hex_emit
         add     a,7
-.console_hex_emit:
-        jp      BIOS_DebugConsole_PrintChar
+.p126_ipc_console_hex_emit:
+        ld      bc,#00EF
+        out     (c),a
+        ret
 
 p126_ipc_console_hex_byte: db 0
 p126_ipc_debug_budget: db "[X86] BIOS PAUSED: 16-INSTRUCTION SLICE COMPLETE; CS:IP=",0
