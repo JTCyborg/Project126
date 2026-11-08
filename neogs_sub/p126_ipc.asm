@@ -605,6 +605,8 @@ p126_ngs_image_begin:
         jr      z,.image_begin_x86alu
         cp      P126_IMAGE_KIND_X86DEV
         jr      z,.image_begin_x86dev
+        cp      P126_IMAGE_KIND_X86EXEC
+        jr      z,.image_begin_x86exec
         jp      .image_begin_bad
 
 .image_begin_sysbios:
@@ -711,8 +713,16 @@ p126_ngs_image_begin:
         ld      (p126_ngs_alu_overlay_ready),a
         jr      .image_begin_ack
 .image_begin_not_x86alu:
+        cp      P126_IMAGE_KIND_X86DEV
+        jr      nz,.image_begin_not_x86dev
         xor     a
         ld      (p126_ngs_dev_overlay_ready),a
+        jr      .image_begin_ack
+.image_begin_not_x86dev:
+        cp      P126_IMAGE_KIND_X86EXEC
+        jr      nz,.image_begin_ack
+        xor     a
+        ld      (p126_ngs_exec_overlay_ready),a
 .image_begin_ack:
         xor     a
         out     (P126_NGS_CLRCBIT),a

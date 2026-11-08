@@ -2,7 +2,7 @@
 
 **Revision:** 0.3  
 **Date:** 2026-11-08  
-**Status:** Module catalog plus first resident-to-overlay extraction implemented in source; CI validation pending.
+**Status:** Module catalog and X86EXEC extraction are built and packaged by CI; runtime manifest consumption remains pending.
 
 ## Objective
 
@@ -43,18 +43,18 @@ The build now generates a 7-byte header and 8-byte records:
 - IDs 01/02/03/04 identify X86IO/X86ALU/X86DEV/X86EXEC, pinned to pages 04/05/06/07.
 - Flag bit 0 means pinned; reserved byte must be zero.
 
-The directory is generated from the exact assembled module binaries and packaged as X86MODS.M. Phase 1 metadata is not yet consumed by the runtime; the current fixed-profile ATM loader remains authoritative until the parser and generic fragment loader are implemented.
+The directory is generated from the exact assembled module binaries and packaged as X86MODS.M. Phase 1 metadata is not yet consumed by the runtime; the current fixed-profile ATM loader remains authoritative until the parser and generic fragment loader are implemented. The X86EXEC IMAGE_BEGIN dispatch and readiness reset were also corrected so the existing fixed-profile path can install page07.
 
 ## Implementation phases
 
 ### Phase 1 — build-time module catalog (implemented in source)
-- Generate a deterministic directory from X86IO.C, X86ALU.C and X86DEV.C.
+- Generate a deterministic directory from X86IO.C, X86ALU.C, X86DEV.C and X86EXEC.C.
 - Compute CRC-16/CCITT-FALSE over each exact image.
 - Package the directory as X86MODS.M on the TR-DOS disk.
 - Verify its exact size and directory entry during disk packaging.
 - Retain genuine per-image execution-window checks.
 
-### Phase 2 — first resident extraction: X86EXEC (implemented in source; CI pending)
+### Phase 2 — first resident extraction: X86EXEC (implemented; CI build/package passed)
 - Moved the 8086 instruction dispatcher out of the resident image into X86EXEC.C, physical page 07h.
 - Kept instruction fetch, the public x86_cpu_step gate, segment-override helper and trace-visible state resident for direct callers.
 - Routed x86_cpu_step through the existing nested WIN2 overlay gate.
