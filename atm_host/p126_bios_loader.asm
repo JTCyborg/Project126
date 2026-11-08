@@ -3,7 +3,7 @@
 ;
 ; Selection is made in the ATM catalogue. TR-DOS access is restored using
 ; the same pre-video mapping as initial startup; the chosen 8 KiB .C file is
-; staged in page 0, then sent as ABI 1.0 IMAGE BEGIN/FRAGMENT/FINISH frames.
+; staged in page 0, then sent as ABI 1.1 IMAGE BEGIN/FRAGMENT/FINISH frames.
 ; NeoGS installs the fragment into physical SYSBIOS page 10h.
 ; =========================================================================
 
@@ -139,13 +139,15 @@ p126_bios_load_selected::
         call    p126_catalog_log
 
         ; IMAGE_BEGIN payload:
-        ; message-id=0001h, image-kind=SYSBIOS, reserved=00h, size=2000h.
+        ; message-id=0001h, image-kind=SYSBIOS, physical-page=10h, size=2000h.
         ld      a,1
         ld      (P126_BIOS_FRAME+18),a
         xor     a
         ld      (P126_BIOS_FRAME+19),a
         ld      (P126_BIOS_FRAME+20),a
+        ld      a,#10
         ld      (P126_BIOS_FRAME+21),a
+        xor     a
         ld      (P126_BIOS_FRAME+22),a
         ld      a,#20
         ld      (P126_BIOS_FRAME+23),a
