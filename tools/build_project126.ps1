@@ -256,7 +256,7 @@ try {
         @{ Name = "X86ALU  C"; Label = "X86ALU.C" },
         @{ Name = "X86DEV  C"; Label = "X86DEV.C" },
         @{ Name = "X86EXEC C"; Label = "X86EXEC.C" },
-        @{ Name = "X86MODS M"; Label = "X86MODS.M"; ExpectedLength = 39; ExpectedSectors = 1 },
+        @{ Name = "X86MODS C"; Label = "X86MODS.C"; ExpectedLength = 39; ExpectedSectors = 1 },
         @{ Name = "P126BOOTC"; Label = "P126BOOT.C" },
         @{ Name = "BIOS1   C"; Label = "BIOS1.C"; ExpectedLength = 8192; ExpectedSectors = 32 },
         @{ Name = "BIOS2   C"; Label = "BIOS2.C"; ExpectedLength = 8192; ExpectedSectors = 32 },

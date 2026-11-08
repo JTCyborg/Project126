@@ -267,13 +267,10 @@ p126_neogs_load_manifest:
         xor     a
         ld      (p126_neogs_manifest_valid),a
         ld      hl,p126_neogs_manifest_name
-        ld      a,'M'
-        ld      (p126_neogs_file_extension),a
-        call    p126_neogs_open_file
-        push    af
+        ; X86MODS uses the TR-DOS CODE extension (C), like the overlays.
         ld      a,'C'
         ld      (p126_neogs_file_extension),a
-        pop     af
+        call    p126_neogs_open_file
         ret     c
         ld      hl,(p126_neogs_file_length)
         ld      de,39
