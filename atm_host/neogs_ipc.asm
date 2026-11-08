@@ -491,7 +491,7 @@ p126_ipc_tx_byte:     db 0
 p126_ipc_rx_byte:     db 0
 
 p126_ipc_version_text:
-        db "[P126 ATM_IPC v0.2.0]", 13, 10, 0
+        db "[P126 ATM_IPC v0.3.0]", 13, 10, 0
 
 ; -------------------------------------------------------------------------
 ; Send one complete ATM -> NeoGS ABI 1.0 frame through the ZX DMA aperture.
