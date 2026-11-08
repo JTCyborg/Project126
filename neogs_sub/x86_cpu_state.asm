@@ -209,7 +209,7 @@ x86_bios_startup_trace:
         ld      (x86_bios_trace_slice_remaining),a
 .trace_loop:
         call    x86_cpu_step
-        jr      c,.trace_fault
+        jp      c,.trace_fault
         call    x86_bios_trace_capture_instruction
         ; Capture the first transition away from the BIOS reset segment.
         ; This is a diagnostic only: it does not alter guest CPU state.
@@ -299,7 +299,7 @@ x86_bios_startup_trace:
         ld      a,(x86_bios_trace_slice_remaining)
         dec     a
         ld      (x86_bios_trace_slice_remaining),a
-        jr      nz,.trace_loop
+        jp      nz,.trace_loop
         or      a
         ret
 .trace_watchdog:
