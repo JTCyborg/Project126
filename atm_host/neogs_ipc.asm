@@ -1069,3 +1069,70 @@ p126_ipc_log_dma_rx_transport_bad: db "[ATM IPC] DMA RX TRANSPORT FAILED STAGE="
 ; It is intentionally shared with the forward test because the transfers
 ; are sequential and the reverse test overwrites the request after TX.
 p126_ipc_dma_rx_buffer EQU P126_IPC_DMA_RX_BUFFER
+
+; Send one XT keyboard scan-code event to the NeoGS software device model.
+; A=make/break scan code. The guest keyboard FIFO raises virtual IRQ1.
+p126_ipc_send_keyboard_event::
+        ld      (p126_ipc_keyboard_event_code),a
+        ld      hl,#C000
+        ld      a,'P'
+        ld      (hl),a
+        inc     hl
+        ld      a,'1'
+        ld      (hl),a
+        inc     hl
+        ld      a,'2'
+        ld      (hl),a
+        inc     hl
+        ld      a,'6'
+        ld      (hl),a
+        inc     hl
+        ld      a,P126_IPC_MAJOR
+        ld      (hl),a
+        inc     hl
+        ld      a,P126_IPC_MINOR
+        ld      (hl),a
+        inc     hl
+        ld      a,P126_MSG_REQUEST
+        ld      (hl),a
+        inc     hl
+        ld      a,P126_SERVICE_INPUT
+        ld      (hl),a
+        inc     hl
+        ld      a,P126_OP_INPUT_KEYBOARD
+        ld      (hl),a
+        inc     hl
+        xor     a
+        ld      (hl),a
+        ld      hl,(p126_ipc_keyboard_event_sequence)
+        inc     hl
+        ld      (p126_ipc_keyboard_event_sequence),hl
+        ld      (#C00A),hl
+        ld      hl,1
+        ld      (#C00C),hl
+        xor     a
+        ld      (#C00E),a
+        ld      (#C00F),a
+        ld      a,(p126_ipc_keyboard_event_code)
+        ld      (#C012),a
+
+        ; CRC-16/CCITT-FALSE over header[0..15] and the one-byte payload.
+        ld      hl,#FFFF
+        ld      de,#C000
+        ld      b,16
+.p126_keyboard_crc_header:
+        ld      a,(de)
+        inc     de
+        call    p126_ipc_crc16_update
+        djnz    .p126_keyboard_crc_header
+        inc     de
+        inc     de
+        ld      a,(p126_ipc_keyboard_event_code)
+        call    p126_ipc_crc16_update
+        ld      (#C010),hl
+        ld      hl,#C000
+        ld      bc,19
+        jp      p126_ipc_dma_send_frame
+
+p126_ipc_keyboard_event_code: db 0
+p126_ipc_keyboard_event_sequence: dw 0
