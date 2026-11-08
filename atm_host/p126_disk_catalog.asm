@@ -165,7 +165,7 @@ p126_catalog_poll_keyboard::
         ; The catalogue is a one-shot boot UI. Clear it, then request the
         ; bounded BIOS stop record over the established reverse-DMA path.
         ; The resident executes the pending BIOS slice before answering E1.
-        call    p126_screen_clear_guest_display
+        call    BIOS_DebugConsole_Clear
         call    p126_ipc_dma_receive_debug_frame
         ; The BIOS stop slice has populated VGA text memory. Convert and
         ; transfer that screen into the active ATM RG6 80x25 text pages.
@@ -258,11 +258,10 @@ p126_catalog_scan_keys:
         bit     0, a
         jp      nz, .catalog_keys_done
 
-        ; Row #EF: key 7 (bit 1) = up, key 6 (bit 0) = down.
-        ; Matrix bits are active-low; CAPS SHIFT was checked above.
+        ; Row #EF: key 7 (bit 3) = up, key 6 (bit 4) = down.
         ld      bc, #EFFE
         in      a, (c)
-        bit     1, a
+        bit     3, a
         jr      nz, .catalog_check_down
         ld      a, (p126_catalog_scan_result)
         or      1
@@ -271,7 +270,7 @@ p126_catalog_scan_keys:
 .catalog_check_down:
         ld      bc, #EFFE
         in      a, (c)
-        bit     0, a
+        bit     4, a
         jr      nz, .catalog_check_other_arrows
         ld      a, (p126_catalog_scan_result)
         or      2

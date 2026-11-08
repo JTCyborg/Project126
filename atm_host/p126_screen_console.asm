@@ -166,11 +166,11 @@ BIOS_DebugConsole_Init::
         ld      (bios_dbg_row), a
         ld      (bios_dbg_col), a
         ld      (Console_X), a
-        xor     a
+        ld      a, BIOS_DEBUG_TOP
         ld      (Console_Y), a
         ret
 
-p126_screen_clear_guest_display::
+BIOS_DebugConsole_Clear::
         push    af
         push    bc
         push    de
@@ -189,20 +189,48 @@ p126_screen_clear_guest_display::
         ld      bc, #063F
         ldir
 
-        ; Uniform neutral VGA-like text attributes across all 25 rows.
-        ; No status panel, no log panel: the next guest frame owns the screen.
+        ; Default attributes, then color the status panel blue/white.
         ld      hl, #E1C0
         ld      de, #E1C1
-        ld      (hl), #07
+        ld      (hl), #47
         ld      bc, #063F
         ldir
         ld      hl, #C1C1
         ld      de, #C1C2
-        ld      (hl), #07
+        ld      (hl), #47
         ld      bc, #063F
         ldir
 
+        ld      hl, #E1C0
+        ld      de, #E1C1
+        ld      (hl), #4F
+        ld      bc, #02FF
+        ldir
+        ld      hl, #C1C1
+        ld      de, #C1C2
+        ld      (hl), #4F
+        ld      bc, #02FF
+        ldir
+
+        ; Lower log area: black background, green foreground.
+        ld      hl, #E4C0
+        ld      de, #E4C1
+        ld      (hl), #44
+        ld      bc, #033F
+        ldir
+        ld      hl, #C4C1
+        ld      de, #C4C2
+        ld      (hl), #44
+        ld      bc, #033F
+        ldir
+
         call    p126_screen_restore_host_pages
+        xor     a
+        ld      (bios_dbg_row), a
+        ld      (bios_dbg_col), a
+        ld      (Console_X), a
+        ld      a, BIOS_DEBUG_TOP
+        ld      (Console_Y), a
         pop     hl
         pop     de
         pop     bc

@@ -502,7 +502,6 @@ p126_ipc_version_text:
 ; -------------------------------------------------------------------------
 P126_IPC_DMA_WINDOW EQU #0000
 P126_IPC_DMA_END    EQU #FF
-P126_IPC_DMA_PAGE0 EQU #7F          ; ATM physical RAM page 0 in WIN3
 
 p126_ipc_dma_send_frame::
         ; Preserve the caller's frame pointer and length before any logger
@@ -747,17 +746,9 @@ p126_ipc_dma_receive_debug_frame::
 
         ; Reverse DMA reads the complete 16 KiB frame from the ROM aperture.
         ; The first aperture read is discarded by the documented GS ABI.
-        ; The receive buffer is the ATM page-0 staging area at C000h.
-        ; Do not rely on whichever WIN3 page a preceding device/DMA operation
-        ; happened to leave selected: explicitly restore the same mapping used
-        ; by the Project125 video pull path before the dummy read and LDIR.
-        ld      a,P126_IPC_DMA_PAGE0
-        ld      bc,#FFF7
-        out     (c),a
-
         di
         ld      hl,0
-        ld      a,(hl)                  ; mandatory reverse-DMA pipeline read
+        ld      a,(hl)
         ld      hl,0
         ld      de,P126_IPC_DMA_RX_BUFFER
         ld      bc,P126_IPC_MAX_FRAME_SIZE
@@ -850,13 +841,6 @@ p126_ipc_dma_receive_video_frame::
         call    p126_ipc_send_command
         jp      c,.video_command_timeout
 
-        ; Match Project125: receive into physical ATM page 0 at C000h.
-        ; Explicitly select it here because prior DMA/device paths may leave
-        ; another RAM page mapped into WIN3.
-        ld      a,P126_IPC_DMA_PAGE0
-        ld      bc,#FFF7
-        out     (c),a
-
         di
         ld      hl,0
         ld      a,(hl)
@@ -941,38 +925,33 @@ p126_ipc_dma_receive_video_frame::
         ld      a,(p126_ipc_video_failure_code)
         call    p126_ipc_console_hex_byte
         ld      a,':'
-        ld      bc,#00EF
-        out     (c),a
+        call    BIOS_DebugConsole_PrintChar
         ld      a,(P126_IPC_DMA_RX_BUFFER+14)
         call    p126_ipc_console_hex_byte
         ld      a,(P126_IPC_DMA_RX_BUFFER+15)
         call    p126_ipc_console_hex_byte
         ld      a,':'
-        ld      bc,#00EF
-        out     (c),a
+        call    BIOS_DebugConsole_PrintChar
         ld      a,(P126_IPC_DMA_RX_BUFFER+P126_IPC_HEADER_SIZE)
         call    p126_ipc_console_hex_byte
-        ld      bc,#00EF
         ld      a,13
-        out     (c),a
+        call    BIOS_DebugConsole_PrintChar
         ld      a,10
-        out     (c),a
+        call    BIOS_DebugConsole_PrintChar
         scf
         ret
 
 p126_ipc_video_failure_code: db 0
 
-; IPC diagnostics are routed only to ATM debug port #EF.
-; The guest BIOS exclusively owns the visible 80x25 ATM screen.
 p126_ipc_console_string:
-        ld      bc,#00EF
-.p126_ipc_console_string_loop:
         ld      a,(hl)
-        inc     hl
         or      a
         ret     z
-        out     (c),a
-        jr      .p126_ipc_console_string_loop
+        push    hl
+        call    BIOS_DebugConsole_PrintChar
+        pop     hl
+        inc     hl
+        jr      p126_ipc_console_string
 
 p126_ipc_console_hex16:
         ld      a,h
@@ -996,12 +975,10 @@ p126_ipc_console_hex_nibble:
         and     #0F
         add     a,'0'
         cp      '9'+1
-        jr      c,.p126_ipc_console_hex_emit
+        jr      c,.console_hex_emit
         add     a,7
-.p126_ipc_console_hex_emit:
-        ld      bc,#00EF
-        out     (c),a
-        ret
+.console_hex_emit:
+        jp      BIOS_DebugConsole_PrintChar
 
 p126_ipc_console_hex_byte: db 0
 p126_ipc_debug_budget: db "[X86] BIOS PAUSED: 16-INSTRUCTION SLICE COMPLETE; CS:IP=",0
