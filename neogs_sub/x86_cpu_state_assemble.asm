@@ -81,6 +81,16 @@ p126_ngs_resident_start:
         call    p126_ngs_resident_log
         jr      p126_ngs_resident_halt
 .p126_allocator_selftest_done:
+        call    p126_overlay_manager_selftest
+        jr      c,.p126_module_manager_selftest_failed
+        ld      hl,p126_ngs_resident_module_manager_ok
+        call    p126_ngs_resident_log
+        jr      .p126_module_manager_selftest_done
+.p126_module_manager_selftest_failed:
+        ld      hl,p126_ngs_resident_module_manager_bad
+        call    p126_ngs_resident_log
+        jr      p126_ngs_resident_halt
+.p126_module_manager_selftest_done:
 
         ld      hl,p126_ngs_resident_banner
         call    p126_ngs_resident_log
@@ -201,6 +211,8 @@ p126_ngs_resident_banner: db "[NGS] P126 RESIDENT v0.1.0",13,10,0
 p126_ngs_resident_crc_ok: db "[NGS] ABI CRC16 PASS",13,10,0
 p126_ngs_resident_allocator_ok: db "[NGS] OVERLAY ALLOCATOR PASS",13,10,0
 p126_ngs_resident_allocator_bad: db "[NGS] OVERLAY ALLOCATOR FAIL",13,10,0
+p126_ngs_resident_module_manager_ok: db "[NGS] MODULE MANAGER PASS",13,10,0
+p126_ngs_resident_module_manager_bad: db "[NGS] MODULE MANAGER FAIL",13,10,0
 p126_ngs_resident_crc_bad: db "[NGS] ABI CRC16 FAIL",13,10,0
 p126_ngs_resident_ack_bad: db "[NGS] HOST READY ACK TIMEOUT",13,10,0
 p126_ngs_resident_frame_ok: db "[NGS] RX OK",13,10,0
