@@ -242,18 +242,17 @@ x86_vga_io_read8_impl:
 .read_input_status1:
         xor     a
         ld      (x86_vga_attrff),a
-        ; Deterministic retrace phase: toggle bit3 per status sample until
-        ; the timer-driven scanout phase is introduced.
+        ; Match PCem svga_in(3DAh): when display-enable bit0 is clear,
+        ; toggle the horizontal/vertical retrace bits (5:4). When bit0 is
+        ; set, clear those bits. Do not synthesize an unrelated bit3 timer.
         ld      a,(x86_vga_cgastat)
-        xor     #08
-        ld      (x86_vga_cgastat),a
         bit     0,a
-        jp      nz,.status_clear_blink
+        jp      nz,.status_clear_retrace
         xor     #30
         ld      (x86_vga_cgastat),a
         or      a
         ret
-.status_clear_blink:
+.status_clear_retrace:
         and     #CF
         ld      (x86_vga_cgastat),a
         or      a
@@ -1610,9 +1609,18 @@ x86_vga_register_selftest_impl:
         cp      #0F
         jp      nz,.vga_test_fail
 
-        ; Attribute Controller status read resets its index/data flip-flop.
+        ; PCem status-port phase: with bit0 clear, bits5:4 toggle on
+        ; successive reads; the same read also resets the AC flip-flop.
+        xor     a
+        ld      (x86_vga_cgastat),a
         ld      hl,#03DA
         call    x86_vga_io_read8_impl
+        cp      #30
+        jp      nz,.vga_test_fail
+        ld      hl,#03DA
+        call    x86_vga_io_read8_impl
+        or      a
+        jp      nz,.vga_test_fail
         ld      hl,#03C0
         ld      a,#12
         call    x86_vga_io_write8_impl
