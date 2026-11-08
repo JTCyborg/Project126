@@ -298,6 +298,9 @@ x86_vga_module_end:
     DISPLAY "P126_X86_IO_START=", /H, x86_io_module_start
     DISPLAY "P126_X86_IO_END=", /H, x86_io_module_end
     DISPLAY "P126_X86_IO_SIZE=", /D, x86_io_module_end-x86_io_module_start
+    DISPLAY "P126_X86_VGA_START=", /H, x86_vga_module_start
+    DISPLAY "P126_X86_VGA_END=", /H, x86_vga_module_end
+    DISPLAY "P126_X86_VGA_SIZE=", /D, x86_vga_module_end-x86_vga_module_start
     DISPLAY "P126_NGS_IPC_START=", /H, p126_ngs_ipc_module_start
     DISPLAY "P126_NGS_IPC_END=", /H, p126_ngs_ipc_module_end
     DISPLAY "P126_NGS_IPC_SIZE=", /D, p126_ngs_ipc_module_end-p126_ngs_ipc_module_start
@@ -329,3 +332,7 @@ x86_vga_module_end:
     ASSERT x86_alu_module_end > x86_alu_module_start
     ASSERT x86_alu_module_end <= #C000
     ASSERT x86_alu_module_end-x86_alu_module_start <= P126_IMAGE_X86ALU_MAX_SIZE
+    ASSERT x86_vga_module_start = #8000
+    ASSERT x86_vga_module_end > x86_vga_module_start
+    ASSERT x86_vga_module_end <= #C000
+    ASSERT x86_vga_module_end-x86_vga_module_start <= #4000
