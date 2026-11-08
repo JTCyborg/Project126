@@ -376,8 +376,9 @@ p126_neogs_load_manifest:
         inc     hl
         ld      a,'l'
         ld      (p126_neogs_startup_stage),a
-        ld      e,(hl)
-        ld      (p126_neogs_manifest_record_size),e
+        ld      a,(hl)
+        ld      e,a
+        ld      (p126_neogs_manifest_record_size),a
         inc     hl
         ld      a,(hl)
         ld      (p126_neogs_manifest_record_size+1),a
