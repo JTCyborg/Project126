@@ -64,6 +64,15 @@ x86_vga_reset_impl:
         ld      bc,15
         ld      (hl),a
         ldir
+        ld      hl,x86_vga_latches
+        ld      de,x86_vga_latches+1
+        ld      bc,3
+        ld      (hl),a
+        ldir
+        ld      a,63
+        ld      (x86_vga_crtc),a
+        ld      a,#FF
+        ld      (x86_vga_crtc+6),a
         ld      a,#FF
         ld      (x86_vga_dac_mask),a
         xor     a
