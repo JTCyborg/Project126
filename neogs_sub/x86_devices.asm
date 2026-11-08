@@ -557,6 +557,10 @@ x86_dev_pit_reset_impl:
         ld      (x86_dev_pit_gate2),a
         ld      (x86_dev_pit_loaded2),a
         ld      (x86_dev_pit_cpu_cycle_remainder),a
+        ld      (x86_dev_pit_tick_count),a
+        ld      (x86_dev_pit_tick_count+1),a
+        ld      (x86_dev_pit_toggle_count),a
+        ld      (x86_dev_pit_toggle_count+1),a
         ld      hl,0
         ld      (x86_dev_pit_count2),hl
         ld      (x86_dev_pit_half2),hl
@@ -714,6 +718,9 @@ x86_dev_pit_advance_cycles:
 ; Channel 2 mode 3 square-wave timing plus mode 0 terminal count.
 ; Other PIT modes/channels remain explicitly outside this timing slice.
 x86_dev_pit_tick_channel2:
+        ld      hl,(x86_dev_pit_tick_count)
+        inc     hl
+        ld      (x86_dev_pit_tick_count),hl
         ld      a,(x86_dev_pit_loaded2)
         or      a
         ret     z
@@ -753,6 +760,9 @@ x86_dev_pit_tick_channel2:
         ld      a,(x86_dev_pit_out2)
         xor     1
         ld      (x86_dev_pit_out2),a
+        ld      hl,(x86_dev_pit_toggle_count)
+        inc     hl
+        ld      (x86_dev_pit_toggle_count),hl
         ld      hl,(x86_dev_pit_half2)
         ld      (x86_dev_pit_count2),hl
         ret
@@ -1404,6 +1414,71 @@ x86_dev_pit_loaded2: db 0
 x86_dev_pit_cpu_cycle_remainder: db 0
 x86_dev_pit_count2: dw 0
 x86_dev_pit_half2: dw 0
+x86_dev_pit_tick_count: dw 0
+x86_dev_pit_toggle_count: dw 0
+x86_dev_pit_log_prefix: db "[PIT] R=",0
+x86_dev_pit_log_mode: db " M=",0
+x86_dev_pit_log_gate: db " G=",0
+x86_dev_pit_log_out: db " O=",0
+x86_dev_pit_log_count: db " C=",0
+x86_dev_pit_log_half: db " H=",0
+x86_dev_pit_log_ticks: db " T=",0
+x86_dev_pit_log_toggles: db " X=",0
+x86_dev_pit_log_remainder: db " Q=",0
+x86_dev_pit_log_loaded: db " L=",0
+x86_dev_pit_log_state_impl:
+        push    af
+        push    bc
+        push    hl
+        ld      hl,x86_dev_pit_log_prefix
+        call    p126_ngs_resident_log
+        ld      hl,(x86_dev_pit_reload+4)
+        call    x86_bios_trace_emit_hex16
+        ld      hl,x86_dev_pit_log_mode
+        call    p126_ngs_resident_log
+        ld      a,(x86_dev_pit_mode+2)
+        call    x86_bios_trace_emit_hex8
+        ld      hl,x86_dev_pit_log_gate
+        call    p126_ngs_resident_log
+        ld      a,(x86_dev_pit_gate2)
+        call    x86_bios_trace_emit_hex8
+        ld      hl,x86_dev_pit_log_out
+        call    p126_ngs_resident_log
+        ld      a,(x86_dev_pit_out2)
+        call    x86_bios_trace_emit_hex8
+        ld      hl,x86_dev_pit_log_count
+        call    p126_ngs_resident_log
+        ld      hl,(x86_dev_pit_count2)
+        call    x86_bios_trace_emit_hex16
+        ld      hl,x86_dev_pit_log_half
+        call    p126_ngs_resident_log
+        ld      hl,(x86_dev_pit_half2)
+        call    x86_bios_trace_emit_hex16
+        ld      hl,x86_dev_pit_log_ticks
+        call    p126_ngs_resident_log
+        ld      hl,(x86_dev_pit_tick_count)
+        call    x86_bios_trace_emit_hex16
+        ld      hl,x86_dev_pit_log_toggles
+        call    p126_ngs_resident_log
+        ld      hl,(x86_dev_pit_toggle_count)
+        call    x86_bios_trace_emit_hex16
+        ld      hl,x86_dev_pit_log_remainder
+        call    p126_ngs_resident_log
+        ld      a,(x86_dev_pit_cpu_cycle_remainder)
+        call    x86_bios_trace_emit_hex8
+        ld      hl,x86_dev_pit_log_loaded
+        call    p126_ngs_resident_log
+        ld      a,(x86_dev_pit_loaded2)
+        call    x86_bios_trace_emit_hex8
+        ld      a,13
+        call    x86_bios_trace_emit_char
+        ld      a,10
+        call    x86_bios_trace_emit_char
+        pop     hl
+        pop     bc
+        pop     af
+        ret
+
 x86_dev_pit_selftest_pass: db "[NGS] X86 PIT REGISTER SELFTEST PASS",13,10,0
 x86_dev_pit_selftest_fail: db "[NGS] X86 PIT REGISTER SELFTEST FAIL",13,10,0
 x86_dev_dma_selftest_fail: db "[NGS] X86 DMA REGISTER SELFTEST FAIL",13,10,0
