@@ -981,6 +981,8 @@ p126_ipc_video_dma_failed: db "[VIDEO] FRAME RECEIVE/APPLY FAILED",13,10,0
 
 ; Print A as two hexadecimal digits on ATM's independent #EF stream.
 ; Preserves AF and BC.
+p126_ipc_debug_hex_char: db 0
+
 p126_ipc_debug_hex_byte:
         push    af
         push    bc
@@ -1004,10 +1006,19 @@ p126_ipc_debug_hex_nibble:
         jr      c,.p126_ipc_debug_hex_emit
         add     a,7
 .p126_ipc_debug_hex_emit:
+        ld      (p126_ipc_debug_hex_char),a
+        push    af
         push    bc
         ld      bc,#00EF
         out     (c),a
+        ld      a,(p126_host_console_ready)
+        or      a
+        jr      z,.p126_ipc_hex_console_done
+        ld      a,(p126_ipc_debug_hex_char)
+        call    BIOS_DebugConsole_PrintChar
+.p126_ipc_hex_console_done:
         pop     bc
+        pop     af
         ret
 
 ; Emit CR/LF on ATM's independent #EF debug channel.
@@ -1019,6 +1030,14 @@ p126_ipc_debug_crlf:
         out     (c),a
         ld      a,10
         out     (c),a
+        ld      a,(p126_host_console_ready)
+        or      a
+        jr      z,.p126_ipc_crlf_console_done
+        ld      a,13
+        call    BIOS_DebugConsole_PrintChar
+        ld      a,10
+        call    BIOS_DebugConsole_PrintChar
+.p126_ipc_crlf_console_done:
         pop     bc
         pop     af
         ret
@@ -1035,6 +1054,18 @@ p126_ipc_debug_string:
         or      a
         jr      z,.p126_ipc_debug_done
         out     (c),a
+        push    af
+        push    hl
+        ld      a,(p126_host_console_ready)
+        or      a
+        jr      z,.p126_ipc_debug_no_console
+        pop     hl
+        pop     af
+        call    BIOS_DebugConsole_PrintChar
+        jr      .p126_ipc_debug_loop
+.p126_ipc_debug_no_console:
+        pop     hl
+        pop     af
         jr      .p126_ipc_debug_loop
 .p126_ipc_debug_done:
         pop     bc
