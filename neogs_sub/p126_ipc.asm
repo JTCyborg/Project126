@@ -684,9 +684,9 @@ p126_ngs_ipc_dispatch_once::
         ld      a,(p126_ngs_bios_image_ready)
         cp      1
         jr      nz,.ngs_frame_trace_ready
+        call    x86_bios_startup_trace
         ld      a,2
         ld      (p126_ngs_bios_image_ready),a
-        call    x86_bios_startup_trace
 .ngs_frame_trace_ready:
         ld      hl,p126_ngs_ipc_log_dma_rx_request
         call    p126_ngs_ipc_log
