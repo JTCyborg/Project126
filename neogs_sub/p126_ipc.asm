@@ -352,20 +352,7 @@ P126_NGS_ZXCMD       EQU #01
 ; Reverse DMA maximum-frame response for ABI command E1h (NGS_FRAME).
 ; Source is the complete 16 KiB physical page 42h at 108000h.
 p126_ngs_ipc_dma_send_test_frame::
-        ; Prefer a freshly converted ATM-native frame when both the converter
-        ; and the host mode descriptor are ready. Keep the diagnostic frame as
-        ; the fallback used during early boot and converter bring-up.
-        ld      a,(p126_ngs_vid_overlay_ready)
-        or      a
-        jp      z,.send_diagnostic_frame
-        ld      a,(p126_ngs_video_mode_ready)
-        or      a
-        jp      z,.send_diagnostic_frame
-        call    x86_video_convert
-        jp      c,.send_diagnostic_frame
-        jp      p126_ngs_ipc_dma_send_video_frame
-.send_diagnostic_frame:
-        ; Build the deterministic reverse frame directly in production page
+        ; Build the deterministic reverse diagnostics frame directly in page
         ; 42h through WIN3, then DMA-read it from physical address 108000h.
         ; Match Project125 WIN3 selection: MPAGEX (#10), page encoded by RRCA.
         ld      a,P126_NGS_DMA_PROD_PAGE
@@ -553,6 +540,8 @@ p126_ngs_ipc_dispatch_once::
 
         cp      P126_CMD_NGS_FRAME
         jr      z,.p126_ngs_dispatch_ngs_frame
+        cp      P126_CMD_NGS_VIDEO_FRAME
+        jr      z,.p126_ngs_dispatch_video_frame
 
         ; Unknown command: release the doorbell and report a defined error.
         xor     a
@@ -601,6 +590,23 @@ p126_ngs_ipc_dispatch_once::
         jr      .p126_ngs_image_bad_operation
 
 .p126_ngs_image_bad_operation:
+        xor     a
+        out     (P126_NGS_CLRCBIT),a
+        ld      a,P126_STATUS_NO_OPERATION
+        scf
+        ret
+
+.p126_ngs_dispatch_video_frame:
+        ld      a,(p126_ngs_vid_overlay_ready)
+        or      a
+        jr      z,.video_frame_not_ready
+        ld      a,(p126_ngs_video_mode_ready)
+        or      a
+        jr      z,.video_frame_not_ready
+        call    x86_video_convert
+        jr      c,.video_frame_not_ready
+        jp      p126_ngs_ipc_dma_send_video_frame
+.video_frame_not_ready:
         xor     a
         out     (P126_NGS_CLRCBIT),a
         ld      a,P126_STATUS_NO_OPERATION
