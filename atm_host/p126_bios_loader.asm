@@ -342,17 +342,18 @@ p126_bios_log_selected_filename:
 ; Build and send one ABI 1.0 IMAGE request.
 ; IN: A=operation, BC=payload length, DE=sequence, flags in variable.
 p126_bios_send_frame:
+        ld      (p126_bios_operation),a
         ld      a,P126_SERVICE_IMAGE
         ld      (p126_bios_service),a
         jp      p126_bios_send_frame_common
 
 p126_bios_send_video_frame:
+        ld      (p126_bios_operation),a
         ld      a,P126_SERVICE_VIDEO
         ld      (p126_bios_service),a
         jp      p126_bios_send_frame_common
 
 p126_bios_send_frame_common:
-        ld      (p126_bios_operation),a
         ld      (p126_bios_payload_length),bc
         ld      (p126_bios_sequence),de
         ld      hl,P126_BIOS_FRAME
