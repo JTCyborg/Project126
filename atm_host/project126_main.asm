@@ -240,9 +240,19 @@ p126_host_idle:
         jr      nz,.host_idle_continue
         xor     a
         ld      (p126_host_video_poll_counter),a
+
+        ; E1 is also the BIOS execution scheduler: NeoGS runs the next
+        ; bounded 64-instruction slice before returning its stop/status frame.
+        ; Polling VIDEO alone leaves the guest frozen after the first slice.
+        call    p126_ipc_dma_receive_debug_frame
+        jr      c,.host_idle_continue
+
+        ; E2 converts the current VGA state. F2 ("not in a supported text
+        ; mode yet") is a normal pending result; keep polling until BIOS
+        ; actually produces a renderable frame.
         call    p126_ipc_dma_receive_video_frame
         jr      nc,.host_idle_continue
-        ; Stop polling after one failed frame; never flood the host log.
+        ; A transport/validation failure is fatal to the current video poll.
         xor     a
         ld      (p126_atm_video_enabled),a
 .host_idle_continue:
