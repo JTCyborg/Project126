@@ -561,6 +561,7 @@ x86_dev_pit_reset_impl:
         ld      (x86_dev_pit_tick_count+1),a
         ld      (x86_dev_pit_toggle_count),a
         ld      (x86_dev_pit_toggle_count+1),a
+        ld      (x86_dev_pit_log_once),a
         ld      hl,0
         ld      (x86_dev_pit_count2),hl
         ld      (x86_dev_pit_half2),hl
@@ -711,8 +712,41 @@ x86_dev_pit_advance_cycles:
 .pit_advance_tick_loop:
         push    bc
         call    x86_dev_pit_tick_channel2
+        call    x86_dev_pit_maybe_log_after_tick
         pop     bc
         djnz    .pit_advance_tick_loop
+        ret
+
+; Emit one PIT snapshot after 32 guest PIT clocks have elapsed with
+; channel 2 loaded and GATE2 high. This runs inside the active X86DEV
+; overlay, after the tick update, and is deliberately one-shot.
+x86_dev_pit_maybe_log_after_tick:
+        push    af
+        push    bc
+        push    de
+        push    hl
+        ld      a,(x86_dev_pit_log_once)
+        or      a
+        jr      nz,.pit_sample_done
+        ld      a,(x86_dev_pit_loaded2)
+        or      a
+        jr      z,.pit_sample_done
+        ld      a,(x86_dev_pit_gate2)
+        or      a
+        jr      z,.pit_sample_done
+        ld      hl,(x86_dev_pit_tick_count)
+        ld      de,32
+        or      a
+        sbc     hl,de
+        jr      c,.pit_sample_done
+        ld      a,1
+        ld      (x86_dev_pit_log_once),a
+        call    x86_dev_pit_log_state_impl
+.pit_sample_done:
+        pop     hl
+        pop     de
+        pop     bc
+        pop     af
         ret
 
 ; Channel 2 mode 3 square-wave timing plus mode 0 terminal count.
@@ -1411,6 +1445,7 @@ x86_dev_pit_write_value: db 0
 x86_dev_pit_out2: db 0
 x86_dev_pit_gate2: db 0
 x86_dev_pit_loaded2: db 0
+x86_dev_pit_log_once: db 0
 x86_dev_pit_cpu_cycle_remainder: db 0
 x86_dev_pit_count2: dw 0
 x86_dev_pit_half2: dw 0
