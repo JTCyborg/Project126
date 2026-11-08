@@ -12,7 +12,7 @@
 # file opened: neogs_ipc.asm
    1+ 0000              ; =========================================================================
    2+ 0000              ; PROJECT126 — ATM Turbo 2+ / NeoGS host-side IPC driver
-   3+ 0000              ; Version: P126_ATM_IPC v0.1.0
+   3+ 0000              ; Version: P126_ATM_IPC v0.3.0
    4+ 0000              ;
    5+ 0000              ; This is ATM Z80 code. It runs on the 7 MHz host CPU.
    6+ 0000              ; NeoGS is an independent Z80 and has its own private debug port #EF.
@@ -26,7 +26,7 @@
 # file opened: neogs_ipc.inc
    1++0000              ; =========================================================================
    2++0000              ; PROJECT126 — ATM / NeoGS IPC public interface
-   3++0000              ; Version: P126_ATM_IPC_API v0.2.0
+   3++0000              ; Version: P126_ATM_IPC_API v0.3.0
    4++0000              ;
    5++0000              ; Include this file in ATM-side Z80 modules that call neogs_ipc.asm.
    6++0000              ; Physical transport: GSCOM/GSSTAT (#BB), GSDAT (#B3), GSCTR (#33).
@@ -100,73 +100,74 @@
   64++0000              P126_OP_IMAGE_FRAGMENT    EQU #01
   65++0000              P126_OP_IMAGE_FINISH      EQU #02
   66++0000              P126_OP_IMAGE_RESULT      EQU #03
-  67++0000
-  68++0000              ; Video service operations and mode descriptor ABI.
-  69++0000              P126_OP_VIDEO_MODE         EQU #00
-  70++0000              P126_OP_VIDEO_FRAME_REQUEST EQU #01
-  71++0000              P126_OP_VIDEO_FRAME          EQU #02
-  72++0000              P126_OP_VIDEO_FRAME_FRAGMENT EQU #03
-  73++0000              P126_OP_VIDEO_FRAME_FINISH   EQU #04
-  74++0000              P126_VIDEO_MODE_DESC_SIZE  EQU 8
-  75++0000              P126_VIDEO_DESC_VERSION    EQU 1
-  76++0000              P126_VIDEO_FORMAT_TEXT80X25 EQU 1
-  77++0000              P126_ATM_MODE_RG6_TEXT80X25 EQU 6
-  78++0000              ; Public ATM-side renderer mode name used by the screen-console and IPC modules.
-  79++0000              P126_ATM_VIDEO_MODE_RG6_TEXT80X25 EQU P126_ATM_MODE_RG6_TEXT80X25
-  80++0000              P126_VIDEO_TEXT80_WIDTH    EQU 80
-  81++0000              P126_VIDEO_TEXT80_HEIGHT   EQU 25
-  82++0000              P126_VIDEO_TEXT80_CELLS    EQU 2000
-  83++0000              P126_VIDEO_TEXT80_FRAME_SIZE EQU 4000
-  84++0000
-  85++0000              ; Response status codes (16-bit values).
-  86++0000              P126_STATUS_OK            EQU #0000
-  87++0000              P126_STATUS_BAD_MAGIC     EQU #0001
-  88++0000              P126_STATUS_BAD_VERSION   EQU #0002
-  89++0000              P126_STATUS_BAD_FRAME     EQU #0003
-  90++0000              P126_STATUS_CRC_ERROR     EQU #0004
-  91++0000              P126_STATUS_SEQUENCE      EQU #0005
-  92++0000              P126_STATUS_NO_SERVICE    EQU #0006
-  93++0000              P126_STATUS_NO_OPERATION  EQU #0007
-  94++0000              P126_STATUS_NO_BUFFER     EQU #0008
-  95++0000              P126_STATUS_HOST_IO       EQU #0009
-  96++0000              P126_STATUS_TIMEOUT       EQU #000A
-  97++0000              P126_STATUS_CANCELLED     EQU #000B
-  98++0000              P126_STATUS_ADDRESS_RANGE EQU #000C
-  99++0000              P126_STATUS_BUSY          EQU #000D
- 100++0000              P126_STATUS_RESET_REQUIRED EQU #000E
- 101++0000              P126_STATUS_BAD_FRAGMENT  EQU #000F
- 102++0000
- 103++0000              ; CRC-16/CCITT-FALSE.
- 104++0000              P126_CRC16_POLY           EQU #1021
- 105++0000              P126_CRC16_INITIAL_H      EQU #FF
- 106++0000              P126_CRC16_INITIAL_L      EQU #FF
- 107++0000              P126_CRC16_CHECK_H        EQU #29
- 108++0000              P126_CRC16_CHECK_L        EQU #B1
- 109++0000
+  67++0000              P126_OP_INPUT_KEYBOARD     EQU #00
+  68++0000
+  69++0000              ; Video service operations and mode descriptor ABI.
+  70++0000              P126_OP_VIDEO_MODE         EQU #00
+  71++0000              P126_OP_VIDEO_FRAME_REQUEST EQU #01
+  72++0000              P126_OP_VIDEO_FRAME          EQU #02
+  73++0000              P126_OP_VIDEO_FRAME_FRAGMENT EQU #03
+  74++0000              P126_OP_VIDEO_FRAME_FINISH   EQU #04
+  75++0000              P126_VIDEO_MODE_DESC_SIZE  EQU 8
+  76++0000              P126_VIDEO_DESC_VERSION    EQU 1
+  77++0000              P126_VIDEO_FORMAT_TEXT80X25 EQU 1
+  78++0000              P126_ATM_MODE_RG6_TEXT80X25 EQU 6
+  79++0000              ; Public ATM-side renderer mode name used by the screen-console and IPC modules.
+  80++0000              P126_ATM_VIDEO_MODE_RG6_TEXT80X25 EQU P126_ATM_MODE_RG6_TEXT80X25
+  81++0000              P126_VIDEO_TEXT80_WIDTH    EQU 80
+  82++0000              P126_VIDEO_TEXT80_HEIGHT   EQU 25
+  83++0000              P126_VIDEO_TEXT80_CELLS    EQU 2000
+  84++0000              P126_VIDEO_TEXT80_FRAME_SIZE EQU 4000
+  85++0000
+  86++0000              ; Response status codes (16-bit values).
+  87++0000              P126_STATUS_OK            EQU #0000
+  88++0000              P126_STATUS_BAD_MAGIC     EQU #0001
+  89++0000              P126_STATUS_BAD_VERSION   EQU #0002
+  90++0000              P126_STATUS_BAD_FRAME     EQU #0003
+  91++0000              P126_STATUS_CRC_ERROR     EQU #0004
+  92++0000              P126_STATUS_SEQUENCE      EQU #0005
+  93++0000              P126_STATUS_NO_SERVICE    EQU #0006
+  94++0000              P126_STATUS_NO_OPERATION  EQU #0007
+  95++0000              P126_STATUS_NO_BUFFER     EQU #0008
+  96++0000              P126_STATUS_HOST_IO       EQU #0009
+  97++0000              P126_STATUS_TIMEOUT       EQU #000A
+  98++0000              P126_STATUS_CANCELLED     EQU #000B
+  99++0000              P126_STATUS_ADDRESS_RANGE EQU #000C
+ 100++0000              P126_STATUS_BUSY          EQU #000D
+ 101++0000              P126_STATUS_RESET_REQUIRED EQU #000E
+ 102++0000              P126_STATUS_BAD_FRAGMENT  EQU #000F
+ 103++0000
+ 104++0000              ; CRC-16/CCITT-FALSE.
+ 105++0000              P126_CRC16_POLY           EQU #1021
+ 106++0000              P126_CRC16_INITIAL_H      EQU #FF
+ 107++0000              P126_CRC16_INITIAL_L      EQU #FF
+ 108++0000              P126_CRC16_CHECK_H        EQU #29
+ 109++0000              P126_CRC16_CHECK_L        EQU #B1
  110++0000
- 111++0000              ; IMAGE service v1.1 image profiles.
- 112++0000              ; IMAGE_BEGIN payload: message-id u16, image-kind u8, physical-page u8,
- 113++0000              ; exact image-size u16. The receiver validates kind/page policy and derives
- 114++0000              ; the WIN3/MPAGEX selector from ROR8(physical-page).
- 115++0000              ; SYSBIOS: 8 KiB image to physical page 10h. X86 overlays retain their
- 116++0000              ; pinned page assignments 04h..07h until the resident module manager owns
- 117++0000              ; allocation of the dynamic page range.
- 118++0000              P126_IMAGE_KIND_SYSBIOS      EQU #00
- 119++0000              P126_IMAGE_KIND_X86IO        EQU #01
- 120++0000              P126_IMAGE_KIND_X86ALU       EQU #02
- 121++0000              P126_IMAGE_KIND_X86DEV       EQU #03
- 122++0000              P126_IMAGE_KIND_X86EXEC      EQU #04
- 123++0000              P126_IMAGE_KIND_X86VGA       EQU #05
- 124++0000              P126_IMAGE_KIND_X86VID       EQU #06
- 125++0000              P126_IMAGE_X86IO_MAX_SIZE    EQU #1000
- 126++0000              P126_IMAGE_X86ALU_MAX_SIZE   EQU #1000
- 127++0000              P126_IMAGE_X86DEV_MAX_SIZE   EQU #1000
- 128++0000              P126_IMAGE_X86EXEC_MAX_SIZE  EQU #4000
- 129++0000              P126_IMAGE_X86VGA_MAX_SIZE   EQU #4000
- 130++0000              P126_IMAGE_X86VID_MAX_SIZE   EQU #4000
- 131++0000              P126_IMAGE_SYSBIOS_SIZE      EQU #2000
- 132++0000              P126_IMAGE_FRAGMENT_EXT_SIZE EQU 10
- 133++0000
+ 111++0000
+ 112++0000              ; IMAGE service v1.1 image profiles.
+ 113++0000              ; IMAGE_BEGIN payload: message-id u16, image-kind u8, physical-page u8,
+ 114++0000              ; exact image-size u16. The receiver validates kind/page policy and derives
+ 115++0000              ; the WIN3/MPAGEX selector from ROR8(physical-page).
+ 116++0000              ; SYSBIOS: 8 KiB image to physical page 10h. X86 overlays retain their
+ 117++0000              ; pinned page assignments 04h..07h until the resident module manager owns
+ 118++0000              ; allocation of the dynamic page range.
+ 119++0000              P126_IMAGE_KIND_SYSBIOS      EQU #00
+ 120++0000              P126_IMAGE_KIND_X86IO        EQU #01
+ 121++0000              P126_IMAGE_KIND_X86ALU       EQU #02
+ 122++0000              P126_IMAGE_KIND_X86DEV       EQU #03
+ 123++0000              P126_IMAGE_KIND_X86EXEC      EQU #04
+ 124++0000              P126_IMAGE_KIND_X86VGA       EQU #05
+ 125++0000              P126_IMAGE_KIND_X86VID       EQU #06
+ 126++0000              P126_IMAGE_X86IO_MAX_SIZE    EQU #1000
+ 127++0000              P126_IMAGE_X86ALU_MAX_SIZE   EQU #1000
+ 128++0000              P126_IMAGE_X86DEV_MAX_SIZE   EQU #1000
+ 129++0000              P126_IMAGE_X86EXEC_MAX_SIZE  EQU #4000
+ 130++0000              P126_IMAGE_X86VGA_MAX_SIZE   EQU #4000
+ 131++0000              P126_IMAGE_X86VID_MAX_SIZE   EQU #4000
+ 132++0000              P126_IMAGE_SYSBIOS_SIZE      EQU #2000
+ 133++0000              P126_IMAGE_FRAGMENT_EXT_SIZE EQU 10
+ 134++0000
 # file closed: p126_ipc_protocol.inc
   10++0000
   11++0000              P126_GSCOM          EQU #BB
@@ -703,11 +704,11 @@
  491+ 02BA 00           p126_ipc_rx_byte:     db 0
  492+ 02BB
  493+ 02BB              p126_ipc_version_text:
- 494+ 02BB 5B 50 31 32          db "[P126 ATM_IPC v0.2.0]", 13, 10, 0
+ 494+ 02BB 5B 50 31 32          db "[P126 ATM_IPC v0.3.0]", 13, 10, 0
  494+ 02BF 36 20 41 54
  494+ 02C3 4D 5F 49 50
  494+ 02C7 43 20 76 30
- 494+ 02CB 2E 32 2E 30
+ 494+ 02CB 2E 33 2E 30
  494+ 02CF 5D 0D 0A 00
  495+ 02D3
  496+ 02D3              ; -------------------------------------------------------------------------
@@ -994,7 +995,7 @@
  774+ 04BA 3A 08 C0             ld      a,(P126_IPC_DMA_RX_BUFFER+8)
  775+ 04BD CD 14 06             call    p126_ipc_console_hex_byte
  776+ 04C0 3E 3A                ld      a,':'
- 777+ 04C2 CD 21 0A             call    BIOS_DebugConsole_PrintChar
+ 777+ 04C2 CD 90 0A             call    BIOS_DebugConsole_PrintChar
  778+ 04C5 3A 12 C0             ld      a,(P126_IPC_DMA_RX_BUFFER+P126_IPC_HEADER_SIZE)
  779+ 04C8 CD 14 06             call    p126_ipc_console_hex_byte
  780+ 04CB 3A 13 C0             ld      a,(P126_IPC_DMA_RX_BUFFER+P126_IPC_HEADER_SIZE+1)
@@ -1002,9 +1003,9 @@
  782+ 04D1 3A 14 C0             ld      a,(P126_IPC_DMA_RX_BUFFER+P126_IPC_HEADER_SIZE+2)
  783+ 04D4 CD 14 06             call    p126_ipc_console_hex_byte
  784+ 04D7 3E 0D                ld      a,13
- 785+ 04D9 CD 21 0A             call    BIOS_DebugConsole_PrintChar
+ 785+ 04D9 CD 90 0A             call    BIOS_DebugConsole_PrintChar
  786+ 04DC 3E 0A                ld      a,10
- 787+ 04DE CD 21 0A             call    BIOS_DebugConsole_PrintChar
+ 787+ 04DE CD 90 0A             call    BIOS_DebugConsole_PrintChar
  788+ 04E1 B7                   or      a
  789+ 04E2 C9                   ret
  790+ 04E3              .debug_budget:
@@ -1023,13 +1024,13 @@
  803+ 04F8 2A 13 C0             ld      hl,(P126_IPC_DMA_RX_BUFFER+P126_IPC_HEADER_SIZE+1)
  804+ 04FB CD EB 05             call    p126_ipc_console_hex16
  805+ 04FE 3E 3A                ld      a,':'
- 806+ 0500 CD 21 0A             call    BIOS_DebugConsole_PrintChar
+ 806+ 0500 CD 90 0A             call    BIOS_DebugConsole_PrintChar
  807+ 0503 2A 15 C0             ld      hl,(P126_IPC_DMA_RX_BUFFER+P126_IPC_HEADER_SIZE+3)
  808+ 0506 CD EB 05             call    p126_ipc_console_hex16
  809+ 0509 3E 0D                ld      a,13
- 810+ 050B CD 21 0A             call    BIOS_DebugConsole_PrintChar
+ 810+ 050B CD 90 0A             call    BIOS_DebugConsole_PrintChar
  811+ 050E 3E 0A                ld      a,10
- 812+ 0510 CD 21 0A             call    BIOS_DebugConsole_PrintChar
+ 812+ 0510 CD 90 0A             call    BIOS_DebugConsole_PrintChar
  813+ 0513 B7                   or      a
  814+ 0514 C9                   ret
  815+ 0515
@@ -1044,7 +1045,7 @@
  824+ 051D              ; a normal pending state until the BIOS programs a supported VGA text mode.
  825+ 051D              p126_ipc_dma_receive_video_frame:
  825+ 051D
- 826+ 051D 3A 1E 0A             ld      a,(p126_atm_video_mode)
+ 826+ 051D 3A 8D 0A             ld      a,(p126_atm_video_mode)
  827+ 0520 FE 06                cp      P126_ATM_VIDEO_MODE_RG6_TEXT80X25
  828+ 0522 C2 74 05             jp      nz,.video_bad_host_mode
  829+ 0525 3E E4                ld      a,P126_CMD_NGS_VIDEO_FRAME
@@ -1081,7 +1082,7 @@
  860+ 0564 B0                   or      b
  861+ 0565 20 25                jr      nz,.video_remote_error
  862+ 0567
- 863+ 0567 CD 1F 0A             call    p126_screen_apply_text_frame
+ 863+ 0567 CD 8E 0A             call    p126_screen_apply_text_frame
  864+ 056A 38 3A                jr      c,.video_apply_failed
  865+ 056C 21 10 07             ld      hl,p126_ipc_video_frame_applied
  866+ 056F CD E0 05             call    p126_ipc_console_string
@@ -1135,19 +1136,19 @@
  914+ 05B1 3A DF 05             ld      a,(p126_ipc_video_failure_code)
  915+ 05B4 CD 14 06             call    p126_ipc_console_hex_byte
  916+ 05B7 3E 3A                ld      a,':'
- 917+ 05B9 CD 21 0A             call    BIOS_DebugConsole_PrintChar
+ 917+ 05B9 CD 90 0A             call    BIOS_DebugConsole_PrintChar
  918+ 05BC 3A 0E C0             ld      a,(P126_IPC_DMA_RX_BUFFER+14)
  919+ 05BF CD 14 06             call    p126_ipc_console_hex_byte
  920+ 05C2 3A 0F C0             ld      a,(P126_IPC_DMA_RX_BUFFER+15)
  921+ 05C5 CD 14 06             call    p126_ipc_console_hex_byte
  922+ 05C8 3E 3A                ld      a,':'
- 923+ 05CA CD 21 0A             call    BIOS_DebugConsole_PrintChar
+ 923+ 05CA CD 90 0A             call    BIOS_DebugConsole_PrintChar
  924+ 05CD 3A 12 C0             ld      a,(P126_IPC_DMA_RX_BUFFER+P126_IPC_HEADER_SIZE)
  925+ 05D0 CD 14 06             call    p126_ipc_console_hex_byte
  926+ 05D3 3E 0D                ld      a,13
- 927+ 05D5 CD 21 0A             call    BIOS_DebugConsole_PrintChar
+ 927+ 05D5 CD 90 0A             call    BIOS_DebugConsole_PrintChar
  928+ 05D8 3E 0A                ld      a,10
- 929+ 05DA CD 21 0A             call    BIOS_DebugConsole_PrintChar
+ 929+ 05DA CD 90 0A             call    BIOS_DebugConsole_PrintChar
  930+ 05DD 37                   scf
  931+ 05DE C9                   ret
  932+ 05DF
@@ -1158,7 +1159,7 @@
  937+ 05E1 B7                   or      a
  938+ 05E2 C8                   ret     z
  939+ 05E3 E5                   push    hl
- 940+ 05E4 CD 21 0A             call    BIOS_DebugConsole_PrintChar
+ 940+ 05E4 CD 90 0A             call    BIOS_DebugConsole_PrintChar
  941+ 05E7 E1                   pop     hl
  942+ 05E8 23                   inc     hl
  943+ 05E9 18 F5                jr      p126_ipc_console_string
@@ -1188,7 +1189,7 @@
  967+ 060D 38 02                jr      c,.console_hex_emit
  968+ 060F C6 07                add     a,7
  969+ 0611              .console_hex_emit:
- 970+ 0611 C3 21 0A             jp      BIOS_DebugConsole_PrintChar
+ 970+ 0611 C3 90 0A             jp      BIOS_DebugConsole_PrintChar
  971+ 0614
  972+ 0614 00           p126_ipc_console_hex_byte: db 0
  973+ 0615 5B 58 38 36  p126_ipc_debug_budget: db "[X86] BIOS PAUSED: 16-INSTRUCTION SLICE COMPLETE; CS:IP=",0
@@ -1511,39 +1512,107 @@
 1070+ 0A1E              ; are sequential and the reverse test overwrites the request after TX.
 1071+ 0A1E              p126_ipc_dma_rx_buffer EQU P126_IPC_DMA_RX_BUFFER
 1072+ 0A1E
+1073+ 0A1E              ; Send one XT keyboard scan-code event to the NeoGS software device model.
+1074+ 0A1E              ; A=make/break scan code. The guest keyboard FIFO raises virtual IRQ1.
+1075+ 0A1E              p126_ipc_send_keyboard_event:
+1075+ 0A1E
+1076+ 0A1E 32 8A 0A             ld      (p126_ipc_keyboard_event_code),a
+1077+ 0A21 21 00 C0             ld      hl,#C000
+1078+ 0A24 3E 50                ld      a,'P'
+1079+ 0A26 77                   ld      (hl),a
+1080+ 0A27 23                   inc     hl
+1081+ 0A28 3E 31                ld      a,'1'
+1082+ 0A2A 77                   ld      (hl),a
+1083+ 0A2B 23                   inc     hl
+1084+ 0A2C 3E 32                ld      a,'2'
+1085+ 0A2E 77                   ld      (hl),a
+1086+ 0A2F 23                   inc     hl
+1087+ 0A30 3E 36                ld      a,'6'
+1088+ 0A32 77                   ld      (hl),a
+1089+ 0A33 23                   inc     hl
+1090+ 0A34 3E 01                ld      a,P126_IPC_MAJOR
+1091+ 0A36 77                   ld      (hl),a
+1092+ 0A37 23                   inc     hl
+1093+ 0A38 3E 01                ld      a,P126_IPC_MINOR
+1094+ 0A3A 77                   ld      (hl),a
+1095+ 0A3B 23                   inc     hl
+1096+ 0A3C 3E 01                ld      a,P126_MSG_REQUEST
+1097+ 0A3E 77                   ld      (hl),a
+1098+ 0A3F 23                   inc     hl
+1099+ 0A40 3E 01                ld      a,P126_SERVICE_INPUT
+1100+ 0A42 77                   ld      (hl),a
+1101+ 0A43 23                   inc     hl
+1102+ 0A44 3E 00                ld      a,P126_OP_INPUT_KEYBOARD
+1103+ 0A46 77                   ld      (hl),a
+1104+ 0A47 23                   inc     hl
+1105+ 0A48 AF                   xor     a
+1106+ 0A49 77                   ld      (hl),a
+1107+ 0A4A 2A 8B 0A             ld      hl,(p126_ipc_keyboard_event_sequence)
+1108+ 0A4D 23                   inc     hl
+1109+ 0A4E 22 8B 0A             ld      (p126_ipc_keyboard_event_sequence),hl
+1110+ 0A51 22 0A C0             ld      (#C00A),hl
+1111+ 0A54 21 01 00             ld      hl,1
+1112+ 0A57 22 0C C0             ld      (#C00C),hl
+1113+ 0A5A AF                   xor     a
+1114+ 0A5B 32 0E C0             ld      (#C00E),a
+1115+ 0A5E 32 0F C0             ld      (#C00F),a
+1116+ 0A61 3A 8A 0A             ld      a,(p126_ipc_keyboard_event_code)
+1117+ 0A64 32 12 C0             ld      (#C012),a
+1118+ 0A67
+1119+ 0A67                      ; CRC-16/CCITT-FALSE over header[0..15] and the one-byte payload.
+1120+ 0A67 21 FF FF             ld      hl,#FFFF
+1121+ 0A6A 11 00 C0             ld      de,#C000
+1122+ 0A6D 06 10                ld      b,16
+1123+ 0A6F              .p126_keyboard_crc_header:
+1124+ 0A6F 1A                   ld      a,(de)
+1125+ 0A70 13                   inc     de
+1126+ 0A71 CD A2 00             call    p126_ipc_crc16_update
+1127+ 0A74 10 F9                djnz    .p126_keyboard_crc_header
+1128+ 0A76 13                   inc     de
+1129+ 0A77 13                   inc     de
+1130+ 0A78 3A 8A 0A             ld      a,(p126_ipc_keyboard_event_code)
+1131+ 0A7B CD A2 00             call    p126_ipc_crc16_update
+1132+ 0A7E 22 10 C0             ld      (#C010),hl
+1133+ 0A81 21 00 C0             ld      hl,#C000
+1134+ 0A84 01 13 00             ld      bc,19
+1135+ 0A87 C3 D3 02             jp      p126_ipc_dma_send_frame
+1136+ 0A8A
+1137+ 0A8A 00           p126_ipc_keyboard_event_code: db 0
+1138+ 0A8B 00 00        p126_ipc_keyboard_event_sequence: dw 0
+1139+ 0A8D
 # file closed: neogs_ipc.asm
-  11  0A1E              p126_atm_ipc_module_end:
-  12  0A1E
-  13  0A1E              ; The standalone IPC audit unit does not link the ATM screen-console module.
-  14  0A1E              ; Provide audit-only renderer state/entry points so the IPC translation unit
-  15  0A1E              ; can be assembled independently. The production ATM application links the
-  16  0A1E              ; real definitions from p126_screen_console.asm.
-  17  0A1E              p126_atm_video_mode:
-  18  0A1E 06                   db P126_ATM_VIDEO_MODE_RG6_TEXT80X25
-  19  0A1F
-  20  0A1F              p126_screen_apply_text_frame:
-  21  0A1F AF                   xor     a
-  22  0A20 C9                   ret
-  23  0A21
-  24  0A21              BIOS_DebugConsole_PrintChar:
-  25  0A21 C9                   ret
-  26  0A22
-  27  0A22                  DISPLAY "P126_ATM_IPC_START=", /H, p126_atm_ipc_module_start
-  28  0A22                  DISPLAY "P126_ATM_IPC_END=", /H, p126_atm_ipc_module_end
-  29  0A22                  DISPLAY "P126_ATM_IPC_SIZE=", /D, p126_atm_ipc_module_end-p126_atm_ipc_module_start
-  30  0A22
-  31  0A22                  ASSERT p126_atm_ipc_module_end > p126_atm_ipc_module_start
-  32  0A22                  ASSERT p126_atm_ipc_module_end <= #10000
-  33  0A22
+  11  0A8D              p126_atm_ipc_module_end:
+  12  0A8D
+  13  0A8D              ; The standalone IPC audit unit does not link the ATM screen-console module.
+  14  0A8D              ; Provide audit-only renderer state/entry points so the IPC translation unit
+  15  0A8D              ; can be assembled independently. The production ATM application links the
+  16  0A8D              ; real definitions from p126_screen_console.asm.
+  17  0A8D              p126_atm_video_mode:
+  18  0A8D 06                   db P126_ATM_VIDEO_MODE_RG6_TEXT80X25
+  19  0A8E
+  20  0A8E              p126_screen_apply_text_frame:
+  21  0A8E AF                   xor     a
+  22  0A8F C9                   ret
+  23  0A90
+  24  0A90              BIOS_DebugConsole_PrintChar:
+  25  0A90 C9                   ret
+  26  0A91
+  27  0A91                  DISPLAY "P126_ATM_IPC_START=", /H, p126_atm_ipc_module_start
+  28  0A91                  DISPLAY "P126_ATM_IPC_END=", /H, p126_atm_ipc_module_end
+  29  0A91                  DISPLAY "P126_ATM_IPC_SIZE=", /D, p126_atm_ipc_module_end-p126_atm_ipc_module_start
+  30  0A91
+  31  0A91                  ASSERT p126_atm_ipc_module_end > p126_atm_ipc_module_start
+  32  0A91                  ASSERT p126_atm_ipc_module_end <= #10000
+  33  0A91
 # file closed: neogs_ipc_assemble.asm
 
 Value    Label
 ------ - -----------------------------------------------------------
-0x0A21   BIOS_DebugConsole_PrintChar
-0x0A1E   p126_atm_ipc_module_end
+0x0A90   BIOS_DebugConsole_PrintChar
+0x0A8D   p126_atm_ipc_module_end
 0x0000   p126_atm_ipc_module_start
 0x0006   P126_ATM_MODE_RG6_TEXT80X25
-0x0A1E   p126_atm_video_mode
+0x0A8D   p126_atm_video_mode
 0x0006   P126_ATM_VIDEO_MODE_RG6_TEXT80X25
 0x0000   P126_CBIT
 0x00E3 X P126_CMD_CAPABILITIES
@@ -1645,7 +1714,7 @@ Value    Label
 0x0468   p126_ipc_dma_rx_error
 0x0467   p126_ipc_dma_rx_stage
 0x4000   P126_IPC_DMA_RX_TEST_SIZE
-0x02D3 X p126_ipc_dma_send_frame
+0x02D3   p126_ipc_dma_send_frame
 0x031C   p126_ipc_dma_send_frame.p126_dma_bad_header_dump
 0x03B8   p126_ipc_dma_send_frame.p126_dma_bad_size
 0x036B   p126_ipc_dma_send_frame.p126_dma_e0_ack
@@ -1663,6 +1732,8 @@ Value    Label
 0x01EA   p126_ipc_frame_ptr
 0x01EC   p126_ipc_frame_size
 0x0012   P126_IPC_HEADER_SIZE
+0x0A8A   p126_ipc_keyboard_event_code
+0x0A8B   p126_ipc_keyboard_event_sequence
 0x02B8   p126_ipc_last_status
 0x07D6   p126_ipc_log_bad_magic_data
 0x07BD   p126_ipc_log_bad_magic_ptr
@@ -1710,6 +1781,8 @@ Value    Label
 0x007A X p126_ipc_send_argument
 0x0088 X p126_ipc_send_byte
 0x006F   p126_ipc_send_command
+0x0A1E X p126_ipc_send_keyboard_event
+0x0A6F   p126_ipc_send_keyboard_event.p126_keyboard_crc_header
 0xFFFF   P126_IPC_TIMEOUT
 0x02B9   p126_ipc_tx_byte
 0x00B6   p126_ipc_validate_frame
@@ -1759,18 +1832,19 @@ Value    Label
 0x0002 X P126_OP_IMAGE_FINISH
 0x0001 X P126_OP_IMAGE_FRAGMENT
 0x0003 X P126_OP_IMAGE_RESULT
+0x0000   P126_OP_INPUT_KEYBOARD
 0x0002 X P126_OP_RESYNC
 0x0002   P126_OP_VIDEO_FRAME
 0x0004 X P126_OP_VIDEO_FRAME_FINISH
 0x0003 X P126_OP_VIDEO_FRAME_FRAGMENT
 0x0001 X P126_OP_VIDEO_FRAME_REQUEST
 0x0000 X P126_OP_VIDEO_MODE
-0x0A1F   p126_screen_apply_text_frame
+0x0A8E   p126_screen_apply_text_frame
 0x0004 X P126_SERVICE_CLOCK
 0x0006 X P126_SERVICE_CONFIG
 0x0005 X P126_SERVICE_DIAGNOSTICS
 0x0007 X P126_SERVICE_IMAGE
-0x0001 X P126_SERVICE_INPUT
+0x0001   P126_SERVICE_INPUT
 0x0000 X P126_SERVICE_SESSION
 0x0003 X P126_SERVICE_STORAGE
 0x0002   P126_SERVICE_VIDEO
