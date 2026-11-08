@@ -29,6 +29,7 @@ P126_ATM_TEXT_HEIGHT EQU 25
 P126_ATM_TEXT_FRAME_SIZE EQU 4000
 
 p126_atm_video_mode: db P126_ATM_VIDEO_MODE_RG6_TEXT80X25
+p126_atm_video_enabled: db 0
 p126_screen_frame_char: db 0
 p126_screen_frame_char_ptr: dw 0
 p126_screen_frame_attr_ptr: dw 0
