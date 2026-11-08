@@ -102,14 +102,24 @@ p126_x86exec_file_end:
         ASSERT p126_x86exec_file_end-p126_x86exec_file_start <= #4000
         SAVETRD "disk_A.trd", "X86EXEC.C", #C000, p126_x86exec_file_end-p126_x86exec_file_start
 
+; Dynamic VGA overlay, installed on allocator page08 after readback verification.
+        PAGE 7
+        ORG #C000
+p126_x86vga_file_start:
+        INCBIN "build/X86VGA.C"
+p126_x86vga_file_end:
+        ASSERT p126_x86vga_file_end > p126_x86vga_file_start
+        ASSERT p126_x86vga_file_end-p126_x86vga_file_start <= #4000
+        SAVETRD "disk_A.trd", "X86VGA.C", #C000, p126_x86vga_file_end-p126_x86vga_file_start
+
 ; Versioned directory for the currently packaged NeoGS overlay modules (TR-DOS CODE file).
-; Runtime parsing/automatic loading is a later implementation phase.
+; Runtime parsing/automatic loading is performed by the host loader.
         PAGE 7
         ORG #C000
 p126_x86mods_file_start:
         INCBIN "build/X86MODS.MF"
 p126_x86mods_file_end:
-        ASSERT p126_x86mods_file_end-p126_x86mods_file_start = 7+4*8
+        ASSERT p126_x86mods_file_end-p126_x86mods_file_start = 7+5*8
         SAVETRD "disk_A.trd", "X86MODS.C", #C000, p126_x86mods_file_end-p126_x86mods_file_start
 
 ; Three 8 KiB BIOS images, packaged under TR-DOS-compatible 8.3 names.
