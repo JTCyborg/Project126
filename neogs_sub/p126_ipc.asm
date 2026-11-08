@@ -539,9 +539,9 @@ p126_ngs_ipc_dispatch_once::
         jr      z,.p126_ngs_dispatch_host_frame
 
         cp      P126_CMD_NGS_FRAME
-        jr      z,.p126_ngs_dispatch_ngs_frame
+        jp      z,.p126_ngs_dispatch_ngs_frame
         cp      P126_CMD_NGS_VIDEO_FRAME
-        jr      z,.p126_ngs_dispatch_video_frame
+        jp      z,.p126_ngs_dispatch_video_frame
 
         ; Unknown command: release the doorbell and report a defined error.
         xor     a
@@ -719,15 +719,15 @@ p126_ngs_image_begin:
         cp      P126_IMAGE_KIND_X86IO
         jr      z,.image_begin_x86io
         cp      P126_IMAGE_KIND_X86ALU
-        jr      z,.image_begin_x86alu
+        jp      z,.image_begin_x86alu
         cp      P126_IMAGE_KIND_X86DEV
-        jr      z,.image_begin_x86dev
+        jp      z,.image_begin_x86dev
         cp      P126_IMAGE_KIND_X86EXEC
-        jr      z,.image_begin_x86exec
+        jp      z,.image_begin_x86exec
         cp      P126_IMAGE_KIND_X86VGA
-        jr      z,.image_begin_x86vga
+        jp      z,.image_begin_x86vga
         cp      P126_IMAGE_KIND_X86VID
-        jr      z,.image_begin_x86vid
+        jp      z,.image_begin_x86vid
         jp      .image_begin_bad
 
 .image_begin_sysbios:
@@ -739,7 +739,7 @@ p126_ngs_image_begin:
         or      a
         sbc     hl,de
         jp      nz,.image_begin_bad
-        jr      .image_begin_common
+        jp      .image_begin_common
 
 .image_begin_x86io:
         ld      a,(#C015)
@@ -752,8 +752,8 @@ p126_ngs_image_begin:
         ld      de,P126_IMAGE_X86IO_MAX_SIZE
         or      a
         sbc     hl,de
-        jr      c,.image_begin_common
-        jr      z,.image_begin_common
+        jp      c,.image_begin_common
+        jp      z,.image_begin_common
         jp      .image_begin_bad
 
 .image_begin_x86alu:
@@ -767,8 +767,8 @@ p126_ngs_image_begin:
         ld      de,P126_IMAGE_X86ALU_MAX_SIZE
         or      a
         sbc     hl,de
-        jr      c,.image_begin_common
-        jr      z,.image_begin_common
+        jp      c,.image_begin_common
+        jp      z,.image_begin_common
         jp      .image_begin_bad
 
 .image_begin_x86dev:
@@ -782,8 +782,8 @@ p126_ngs_image_begin:
         ld      de,P126_IMAGE_X86DEV_MAX_SIZE
         or      a
         sbc     hl,de
-        jr      c,.image_begin_common
-        jr      z,.image_begin_common
+        jp      c,.image_begin_common
+        jp      z,.image_begin_common
         jp      .image_begin_bad
 
 .image_begin_x86exec:
@@ -797,7 +797,7 @@ p126_ngs_image_begin:
         ld      de,P126_IMAGE_X86EXEC_MAX_SIZE
         or      a
         sbc     hl,de
-        jr      c,.image_begin_common
+        jp      c,.image_begin_common
         jr      z,.image_begin_common
         jp      .image_begin_bad
 
@@ -853,7 +853,7 @@ p126_ngs_image_begin:
         jr      nz,.image_begin_not_bios
         xor     a
         ld      (p126_ngs_bios_image_ready),a
-        jr      .image_begin_ack
+        jp      .image_begin_ack
 .image_begin_not_bios:
         cp      P126_IMAGE_KIND_X86IO
         jr      nz,.image_begin_not_x86io
@@ -1120,11 +1120,11 @@ p126_ngs_image_finish:
         ld      a,1
         ld      (p126_ngs_alu_overlay_ready),a
         ld      hl,p126_ngs_alu_overlay_installed_log
-        jr      .image_finish_log
+        jp      .image_finish_log
 .image_finish_alu_probe_bad:
         ld      hl,p126_ngs_alu_overlay_probe_fail_log
         call    p126_ngs_ipc_log
-        jr      .image_finish_bad
+        jp      .image_finish_bad
 
 .image_finish_x86dev:
         cp      P126_IMAGE_KIND_X86DEV
@@ -1145,7 +1145,7 @@ p126_ngs_image_finish:
         ld      a,1
         ld      (p126_ngs_dev_overlay_ready),a
         ld      hl,p126_ngs_image_finish_log
-        jr      .image_finish_log
+        jp      .image_finish_log
 .image_finish_dev_probe_bad:
         jp      .image_finish_bad
 
@@ -1166,7 +1166,7 @@ p126_ngs_image_finish:
         ld      a,1
         ld      (p126_ngs_exec_overlay_ready),a
         ld      hl,p126_ngs_exec_overlay_installed_log
-        jr      .image_finish_log
+        jp      .image_finish_log
 .image_finish_exec_probe_bad:
         ld      hl,p126_ngs_exec_overlay_probe_fail_log
         call    p126_ngs_ipc_log
@@ -1174,7 +1174,7 @@ p126_ngs_image_finish:
 
 .image_finish_x86vga:
         cp      P126_IMAGE_KIND_X86VGA
-        jr      nz,.image_finish_x86vid
+        jp      nz,.image_finish_x86vid
         ; Register the dynamic page only after fragment readback has passed.
         ld      a,5
         ld      b,#08
