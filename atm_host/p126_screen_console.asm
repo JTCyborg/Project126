@@ -24,6 +24,11 @@ P126_VIDEO_PAGE7   EQU #78          ; RAM page 7, inverted page number
 P126_VIDEO_PAGE3   EQU #7C          ; RAM page 3, inverted page number
 P126_HOST_PAGE5    EQU #7A          ; RAM page 5, host code at #6000
 P126_HOST_PAGE0    EQU #7F          ; RAM page 0, TR-DOS staging at #C000
+P126_ATM_TEXT_WIDTH EQU 80
+P126_ATM_TEXT_HEIGHT EQU 25
+P126_ATM_TEXT_FRAME_SIZE EQU 4000
+
+p126_atm_video_mode: db P126_ATM_VIDEO_MODE_RG6_TEXT80X25
 
 Console_X: db 0
 Console_Y: db BIOS_DEBUG_TOP
@@ -102,6 +107,8 @@ p126_atm_ports_open_done:
         ld      (hl), p126_atm_video_mode_ready >> 8
 
         ; ATM Turbo 2+ RG=6: hardware text 80x25.
+        ld      a,P126_ATM_VIDEO_MODE_RG6_TEXT80X25
+        ld      (p126_atm_video_mode),a
         ld      a, #C6
         jp      #FFEC
 
@@ -135,6 +142,8 @@ p126_atm_restore_dosen::
         ld      bc,#2A53
         push    bc
         ld      bc,#0177
+        ld      a,P126_ATM_VIDEO_MODE_RG6_TEXT80X25
+        ld      (p126_atm_video_mode),a
         ld      a,#C6
         jp      #3D2F
 p126_atm_restore_dosen_done:
