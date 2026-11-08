@@ -58,6 +58,12 @@ x86_exec_overlay_probe:
 x86_io_reset:
         ret
 
+; Audit-only keyboard input API stub. The production resident links the
+; real FIFO/IRQ1 implementation from the X86IO overlay.
+x86_io_keyboard_push_impl:
+        or      a                       ; report success, carry clear
+        ret
+
 ; Standalone IPC audit substitutes the fixed-origin X86DEV reset entry.
 x86_dev_reset:
         ret
