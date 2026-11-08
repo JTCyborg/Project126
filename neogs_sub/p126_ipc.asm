@@ -922,7 +922,7 @@ p126_ngs_image_finish:
         ld      a,1
         ld      (p126_ngs_io_overlay_ready),a
         ld      hl,p126_ngs_io_overlay_installed_log
-        jr      .image_finish_log
+        jp      .image_finish_log
 .image_finish_x86alu:
         cp      P126_IMAGE_KIND_X86ALU
         jr      nz,.image_finish_x86dev
