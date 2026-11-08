@@ -1296,6 +1296,130 @@ x86_vga_calc_write_plane_value:
         or      c
         ret
 
+; Save/restore-safe aperture regression. It tests planar writes to all four
+; interleaved planes, selected-plane reads, then chain-4 packed access at the
+; final 64 KiB aperture byte (AFFFFh -> VRAM offset 3FFFFh).
+x86_vga_aperture_selftest_impl:
+        ld      hl,(x86_phys_addr)
+        ld      (x86_vga_test_saved_phys),hl
+        ld      a,(x86_phys_addr+2)
+        ld      (x86_vga_test_saved_phys+2),a
+
+        ld      hl,#FFFC
+        ld      (x86_vga_vram_offset),hl
+        ld      a,3
+        ld      (x86_vga_vram_offset+2),a
+        call    x86_vga_vram_read_at_offset
+        ld      (x86_vga_test_saved_vram),a
+        call    x86_vga_increment_vram_offset
+        call    x86_vga_vram_read_at_offset
+        ld      (x86_vga_test_saved_vram+1),a
+        call    x86_vga_increment_vram_offset
+        call    x86_vga_vram_read_at_offset
+        ld      (x86_vga_test_saved_vram+2),a
+        call    x86_vga_increment_vram_offset
+        call    x86_vga_vram_read_at_offset
+        ld      (x86_vga_test_saved_vram+3),a
+
+        ; Select guest AFFFFh and standard planar write mode 0.
+        ld      hl,#FFFF
+        ld      (x86_phys_addr),hl
+        ld      a,#0A
+        ld      (x86_phys_addr+2),a
+        ld      a,4
+        ld      (x86_vga_gdc+6),a
+        xor     a
+        ld      (x86_vga_chain4),a
+        ld      (x86_vga_chain2_write),a
+        ld      (x86_vga_chain2_read),a
+        ld      (x86_vga_writemode),a
+        ld      (x86_vga_readmode),a
+        ld      (x86_vga_gdc+3),a
+        ld      (x86_vga_gdc+1),a
+        ld      (x86_vga_gdc),a
+        ld      (x86_vga_readplane),a
+        ld      a,#0F
+        ld      (x86_vga_writemask),a
+        ld      a,#FF
+        ld      (x86_vga_gdc+8),a
+
+        ld      a,#5A
+        call    x86_vga_mem_write8_impl
+        ld      a,0
+        ld      (x86_vga_readplane),a
+        call    x86_vga_mem_read8_impl
+        cp      #5A
+        jp      nz,.aperture_test_failed
+        ld      a,1
+        ld      (x86_vga_readplane),a
+        call    x86_vga_mem_read8_impl
+        cp      #5A
+        jp      nz,.aperture_test_failed
+        ld      a,2
+        ld      (x86_vga_readplane),a
+        call    x86_vga_mem_read8_impl
+        cp      #5A
+        jp      nz,.aperture_test_failed
+        ld      a,3
+        ld      (x86_vga_readplane),a
+        call    x86_vga_mem_read8_impl
+        cp      #5A
+        jp      nz,.aperture_test_failed
+
+        ; Chain-4 uses the same aperture address as a packed byte offset.
+        ld      a,1
+        ld      (x86_vga_chain4),a
+        ld      a,#A5
+        call    x86_vga_mem_write8_impl
+        call    x86_vga_mem_read8_impl
+        cp      #A5
+        jp      nz,.aperture_test_failed
+
+        xor     a
+        ld      (x86_vga_test_failed),a
+        jp      .aperture_test_restore
+.aperture_test_failed:
+        ld      a,1
+        ld      (x86_vga_test_failed),a
+.aperture_test_restore:
+        ; Restore all four bytes of physical VRAM at 3FFFCh..3FFFFh.
+        ld      hl,#FFFC
+        ld      (x86_vga_vram_offset),hl
+        ld      a,3
+        ld      (x86_vga_vram_offset+2),a
+        ld      a,(x86_vga_test_saved_vram)
+        ld      (x86_vga_vram_data),a
+        call    x86_vga_vram_write_at_offset
+        call    x86_vga_increment_vram_offset
+        ld      a,(x86_vga_test_saved_vram+1)
+        ld      (x86_vga_vram_data),a
+        call    x86_vga_vram_write_at_offset
+        call    x86_vga_increment_vram_offset
+        ld      a,(x86_vga_test_saved_vram+2)
+        ld      (x86_vga_vram_data),a
+        call    x86_vga_vram_write_at_offset
+        call    x86_vga_increment_vram_offset
+        ld      a,(x86_vga_test_saved_vram+3)
+        ld      (x86_vga_vram_data),a
+        call    x86_vga_vram_write_at_offset
+
+        ld      hl,(x86_vga_test_saved_phys)
+        ld      (x86_phys_addr),hl
+        ld      a,(x86_vga_test_saved_phys+2)
+        ld      (x86_phys_addr+2),a
+        call    x86_vga_reset_impl
+        ld      a,(x86_vga_test_failed)
+        or      a
+        jp      nz,.aperture_test_bad
+        ld      hl,#A55A
+        ld      a,#5A
+        or      a
+        ret
+.aperture_test_bad:
+        ld      a,#FF
+        scf
+        ret
+
 ; Register-file regression against the PCem-visible port protocol.
 ; OUT A=5Ah, HL=A55Ah on pass; carry set on failure. Restores reset state.
 x86_vga_register_selftest_impl:
@@ -1369,6 +1493,9 @@ x86_vga_register_selftest_impl:
         cp      #12
         jp      nz,.vga_test_fail
 
+        call    x86_vga_aperture_selftest_impl
+        jp      c,.vga_test_fail
+
         call    x86_vga_reset_impl
         ld      hl,#A55A
         ld      a,#5A
@@ -1437,6 +1564,9 @@ x86_vga_latch_temp:            db 0
 x86_vga_compare_accum:         db 0
 x86_vga_rotated_value:         db 0
 x86_vga_plane_bits:            db 1,2,4,8
+x86_vga_test_saved_phys:       defs 3,0
+x86_vga_test_saved_vram:       defs 4,0
+x86_vga_test_failed:           db 0
 
         ASSERT X86_VGA_VRAM_BYTES = #40000
         ASSERT X86_VGA_VRAM_PAGE_COUNT*#4000 = X86_VGA_VRAM_BYTES
