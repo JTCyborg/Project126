@@ -314,7 +314,12 @@ x86_io_read8_impl_device:
         ld      a,(x86_io_unhandled_logged)
         or      a
         jr      nz,.io_read8_unhandled_return
-        inc     a
+        ld      hl,(x86_io_port)
+        ld      de,(x86_io_unhandled_last_port)
+        or      a
+        sbc     hl,de
+        jr      nz,.io_read8_unhandled_track
+        ld      a,1
         ld      (x86_io_unhandled_logged),a
         ld      hl,x86_io_unhandled_read_text
         call    x86_io_log_string
@@ -322,6 +327,10 @@ x86_io_read8_impl_device:
         call    x86_io_log_hex16
         ld      hl,x86_io_unhandled_value_text
         call    x86_io_log_string
+        jr      .io_read8_unhandled_return
+.io_read8_unhandled_track:
+        ld      hl,(x86_io_port)
+        ld      (x86_io_unhandled_last_port),hl
 .io_read8_unhandled_return:
         ld      a,#FF
         ret
@@ -1723,6 +1732,7 @@ x86_io_pic_selftest_fail: db "[NGS] X86 PIC REGISTER SELFTEST FAIL",13,10,0
 x86_io_unhandled_read_text: db "[IO] UNHANDLED IN8 P=",0
 x86_io_unhandled_value_text: db " V=FF",13,10,0
 x86_io_unhandled_logged: db 0
+x86_io_unhandled_last_port: dw #FFFF
 x86_io_port: dw 0
 x86_io_diag_offset: dw 0
 x86_io_diag_remaining: db 0
