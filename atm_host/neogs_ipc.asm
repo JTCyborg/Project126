@@ -952,7 +952,7 @@ p126_ipc_debug_budget: db "[X86] BIOS PAUSED: 16-INSTRUCTION SLICE COMPLETE; CS:
 p126_ipc_debug_halted: db "[X86] BIOS HALTED BY GUEST; CS:IP=",0
 p126_ipc_debug_fault: db "[X86] BIOS STOPPED: OPCODE OR MEMORY FAULT; CS:IP=",0
 p126_ipc_debug_reset_fault: db "[X86] BIOS RESET VECTOR FAILED; CS:IP=",0
-p126_ipc_debug_event_missing: db "[X86] BIOS TRACE EVENT MISSING; CS:IP=",0
+p126_ipc_debug_event_missing: db "[X86] BIOS TRACE EVENT INVALID; FRAME=",0
 p126_ipc_debug_dma_failed: db "[X86] DIAGNOSTIC DMA FAILED",13,10,0
 p126_ipc_video_frame_applied: db "[VIDEO] RG6 FRAME APPLIED",13,10,0
 p126_ipc_video_dma_failed: db "[VIDEO] FRAME RECEIVE/APPLY FAILED",13,10,0
