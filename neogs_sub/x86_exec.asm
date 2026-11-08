@@ -190,7 +190,11 @@ x86_cpu_step_fetch_opcode:
         jp      x86_cpu_step_fetch_opcode
 
 .dispatch_opcode:
-        call    x86_dev_charge_guest_instruction
+        ; X86DEV is a WIN2 overlay: enter it only through the resident gate.
+        ld      a,P126_NGS_X86DEV_OVERLAY_SELECTOR
+        ld      (p126_overlay_request_selector),a
+        ld      ix,x86_dev_charge_guest_instruction_impl
+        call    p126_overlay_call
         ld      a,(x86_exec_opcode)
         cp      #06
         jp      c,x86_exec_add_family
