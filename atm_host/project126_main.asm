@@ -221,6 +221,22 @@ p126_host_video_mode_done:
 
 p126_host_idle:
         call    p126_catalog_poll_keyboard
+        ld      a,(p126_atm_video_enabled)
+        or      a
+        jr      z,.host_idle_continue
+        ld      a,(p126_host_video_poll_counter)
+        inc     a
+        ld      (p126_host_video_poll_counter),a
+        cp      64
+        jr      nz,.host_idle_continue
+        xor     a
+        ld      (p126_host_video_poll_counter),a
+        call    p126_ipc_dma_receive_video_frame
+        jr      nc,.host_idle_continue
+        ; Stop polling after one failed frame; never flood the host log.
+        xor     a
+        ld      (p126_atm_video_enabled),a
+.host_idle_continue:
         jr      p126_host_idle
 
 ; IN: HL=zero-terminated string. Writes to the lower on-screen log.
@@ -353,6 +369,7 @@ p126_log_video_done:    db "[BOOT] ATM VIDEO INIT DONE",13,10,0
 p126_log_rtc_done:      db "[BOOT] RTC PROBE RETURN",13,10,0
 p126_log_video_mode_sent: db "[BOOT] ATM VIDEO MODE SENT TO NEOGS",13,10,0
 p126_log_video_mode_failed: db "[BOOT] ATM VIDEO MODE SEND FAILED",13,10,0
+p126_host_video_poll_counter: db 0
 p126_log_console_begin: db "[BOOT] CONSOLE INIT BEGIN",13,10,0
 p126_log_console_done:  db "[BOOT] CONSOLE INIT DONE",13,10,0
 p126_log_catalog_return: db "[BOOT] CATALOG INIT RETURN",13,10,0
