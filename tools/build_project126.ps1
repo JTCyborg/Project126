@@ -61,7 +61,7 @@ try {
 
         Remove-Item -Force -ErrorAction SilentlyContinue $binary, $listing, $map
         if ($unit.Name -eq "NeoGS") {
-            Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $build "X86CORE.C"), (Join-Path $build "X86IO.C"), (Join-Path $build "X86ALU.C"), (Join-Path $build "X86DEV.C")
+            Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $build "X86CORE.C"), (Join-Path $build "X86IO.C"), (Join-Path $build "X86ALU.C"), (Join-Path $build "X86DEV.C"), (Join-Path $build "X86EXEC.C")
         }
 
         Write-Host "[BUILD] Project126 $($unit.Name) assembly"
@@ -96,7 +96,8 @@ try {
             $ioOverlay = Join-Path $build "X86IO.C"
             $aluOverlay = Join-Path $build "X86ALU.C"
             $devOverlay = Join-Path $build "X86DEV.C"
-            foreach ($image in @($residentImage, $ioOverlay, $aluOverlay, $devOverlay)) {
+            $execOverlay = Join-Path $build "X86EXEC.C"
+            foreach ($image in @($residentImage, $ioOverlay, $aluOverlay, $devOverlay, $execOverlay)) {
                 if (-not (Test-Path $image)) {
                     throw "Required split NeoGS image was not produced: $image"
                 }
@@ -105,6 +106,7 @@ try {
             $overlayBytes = (Get-Item $ioOverlay).Length
             $aluOverlayBytes = (Get-Item $aluOverlay).Length
             $devOverlayBytes = (Get-Item $devOverlay).Length
+            $execOverlayBytes = (Get-Item $execOverlay).Length
             if ($residentBytes -lt 1 -or $residentBytes -gt 0x4000) {
                 throw "X86CORE.C size $residentBytes is outside the 1..16384-byte WIN0 limit."
             }
@@ -121,6 +123,10 @@ try {
             Write-Host "[BUILD] X86IO.C overlay bytes=$overlayBytes / 4096"
             Write-Host "[BUILD] X86ALU.C overlay bytes=$aluOverlayBytes / 4096"
             Write-Host "[BUILD] X86DEV.C overlay bytes=$devOverlayBytes / 4096"
+            if ($execOverlayBytes -lt 1 -or $execOverlayBytes -gt 0x4000) {
+                throw "X86EXEC.C size $execOverlayBytes is outside the 1..16384-byte page-07 overlay profile."
+            }
+            Write-Host "[BUILD] X86EXEC.C overlay bytes=$execOverlayBytes / 16384"
         }
 
         Write-Host "[BUILD] $($unit.Version) audit-bytes=$size"
@@ -164,7 +170,8 @@ try {
     $moduleProfiles = @(
         @{ Id = 1; Page = 4; File = "X86IO.C" },
         @{ Id = 2; Page = 5; File = "X86ALU.C" },
-        @{ Id = 3; Page = 6; File = "X86DEV.C" }
+        @{ Id = 3; Page = 6; File = "X86DEV.C" },
+        @{ Id = 4; Page = 7; File = "X86EXEC.C" }
     )
     [System.Collections.Generic.List[byte]]$moduleManifest = [System.Collections.Generic.List[byte]]::new()
     # Header: "P126", format revision, record count, record size.
@@ -248,7 +255,8 @@ try {
         @{ Name = "X86IO   C"; Label = "X86IO.C" },
         @{ Name = "X86ALU  C"; Label = "X86ALU.C" },
         @{ Name = "X86DEV  C"; Label = "X86DEV.C" },
-        @{ Name = "X86MODS M"; Label = "X86MODS.M"; ExpectedLength = 31; ExpectedSectors = 1 },
+        @{ Name = "X86EXEC C"; Label = "X86EXEC.C" },
+        @{ Name = "X86MODS M"; Label = "X86MODS.M"; ExpectedLength = 39; ExpectedSectors = 1 },
         @{ Name = "P126BOOTC"; Label = "P126BOOT.C" },
         @{ Name = "BIOS1   C"; Label = "BIOS1.C"; ExpectedLength = 8192; ExpectedSectors = 32 },
         @{ Name = "BIOS2   C"; Label = "BIOS2.C"; ExpectedLength = 8192; ExpectedSectors = 32 },

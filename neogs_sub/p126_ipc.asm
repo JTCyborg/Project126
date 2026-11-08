@@ -559,6 +559,9 @@ p126_ngs_ipc_dispatch_once::
         ld      a,(p126_ngs_dev_overlay_ready)
         or      a
         jr      z,.ngs_frame_trace_ready
+        ld      a,(p126_ngs_exec_overlay_ready)
+        or      a
+        jr      z,.ngs_frame_trace_ready
         ld      a,(p126_ngs_bios_image_ready)
         or      a
         jr      z,.ngs_frame_trace_ready
@@ -660,6 +663,23 @@ p126_ngs_image_begin:
 .image_x86dev_size_ok:
         ld      a,P126_NGS_X86DEV_OVERLAY_SELECTOR
         ld      (p126_ngs_image_dest_selector),a
+        jr      .image_begin_common
+
+.image_begin_x86exec:
+        ld      hl,(#C016)
+        ld      a,h
+        or      l
+        jp      z,.image_begin_bad
+        ld      de,P126_IMAGE_X86EXEC_MAX_SIZE
+        or      a
+        sbc     hl,de
+        jr      c,.image_x86exec_size_ok
+        jr      z,.image_x86exec_size_ok
+        jp      .image_begin_bad
+.image_x86exec_size_ok:
+        ld      a,P126_NGS_X86EXEC_OVERLAY_SELECTOR
+        ld      (p126_ngs_image_dest_selector),a
+        jr      .image_begin_common
 
 .image_begin_common:
         ld      hl,(#C012)
@@ -931,6 +951,8 @@ p126_ngs_image_finish:
         jr      .image_finish_bad
 
 .image_finish_x86dev:
+        cp      P126_IMAGE_KIND_X86DEV
+        jr      nz,.image_finish_x86exec
         ; Page06 must be callable through the resident gate and return to the
         ; prior page04 selector. Run both register-model self-tests before ready.
         call    x86_dev_reset
@@ -949,6 +971,27 @@ p126_ngs_image_finish:
         ld      hl,p126_ngs_image_finish_log
         jr      .image_finish_log
 .image_finish_dev_probe_bad:
+        jp      .image_finish_bad
+
+.image_finish_x86exec:
+        ; Page07 contains the complete 8086 dispatcher. Probe it through the
+        ; resident WIN2 gate and verify the prior X86IO mapping is restored.
+        ld      a,P126_NGS_X86EXEC_OVERLAY_SELECTOR
+        ld      (p126_overlay_request_selector),a
+        ld      ix,x86_exec_overlay_probe
+        call    p126_overlay_call
+        cp      #E7
+        jr      nz,.image_finish_exec_probe_bad
+        ld      a,(p126_overlay_current_selector)
+        cp      P126_NGS_X86IO_OVERLAY_SELECTOR
+        jr      nz,.image_finish_exec_probe_bad
+        ld      a,1
+        ld      (p126_ngs_exec_overlay_ready),a
+        ld      hl,p126_ngs_exec_overlay_installed_log
+        jr      .image_finish_log
+.image_finish_exec_probe_bad:
+        ld      hl,p126_ngs_exec_overlay_probe_fail_log
+        call    p126_ngs_ipc_log
         jp      .image_finish_bad
 
 .image_finish_log:
@@ -1211,6 +1254,7 @@ p126_ngs_bios_image_ready:   db 0
 p126_ngs_io_overlay_ready:   db 0
 p126_ngs_alu_overlay_ready:  db 0
 p126_ngs_dev_overlay_ready:  db 0
+p126_ngs_exec_overlay_ready: db 0
 p126_ngs_image_id:           dw 0
 p126_ngs_image_size:         dw 0
 p126_ngs_image_kind:         db 0
@@ -1227,6 +1271,8 @@ p126_ngs_io_overlay_verify_ok_log: db "[NGS] X86IO RD OK",13,10,0
 p126_ngs_alu_overlay_verify_ok_log: db "[NGS] X86ALU RD OK",13,10,0
 p126_ngs_alu_overlay_installed_log: db "[NGS] X86ALU GATE OK",13,10,0
 p126_ngs_alu_overlay_probe_fail_log: db "[NGS] X86ALU GATE FAIL",13,10,0
+p126_ngs_exec_overlay_installed_log: db "[NGS] X86EXEC PAGE07 GATE OK",13,10,0
+p126_ngs_exec_overlay_probe_fail_log: db "[NGS] X86EXEC GATE FAIL",13,10,0
 p126_ngs_image_begin_rejected_log: db "[NGS] IMG BEGIN BAD",13,10,0
 p126_ngs_image_fragment_rejected_log: db "[NGS] IMG FRAG BAD",13,10,0
 p126_ngs_image_finish_rejected_log: db "[NGS] IMG FINISH BAD",13,10,0

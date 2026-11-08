@@ -69,6 +69,8 @@ p126_ngs_resident_start:
         ld      bc,8
         ld      (hl),a
         ldir
+        ld      a,1                      ; page07 is pinned to X86EXEC
+        ld      (p126_overlay_alloc_state),a
         call    p126_overlay_allocator_selftest
         jr      c,.p126_allocator_selftest_failed
         ld      hl,p126_ngs_resident_allocator_ok
@@ -108,6 +110,9 @@ p126_ngs_resident_main_loop:
         or      a
         jr      z,p126_ngs_resident_main_loop
         ld      a,(p126_ngs_dev_overlay_ready)
+        or      a
+        jr      z,p126_ngs_resident_main_loop
+        ld      a,(p126_ngs_exec_overlay_ready)
         or      a
         jr      z,p126_ngs_resident_main_loop
         ld      a,(p126_ngs_bios_image_ready)
@@ -206,9 +211,8 @@ x86_cpu_state_module_start:
         INCLUDE "neogs_sub/x86_cpu_state.asm"
 x86_cpu_state_module_end:
 
-x86_cpu_exec_module_start:
-        INCLUDE "neogs_sub/x86_exec.asm"
-x86_cpu_exec_module_end:
+; Resident fetch API, dispatcher gate and trace-visible execution state.
+        INCLUDE "neogs_sub/x86_exec_resident.asm"
 
 x86_modrm_module_start:
         INCLUDE "neogs_sub/x86_modrm.asm"
@@ -225,6 +229,14 @@ p126_ngs_ipc_module_end:
 ; Fixed-origin overlays share logical origin 8000h but are loaded into
 ; separate physical pages: X86IO/page04 and X86ALU/page05.
         ASSERT p126_ngs_ipc_module_end <= #4000
+
+; 8086 instruction dispatcher, moved out of the resident image.
+        ORG     #8000
+x86_cpu_exec_module_start:
+        INCLUDE "neogs_sub/x86_exec.asm"
+x86_cpu_exec_module_end:
+        SAVEBIN "build/X86EXEC.C",x86_cpu_exec_module_start,x86_cpu_exec_module_end-x86_cpu_exec_module_start
+
         ORG     #8000
 x86_io_module_start:
         INCLUDE "neogs_sub/x86_io.asm"
@@ -281,10 +293,11 @@ x86_dev_module_end:
     ASSERT p126_ngs_resident_entry_vector = 0
     ASSERT x86_cpu_state_module_start > p126_ngs_resident_entry_vector
     ASSERT x86_cpu_state_module_end > x86_cpu_state_module_start
-    ASSERT x86_cpu_exec_module_end > x86_cpu_exec_module_start
-    ASSERT x86_cpu_exec_module_start = x86_cpu_state_module_end
     ASSERT x86_modrm_module_end > x86_modrm_module_start
-    ASSERT x86_modrm_module_start = x86_cpu_exec_module_end
+    ASSERT x86_cpu_exec_module_start = #8000
+    ASSERT x86_cpu_exec_module_end > x86_cpu_exec_module_start
+    ASSERT x86_cpu_exec_module_end <= #C000
+    ASSERT x86_cpu_exec_module_end-x86_cpu_exec_module_start <= P126_IMAGE_X86EXEC_MAX_SIZE
         ASSERT p126_ngs_ipc_module_end > p126_ngs_ipc_module_start
     ASSERT p126_ngs_ipc_module_start = x86_modrm_module_end
     ASSERT p126_ngs_ipc_module_end <= #4000

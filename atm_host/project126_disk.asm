@@ -92,6 +92,16 @@ p126_x86dev_file_end:
         ASSERT p126_x86dev_file_end-p126_x86dev_file_start <= #1000
         SAVETRD "disk_A.trd", "X86DEV.C", #C000, p126_x86dev_file_end-p126_x86dev_file_start
 
+; 8086 instruction dispatcher overlay, pinned to physical page07.
+        PAGE 7
+        ORG #C000
+p126_x86exec_file_start:
+        INCBIN "build/X86EXEC.C"
+p126_x86exec_file_end:
+        ASSERT p126_x86exec_file_end > p126_x86exec_file_start
+        ASSERT p126_x86exec_file_end-p126_x86exec_file_start <= #4000
+        SAVETRD "disk_A.trd", "X86EXEC.C", #C000, p126_x86exec_file_end-p126_x86exec_file_start
+
 ; Versioned directory for the currently packaged NeoGS overlay modules.
 ; Runtime parsing/automatic loading is a later implementation phase.
         PAGE 7
@@ -99,7 +109,7 @@ p126_x86dev_file_end:
 p126_x86mods_file_start:
         INCBIN "build/X86MODS.MF"
 p126_x86mods_file_end:
-        ASSERT p126_x86mods_file_end-p126_x86mods_file_start = 7+3*8
+        ASSERT p126_x86mods_file_end-p126_x86mods_file_start = 7+4*8
         SAVETRD "disk_A.trd", "X86MODS.M", #C000, p126_x86mods_file_end-p126_x86mods_file_start
 
 ; Three 8 KiB BIOS images, packaged under TR-DOS-compatible 8.3 names.
