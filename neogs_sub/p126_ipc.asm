@@ -605,6 +605,8 @@ p126_ngs_image_begin:
         jr      z,.image_begin_x86dev
         cp      P126_IMAGE_KIND_X86EXEC
         jr      z,.image_begin_x86exec
+        cp      P126_IMAGE_KIND_X86VGA
+        jr      z,.image_begin_x86vga
         jp      .image_begin_bad
 
 .image_begin_sysbios:
@@ -678,6 +680,22 @@ p126_ngs_image_begin:
         jr      z,.image_begin_common
         jp      .image_begin_bad
 
+.image_begin_x86vga:
+        ; Dynamic VGA overlay is installed on allocator page08h.
+        ld      a,(#C015)
+        cp      #08
+        jp      nz,.image_begin_bad
+        ld      hl,(#C016)
+        ld      a,h
+        or      l
+        jp      z,.image_begin_bad
+        ld      de,P126_IMAGE_X86VGA_MAX_SIZE
+        or      a
+        sbc     hl,de
+        jr      c,.image_begin_common
+        jr      z,.image_begin_common
+        jp      .image_begin_bad
+
 .image_begin_common:
         ; MPAGEX selector is ROR8(physical page), independent of WIN2 selector.
         ld      a,(#C015)
@@ -719,9 +737,15 @@ p126_ngs_image_begin:
         jr      .image_begin_ack
 .image_begin_not_x86dev:
         cp      P126_IMAGE_KIND_X86EXEC
-        jr      nz,.image_begin_ack
+        jr      nz,.image_begin_not_x86exec
         xor     a
         ld      (p126_ngs_exec_overlay_ready),a
+        jr      .image_begin_ack
+.image_begin_not_x86exec:
+        cp      P126_IMAGE_KIND_X86VGA
+        jr      nz,.image_begin_ack
+        xor     a
+        ld      (p126_ngs_vga_overlay_ready),a
 .image_begin_ack:
         xor     a
         out     (P126_NGS_CLRCBIT),a
@@ -983,6 +1007,8 @@ p126_ngs_image_finish:
         jp      .image_finish_bad
 
 .image_finish_x86exec:
+        cp      P126_IMAGE_KIND_X86EXEC
+        jr      nz,.image_finish_x86vga
         ; Page07 contains the complete 8086 dispatcher. Probe it through the
         ; resident WIN2 gate and verify the prior X86IO mapping is restored.
         ld      a,P126_NGS_X86EXEC_OVERLAY_SELECTOR
@@ -1001,6 +1027,33 @@ p126_ngs_image_finish:
 .image_finish_exec_probe_bad:
         ld      hl,p126_ngs_exec_overlay_probe_fail_log
         call    p126_ngs_ipc_log
+        jp      .image_finish_bad
+
+.image_finish_x86vga:
+        cp      P126_IMAGE_KIND_X86VGA
+        jp      nz,.image_finish_bad
+        ; Register the dynamic page only after fragment readback has passed.
+        ld      a,5
+        ld      b,#08
+        call    p126_overlay_register_dynamic
+        jp      c,.image_finish_bad
+        ; Probe through the normal resident gate before publishing READY.
+        ld      a,5
+        ld      ix,x86_vga_overlay_probe
+        call    p126_overlay_call_module
+        cp      #56
+        jr      nz,.image_finish_vga_probe_bad
+        ld      de,#A55A
+        or      a
+        sbc     hl,de
+        jr      nz,.image_finish_vga_probe_bad
+        ld      a,1
+        ld      (p126_ngs_vga_overlay_ready),a
+        ld      hl,p126_ngs_vga_overlay_installed_log
+        jr      .image_finish_log
+.image_finish_vga_probe_bad:
+        ld      a,5
+        call    p126_overlay_unregister_dynamic
         jp      .image_finish_bad
 
 .image_finish_log:
@@ -1264,6 +1317,7 @@ p126_ngs_io_overlay_ready:   db 0
 p126_ngs_alu_overlay_ready:  db 0
 p126_ngs_dev_overlay_ready:  db 0
 p126_ngs_exec_overlay_ready: db 0
+p126_ngs_vga_overlay_ready:  db 0
 p126_ngs_image_id:           dw 0
 p126_ngs_image_size:         dw 0
 p126_ngs_image_kind:         db 0
@@ -1282,6 +1336,7 @@ p126_ngs_alu_overlay_installed_log: db "[NGS] X86ALU GATE OK",13,10,0
 p126_ngs_alu_overlay_probe_fail_log: db "[NGS] X86ALU GATE FAIL",13,10,0
 p126_ngs_exec_overlay_installed_log: db "[NGS] X86EXEC PAGE07 GATE OK",13,10,0
 p126_ngs_exec_overlay_probe_fail_log: db "[NGS] X86EXEC GATE FAIL",13,10,0
+p126_ngs_vga_overlay_installed_log: db "[NGS] X86VGA DYNAMIC PAGE08 GATE OK",13,10,0
 p126_ngs_image_begin_rejected_log: db "[NGS] IMG BEGIN BAD",13,10,0
 p126_ngs_image_fragment_rejected_log: db "[NGS] IMG FRAG BAD",13,10,0
 p126_ngs_image_finish_rejected_log: db "[NGS] IMG FINISH BAD",13,10,0
