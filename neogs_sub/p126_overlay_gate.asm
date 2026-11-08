@@ -573,6 +573,37 @@ x86_dev_write8:
         pop     ix
         ret
 
+; VGA register access API; X86VGA is dynamically registered on page08h.
+; The selector is derived from the agreed physical page and all calls still
+; pass through the resident nested overlay gate.
+x86_vga_io_read8:
+        push    af
+        push    ix
+        ld      a,P126_NGS_X86VGA_OVERLAY_PAGE
+        rrca
+        ld      (p126_overlay_request_selector),a
+        pop     ix
+        pop     af
+        push    ix
+        ld      ix,x86_vga_io_read8_impl
+        call    p126_overlay_call
+        pop     ix
+        ret
+
+x86_vga_io_write8:
+        push    af
+        push    ix
+        ld      a,P126_NGS_X86VGA_OVERLAY_PAGE
+        rrca
+        ld      (p126_overlay_request_selector),a
+        pop     ix
+        pop     af
+        push    ix
+        ld      ix,x86_vga_io_write8_impl
+        call    p126_overlay_call
+        pop     ix
+        ret
+
 ; X86ALU public entry points; implementations live on physical page 05h.
 x86_alu_add8:
         push    af
