@@ -79,7 +79,7 @@ p126_ngs_resident_start:
 .p126_allocator_selftest_failed:
         ld      hl,p126_ngs_resident_allocator_bad
         call    p126_ngs_resident_log
-        jr      p126_ngs_resident_halt
+        jp      p126_ngs_resident_halt
 .p126_allocator_selftest_done:
         call    p126_overlay_manager_selftest
         jp      c,.p126_module_manager_selftest_failed
@@ -89,7 +89,7 @@ p126_ngs_resident_start:
 .p126_module_manager_selftest_failed:
         ld      hl,p126_ngs_resident_module_manager_bad
         call    p126_ngs_resident_log
-        jr      p126_ngs_resident_halt
+        jp      p126_ngs_resident_halt
 .p126_module_manager_selftest_done:
 
         ld      hl,p126_ngs_resident_banner
@@ -151,14 +151,14 @@ p126_ngs_resident_frame_error:
 p126_ngs_resident_crc_fail:
         ld      hl,p126_ngs_resident_crc_bad
         call    p126_ngs_resident_log
-        jr      p126_ngs_resident_halt
+        jp      p126_ngs_resident_halt
 p126_ngs_resident_ack_fail:
         ld      hl,p126_ngs_resident_ack_bad
         call    p126_ngs_resident_log
 p126_ngs_resident_halt:
         di
         halt
-        jr      p126_ngs_resident_halt
+        jp      p126_ngs_resident_halt
 
 p126_ngs_resident_log:
         push    af
