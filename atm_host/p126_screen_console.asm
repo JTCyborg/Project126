@@ -29,6 +29,7 @@ P126_ATM_TEXT_HEIGHT EQU 25
 P126_ATM_TEXT_FRAME_SIZE EQU 4000
 
 p126_atm_video_mode: db P126_ATM_VIDEO_MODE_RG6_TEXT80X25
+p126_screen_frame_char: db 0
 p126_screen_frame_char_ptr: dw 0
 p126_screen_frame_attr_ptr: dw 0
 p126_screen_frame_row:      db 0
@@ -594,6 +595,7 @@ p126_screen_apply_text_frame::
 .apply_text_col:
         ld      hl,(p126_screen_frame_char_ptr)
         ld      a,(hl)
+        ld      (p126_screen_frame_char),a
         inc     hl
         ld      (p126_screen_frame_char_ptr),hl
         ld      hl,(p126_screen_frame_attr_ptr)
@@ -604,6 +606,7 @@ p126_screen_apply_text_frame::
         ld      d,a
         ld      a,(p126_screen_frame_col)
         ld      e,a
+        ld      a,(p126_screen_frame_char)
         call    p126_screen_write_guest_cell
         ld      a,(p126_screen_frame_col)
         inc     a
