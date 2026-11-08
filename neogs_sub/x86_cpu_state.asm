@@ -656,7 +656,6 @@ x86_bios_trace_event_ip:     dw 0
 ; Emit the post-instruction CS:IP on the independent NeoGS #EF channel.
 x86_bios_trace_log_cs_ip:
         push    af
-        push    de
         push    hl
         ld      hl,x86_bios_trace_cs_ip_prefix
         call    p126_ngs_resident_log
@@ -666,20 +665,11 @@ x86_bios_trace_log_cs_ip:
         call    x86_bios_trace_emit_char
         ld      hl,(x86_reg_ip)
         call    x86_bios_trace_emit_hex16
-        ld      hl,x86_bios_trace_cs_ip_dx_text
-        call    p126_ngs_resident_log
-        ld      hl,(x86_reg_dx)
-        call    x86_bios_trace_emit_hex16
-        ld      hl,x86_bios_trace_cs_ip_flags_text
-        call    p126_ngs_resident_log
-        ld      hl,(x86_reg_flags)
-        call    x86_bios_trace_emit_hex16
         ld      a,13
         call    x86_bios_trace_emit_char
         ld      a,10
         call    x86_bios_trace_emit_char
         pop     hl
-        pop     de
         pop     af
         ret
 
@@ -855,8 +845,6 @@ x86_bios_trace_slice_remaining: db 0
 x86_bios_trace_stop_kind: db 0
 x86_bios_trace_start_log: db "[NGS] X86 BIOS CONTINUOUS EXECUTION START",13,10,0
 x86_bios_trace_cs_ip_prefix: db "[X86] CS:IP=",0
-x86_bios_trace_cs_ip_dx_text: db " DX=",0
-x86_bios_trace_cs_ip_flags_text: db " FLAGS=",0
 x86_bios_trace_fault_log: db "[NGS] X86 BIOS TRACE STOP: OPCODE OR MEMORY FAULT",13,10,0
 x86_bios_trace_halted_log: db "[NGS] X86 BIOS EXECUTION HALTED BY GUEST",13,10,0
 x86_bios_trace_watchdog_log: db "[NGS] X86 BIOS DIAGNOSTIC STOP",13,10,0
