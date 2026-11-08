@@ -2471,8 +2471,7 @@ x86_exec_interrupt:
         ret     c
         ld      (x86_exec_target_ip),hl
         ld      hl,(x86_exec_ivt_offset)
-        inc     hl
-        inc     hl
+        inc     hl                    ; read_ivt_word already advanced offset by one
         ld      (x86_exec_ivt_offset),hl
         ld      de,(x86_exec_ivt_offset)
         call    x86_exec_read_ivt_word
