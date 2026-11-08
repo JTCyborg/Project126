@@ -267,6 +267,14 @@ x86_dev_module_start:
 x86_dev_module_end:
         SAVEBIN "build/X86DEV.C",x86_dev_module_start,x86_dev_module_end-x86_dev_module_start
 
+; VGA is a dynamic overlay: module ID05, allocator page08. It is kept
+; separate from X86DEV so the 4 KiB device overlay limit remains intact.
+        ORG     #8000
+x86_vga_module_start:
+        INCLUDE "neogs_sub/x86_vga.asm"
+x86_vga_module_end:
+        SAVEBIN "build/X86VGA.C",x86_vga_module_start,x86_vga_module_end-x86_vga_module_start
+
 ; The stage-0 loader receives only X86CORE.C at logical origin 0000h.
         SAVEBIN "build/x86_cpu_state.bin",0,p126_ngs_ipc_module_end
         SAVEBIN "build/X86CORE.C",0,p126_ngs_ipc_module_end
