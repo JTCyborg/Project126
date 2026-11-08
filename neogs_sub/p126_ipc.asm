@@ -1604,6 +1604,7 @@ p126_ngs_image_kind:         db 0
 p126_ngs_image_dest_selector: db 0
 p126_ngs_image_verify_count: dw 0
 p126_ngs_image_verify_byte:  db 0
+p126_ngs_input_keyboard_log: db "[NGS] X86 KEY EVENT",13,10,0
 p126_ngs_image_begin_log:    db "[NGS] IMG BEGIN",13,10,0
 p126_ngs_image_fragment_log: db "[NGS] IMG FRAG",13,10,0
 p126_ngs_image_finish_log:   db "[NGS] IMG FINISH",13,10,0
