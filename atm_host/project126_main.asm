@@ -48,7 +48,7 @@ p126_host_entry:
         ld      hl, p126_log_ngs_begin
         call    p126_host_debug_string
         call    p126_neogs_startup
-        jr      c,p126_host_ngs_start_failed
+        jp      c,p126_host_ngs_start_failed
         ld      a,1
         ld      (p126_host_ngs_ready),a
         ld      hl,p126_log_ngs_ready
