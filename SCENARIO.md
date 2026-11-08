@@ -1574,3 +1574,12 @@ The temporary diagnostic is therefore moved back to the first terminator and now
 - Added `x86_io_snapshot_counters` as a resident overlay-gate API. The X86IO implementation copies both counters and the last guest port into resident X86CPU diagnostic storage while page04 is mapped; the watchdog then formats only those resident snapshots.
 - This is a diagnostics correctness fix, not a PIT behavior change. The current BIOS wait at `F000:FA18` remains unresolved until a new target log reports reliable I/O totals and the next targeted port-write trace can be selected.
 - Commits: `616a47c08fdbdbcd3161ea5f929bcceaa03b34e5` (resident snapshot use), `a4782887a108efe3e4db5826c8cf1d36fff125ed` (X86IO snapshot routine), `0e985da3c13eb1efb4546a0f673b7fa4f6069b41` (overlay-gate API), `d0aaefca8b8cacd52df44a2ff6e4e3eab165373c` (resident last-port snapshot), and `e0fddfa891388d90e42a4f9e23c2f7b472c41efc` (X86IO last-port copy). Assembly and ATM/NeoGS target retest are pending; no build or BIOS POST pass is claimed.
+
+
+## 2026-11-08 — Targeted guest PIT/PPI OUT diagnostics
+
+- Re-read `spectrum_out.txt` after the overlay-safe snapshot fix. The diagnostic payload contains `IN=0C34`, total guest `OUT=0036` (54 writes), last I/O port `0062`, and guest `AL=06`. The old label text `OUT= P=` had placed the count after the `P=` label, making the OUT field look blank; this was a formatting ambiguity, not evidence of zero OUT operations.
+- The BIOS still loops at `F000:FA18`; bit 5 of port `62h` remains clear. The existing aggregate count and last-I/O-port value do not establish whether PIT programming writes reached `42h`/`43h` or whether PPI port `61h` was changed.
+- Added per-run counters for guest byte writes to `42h`, `43h`, and `61h`, plus last guest OUT port/value. The terminal diagnostic now prints these values as `[GUEST OUT] 42=.... 43=.... 61=....` and the last OUT port/value separately from the last general I/O port.
+- Commits: `13f7989e7584fba984f9f79fba959720823959d5` (targeted write counters), `42913b37d879ec40c3f59101f44669d7f082ca38` (diagnostic output), `3d3ff9aff2840a9b5f2a2a27daf6e15ee56b3104` (byte-safe reset).
+- Build and ATM/NeoGS target retest are pending. No PIT behavior was changed and no BIOS POST pass is claimed.
