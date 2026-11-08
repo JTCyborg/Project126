@@ -507,7 +507,15 @@ x86_vga_normalize_port:
         jr      nc,.port_bad
         ld      a,(x86_vga_miscout)
         bit     0,a
-        jr      z,.port_bad
+        jr      nz,.port_good
+        ; The fixed 3D0-3DF handler remains installed; when mono is active
+        ; this colour block aliases to the inactive 3B0-3BF range and reads
+        ; as open bus / ignores writes, rather than falling through to a
+        ; second software device.
+        ld      a,l
+        xor     #60
+        ld      l,a
+        ld      (x86_vga_port),hl
         jr      .port_good
 .port_mono_alias:
         ld      a,l
