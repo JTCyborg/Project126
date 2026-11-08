@@ -1168,17 +1168,17 @@ p126_neogs_send_video_mode::
         push    bc
         push    de
         push    hl
-        ld      hl,P126_BIOS_FRAME+P126_IPC_HEADER_SIZE
+        ld      hl,#C000+P126_IPC_HEADER_SIZE
         ld      a,P126_VIDEO_DESC_VERSION
         ld      (hl),a
         inc     hl
         ld      a,(p126_atm_video_mode)
         ld      (hl),a
         inc     hl
-        ld      a,P126_ATM_TEXT_WIDTH
+        ld      a,P126_VIDEO_TEXT80_WIDTH
         ld      (hl),a
         inc     hl
-        ld      a,P126_ATM_TEXT_HEIGHT
+        ld      a,P126_VIDEO_TEXT80_HEIGHT
         ld      (hl),a
         inc     hl
         ld      a,P126_VIDEO_FORMAT_TEXT80X25
@@ -1187,8 +1187,8 @@ p126_neogs_send_video_mode::
         xor     a
         ld      (hl),a
         inc     hl
-        ld      hl,P126_ATM_TEXT_FRAME_SIZE
-        ld      (P126_BIOS_FRAME+P126_IPC_HEADER_SIZE+6),hl
+        ld      hl,P126_VIDEO_TEXT80_FRAME_SIZE
+        ld      (#C000+P126_IPC_HEADER_SIZE+6),hl
         xor     a
         ld      (p126_bios_frame_flags),a
         ld      a,P126_OP_VIDEO_MODE
