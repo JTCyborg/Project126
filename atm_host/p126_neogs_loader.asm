@@ -272,7 +272,7 @@ p126_neogs_startup::
 
 ; -------------------------------------------------------------------------
 ; Version-1 X86MODS.M loader and validator.
-; Layout: 7-byte header followed by five 8-byte records:
+; Layout: 7-byte header followed by six 8-byte records:
 ; id, physical page, flags, reserved, size16, CRC16/CCITT-FALSE.
 ; -------------------------------------------------------------------------
 p126_neogs_load_manifest:
@@ -287,7 +287,7 @@ p126_neogs_load_manifest:
         ld      (p126_neogs_file_extension),a
         call    p126_neogs_open_file
         ret     c
-        ; V remains active only while checking the exact 39-byte file size.
+        ; V remains active only while checking the exact 55-byte file size.
         ld      a,'V'
         ld      (p126_neogs_startup_stage),a
         ld      hl,(p126_neogs_file_length)
@@ -297,7 +297,7 @@ p126_neogs_load_manifest:
         jp      nz,.manifest_bad
         ld      hl,#C000
         ld      de,p126_neogs_manifest
-        ld      bc,47
+        ld      bc,55
         ldir
 
         ld      hl,p126_neogs_manifest
