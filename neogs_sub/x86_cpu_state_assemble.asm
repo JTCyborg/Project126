@@ -125,6 +125,9 @@ p126_ngs_resident_main_loop:
         ld      a,(p126_ngs_exec_overlay_ready)
         or      a
         jr      z,p126_ngs_resident_main_loop
+        ld      a,(p126_ngs_vga_overlay_ready)
+        or      a
+        jr      z,p126_ngs_resident_main_loop
         ld      a,(p126_ngs_bios_image_ready)
         or      a
         jr      z,.check_bios_running
