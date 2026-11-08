@@ -304,7 +304,7 @@ p126_ipc_validate_frame::
         ld      de,(p126_ipc_crc_expected)
         or      a
         sbc     hl,de
-        jr      nz,.p126_frame_crc_bad
+        jp      nz,.p126_frame_crc_bad
         xor     a
         ret
 .p126_frame_magic:
@@ -624,7 +624,7 @@ p126_ipc_dma_receive_test::
         call    p126_ipc_send_command
         jr      nc,.rx_ready
         ld      a,1
-        jr      .rx_failed
+        jp      .rx_failed
 .rx_ready:
         ; Project125 disables IM1 before the first ROM-aperture read; an
         ; interrupt would fetch NeoGS DMA bytes at #0038h instead of ROM.
@@ -641,7 +641,7 @@ p126_ipc_dma_receive_test::
         call    p126_ipc_send_command
         jr      nc,.rx_end_ack
         ld      a,2
-        jr      .rx_failed
+        jp      .rx_failed
 .rx_end_ack:
         ld      a,2
         ld      (p126_ipc_dma_rx_stage),a
@@ -707,7 +707,7 @@ p126_ipc_dma_rx_error: db 0
 p126_ipc_dma_receive_debug_frame::
         ld      a,P126_CMD_NGS_FRAME
         call    p126_ipc_send_command
-        jr      c,.debug_dma_failed
+        jp      c,.debug_dma_failed
 
         ; Reverse DMA reads the complete 16 KiB frame from the ROM aperture.
         ; The first aperture read is discarded by the documented GS ABI.
@@ -721,12 +721,12 @@ p126_ipc_dma_receive_debug_frame::
 
         ld      a,P126_CMD_DMA_END
         call    p126_ipc_send_command
-        jr      c,.debug_dma_failed
+        jp      c,.debug_dma_failed
 
         ld      hl,P126_IPC_DMA_RX_BUFFER
         ld      bc,P126_IPC_MAX_FRAME_SIZE
         call    p126_ipc_validate_frame
-        jr      c,.debug_dma_failed
+        jp      c,.debug_dma_failed
 
         ; Decode the compact stop event from the first five payload bytes.
         ld      a,(P126_IPC_DMA_RX_BUFFER+P126_IPC_HEADER_SIZE)
