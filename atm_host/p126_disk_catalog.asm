@@ -165,7 +165,7 @@ p126_catalog_poll_keyboard::
         ; The catalogue is a one-shot boot UI. Clear it, then request the
         ; bounded BIOS stop record over the established reverse-DMA path.
         ; The resident executes the pending BIOS slice before answering E1.
-        call    BIOS_DebugConsole_Clear
+        call    p126_screen_clear_guest_display
         call    p126_ipc_dma_receive_debug_frame
         ; The BIOS stop slice has populated VGA text memory. Convert and
         ; transfer that screen into the active ATM RG6 80x25 text pages.
