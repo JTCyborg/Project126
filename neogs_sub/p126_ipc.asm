@@ -677,10 +677,14 @@ p126_ngs_ipc_dispatch_once::
         ld      a,(p126_ngs_exec_overlay_ready)
         or      a
         jr      z,.ngs_frame_trace_ready
+        ; 0=BIOS image not installed, 1=installed/not started, 2=running.
+        ; Keep the startup trace visible, then stop NeoGS #EF chatter: ATM and
+        ; NeoGS writes share the emulator's merged debug stream and otherwise
+        ; interleave with the host's per-byte IPC/CRC diagnostics.
         ld      a,(p126_ngs_bios_image_ready)
-        or      a
-        jr      z,.ngs_frame_trace_ready
-        xor     a
+        cp      1
+        jr      nz,.ngs_frame_trace_ready
+        ld      a,2
         ld      (p126_ngs_bios_image_ready),a
         call    x86_bios_startup_trace
 .ngs_frame_trace_ready:
@@ -1704,6 +1708,9 @@ p126_ngs_ipc_log_hex_nibble:
 p126_ngs_ipc_log:
         push    af
         push    bc
+        ld      a,(p126_ngs_bios_image_ready)
+        cp      2
+        jr      z,.p126_ngs_ipc_log_suppressed
         ld      bc,#00EF
 .p126_ngs_ipc_log_loop:
         ld      a,(hl)
@@ -1713,6 +1720,15 @@ p126_ngs_ipc_log:
         out     (c),a
         jr      .p126_ngs_ipc_log_loop
 .p126_ngs_ipc_log_done:
+        pop     bc
+        pop     af
+        ret
+.p126_ngs_ipc_log_suppressed:
+        ; Retain the logger's documented HL-to-NUL behavior without output.
+        ld      a,(hl)
+        inc     hl
+        or      a
+        jr      nz,.p126_ngs_ipc_log_suppressed
         pop     bc
         pop     af
         ret
