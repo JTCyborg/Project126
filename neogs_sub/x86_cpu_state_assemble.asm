@@ -82,7 +82,7 @@ p126_ngs_resident_start:
         jr      p126_ngs_resident_halt
 .p126_allocator_selftest_done:
         call    p126_overlay_manager_selftest
-        jr      c,.p126_module_manager_selftest_failed
+        jp      c,.p126_module_manager_selftest_failed
         ld      hl,p126_ngs_resident_module_manager_ok
         call    p126_ngs_resident_log
         jr      .p126_module_manager_selftest_done
