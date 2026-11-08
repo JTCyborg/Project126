@@ -484,10 +484,28 @@ x86_bios_trace_log_io_counts:
         call    p126_ngs_resident_log
         ld      hl,(x86_bios_trace_io_out_snapshot)
         call    x86_bios_trace_emit_hex16
-        ld      hl,(x86_bios_trace_io_port_snapshot)
+        ld      hl,x86_bios_trace_io_last_out_text
+        call    p126_ngs_resident_log
+        ld      hl,(x86_bios_trace_io_last_out_port_snapshot)
         call    x86_bios_trace_emit_hex16
-        ld      a,(x86_reg_ax)
+        ld      a,(x86_bios_trace_io_last_out_value_snapshot)
         call    x86_bios_trace_emit_hex8
+        ld      a,13
+        call    x86_bios_trace_emit_char
+        ld      a,10
+        call    x86_bios_trace_emit_char
+        ld      hl,x86_bios_trace_pit_out_text
+        call    p126_ngs_resident_log
+        ld      hl,(x86_bios_trace_io_out42_snapshot)
+        call    x86_bios_trace_emit_hex16
+        ld      hl,x86_bios_trace_io_pit_sep_text
+        call    p126_ngs_resident_log
+        ld      hl,(x86_bios_trace_io_out43_snapshot)
+        call    x86_bios_trace_emit_hex16
+        ld      hl,x86_bios_trace_io_ppi_sep_text
+        call    p126_ngs_resident_log
+        ld      hl,(x86_bios_trace_io_out61_snapshot)
+        call    x86_bios_trace_emit_hex16
         ld      a,13
         call    x86_bios_trace_emit_char
         ld      a,10
@@ -787,10 +805,19 @@ x86_bios_trace_dump_al: db 0
 x86_bios_trace_dump_flags: db 0
 x86_bios_trace_dump_opcode: db 0
 x86_bios_trace_io_prefix: db "[IO COUNT] IN=",0
-x86_bios_trace_io_out_text: db " OUT= P=",0
+x86_bios_trace_io_out_text: db " OUT=",0
+x86_bios_trace_io_last_out_text: db " LAST OUT=",0
+x86_bios_trace_pit_out_text: db "[GUEST OUT] 42=",0
+x86_bios_trace_io_pit_sep_text: db " 43=",0
+x86_bios_trace_io_ppi_sep_text: db " 61=",0
 x86_bios_trace_io_in_snapshot: dw 0
 x86_bios_trace_io_out_snapshot: dw 0
 x86_bios_trace_io_port_snapshot: dw 0
+x86_bios_trace_io_last_out_port_snapshot: dw 0
+x86_bios_trace_io_last_out_value_snapshot: db 0
+x86_bios_trace_io_out42_snapshot: dw 0
+x86_bios_trace_io_out43_snapshot: dw 0
+x86_bios_trace_io_out61_snapshot: dw 0
 x86_bios_trace_history_title: db "[X86 HIST] LAST 16 INSTRUCTIONS (OLDEST FIRST)",13,10,0
 x86_bios_trace_history_prefix: db "[X86 HIST] ",0
 x86_bios_trace_history_si_text: db " SI=",0
