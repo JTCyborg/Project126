@@ -1296,10 +1296,11 @@ x86_io_ata_read_data16:
         ld      hl,x86_io_ata_model
         add     hl,de
         ld      a,(hl)
-        ld      h,a
+        ld      e,a
         inc     hl
         ld      a,(hl)
-        ld      l,a
+        ld      h,a
+        ld      l,e
         ret
 .ata_ident_word0:
         ld      hl,#0040
@@ -1542,7 +1543,7 @@ x86_io_ata_ident_active: db 0
 x86_io_ata_control: db 0
 x86_io_ata_write_value: db 0
 ; ATA IDENTIFY model string, bytes swapped within each returned word.
-x86_io_ata_model: db "RPJEOCT126 MEPTY HDD                    "
+x86_io_ata_model: db "RPJOCE1T62E PMYTH DD                    "
 
 x86_io_fdc_dor: db 0
 x86_io_fdc_cmd: db 0
