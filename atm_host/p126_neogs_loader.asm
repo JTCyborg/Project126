@@ -346,7 +346,7 @@ p126_neogs_load_manifest:
         ld      hl,p126_neogs_manifest+7
         ld      b,6
         ld      c,1
-        ld      d,6
+        ld      d,4
 .manifest_record_loop:
         ld      a,c
         ld      (p126_neogs_manifest_record_index),a
