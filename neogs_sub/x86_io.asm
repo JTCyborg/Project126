@@ -1087,6 +1087,7 @@ x86_io_fdc_write8:
 
 ; Set the XT BIOS Data Area FDC completion flag (0040:003E bit 7).
 ; Deliberate empty-controller readiness stub; the IRQ6 model remains below.
+; Read back both bytes: the BIOS NC_BSY poll must observe the same RAM backing.
 x86_io_fdc_signal_ready:
         push    af
         push    bc
@@ -1096,24 +1097,64 @@ x86_io_fdc_signal_ready:
         ld      de,#003E
         call    x86_cpu_calc_phys
         call    x86_guest_mem_read8
-        jr      c,.fdc_ready_done
+        jr      c,.fdc_ready_read_fail
         or      #80
         call    x86_guest_mem_write8
+        jr      c,.fdc_ready_write_fail
+        ld      hl,#0040
+        ld      de,#003E
+        call    x86_cpu_calc_phys
+        call    x86_guest_mem_read8
+        jr      c,.fdc_ready_read_fail
+        ld      (x86_io_fdc_bda_ready_value),a
         ; No physical spindle exists in the empty-drive model. Mark drive A
         ; as already spun up so BIOS motor-start delay loops are skipped.
         ld      hl,#0040
         ld      de,#003F
         call    x86_cpu_calc_phys
         call    x86_guest_mem_read8
-        jr      c,.fdc_ready_done
+        jr      c,.fdc_ready_read_fail
         or      #01
         call    x86_guest_mem_write8
-.fdc_ready_done:
+        jr      c,.fdc_ready_write_fail
+        ld      hl,#0040
+        ld      de,#003F
+        call    x86_cpu_calc_phys
+        call    x86_guest_mem_read8
+        jr      c,.fdc_ready_read_fail
+        ld      (x86_io_fdc_bda_motor_value),a
+        ld      hl,x86_io_fdc_bda_ready_log
+        jr      .fdc_ready_log
+.fdc_ready_read_fail:
+        ld      (x86_io_fdc_bda_ready_value),a
+        ld      hl,x86_io_fdc_bda_read_fail_log
+        jr      .fdc_ready_log
+.fdc_ready_write_fail:
+        ld      (x86_io_fdc_bda_ready_value),a
+        ld      hl,x86_io_fdc_bda_write_fail_log
+.fdc_ready_log:
+        push    hl
+        call    x86_io_log_string
+        ld      a,(x86_io_fdc_bda_ready_value)
+        call    x86_io_log_hex8
+        ld      a,'/'
+        call    x86_io_log_char
+        ld      a,(x86_io_fdc_bda_motor_value)
+        call    x86_io_log_hex8
+        ld      a,10
+        call    x86_io_log_char
+        pop     hl
         pop     hl
         pop     de
         pop     bc
         pop     af
         ret
+
+x86_io_fdc_bda_ready_value: db 0
+x86_io_fdc_bda_motor_value: db 0
+x86_io_fdc_bda_ready_log: db "[FDC] BDA READY/MOTOR READBACK=",0
+x86_io_fdc_bda_read_fail_log: db "[FDC] BDA READ FAILED=",0
+x86_io_fdc_bda_write_fail_log: db "[FDC] BDA WRITE FAILED=",0
 
 x86_io_fdc_command_complete:
         xor     a
