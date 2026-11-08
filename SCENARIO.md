@@ -1583,3 +1583,11 @@ The temporary diagnostic is therefore moved back to the first terminator and now
 - Added per-run counters for guest byte writes to `42h`, `43h`, and `61h`, plus last guest OUT port/value. The terminal diagnostic now prints these values as `[GUEST OUT] 42=.... 43=.... 61=....` and the last OUT port/value separately from the last general I/O port.
 - Commits: `13f7989e7584fba984f9f79fba959720823959d5` (targeted write counters), `42913b37d879ec40c3f59101f44669d7f082ca38` (diagnostic output), `3d3ff9aff2840a9b5f2a2a27daf6e15ee56b3104` (byte-safe reset).
 - Build and ATM/NeoGS target retest are pending. No PIT behavior was changed and no BIOS POST pass is claimed.
+
+
+## 2026-11-08 — Capture PIT channel-2 state at BIOS stop
+
+- Added resident-safe watchdog diagnostics for the channel-2 PIT model. The watchdog enters the X86DEV overlay through the normal overlay gate and prints the programmed reload value, mode, GATE2, OUT2, current half-period count, half-period reload, processed PIT ticks, OUT2 transitions, guest-cycle remainder and loaded flag.
+- Added 16-bit counters for PIT tick service calls and actual mode-3 OUT2 transitions. They reset with the PIT and do not change timing or guest-visible register behavior.
+- The diagnostic is emitted from inside X86DEV while its page is mapped; resident CPU-state code does not dereference overlay data directly. This preserves the overlay ownership rule used by the I/O counter snapshot.
+- Purpose: distinguish a missing/incorrect BIOS divisor, stalled guest-cycle accounting, stopped GATE2, and a mode-3 counter/OUT transition failure. Build and ATM/NeoGS retest are pending; no BIOS POST pass is claimed.
