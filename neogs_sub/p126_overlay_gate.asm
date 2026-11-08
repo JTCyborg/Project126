@@ -116,9 +116,9 @@ p126_overlay_allocate_page:
 
 p126_overlay_release_page:
         cp      8
-        jr      c,.release_range_error
+        jp      c,.release_range_error
         cp      16
-        jr      nc,.release_range_error
+        jp      nc,.release_range_error
         push    af
         rrca
         ld      c,a                       ; physical page -> WIN2 selector
@@ -176,9 +176,9 @@ p126_overlay_allocator_selftest:
         push    bc
         call    p126_overlay_allocate_page
         pop     bc
-        jr      c,.allocator_test_failed
+        jp      c,.allocator_test_failed
         cp      c
-        jr      nz,.allocator_test_failed
+        jp      nz,.allocator_test_failed
         ld      (hl),a
         inc     hl
         inc     c
@@ -243,15 +243,15 @@ p126_overlay_allocator_selftest:
 ; -------------------------------------------------------------------------
 p126_overlay_register_dynamic:
         cp      5
-        jr      c,.module_register_range_error
+        jp      c,.module_register_range_error
         cp      16
-        jr      nc,.module_register_range_error
+        jp      nc,.module_register_range_error
         ld      (p126_overlay_manager_id),a
         ld      a,b
         cp      8
-        jr      c,.module_register_range_error
+        jp      c,.module_register_range_error
         cp      16
-        jr      nc,.module_register_range_error
+        jp      nc,.module_register_range_error
         ld      (p126_overlay_manager_page),a
 
         ; Reject an already-registered module ID.
