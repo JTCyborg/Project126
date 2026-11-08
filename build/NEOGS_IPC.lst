@@ -663,11 +663,11 @@
  376+ 022A                      ; Payload[0] = stop reason, [1..2] = CS, [3..4] = IP.
  377+ 022A                      ; The remainder is zero-filled; the complete fixed-size DMA frame
  378+ 022A                      ; remains protected by the shared ABI CRC.
- 379+ 022A 3A A7 0E             ld      a,(x86_bios_trace_event_status)
+ 379+ 022A 3A A9 0E             ld      a,(x86_bios_trace_event_status)
  380+ 022D 32 12 C0             ld      (#C012),a
- 381+ 0230 2A A8 0E             ld      hl,(x86_bios_trace_event_cs)
+ 381+ 0230 2A AA 0E             ld      hl,(x86_bios_trace_event_cs)
  382+ 0233 22 13 C0             ld      (#C013),hl
- 383+ 0236 2A AA 0E             ld      hl,(x86_bios_trace_event_ip)
+ 383+ 0236 2A AC 0E             ld      hl,(x86_bios_trace_event_ip)
  384+ 0239 22 15 C0             ld      (#C015),hl
  385+ 023C
  386+ 023C C3 9B 02             jp      p126_ngs_ipc_dma_send_staged_frame
@@ -917,8 +917,7 @@
  629+ 03CE CA F6 03             jp      z,.input_keyboard_bad
  630+ 03D1 3E 02                ld      a,P126_NGS_X86IO_OVERLAY_SELECTOR
  631+ 03D3 32 91 0E             ld      (p126_overlay_request_selector),a
-p126_ipc.asm(632): error: Label not found: x86_io_keyboard_push_impl
- 632+ 03D6 DD 21 00 00          ld      ix,x86_io_keyboard_push_impl
+ 632+ 03D6 DD 21 A3 0E          ld      ix,x86_io_keyboard_push_impl
  633+ 03DA 3A 12 C0             ld      a,(#C012)
  634+ 03DD CD 92 0E             call    p126_overlay_call
  635+ 03E0 38 0D                jr      c,.input_keyboard_full
@@ -1013,7 +1012,7 @@ p126_ipc.asm(632): error: Label not found: x86_io_keyboard_push_impl
  724+ 0461 3A C0 0A             ld      a,(p126_ngs_bios_image_ready)
  725+ 0464 FE 01                cp      1
  726+ 0466 20 08                jr      nz,.ngs_frame_trace_ready
- 727+ 0468 CD AD 0E             call    x86_bios_startup_trace
+ 727+ 0468 CD AF 0E             call    x86_bios_startup_trace
  728+ 046B 3E 02                ld      a,2
  729+ 046D 32 C0 0A             ld      (p126_ngs_bios_image_ready),a
  730+ 0470              .ngs_frame_trace_ready:
@@ -1489,7 +1488,7 @@ p126_ipc.asm(632): error: Label not found: x86_io_keyboard_push_impl
 1200+ 07E2 3E 3C                ld      a,#3C
 1201+ 07E4 37                   scf
 1202+ 07E5 21 34 12             ld      hl,#1234
-1203+ 07E8 CD A4 0E             call    x86_alu_overlay_probe
+1203+ 07E8 CD A6 0E             call    x86_alu_overlay_probe
 1204+ 07EB FE A5                cp      #A5
 1205+ 07ED 20 1A                jr      nz,.image_finish_alu_probe_bad
 1206+ 07EF 11 A5 5A             ld      de,#5AA5
@@ -1513,7 +1512,7 @@ p126_ipc.asm(632): error: Label not found: x86_io_keyboard_push_impl
 1224+ 0814 20 27                jr      nz,.image_finish_x86exec
 1225+ 0816                      ; Page06 must be callable through the resident gate and return to the
 1226+ 0816                      ; prior page04 selector. Run both register-model self-tests before ready.
-1227+ 0816 CD A3 0E             call    x86_dev_reset
+1227+ 0816 CD A5 0E             call    x86_dev_reset
 1228+ 0819 FE 5A                cp      #5A
 1229+ 081B 20 1D                jr      nz,.image_finish_dev_probe_bad
 1230+ 081D 11 D1 06             ld      de,#06D1
@@ -1523,7 +1522,7 @@ p126_ipc.asm(632): error: Label not found: x86_io_keyboard_push_impl
 1234+ 0825 3A 90 0E             ld      a,(p126_overlay_current_selector)
 1235+ 0828 FE 02                cp      P126_NGS_X86IO_OVERLAY_SELECTOR
 1236+ 082A 20 0E                jr      nz,.image_finish_dev_probe_bad
-1237+ 082C CD A3 0E             call    x86_dev_reset
+1237+ 082C CD A5 0E             call    x86_dev_reset
 1238+ 082F 3E 01                ld      a,1
 1239+ 0831 32 C3 0A             ld      (p126_ngs_dev_overlay_ready),a
 1240+ 0834 21 15 0B             ld      hl,p126_ngs_image_finish_log
@@ -2301,31 +2300,37 @@ p126_ipc.asm(632): error: Label not found: x86_io_keyboard_push_impl
   58  0EA2              x86_io_reset:
   59  0EA2 C9                   ret
   60  0EA3
-  61  0EA3              ; Standalone IPC audit substitutes the fixed-origin X86DEV reset entry.
-  62  0EA3              x86_dev_reset:
-  63  0EA3 C9                   ret
-  64  0EA4
-  65  0EA4              ; Standalone IPC audit substitutes the fixed-origin ALU probe entry.
-  66  0EA4              x86_alu_overlay_probe:
-  67  0EA4 3E A5                ld      a,#A5
-  68  0EA6 C9                   ret
-  69  0EA7
-  70  0EA7 00           x86_bios_trace_event_status: db 0
-  71  0EA8 00 00        x86_bios_trace_event_cs:     dw 0
-  72  0EAA 00 00        x86_bios_trace_event_ip:     dw 0
-  73  0EAC              x86_bios_image_diag:
-  74  0EAC C9                   ret
-  75  0EAD
-  76  0EAD              x86_bios_startup_trace:
-  77  0EAD C9                   ret
-  78  0EAE
-  79  0EAE                  DISPLAY "P126_NGS_IPC_START=", /H, p126_ngs_ipc_module_start
-  80  0EAE                  DISPLAY "P126_NGS_IPC_END=", /H, p126_ngs_ipc_module_end
-  81  0EAE                  DISPLAY "P126_NGS_IPC_SIZE=", /D, p126_ngs_ipc_module_end-p126_ngs_ipc_module_start
-  82  0EAE
-  83  0EAE                  ASSERT p126_ngs_ipc_module_end > p126_ngs_ipc_module_start
-  84  0EAE                  ASSERT p126_ngs_ipc_module_end <= #10000
-  85  0EAE
+  61  0EA3              ; Audit-only keyboard input API stub. The production resident links the
+  62  0EA3              ; real FIFO/IRQ1 implementation from the X86IO overlay.
+  63  0EA3              x86_io_keyboard_push_impl:
+  64  0EA3 B7                   or      a                       ; report success, carry clear
+  65  0EA4 C9                   ret
+  66  0EA5
+  67  0EA5              ; Standalone IPC audit substitutes the fixed-origin X86DEV reset entry.
+  68  0EA5              x86_dev_reset:
+  69  0EA5 C9                   ret
+  70  0EA6
+  71  0EA6              ; Standalone IPC audit substitutes the fixed-origin ALU probe entry.
+  72  0EA6              x86_alu_overlay_probe:
+  73  0EA6 3E A5                ld      a,#A5
+  74  0EA8 C9                   ret
+  75  0EA9
+  76  0EA9 00           x86_bios_trace_event_status: db 0
+  77  0EAA 00 00        x86_bios_trace_event_cs:     dw 0
+  78  0EAC 00 00        x86_bios_trace_event_ip:     dw 0
+  79  0EAE              x86_bios_image_diag:
+  80  0EAE C9                   ret
+  81  0EAF
+  82  0EAF              x86_bios_startup_trace:
+  83  0EAF C9                   ret
+  84  0EB0
+  85  0EB0                  DISPLAY "P126_NGS_IPC_START=", /H, p126_ngs_ipc_module_start
+  86  0EB0                  DISPLAY "P126_NGS_IPC_END=", /H, p126_ngs_ipc_module_end
+  87  0EB0                  DISPLAY "P126_NGS_IPC_SIZE=", /D, p126_ngs_ipc_module_end-p126_ngs_ipc_module_start
+  88  0EB0
+  89  0EB0                  ASSERT p126_ngs_ipc_module_end > p126_ngs_ipc_module_start
+  90  0EB0                  ASSERT p126_ngs_ipc_module_end <= #10000
+  91  0EB0
 # file closed: p126_ipc_assemble.asm
 
 Value    Label
@@ -2703,14 +2708,15 @@ Value    Label
 0x0FA0   P126_VIDEO_TEXT80_FRAME_SIZE
 0x0019   P126_VIDEO_TEXT80_HEIGHT
 0x0050   P126_VIDEO_TEXT80_WIDTH
-0x0EA4   x86_alu_overlay_probe
-0x0EAC X x86_bios_image_diag
-0x0EAD   x86_bios_startup_trace
-0x0EA8   x86_bios_trace_event_cs
-0x0EAA   x86_bios_trace_event_ip
-0x0EA7   x86_bios_trace_event_status
-0x0EA3   x86_dev_reset
+0x0EA6   x86_alu_overlay_probe
+0x0EAE X x86_bios_image_diag
+0x0EAF   x86_bios_startup_trace
+0x0EAA   x86_bios_trace_event_cs
+0x0EAC   x86_bios_trace_event_ip
+0x0EA9   x86_bios_trace_event_status
+0x0EA5   x86_dev_reset
 0x0E9F   x86_exec_overlay_probe
+0x0EA3   x86_io_keyboard_push_impl
 0x0EA2   x86_io_reset
 0x0E99   x86_vga_overlay_probe
 0x0E9B   x86_vga_register_selftest_impl
