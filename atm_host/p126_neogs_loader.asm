@@ -215,9 +215,13 @@ p126_neogs_startup::
         cp      P126_NGS_ACK_DONE
         jp      nz,p126_neogs_transport_error
 
+        ; Load and validate the versioned module directory before installing
+        ; any overlay. It is the build-produced source of size/CRC/page metadata.
+        call    p126_neogs_load_manifest
+        ret     c
+
         ; The resident now owns GSCOM and is polling the ABI 1.0 DMA endpoint.
-        ; Install both fixed-origin overlays before BIOS execution. X86IO is placed
-        ; on page04 and X86ALU on page05 by the resident IMAGE service.
+        ; Install the catalogued overlay images before BIOS execution.
         ld      a,'I'
         ld      (p126_neogs_startup_stage),a
         call    p126_neogs_load_io_overlay
@@ -242,6 +246,195 @@ p126_neogs_startup::
         ld      a,'0'
         ld      (p126_neogs_startup_stage),a
         xor     a
+        ret
+
+; -------------------------------------------------------------------------
+; Version-1 X86MODS.M loader and validator.
+; Layout: 7-byte header followed by four 8-byte records:
+; id, physical page, flags, reserved, size16, CRC16/CCITT-FALSE.
+; -------------------------------------------------------------------------
+p126_neogs_load_manifest:
+        xor     a
+        ld      (p126_neogs_manifest_valid),a
+        ld      hl,p126_neogs_manifest_name
+        ld      a,'M'
+        ld      (p126_neogs_file_extension),a
+        call    p126_neogs_open_file
+        push    af
+        ld      a,'C'
+        ld      (p126_neogs_file_extension),a
+        pop     af
+        ret     c
+        ld      hl,(p126_neogs_file_length)
+        ld      de,39
+        or      a
+        sbc     hl,de
+        jr      nz,.manifest_bad
+        ld      hl,#C000
+        ld      de,p126_neogs_manifest
+        ld      bc,39
+        ldir
+
+        ld      hl,p126_neogs_manifest
+        ld      a,(hl)
+        cp      'P'
+        jr      nz,.manifest_bad
+        inc     hl
+        ld      a,(hl)
+        cp      '1'
+        jr      nz,.manifest_bad
+        inc     hl
+        ld      a,(hl)
+        cp      '2'
+        jr      nz,.manifest_bad
+        inc     hl
+        ld      a,(hl)
+        cp      '6'
+        jr      nz,.manifest_bad
+        inc     hl
+        ld      a,(hl)
+        cp      1
+        jr      nz,.manifest_bad
+        inc     hl
+        ld      a,(hl)
+        cp      4
+        jr      nz,.manifest_bad
+        inc     hl
+        ld      a,(hl)
+        cp      8
+        jr      nz,.manifest_bad
+
+        ld      hl,p126_neogs_manifest+7
+        ld      b,4
+        ld      c,1
+        ld      d,4
+.manifest_record_loop:
+        ld      a,(hl)
+        cp      c
+        jr      nz,.manifest_bad
+        inc     hl
+        ld      a,(hl)
+        cp      d
+        jr      nz,.manifest_bad
+        inc     hl
+        ld      a,(hl)
+        cp      1
+        jr      nz,.manifest_bad
+        inc     hl
+        ld      a,(hl)
+        or      a
+        jr      nz,.manifest_bad
+        inc     hl
+        ld      e,(hl)
+        inc     hl
+        ld      a,(hl)
+        inc     hl
+        or      e
+        jr      z,.manifest_bad
+        cp      #40
+        jr      c,.manifest_size_ok
+        jr      nz,.manifest_bad
+        ld      a,e
+        or      a
+        jr      nz,.manifest_bad
+.manifest_size_ok:
+        inc     hl
+        inc     hl
+        inc     c
+        inc     d
+        djnz    .manifest_record_loop
+        ld      a,1
+        ld      (p126_neogs_manifest_valid),a
+        or      a
+        ret
+.manifest_bad:
+        ld      a,10
+        ld      (p126_neogs_startup_error),a
+        scf
+        ret
+
+; Verify the just-staged overlay against its catalog record before IMAGE_BEGIN.
+; IN: p126_neogs_overlay_kind and p126_neogs_overlay_size.
+; OUT: carry clear on exact size+CRC match.
+p126_neogs_verify_overlay_manifest:
+        ld      a,(p126_neogs_manifest_valid)
+        or      a
+        jr      z,.manifest_verify_bad
+        ld      a,(p126_neogs_overlay_kind)
+        cp      P126_IMAGE_KIND_X86IO
+        jr      nz,.manifest_verify_alu
+        ld      a,1
+        jr      .manifest_verify_id
+.manifest_verify_alu:
+        cp      P126_IMAGE_KIND_X86ALU
+        jr      nz,.manifest_verify_dev
+        ld      a,2
+        jr      .manifest_verify_id
+.manifest_verify_dev:
+        cp      P126_IMAGE_KIND_X86DEV
+        jr      nz,.manifest_verify_exec
+        ld      a,3
+        jr      .manifest_verify_id
+.manifest_verify_exec:
+        cp      P126_IMAGE_KIND_X86EXEC
+        jr      nz,.manifest_verify_bad
+        ld      a,4
+.manifest_verify_id:
+        ld      (p126_neogs_manifest_module_id),a
+        dec     a
+        add     a,a
+        add     a,a
+        add     a,a
+        ld      e,a
+        ld      d,0
+        ld      hl,p126_neogs_manifest+7
+        add     hl,de
+        ld      (p126_neogs_manifest_record_ptr),hl
+
+        ; Exact size must agree with the directory record.
+        inc     hl
+        inc     hl
+        inc     hl
+        inc     hl
+        ld      de,(p126_neogs_overlay_size)
+        ld      a,(hl)
+        cp      e
+        jr      nz,.manifest_verify_bad
+        inc     hl
+        ld      a,(hl)
+        cp      d
+        jr      nz,.manifest_verify_bad
+
+        ; CRC the exact logical file bytes in the DMA frame staging area.
+        ld      hl,#FFFF
+        ld      de,#C01C
+        ld      bc,(p126_neogs_overlay_size)
+.manifest_crc_loop:
+        ld      a,b
+        or      c
+        jr      z,.manifest_crc_done
+        ld      a,(de)
+        call    p126_ipc_crc16_update
+        inc     de
+        dec     bc
+        jr      .manifest_crc_loop
+.manifest_crc_done:
+        ld      (p126_neogs_manifest_crc_work),hl
+        ld      hl,(p126_neogs_manifest_record_ptr)
+        ld      de,6
+        add     hl,de
+        ld      de,(p126_neogs_manifest_crc_work)
+        ld      a,(hl)
+        cp      e
+        jr      nz,.manifest_verify_bad
+        inc     hl
+        ld      a,(hl)
+        cp      d
+        jr      nz,.manifest_verify_bad
+        or      a
+        ret
+.manifest_verify_bad:
+        scf
         ret
 
 ; -------------------------------------------------------------------------
@@ -362,6 +555,11 @@ p126_neogs_load_fixed_overlay:
         ld      (#C016),hl
         xor     a
         ld      (p126_bios_frame_flags),a
+        call    p126_neogs_verify_overlay_manifest
+        jr      nc,.fixed_overlay_manifest_ok
+        ld      a,9
+        jp      p126_neogs_store_error
+.fixed_overlay_manifest_ok:
         ld      a,(p126_neogs_overlay_kind)
         cp      P126_IMAGE_KIND_X86IO
         jr      nz,.fixed_overlay_log_not_io
@@ -529,7 +727,7 @@ p126_neogs_open_file:
         ld      de,#5CDD
         ld      bc,8
         ldir
-        ld      a,'C'
+        ld      a,(p126_neogs_file_extension)
         ld      (#5CE5),a
         ld      a,9
         ld      (#5D06),a
@@ -892,6 +1090,13 @@ p126_neogs_io_name:   db "X86IO   "
 p126_neogs_alu_name:  db "X86ALU  "
 p126_neogs_dev_name:  db "X86DEV  "
 p126_neogs_exec_name: db "X86EXEC "
+p126_neogs_manifest_name: db "X86MODS "
+p126_neogs_file_extension: db 'C'
+p126_neogs_manifest_valid: db 0
+p126_neogs_manifest_module_id: db 0
+p126_neogs_manifest_record_ptr: dw 0
+p126_neogs_manifest_crc_work: dw 0
+p126_neogs_manifest: defs 39,0
 p126_neogs_overlay_size: dw 0
 p126_neogs_overlay_max_size: dw 0
 p126_neogs_overlay_kind: db 0
