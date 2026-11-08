@@ -45,6 +45,8 @@ x86_vga_register_selftest_impl:
         ret
 x86_video_overlay_probe:
         ret
+x86_video_convert:
+        ret
 x86_video_convert_impl:
         ret
 
