@@ -227,6 +227,7 @@ p126_host_video_mode_done:
 
 p126_host_idle:
         call    p126_catalog_poll_keyboard
+        call    p126_host_poll_x86_keyboard
         ld      a,(p126_atm_video_enabled)
         or      a
         jr      z,.host_idle_continue
