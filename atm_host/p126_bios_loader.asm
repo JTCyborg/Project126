@@ -129,6 +129,11 @@ p126_bios_load_selected::
         jr      .p126_bios_read_loop
 
 .p126_bios_read_done:
+        ; Identify the exact 8 KiB image that was read from TR-DOS.
+        ; CRC-16/CCITT-FALSE is calculated over the staged BIOS bytes,
+        ; before the DMA transaction, so the log identifies the payload sent.
+        call    p126_bios_calculate_image_crc
+        call    p126_bios_log_image_identity
         ld      hl,p126_bios_log_read_done
         call    p126_catalog_log
         ; Return to the ATM video mapping before any DMA/IPC transaction.
@@ -290,6 +295,83 @@ p126_bios_trace_search_state:
         inc     hl
         out     (c),a
         djnz    .p126_bios_trace_name_loop
+        ld      a,13
+        out     (c),a
+        ld      a,10
+        out     (c),a
+        pop     hl
+        pop     de
+        pop     bc
+        pop     af
+        ret
+
+; CRC-16/CCITT-FALSE over the exact 8192 bytes staged at C01C.
+; OUT: p126_bios_image_crc contains the CRC, all caller registers preserved.
+p126_bios_calculate_image_crc:
+        push    af
+        push    bc
+        push    de
+        push    hl
+        ld      hl,#FFFF
+        ld      de,P126_BIOS_FRAGMENT_DATA
+        ld      bc,P126_BIOS_FILE_SIZE
+.p126_bios_image_crc_loop:
+        ld      a,(de)
+        inc     de
+        call    p126_ipc_crc16_update
+        dec     bc
+        ld      a,b
+        or      c
+        jr      nz,.p126_bios_image_crc_loop
+        ld      (p126_bios_image_crc),hl
+        pop     hl
+        pop     de
+        pop     bc
+        pop     af
+        ret
+
+; Log filename, fixed image length and CRC of the actual staged payload.
+p126_bios_log_image_identity:
+        push    af
+        push    bc
+        push    de
+        push    hl
+        call    p126_host_log_prefix
+        ld      bc,#00EF
+        ld      hl,p126_bios_log_image_identity_prefix
+.p126_bios_image_identity_text:
+        ld      a,(hl)
+        inc     hl
+        or      a
+        jr      z,.p126_bios_image_identity_name
+        out     (c),a
+        jr      .p126_bios_image_identity_text
+.p126_bios_image_identity_name:
+        ld      hl,#5CDD
+        ld      b,8
+.p126_bios_image_identity_name_loop:
+        ld      a,(hl)
+        inc     hl
+        out     (c),a
+        djnz    .p126_bios_image_identity_name_loop
+        ld      a,'.'
+        out     (c),a
+        ld      a,'C'
+        out     (c),a
+        ld      a,' '
+        out     (c),a
+        ld      hl,P126_BIOS_FILE_SIZE
+        ld      a,h
+        call    p126_host_debug_hex_byte
+        ld      a,l
+        call    p126_host_debug_hex_byte
+        ld      a,' '
+        out     (c),a
+        ld      hl,(p126_bios_image_crc)
+        ld      a,h
+        call    p126_host_debug_hex_byte
+        ld      a,l
+        call    p126_host_debug_hex_byte
         ld      a,13
         out     (c),a
         ld      a,10
@@ -645,11 +727,13 @@ p126_bios_operation:       db 0
 p126_bios_frame_flags:     db 0
 p126_bios_payload_length:  dw 0
 p126_bios_sequence:        dw 0
+p126_bios_image_crc:        dw 0
 
 ; ATM-side progress markers for the selected BIOS load transaction.
 p126_bios_log_load_begin:       db "[CAT] BIOS LOAD BEGIN",13,10,0
 p126_bios_log_selection_resolved: db "[CAT] BIOS SELECTION RESOLVED",13,10,0
 p126_bios_log_filename_prefix:   db "[CAT] BIOS FILE SELECTED: ",0
+p126_bios_log_image_identity_prefix: db "[CAT] BIOS IMAGE NAME/SIZE/CRC16: ",0
 p126_bios_trace_state_prefix:   db "[CAT] TRDOS C=0A STATE BANKM/EXT/LEN/SP/ROM=",0
 p126_bios_trace_name_prefix:    db "[CAT] TRDOS C=0A NAME=",0
 p126_bios_log_file_type_ok:      db "[CAT] BIOS FILE TYPE C OK",13,10,0
