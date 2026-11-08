@@ -29,6 +29,10 @@ P126_ATM_TEXT_HEIGHT EQU 25
 P126_ATM_TEXT_FRAME_SIZE EQU 4000
 
 p126_atm_video_mode: db P126_ATM_VIDEO_MODE_RG6_TEXT80X25
+p126_screen_frame_char_ptr: dw 0
+p126_screen_frame_attr_ptr: dw 0
+p126_screen_frame_row:      db 0
+p126_screen_frame_col:      db 0
 
 Console_X: db 0
 Console_Y: db BIOS_DEBUG_TOP
@@ -570,6 +574,50 @@ p126_screen_write_guest_cell:
         pop     de
         pop     bc
         pop     af
+        ret
+
+; Apply the compact RG6 frame received from NeoGS:
+; payload[0..1999] = character codes, payload[2000..3999] = attributes.
+p126_screen_apply_text_frame::
+        ld      a,(p126_atm_video_mode)
+        cp      P126_ATM_VIDEO_MODE_RG6_TEXT80X25
+        jp      nz,.apply_text_bad
+        ld      hl,P126_IPC_DMA_RX_BUFFER+P126_IPC_HEADER_SIZE
+        ld      (p126_screen_frame_char_ptr),hl
+        ld      hl,P126_IPC_DMA_RX_BUFFER+P126_IPC_HEADER_SIZE+P126_VIDEO_TEXT80_WIDTH*P126_VIDEO_TEXT80_HEIGHT
+        ld      (p126_screen_frame_attr_ptr),hl
+        xor     a
+        ld      (p126_screen_frame_row),a
+.apply_text_row:
+        xor     a
+        ld      (p126_screen_frame_col),a
+.apply_text_col:
+        ld      hl,(p126_screen_frame_char_ptr)
+        ld      a,(hl)
+        inc     hl
+        ld      (p126_screen_frame_char_ptr),hl
+        ld      hl,(p126_screen_frame_attr_ptr)
+        ld      b,(hl)
+        inc     hl
+        ld      (p126_screen_frame_attr_ptr),hl
+        ld      d,(p126_screen_frame_row)
+        ld      e,(p126_screen_frame_col)
+        call    p126_screen_write_guest_cell
+        ld      a,(p126_screen_frame_col)
+        inc     a
+        ld      (p126_screen_frame_col),a
+        cp      P126_VIDEO_TEXT80_WIDTH
+        jp      c,.apply_text_col
+        ld      a,(p126_screen_frame_row)
+        inc     a
+        ld      (p126_screen_frame_row),a
+        cp      P126_VIDEO_TEXT80_HEIGHT
+        jp      c,.apply_text_row
+        xor     a
+        ret
+.apply_text_bad:
+        ld      a,#F3
+        scf
         ret
 
 p126_screen_map_video_pages:
