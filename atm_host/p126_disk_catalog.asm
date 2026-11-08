@@ -152,6 +152,8 @@ p126_catalog_poll_keyboard::
         ret
 
 .catalog_confirm:
+        xor     a
+        ld      (p126_atm_video_enabled),a
         ld      hl,p126_log_enter_confirmed
         call    p126_catalog_log
         call    p126_bios_load_selected
@@ -168,6 +170,10 @@ p126_catalog_poll_keyboard::
         ; The BIOS stop slice has populated VGA text memory. Convert and
         ; transfer that screen into the active ATM RG6 80x25 text pages.
         call    p126_ipc_dma_receive_video_frame
+        jr      c,.catalog_video_not_ready
+        ld      a,1
+        ld      (p126_atm_video_enabled),a
+.catalog_video_not_ready:
         ld      hl,p126_log_bios_loaded
         call    p126_catalog_log
         ret
