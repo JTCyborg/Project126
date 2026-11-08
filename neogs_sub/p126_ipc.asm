@@ -385,6 +385,29 @@ p126_ngs_ipc_dma_send_test_frame::
 
         jp      p126_ngs_ipc_dma_send_staged_frame
 
+; Error response for a missing mode descriptor, unsupported VGA mode or
+; unavailable converter. It still sends a complete fixed-size frame so the
+; host-side reverse-DMA reader always completes deterministically.
+p126_ngs_ipc_dma_send_video_error_frame:
+        ld      a,P126_NGS_DMA_PROD_PAGE
+        rrca
+        out     (P126_NGS_MPAGEX_PORT),a
+        ld      hl,p126_ngs_ipc_video_error_header
+        ld      de,#C000
+        ld      bc,P126_IPC_HEADER_SIZE
+        ldir
+        ld      hl,#C012
+        ld      bc,P126_IPC_MAX_PAYLOAD
+.video_error_pad:
+        xor     a
+        ld      (hl),a
+        inc     hl
+        dec     bc
+        ld      a,b
+        or      c
+        jr      nz,.video_error_pad
+        jp      p126_ngs_ipc_dma_send_staged_frame
+
 ; The converter has already written 4000 bytes at page42h:C012h. Complete
 ; the fixed-size DMA frame with a VIDEO response header and zero padding.
 p126_ngs_ipc_dma_send_video_frame:
@@ -508,6 +531,15 @@ p126_ngs_ipc_dma_send_staged_frame:
         scf
         ret
 
+p126_ngs_ipc_video_error_header:
+        db 'P','1','2','6'
+        db P126_IPC_MAJOR,P126_IPC_MINOR
+        db P126_MSG_RESPONSE,P126_SERVICE_VIDEO,P126_OP_VIDEO_FRAME,0
+        db #02,#00
+        db #EE,#3F
+        db P126_STATUS_NO_OPERATION,0
+        db #00,#00
+
 p126_ngs_ipc_video_header:
         db 'P','1','2','6'
         db P126_IPC_MAJOR,P126_IPC_MINOR
@@ -607,11 +639,9 @@ p126_ngs_ipc_dispatch_once::
         jr      c,.video_frame_not_ready
         jp      p126_ngs_ipc_dma_send_video_frame
 .video_frame_not_ready:
-        xor     a
-        out     (P126_NGS_CLRCBIT),a
-        ld      a,P126_STATUS_NO_OPERATION
-        scf
-        ret
+        ; Always complete the reverse-DMA transaction with an explicit VIDEO
+        ; error response. The ATM receiver must never wait on a missing frame.
+        jp      p126_ngs_ipc_dma_send_video_error_frame
 
 .p126_ngs_dispatch_ngs_frame:
         ; The host may request the stop record immediately after IMAGE_FINISH.
