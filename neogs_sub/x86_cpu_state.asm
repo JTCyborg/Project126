@@ -192,8 +192,11 @@ x86_bios_startup_trace:
         ld      (x86_bios_trace_event_status),a
         ld      hl,x86_bios_trace_start_log
         call    p126_ngs_resident_log
+        ; 32-bit runaway guard: a 16-bit budget expired during legitimate
+        ; BIOS startup before the PIT polling loop could complete.
         ld      hl,#FFFF
         ld      (x86_bios_trace_remaining),hl
+        ld      (x86_bios_trace_remaining+2),hl
         ld      hl,0
         ld      (x86_bios_trace_executed),hl
         ld      a,1
@@ -215,12 +218,29 @@ x86_bios_startup_trace:
         ld      a,(x86_halted)
         or      a
         jr      nz,.trace_halted
+        ; Decrement the 32-bit instruction budget. The 64-instruction
+        ; slices still return to the IPC dispatcher, so this large global
+        ; budget does not block host servicing.
         ld      hl,(x86_bios_trace_remaining)
+        ld      de,(x86_bios_trace_remaining+2)
         dec     hl
         ld      (x86_bios_trace_remaining),hl
         ld      a,h
+        cp      #FF
+        jr      nz,.watchdog_no_borrow
+        ld      a,l
+        cp      #FF
+        jr      nz,.watchdog_no_borrow
+        dec     de
+        ld      (x86_bios_trace_remaining+2),de
+.watchdog_no_borrow:
+        ld      a,d
+        or      e
+        jr      nz,.watchdog_continue
+        ld      a,h
         or      l
         jr      z,.trace_watchdog
+.watchdog_continue:
         ld      a,(x86_bios_trace_slice_remaining)
         dec     a
         ld      (x86_bios_trace_slice_remaining),a
@@ -818,7 +838,7 @@ x86_bios_trace_history_flags_text: db " FL=",0
 x86_bios_trace_history_opcode_text: db " OP=",0
 x86_bios_trace_history: BLOCK 16*9,0
 
-x86_bios_trace_remaining: dw 0
+x86_bios_trace_remaining: dw 0,0
 x86_bios_trace_executed:  dw 0
 x86_bios_trace_active:    db 0
 x86_bios_trace_slice_remaining: db 0
