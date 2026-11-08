@@ -117,8 +117,6 @@ p126_ngs_resident_main_loop:
         xor     a
         ld      (p126_ngs_bios_image_ready),a
         call    x86_bios_startup_trace
-        ld      a,'>'
-        out     (#EF),a                 ; proves control returned from first BIOS slice
         jr      p126_ngs_resident_main_loop
 .check_bios_running:
         ; Return to IPC dispatch after every 64 guest instructions. Long BIOS
@@ -127,8 +125,6 @@ p126_ngs_resident_main_loop:
         or      a
         jr      z,p126_ngs_resident_main_loop
         call    x86_bios_startup_trace
-        ld      a,'+'
-        out     (#EF),a                 ; subsequent BIOS slice returned
         jr      p126_ngs_resident_main_loop
 
 p126_ngs_resident_frame_error:
