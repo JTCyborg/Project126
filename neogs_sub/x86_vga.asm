@@ -146,10 +146,21 @@ x86_vga_io_read8_impl:
         or      a
         ret
 .read_input_status0:
-        ; PCem returns the feature/status-0 bit according to DAC palette 0.
-        ; Palette RAM is zero after reset, therefore bit4 is set.
+        ; PCem reports bit4 when the sum of DAC palette entry zero is dark.
+        ld      a,(x86_vga_dac)
+        ld      b,a
+        ld      a,(x86_vga_dac+1)
+        add     a,b
+        ld      b,a
+        ld      a,(x86_vga_dac+2)
+        add     a,b
+        cp      #50
+        jr      nc,.read_input_status0_bright
         ld      a,#10
         or      a
+        ret
+.read_input_status0_bright:
+        xor     a
         ret
 .read_seq_address:
         ld      a,(x86_vga_seqaddr)
@@ -222,7 +233,11 @@ x86_vga_io_read8_impl:
 .read_input_status1:
         xor     a
         ld      (x86_vga_attrff),a
+        ; Deterministic retrace phase: toggle bit3 per status sample until
+        ; the timer-driven scanout phase is introduced.
         ld      a,(x86_vga_cgastat)
+        xor     #08
+        ld      (x86_vga_cgastat),a
         bit     0,a
         jr      nz,.status_clear_blink
         xor     #30
