@@ -61,6 +61,7 @@ x86_vga_reset_impl:
         ldir
         ld      a,#FF
         ld      (x86_vga_dac_mask),a
+        xor     a
         ld      (x86_vga_writemask),a
         ld      a,8
         ld      (x86_vga_bpp),a
@@ -542,16 +543,19 @@ x86_vga_rebuild_attr_palette:
         add     hl,de
         ld      a,(hl)
         and     #0F
-        ld      d,a
+        ld      (x86_vga_palette_temp),a
         ld      a,(x86_vga_attr_palette_hi)
-        or      d
         ld      e,a
+        ld      a,(x86_vga_palette_temp)
+        or      e
+        ld      (x86_vga_palette_temp),a
         ld      a,c
-        ld      l,a
-        ld      h,0
-        ld      de,x86_vga_egapal
+        ld      e,a
+        ld      d,0
+        ld      hl,x86_vga_egapal
         add     hl,de
-        ld      (hl),e
+        ld      a,(x86_vga_palette_temp)
+        ld      (hl),a
         inc     c
         djnz    .attr_palette_16bit_loop
         ret
@@ -573,12 +577,16 @@ x86_vga_rebuild_attr_palette:
         add     hl,de
         ld      a,(hl)
         and     #3F
-        or      (x86_vga_attr_palette_hi)
+        ld      (x86_vga_palette_temp),a
+        ld      a,(x86_vga_attr_palette_hi)
+        ld      e,a
+        ld      a,(x86_vga_palette_temp)
+        or      e
         ld      (x86_vga_palette_temp),a
         ld      a,c
-        ld      l,a
-        ld      h,0
-        ld      de,x86_vga_egapal
+        ld      e,a
+        ld      d,0
+        ld      hl,x86_vga_egapal
         add     hl,de
         ld      a,(x86_vga_palette_temp)
         ld      (hl),a
@@ -607,12 +615,13 @@ x86_vga_dac_read_component:
         cp      3
         jr      c,.dac_read_next
         xor     a
-        ld      (x86_vga_dac_read),a
-        ld      a,(x86_vga_dac_read)
-        inc     a
-        ld      (x86_vga_dac_read),a
+        ld      (x86_vga_dac_pos),a
+        ld      hl,x86_vga_dac_read
+        inc     (hl)
+        jr      .dac_read_return
 .dac_read_next:
         ld      (x86_vga_dac_pos),a
+.dac_read_return:
         ld      a,3
         ld      (x86_vga_dac_status),a
         ld      a,b
