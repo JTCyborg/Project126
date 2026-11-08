@@ -1546,7 +1546,7 @@ The temporary diagnostic is therefore moved back to the first terminator and now
 - В PIT reset-selftest добавлена проверка делителя 2: четыре гостевых такта дают один PIT tick, а OUT2 в режиме 3 переключается на каждом полупериоде. Проверка выполняется при инициализации устройства; сборка и запуск целевой прошивки всё ещё необходимы.
 
 - Реализован первый динамический временной срез PIT: гостевые такты учитываются перед исполнением инструкции; для BIOS-пути опроса OUT2 учитываются IN AL,imm8/DX, TEST AL,imm8, LOOPNZ/LOOPZ/LOOP и JCXZ. Для остальных инструкций пока используется базовая оценка 4 такта, поэтому это не полный cycle-accurate 8086 timing.
-- Канал 2 теперь имеет виртуальный текущий счётчик и переключает OUT2 в режиме 3 по половинам периода; режим 0 отсчитывает до терминального события. Начальная реализация режима 3 использует одинаковую длительность обеих половин периода, поэтому для нечётных делителей возможна погрешность в один PIT tick.
+- Канал 2 теперь имеет виртуальный текущий счётчик и переключает OUT2 в режиме 3 по половинам периода; режим 0 отсчитывает до терминального события. Для режима 3 длительности фаз соответствуют PCem: OUT-high использует ceil(N/2), OUT-low — floor(N/2), включая нечётные делители. Падение GATE2 останавливает счёт, не принудительно меняя OUT2; фронт GATE2 вверх повторно запускает режим 3 с OUT=1.
 - Каналы 0/1, режимы 1/2/4/5, IRQ0, полная модель чтения текущего счётчика/защёлок и точный звуковой тракт ещё не завершены. Это промежуточный динамический PIT slice, не полная реализация 8253.
 
 
@@ -1634,3 +1634,10 @@ The temporary diagnostic is therefore moved back to the first terminator and now
 - PCem comparison: `PCem/keyboard_xt.c::keyboard_xt_write()` stores port 61h PB, sets `speaker_gated = val & 1`, and calls `pit_set_gate(&pit, 2, val & 1)`. `PCem/pit.c::pit_set_gate_no_timer()` handles the GATE edge; for mode 3, a low-to-high edge reloads the count, sets OUT high, and enables counting, while the low level disables counting. Project126 retains its cycle-driven clock model but now delivers the same PB0 edge to the actual X86DEV PIT state.
 - The first resident-wrapper version exceeded the fixed IPC image boundary (`p126_ngs_ipc_module_end <= #4000`) by 15 bytes. The final implementation reuses the already-exported X86DEV write API and avoids that resident-size regression.
 - Build and ATM/NeoGS runtime validation are pending; no BIOS POST pass is claimed.
+
+
+## 2026-11-08 — Match PIT channel-2 mode-3 phase and GATE semantics to PCem
+
+- Сверка с `PCem/pit.c::pit_over()` и `pit_set_gate_no_timer()` выявила два расхождения: Project126 использовал одинаковую длительность обеих фаз при нечётном делителе и принудительно устанавливал OUT2=1 при падении GATE2. PCem использует `N>>1` при переходе OUT high→low, `(N+1)>>1` при low→high, а падение GATE2 только останавливает счёт, не меняя OUT.
+- Исправлено переключение фаз режима 3, включая нечётные делители, и семантика falling GATE2. Добавлены reset-time проверки делителя 5, трёх тактов OUT-high, двух тактов OUT-low, сохранения OUT при GATE low и перезапуска на rising edge.
+- Это точечная совместимость канала 2 mode 3, а не полная реализация 8253: режимы 1/2/4/5, каналы 0/1 и IRQ0 остаются отдельными задачами. Сборка CI и реальный тест на ATM проверяются отдельно.

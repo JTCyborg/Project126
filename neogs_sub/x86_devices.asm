@@ -594,12 +594,8 @@ x86_dev_pit_gate2_write_impl:
         ld      (x86_dev_pit_gate2),a
         or      a
         jr      nz,.pit_gate_rising
-        ; In modes 2/3 a low GATE forces OUT high and stops counting.
-        ld      a,(x86_dev_pit_mode+2)
-        cp      2
-        jr      z,.pit_gate_out_high
-        cp      3
-        jr      z,.pit_gate_out_high
+        ; PCem pit_set_gate_no_timer(): falling GATE disables counting
+        ; but leaves the mode-3 OUT pin at its current level.
         ret
 .pit_gate_rising:
         ld      a,(x86_dev_pit_loaded2)
@@ -627,8 +623,7 @@ x86_dev_pit_gate2_write_impl:
         ld      a,(x86_dev_pit_mode+2)
         cp      3
         jr      nz,.pit_gate_reload_done
-        ld      hl,(x86_dev_pit_half2)
-        ld      (x86_dev_pit_count2),hl
+        call    x86_dev_pit_mode3_load_phase
 .pit_gate_reload_done:
         or      a
         ret
@@ -812,7 +807,21 @@ x86_dev_pit_tick_channel2:
         ld      hl,(x86_dev_pit_toggle_count)
         inc     hl
         ld      (x86_dev_pit_toggle_count),hl
+        call    x86_dev_pit_mode3_load_phase
+        ret
+
+; PCem pit_over() uses floor(N/2) while OUT is low and ceil(N/2)
+; while OUT is high. This matters for odd divisors (e.g. 02F9h).
+x86_dev_pit_mode3_load_phase:
         ld      hl,(x86_dev_pit_half2)
+        ld      a,(x86_dev_pit_out2)
+        or      a
+        jr      z,.pit_mode3_phase_store
+        ld      a,(x86_dev_pit_reload+4)
+        and     1
+        jr      z,.pit_mode3_phase_store
+        inc     hl
+.pit_mode3_phase_store:
         ld      (x86_dev_pit_count2),hl
         ret
 
@@ -844,8 +853,7 @@ x86_dev_pit_load_channel2:
 .pit_load_mode3:
         ld      a,1
         ld      (x86_dev_pit_out2),a
-        ld      hl,(x86_dev_pit_half2)
-        ld      (x86_dev_pit_count2),hl
+        call    x86_dev_pit_mode3_load_phase
         ret
 .pit_load_mode0:
         xor     a
@@ -963,6 +971,38 @@ x86_dev_pit_selftest_impl:
         call    x86_dev_pit_advance_cycles
         ld      a,(x86_dev_pit_out2)
         cp      1
+        jp      nz,.pit_selftest_fail
+        ; Odd mode-3 divisor 5: OUT-high phase is ceil(5/2)=3 PIT
+        ; clocks, OUT-low phase is floor(5/2)=2. PCem pit_over() uses
+        ; these distinct durations. A falling GATE must preserve OUT low.
+        ld      a,5
+        call    x86_dev_pit_write8
+        xor     a
+        call    x86_dev_pit_write8
+        ld      hl,(x86_dev_pit_count2)
+        ld      de,3
+        or      a
+        sbc     hl,de
+        jp      nz,.pit_selftest_fail
+        ld      b,12
+        call    x86_dev_pit_advance_cycles
+        ld      a,(x86_dev_pit_out2)
+        or      a
+        jp      nz,.pit_selftest_fail
+        xor     a
+        call    x86_dev_pit_gate2_write_impl
+        ld      a,(x86_dev_pit_out2)
+        or      a
+        jp      nz,.pit_selftest_fail
+        ld      a,1
+        call    x86_dev_pit_gate2_write_impl
+        ld      a,(x86_dev_pit_out2)
+        cp      1
+        jp      nz,.pit_selftest_fail
+        ld      hl,(x86_dev_pit_count2)
+        ld      de,3
+        or      a
+        sbc     hl,de
         jp      nz,.pit_selftest_fail
         ; Mode 0 control word and count load both drive OUT low.
         ld      hl,#0043
