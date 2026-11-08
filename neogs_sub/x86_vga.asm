@@ -677,6 +677,91 @@ x86_vga_dac_write_component:
         inc     (hl)
         ret
 
+; Register-file regression against the PCem-visible port protocol.
+; OUT A=5Ah, HL=A55Ah on pass; carry set on failure. Restores reset state.
+x86_vga_register_selftest_impl:
+        ; Sequencer index/data round-trip.
+        ld      hl,#03C4
+        ld      a,2
+        call    x86_vga_io_write8_impl
+        jp      c,.vga_test_fail
+        ld      hl,#03C5
+        ld      a,#0F
+        call    x86_vga_io_write8_impl
+        jp      c,.vga_test_fail
+        ld      hl,#03C5
+        call    x86_vga_io_read8_impl
+        cp      #0F
+        jp      nz,.vga_test_fail
+
+        ; Attribute Controller status read resets its index/data flip-flop.
+        ld      hl,#03DA
+        call    x86_vga_io_read8_impl
+        ld      hl,#03C0
+        ld      a,#12
+        call    x86_vga_io_write8_impl
+        jp      c,.vga_test_fail
+        ld      hl,#03C0
+        ld      a,#05
+        call    x86_vga_io_write8_impl
+        jp      c,.vga_test_fail
+        ld      hl,#03C1
+        call    x86_vga_io_read8_impl
+        cp      #05
+        jp      nz,.vga_test_fail
+
+        ; Graphics Controller read-plane register round-trip.
+        ld      hl,#03CE
+        ld      a,4
+        call    x86_vga_io_write8_impl
+        jp      c,.vga_test_fail
+        ld      hl,#03CF
+        ld      a,3
+        call    x86_vga_io_write8_impl
+        jp      c,.vga_test_fail
+        ld      hl,#03CF
+        call    x86_vga_io_read8_impl
+        cp      3
+        jp      nz,.vga_test_fail
+
+        ; DAC RGB write/read sequencing (standard six-bit DAC components).
+        ld      hl,#03C8
+        ld      a,2
+        call    x86_vga_io_write8_impl
+        jp      c,.vga_test_fail
+        ld      hl,#03C9
+        ld      a,#12
+        call    x86_vga_io_write8_impl
+        jp      c,.vga_test_fail
+        ld      hl,#03C9
+        ld      a,#23
+        call    x86_vga_io_write8_impl
+        jp      c,.vga_test_fail
+        ld      hl,#03C9
+        ld      a,#34
+        call    x86_vga_io_write8_impl
+        jp      c,.vga_test_fail
+        ld      hl,#03C7
+        ld      a,2
+        call    x86_vga_io_write8_impl
+        jp      c,.vga_test_fail
+        ld      hl,#03C9
+        call    x86_vga_io_read8_impl
+        cp      #12
+        jp      nz,.vga_test_fail
+
+        call    x86_vga_reset_impl
+        ld      hl,#A55A
+        ld      a,#5A
+        or      a
+        ret
+.vga_test_fail:
+        push    af
+        call    x86_vga_reset_impl
+        pop     af
+        scf
+        ret
+
 ; VGA state. The 256 KiB VRAM is physically allocated separately and is not
 ; duplicated in this module's 16 KiB overlay page.
 x86_vga_port:                  dw 0
