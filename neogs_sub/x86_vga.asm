@@ -1357,6 +1357,17 @@ x86_vga_get_text_snapshot_impl:
         ld      e,a
         ld      d,0
         add     hl,de
+        ; Horizontal blank end contributes the second MA start adjustment.
+        ld      a,(x86_vga_crtc+5)
+        and     #60
+        srl     a
+        srl     a
+        srl     a
+        srl     a
+        srl     a
+        ld      e,a
+        ld      d,0
+        add     hl,de
         srl     h
         rr      l
         ld      (x86_vga_text_start),hl
