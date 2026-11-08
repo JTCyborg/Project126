@@ -213,6 +213,8 @@ p126_host_video_mode_done:
         call    BIOS_DebugConsole_Init
         call    BIOS_DebugConsole_Clear
         call    BIOS_DebugConsole_DrawInterface
+        ld      a,1
+        ld      (p126_host_console_ready),a
         ld      hl, p126_host_ui_log
         call    p126_host_console_string
         ld      hl, p126_log_console_done
@@ -246,6 +248,9 @@ p126_host_idle:
 .host_idle_continue:
         jr      p126_host_idle
 
+; Set only after the screen has been initialized and mapped.
+p126_host_console_ready: db 0
+
 ; IN: HL=zero-terminated string. Writes to the lower on-screen log.
 p126_host_console_string:
         ld      a, (hl)
@@ -262,6 +267,19 @@ p126_host_ui_log:
 
 ; ATM debug output is independent of NeoGS debug output.
 p126_host_debug_string:
+        ; Mirror ATM-originated diagnostic text to the on-screen console.
+        ; Keep the #EF stream intact for emulator logs.
+        push    hl
+        push    af
+        ld      a,(p126_host_console_ready)
+        or      a
+        jr      z,.host_debug_no_console
+        pop     af
+        push    af
+        call    p126_host_console_string
+.host_debug_no_console:
+        pop     af
+        pop     hl
         call    p126_host_log_prefix
         push    af
         push    bc
