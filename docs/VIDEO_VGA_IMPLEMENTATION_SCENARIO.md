@@ -25,7 +25,7 @@ Do not port host-only SDL, Allegro, OS timers, native windowing, host memory map
 
 ### VGA core on NeoGS
 
-Owns guest VGA registers, port decode, 256 KiB VRAM, aperture semantics, latches/planes, mode state and scanout. The initial VGA aperture in x86_cpu_state.asm is explicitly staging-only and must not be treated as a completed VGA implementation.
+Owns guest VGA registers, port decode, 256 KiB VRAM, aperture semantics, latches/planes, mode state and scanout. The x86_cpu_state.asm memory dispatcher routes the VGA aperture to X86VGA; VGA behavior belongs in that module, not in a linear memory-page mapping.
 
 ### ATM frame converter on NeoGS
 
@@ -38,7 +38,7 @@ Owns guest VGA registers, port decode, 256 KiB VRAM, aperture semantics, latches
 
 ### ATM host and frame service
 
-ATM reports its current mode and accepts the finished frame. NeoGS video service owns scheduling, slot ownership, fragmentation and DMA/IPC. ATM host performs final placement/page flip only after complete frame validation.
+ATM reports its current mode and accepts the finished frame. NeoGS video service owns scheduling, frame ownership, fragmentation and DMA/IPC. ATM host applies a frame to the active ATM video-memory layout only after complete reassembly and validation.
 
 ## 4. Transport contract
 
@@ -63,7 +63,7 @@ Port relevant PCem text, planar 4-bpp and packed 8-bpp rendering. Derive geometr
 ### Stage 4 — ATM mode descriptor and converter
 Derive the descriptor from actual ATM mode-control state and Project126 ATM source/docs. Implement each supported ATM layout separately. Verify mode-specific output length (up to 32768 bytes) and reference vectors; do not invent modes.
 
-### Stage 5 — frame slots and DMA/IPC
+### Stage 5 — frame transfer and DMA/IPC
 Use pages40h–41h as one 32 KiB converted-frame buffer, page42h as DMA staging and page43h as scratch. Transfer the logical frame as independently CRC-checked ABI 1.1 fragments. Add timeout/recovery and ownership rules.
 
 ### Stage 6 — BIOS and end-to-end tests
@@ -75,8 +75,8 @@ Run BIOS2 INT 10h text/graphics paths. Validate guest register access, aperture,
 - Implemented VGA register behavior matches the corresponding PCem paths.
 - BIOS2 INT 10h text and supported graphics tests produce expected VGA scanout.
 - Every supported ATM mode produces its defined deterministic output length (up to 32768 bytes).
-- DMA fragmentation never exceeds the 16 KiB aperture and never mutates an in-flight slot.
-- ATM displays only a fully validated frame; on failure it retains the previous frame.
+- DMA fragmentation never exceeds the 16 KiB aperture and never mutates the source frame while it is in flight.
+- ATM video memory is updated only from a fully reassembled, validated frame; incomplete frames are rejected without applying them.
 - Build logs report component versions, image sizes and test results. Assembly success is not hardware/display verification.
 
 ## 7. Implementation progress (2026-11-08)
