@@ -1168,6 +1168,9 @@ p126_neogs_send_video_mode::
         push    bc
         push    de
         push    hl
+        ; RTC probe may have changed the ATM paging/DOSEN state. Restore the
+        ; canonical host/video mapping before touching the #C000 IPC frame.
+        call    p126_bios_restore_atm_video
         ld      hl,#C000+P126_IPC_HEADER_SIZE
         ld      a,P126_VIDEO_DESC_VERSION
         ld      (hl),a
