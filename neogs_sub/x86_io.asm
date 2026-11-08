@@ -32,7 +32,8 @@ x86_io_reset_impl:
         ld      (x86_io_pit_out43_count),hl
         ld      (x86_io_ppi_out61_count),hl
         ld      (x86_io_last_out_port),hl
-        ld      (x86_io_last_out_value),hl
+        xor     a
+        ld      (x86_io_last_out_value),a
         ld      (x86_io_test_latch),hl
         xor     a
         ld      (x86_io_keyboard_head),a
