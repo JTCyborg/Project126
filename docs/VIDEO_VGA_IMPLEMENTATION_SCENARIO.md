@@ -9,8 +9,8 @@ Behavioral reference: Project126/PCem only. Project125 is explicitly excluded as
 - Exactly 256 KiB VGA VRAM: NeoGS physical pages 30h–3Fh (0C0000h–0FFFFFh).
 - Guest VGA aperture: A0000h–BFFFFh. The guest memory dispatcher now routes A0000h–BFFFFh through the X86VGA module; the module applies the active GDC[6] aperture map and VGA plane semantics.
 - VGA BIOS storage remains separate at pages 20h–2Fh; guest option-ROM window C0000h–C7FFFh.
-- ATM-native converted-frame storage: pages40h–41h, one contiguous 32 KiB frame buffer. It can hold the largest supported ATM graphics frame.
-- Production DMA staging: page42h, 16 KiB. The video service copies the converted frame into this staging page in chunks. IPC/session scratch: page43h. Do not repurpose either allocation.
+- Optional large-frame workspace: pages40h–41h, up to 32 KiB for ATM formats larger than one DMA staging page.
+- Production DMA staging: page42h, 16 KiB. The current RG6 converter writes its complete 4 KiB frame directly after the ABI header in this page. Larger future formats use pages40h–41h as a conversion workspace and copy chunks through page42h. IPC/session scratch: page43h.
 - ATM is the owner of physical hardware. All guest x86 ports are software models; all NeoGS↔ATM exchange uses DMA/IPC.
 
 ## 2. Source-of-truth PCem paths
@@ -44,7 +44,7 @@ ATM reports its current mode and accepts the finished frame. NeoGS video service
 
 The DMA aperture is 16 KiB including the 18-byte ABI header; a regular ABI frame carries at most 16366 payload bytes. The 16 KiB page42h staging buffer is a transport chunk, not the maximum logical frame size.
 
-Use the existing ordered ABI 1.1 fragmentation extension: 10-byte fragment extension, at most 16356 bytes of frame data per fragment, individual CRC-16/CCITT-FALSE validation, common frame/message ID and ordered reassembly. Keep page42h as the 16 KiB DMA staging page and page43h as scratch. A maximum 32 KiB logical frame requires three fragments. On timeout, missing fragment, sequence error or CRC failure, reject the frame.
+Use the existing ordered ABI 1.1 fragmentation extension: 10-byte fragment extension, at most 16356 bytes of frame data per fragment, individual CRC-16/CCITT-FALSE validation, common frame/message ID and ordered reassembly. Keep page42h as the 16 KiB DMA staging page and page43h as scratch. The current 4 KiB RG6 frame fits in one reverse-DMA transfer; a maximum 32 KiB future frame requires three fragments. On timeout, missing fragment, sequence error or CRC failure, reject the frame.
 
 ## 5. Implementation stages
 
@@ -95,7 +95,7 @@ Run BIOS2 INT 10h text/graphics paths. Validate guest register access, aperture,
 
 The current X86VGA code now has source implementations for register/port access and VGA aperture semantics, including GDC[6] window selection, chain-4/chain-2, four-plane latches, read mode 1 and write modes 0–3. It is still not a complete VGA adapter: scanout/rendering, timing, text cursor/blink and packed/planar pixel conversion remain to be implemented and tested.
 
-The ATM frame converter and chunked 16 KiB DMA transport are not implemented yet. The existing BIOS2 INT CD debugging state remains untouched.
+The ATM RG6 text converter source and reverse-DMA VIDEO frame path are now present; host-side frame receive/application and additional ATM modes remain to be implemented. The existing BIOS2 INT CD debugging state remains untouched.
 
 No SjASMPlus build or emulator run has been performed for these changes yet. The source changes must be assembled and exercised before reporting build or runtime success.
 
