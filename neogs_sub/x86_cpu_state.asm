@@ -293,11 +293,16 @@ x86_bios_trace_capture_instruction:
         ; retain the fixed-size trace ring and resident image footprint.
 
         ld      a,(x86_bios_trace_history_index)
-        ld      d,a
+        ld      e,a
         add     a,a
         add     a,a
         add     a,a
-        add     a,d                    ; nine-byte record stride
+        ld      d,a                    ; 8 * index
+        ld      a,e
+        add     a,a
+        add     a,a
+        add     a,e                    ; 5 * index
+        add     a,d                    ; thirteen-byte record stride
         ld      l,a
         ld      h,0
         ld      de,x86_bios_trace_history
@@ -328,6 +333,16 @@ x86_bios_trace_capture_instruction:
         inc     hl
         ld      a,(x86_exec_opcode)
         ld      (hl),a
+        inc     hl
+        ld      de,(x86_reg_ss)
+        ld      (hl),e
+        inc     hl
+        ld      (hl),d
+        inc     hl
+        ld      de,(x86_reg_sp)
+        ld      (hl),e
+        inc     hl
+        ld      (hl),d
 
         ld      a,(x86_bios_trace_history_index)
         inc     a
@@ -563,11 +578,16 @@ x86_bios_trace_log_history:
         ld      b,16
 .history_loop:
         ld      a,(x86_bios_trace_dump_index)
-        ld      d,a
+        ld      e,a
         add     a,a
         add     a,a
         add     a,a
-        add     a,d                    ; nine-byte record stride
+        ld      d,a                    ; 8 * index
+        ld      a,e
+        add     a,a
+        add     a,a
+        add     a,e                    ; 5 * index
+        add     a,d                    ; thirteen-byte record stride
         ld      l,a
         ld      h,0
         ld      de,x86_bios_trace_history
@@ -598,6 +618,18 @@ x86_bios_trace_log_history:
         inc     hl
         ld      a,(hl)
         ld      (x86_bios_trace_dump_opcode),a
+        inc     hl
+        ld      a,(hl)
+        ld      (x86_bios_trace_dump_ss),a
+        inc     hl
+        ld      a,(hl)
+        ld      (x86_bios_trace_dump_ss+1),a
+        inc     hl
+        ld      a,(hl)
+        ld      (x86_bios_trace_dump_sp),a
+        inc     hl
+        ld      a,(hl)
+        ld      (x86_bios_trace_dump_sp+1),a
 
         ld      hl,x86_bios_trace_history_prefix
         call    p126_ngs_resident_log
@@ -623,6 +655,14 @@ x86_bios_trace_log_history:
         call    p126_ngs_resident_log
         ld      a,(x86_bios_trace_dump_opcode)
         call    x86_bios_trace_emit_hex8
+        ld      hl,x86_bios_trace_history_ss_text
+        call    p126_ngs_resident_log
+        ld      hl,(x86_bios_trace_dump_ss)
+        call    x86_bios_trace_emit_hex16
+        ld      hl,x86_bios_trace_history_sp_text
+        call    p126_ngs_resident_log
+        ld      hl,(x86_bios_trace_dump_sp)
+        call    x86_bios_trace_emit_hex16
         ld      a,13
         call    x86_bios_trace_emit_char
         ld      a,10
@@ -856,6 +896,8 @@ x86_bios_trace_dump_cx: dw 0
 x86_bios_trace_dump_al: db 0
 x86_bios_trace_dump_flags: db 0
 x86_bios_trace_dump_opcode: db 0
+x86_bios_trace_dump_ss: dw 0
+x86_bios_trace_dump_sp: dw 0
 x86_bios_trace_io_prefix: db "[IO COUNT] IN=",0
 x86_bios_trace_io_out_text: db " OUT=",0
 x86_bios_trace_io_last_out_text: db " LAST OUT=",0
@@ -876,7 +918,9 @@ x86_bios_trace_history_cx_text: db " CX=",0
 x86_bios_trace_history_al_text: db " AL=",0
 x86_bios_trace_history_flags_text: db " FL=",0
 x86_bios_trace_history_opcode_text: db " OP=",0
-x86_bios_trace_history: BLOCK 16*9,0
+x86_bios_trace_history_ss_text: db " SS=",0
+x86_bios_trace_history_sp_text: db " SP=",0
+x86_bios_trace_history: BLOCK 16*13,0
 
 x86_bios_trace_remaining: dw 0,0
 x86_bios_trace_executed:  dw 0
