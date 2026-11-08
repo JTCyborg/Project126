@@ -112,11 +112,18 @@ p126_ngs_resident_main_loop:
         jr      z,p126_ngs_resident_main_loop
         ld      a,(p126_ngs_bios_image_ready)
         or      a
-        jr      z,p126_ngs_resident_main_loop
-        ; Consume the installation event before probing: one-shot transition.
+        jr      z,.check_bios_running
+        ; Consume the installation event before the first bounded CPU slice.
         xor     a
         ld      (p126_ngs_bios_image_ready),a
-        ; Begin BIOS bring-up only after both IMAGE_FINISH/readback gates.
+        call    x86_bios_startup_trace
+        jr      p126_ngs_resident_main_loop
+.check_bios_running:
+        ; Return to IPC dispatch after every 64 guest instructions. Long BIOS
+        ; POST loops must never monopolize the NeoGS resident command loop.
+        ld      a,(x86_bios_trace_active)
+        or      a
+        jr      z,p126_ngs_resident_main_loop
         call    x86_bios_startup_trace
         jr      p126_ngs_resident_main_loop
 
