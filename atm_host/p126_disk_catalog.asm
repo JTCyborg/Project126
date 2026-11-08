@@ -310,6 +310,113 @@ p126_catalog_wait_release:
         ret
 
 ; -------------------------------------------------------------------------
+; Forward one-key-at-a-time Spectrum matrix transitions to the virtual XT
+; keyboard. The BIOS is the consumer; the menu owns the matrix before load.
+; Make codes are sent on press and bit-7 break codes on release.
+; -------------------------------------------------------------------------
+p126_host_poll_x86_keyboard:
+        ld      a,(p126_catalog_bios_loaded)
+        or      a
+        ret     z
+        call    p126_x86_keyboard_scan
+        ld      (p126_x86_keyboard_current),a
+        ld      a,(p126_x86_keyboard_held)
+        ld      b,a
+        ld      a,(p126_x86_keyboard_current)
+        cp      b
+        ret     z
+
+        ; Release the previous key before publishing a different make code.
+        ld      a,b
+        or      a
+        jr      z,.keyboard_make
+        or      #80
+        call    p126_ipc_send_keyboard_event
+        ret     c
+        xor     a
+        ld      (p126_x86_keyboard_held),a
+
+.keyboard_make:
+        ld      a,(p126_x86_keyboard_current)
+        or      a
+        ret     z
+        call    p126_ipc_send_keyboard_event
+        ret     c
+        ld      a,(p126_x86_keyboard_current)
+        ld      (p126_x86_keyboard_held),a
+        ret
+
+; Return the first pressed key as an IBM XT set-1 scan code, or A=0.
+; Matrix rows are the standard Spectrum active-low rows, columns 0..4.
+p126_x86_keyboard_scan:
+        push    bc
+        push    de
+        push    hl
+        push    ix
+        ld      hl,p126_x86_keyboard_rows
+        ld      ix,p126_x86_keyboard_codes
+        ld      d,8
+.keyboard_row:
+        ld      a,(hl)
+        inc     hl
+        ld      b,a
+        ld      c,#FE
+        in      a,(c)
+        cpl
+        and     #1F
+        jr      nz,.keyboard_row_hit
+        ld      bc,5
+        add     ix,bc
+        dec     d
+        jr      nz,.keyboard_row
+        xor     a
+        jr      .keyboard_scan_done
+
+.keyboard_row_hit:
+        ld      e,0
+.keyboard_column:
+        srl     a
+        jr      c,.keyboard_column_found
+        inc     e
+        jr      .keyboard_column
+.keyboard_column_found:
+        push    de
+        ld      d,0
+        add     ix,de
+        ld      a,(ix+0)
+        pop     de
+
+.keyboard_scan_done:
+        pop     ix
+        pop     hl
+        pop     de
+        pop     bc
+        or      a
+        ret
+
+p126_x86_keyboard_rows:
+        db #FE,#FD,#FB,#F7,#EF,#DF,#BF,#7F
+p126_x86_keyboard_codes:
+        ; CAPS SHIFT, Z, X, C, V
+        db #2A,#2C,#2D,#2E,#2F
+        ; A, S, D, F, G
+        db #1E,#1F,#20,#21,#22
+        ; Q, W, E, R, T
+        db #10,#11,#12,#13,#14
+        ; 1, 2, 3, 4, 5
+        db #02,#03,#04,#05,#06
+        ; 0, 9, 8, 7, 6
+        db #0B,#0A,#09,#08,#07
+        ; P, O, I, U, Y
+        db #19,#18,#17,#16,#15
+        ; ENTER, L, K, J, H
+        db #1C,#26,#25,#24,#23
+        ; SPACE, SYMBOL SHIFT, M, N, B
+        db #39,#38,#32,#31,#30
+p126_x86_keyboard_held:    db 0
+p126_x86_keyboard_current: db 0
+
+; -------------------------------------------------------------------------
 ; TR-DOS directory read.
 ; Executed before p126_atm_video_init, using Project125's legacy mapping.
 ; C=5 reads exactly one 256-byte sector (B=1); eight calls stage the
