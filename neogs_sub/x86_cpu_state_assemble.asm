@@ -103,43 +103,14 @@ p126_ngs_resident_start:
         jr      c,p126_ngs_resident_ack_fail
 
 p126_ngs_resident_main_loop:
+        ; Guest CPU execution is deliberately driven only by an acknowledged
+        ; host NGS_FRAME poll. IMAGE_FINISH must return its FF ACK first.
         call    p126_ngs_ipc_dispatch_once
         jr      c,p126_ngs_resident_frame_error
         or      a
-        jr      z,.check_bios_ready
+        jr      z,p126_ngs_resident_main_loop
         ld      hl,p126_ngs_resident_frame_ok
         call    p126_ngs_resident_log
-.check_bios_ready:
-        ; CPU execution calls X86IO/page04, which delegates DMA/PIT ports to
-        ; X86DEV/page06 through the resident nested overlay gate. BIOS waits
-        ; until all three overlay images have passed installation checks.
-        ld      a,(p126_ngs_io_overlay_ready)
-        or      a
-        jr      z,p126_ngs_resident_main_loop
-        ld      a,(p126_ngs_alu_overlay_ready)
-        or      a
-        jr      z,p126_ngs_resident_main_loop
-        ld      a,(p126_ngs_dev_overlay_ready)
-        or      a
-        jr      z,p126_ngs_resident_main_loop
-        ld      a,(p126_ngs_exec_overlay_ready)
-        or      a
-        jr      z,p126_ngs_resident_main_loop
-        ld      a,(p126_ngs_bios_image_ready)
-        or      a
-        jr      z,.check_bios_running
-        ; Consume the installation event before the first bounded CPU slice.
-        xor     a
-        ld      (p126_ngs_bios_image_ready),a
-        call    x86_bios_startup_trace
-        jr      p126_ngs_resident_main_loop
-.check_bios_running:
-        ; Return to IPC dispatch after every 64 guest instructions. Long BIOS
-        ; POST loops must never monopolize the NeoGS resident command loop.
-        ld      a,(x86_bios_trace_active)
-        or      a
-        jr      z,p126_ngs_resident_main_loop
-        call    x86_bios_startup_trace
         jr      p126_ngs_resident_main_loop
 
 p126_ngs_resident_frame_error:
