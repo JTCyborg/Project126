@@ -750,9 +750,17 @@ p126_ngs_ipc_dispatch_once::
         ; Keep the startup trace visible, then stop NeoGS #EF chatter: ATM and
         ; NeoGS writes share the emulator's merged debug stream and otherwise
         ; interleave with the host's per-byte IPC/CRC diagnostics.
+        ; Advance BIOS execution on every host E1 poll while the bounded
+        ; startup runner is active. The first poll performs the reset-vector
+        ; step; later polls must continue the 64-instruction slices until the
+        ; guest reaches a stable screen or stops. Do not freeze the CPU after
+        ; changing BIOS_IMAGE_READY from 1 (installed) to 2 (running).
         ld      a,(p126_ngs_bios_image_ready)
-        cp      1
-        jr      nz,.ngs_frame_trace_ready
+        or      a
+        jr      z,.ngs_frame_trace_ready
+        ld      a,(x86_bios_trace_active)
+        or      a
+        jr      z,.ngs_frame_trace_ready
         call    x86_bios_startup_trace
         ld      a,2
         ld      (p126_ngs_bios_image_ready),a
