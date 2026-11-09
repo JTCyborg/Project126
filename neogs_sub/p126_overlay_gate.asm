@@ -355,38 +355,55 @@ p126_overlay_call_module:
 ; Startup regression: register ID05 on page08, verify lookup, unregister it,
 ; then prove the allocator can immediately reuse page08.
 p126_overlay_manager_selftest:
-        ; Stage-specific diagnostics identify which registry/allocator
-        ; transition failed on real hardware without halting anonymously.
+        ; Select a genuinely free page. Earlier startup steps may already
+        ; have registered X86VGA/X86VID on pages08h+, so hard-coding page08
+        ; makes this regression collide with a live overlay.
         ld      a,1
         ld      (p126_overlay_manager_test_stage),a
-        ld      a,5
-        ld      b,8
-        call    p126_overlay_register_dynamic
+        call    p126_overlay_allocate_page
         jr      c,.module_manager_test_bad
+        ld      (p126_overlay_manager_page),a
         ld      a,2
         ld      (p126_overlay_manager_test_stage),a
-        ld      a,(p126_overlay_module_page_table+5)
-        cp      8
-        jr      nz,.module_manager_test_bad
+        ld      a,(p126_overlay_manager_page)
+        call    p126_overlay_release_page
+        jr      c,.module_manager_test_bad
+
         ld      a,3
         ld      (p126_overlay_manager_test_stage),a
         ld      a,5
-        call    p126_overlay_unregister_dynamic
+        ld      b,(p126_overlay_manager_page)
+        call    p126_overlay_register_dynamic
         jr      c,.module_manager_test_bad
         ld      a,4
         ld      (p126_overlay_manager_test_stage),a
         ld      a,(p126_overlay_module_page_table+5)
+        ld      b,a
+        ld      a,(p126_overlay_manager_page)
+        cp      b
+        jr      nz,.module_manager_test_bad
+
+        ld      a,5
+        ld      (p126_overlay_manager_test_stage),a
+        ld      a,5
+        call    p126_overlay_unregister_dynamic
+        jr      c,.module_manager_test_bad
+        ld      a,(p126_overlay_module_page_table+5)
         or      a
         jr      nz,.module_manager_test_bad
-        ld      a,5
+
+        ; The just-unregistered physical page must be immediately reusable.
+        ld      a,6
         ld      (p126_overlay_manager_test_stage),a
         call    p126_overlay_allocate_page
         jr      c,.module_manager_test_bad
-        cp      8
+        ld      b,a
+        ld      a,(p126_overlay_manager_page)
+        cp      b
         jr      nz,.module_manager_test_bad
-        ld      a,6
+        ld      a,7
         ld      (p126_overlay_manager_test_stage),a
-        ld      a,8
+        ld      a,b
         call    p126_overlay_release_page
         jr      c,.module_manager_test_bad
         or      a
@@ -408,7 +425,10 @@ p126_overlay_manager_selftest:
         cp      5
         ld      hl,p126_overlay_manager_stage5_log
         jr      z,.module_manager_test_log
+        cp      6
         ld      hl,p126_overlay_manager_stage6_log
+        jr      z,.module_manager_test_log
+        ld      hl,p126_overlay_manager_stage7_log
 .module_manager_test_log:
         call    p126_ngs_resident_log
         ld      a,P126_STATUS_BAD_FRAME
@@ -886,6 +906,7 @@ p126_overlay_manager_stage2_log: db "[NGS] MODULE MANAGER FAIL STAGE 02 LOOKUP",
 p126_overlay_manager_stage3_log: db "[NGS] MODULE MANAGER FAIL STAGE 03 UNREGISTER",13,10,0
 p126_overlay_manager_stage4_log: db "[NGS] MODULE MANAGER FAIL STAGE 04 CLEAR",13,10,0
 p126_overlay_manager_stage5_log: db "[NGS] MODULE MANAGER FAIL STAGE 05 REUSE",13,10,0
-p126_overlay_manager_stage6_log: db "[NGS] MODULE MANAGER FAIL STAGE 06 RELEASE",13,10,0
+p126_overlay_manager_stage6_log: db "[NGS] MODULE MANAGER FAIL STAGE 06 REUSE",13,10,0
+p126_overlay_manager_stage7_log: db "[NGS] MODULE MANAGER FAIL STAGE 07 RELEASE",13,10,0
 p126_overlay_alloc_state:      defs 9,0
 p126_overlay_allocator_test_pages: defs 8,0
