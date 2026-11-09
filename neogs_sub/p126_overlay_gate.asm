@@ -360,13 +360,13 @@ p126_overlay_manager_selftest:
         ld      a,1
         ld      (p126_overlay_manager_test_stage),a
         call    p126_overlay_allocate_page
-        jr      c,.module_manager_test_bad
+        jp      c,.module_manager_test_bad
         ld      (p126_overlay_manager_page),a
         ld      a,2
         ld      (p126_overlay_manager_test_stage),a
         ld      a,(p126_overlay_manager_page)
         call    p126_overlay_release_page
-        jr      c,.module_manager_test_bad
+        jp      c,.module_manager_test_bad
 
         ; IDs05..0F are dynamic. Find a free registry slot instead of
         ; assuming ID05 is unused (X86VGA/X86VID may already own it).
@@ -382,7 +382,7 @@ p126_overlay_manager_selftest:
         dec     hl
         dec     c
         djnz    .module_manager_find_free_id
-        jr      .module_manager_test_bad
+        jp      .module_manager_test_bad
 .module_manager_free_id_found:
         ld      a,c
         ld      (p126_overlay_manager_test_id),a
@@ -392,7 +392,7 @@ p126_overlay_manager_selftest:
         ld      b,a
         ld      a,(p126_overlay_manager_test_id)
         call    p126_overlay_register_dynamic
-        jr      c,.module_manager_test_bad
+        jp      c,.module_manager_test_bad
 
         ; Verify the exact registry slot.
         ld      a,4
@@ -406,14 +406,14 @@ p126_overlay_manager_selftest:
         ld      b,a
         ld      a,(p126_overlay_manager_page)
         cp      b
-        jr      nz,.module_manager_test_bad
+        jp      nz,.module_manager_test_bad
 
         ; Unregister the test module and verify its slot is cleared.
         ld      a,5
         ld      (p126_overlay_manager_test_stage),a
         ld      a,(p126_overlay_manager_test_id)
         call    p126_overlay_unregister_dynamic
-        jr      c,.module_manager_test_bad
+        jp      c,.module_manager_test_bad
         ld      a,6
         ld      (p126_overlay_manager_test_stage),a
         ld      a,(p126_overlay_manager_test_id)
@@ -423,22 +423,22 @@ p126_overlay_manager_selftest:
         add     hl,de
         ld      a,(hl)
         or      a
-        jr      nz,.module_manager_test_bad
+        jp      nz,.module_manager_test_bad
 
         ; The just-unregistered physical page must be immediately reusable.
         ld      a,7
         ld      (p126_overlay_manager_test_stage),a
         call    p126_overlay_allocate_page
-        jr      c,.module_manager_test_bad
+        jp      c,.module_manager_test_bad
         ld      b,a
         ld      a,(p126_overlay_manager_page)
         cp      b
-        jr      nz,.module_manager_test_bad
+        jp      nz,.module_manager_test_bad
         ld      a,8
         ld      (p126_overlay_manager_test_stage),a
         ld      a,b
         call    p126_overlay_release_page
-        jr      c,.module_manager_test_bad
+        jp      c,.module_manager_test_bad
         or      a
         ret
 .module_manager_test_bad:
