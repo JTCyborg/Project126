@@ -692,11 +692,11 @@
  405+ 026D                      ; Payload[0] = stop reason, [1..2] = CS, [3..4] = IP.
  406+ 026D                      ; The remainder is zero-filled; the complete fixed-size DMA frame
  407+ 026D                      ; remains protected by the shared ABI CRC.
- 408+ 026D 3A 20 0F             ld      a,(x86_bios_trace_event_status)
+ 408+ 026D 3A 21 0F             ld      a,(x86_bios_trace_event_status)
  409+ 0270 32 12 C0             ld      (#C012),a
- 410+ 0273 2A 21 0F             ld      hl,(x86_bios_trace_event_cs)
+ 410+ 0273 2A 22 0F             ld      hl,(x86_bios_trace_event_cs)
  411+ 0276 22 13 C0             ld      (#C013),hl
- 412+ 0279 2A 23 0F             ld      hl,(x86_bios_trace_event_ip)
+ 412+ 0279 2A 24 0F             ld      hl,(x86_bios_trace_event_ip)
  413+ 027C 22 15 C0             ld      (#C015),hl
  414+ 027F
  415+ 027F C3 DE 02             jp      p126_ngs_ipc_dma_send_staged_frame
@@ -1046,11 +1046,10 @@
  758+ 04A4 3A 08 0B             ld      a,(p126_ngs_bios_image_ready)
  759+ 04A7 B7                   or      a
  760+ 04A8 28 0E                jr      z,.ngs_frame_trace_ready
-p126_ipc.asm(761): error: Label not found: x86_bios_trace_active
- 761+ 04AA 3A 00 00             ld      a,(x86_bios_trace_active)
+ 761+ 04AA 3A 20 0F             ld      a,(x86_bios_trace_active)
  762+ 04AD B7                   or      a
  763+ 04AE 28 08                jr      z,.ngs_frame_trace_ready
- 764+ 04B0 CD 26 0F             call    x86_bios_startup_trace
+ 764+ 04B0 CD 27 0F             call    x86_bios_startup_trace
  765+ 04B3 3E 02                ld      a,2
  766+ 04B5 32 08 0B             ld      (p126_ngs_bios_image_ready),a
  767+ 04B8              .ngs_frame_trace_ready:
@@ -2365,22 +2364,25 @@ p126_ipc.asm(761): error: Label not found: x86_bios_trace_active
   73  0F1D 3E A5                ld      a,#A5
   74  0F1F C9                   ret
   75  0F20
-  76  0F20 00           x86_bios_trace_event_status: db 0
-  77  0F21 00 00        x86_bios_trace_event_cs:     dw 0
-  78  0F23 00 00        x86_bios_trace_event_ip:     dw 0
-  79  0F25              x86_bios_image_diag:
-  80  0F25 C9                   ret
-  81  0F26
-  82  0F26              x86_bios_startup_trace:
+  76  0F20              ; Audit-only mirror of the resident BIOS trace scheduler state.
+  77  0F20              ; The production image gets this byte from x86_cpu_state.asm.
+  78  0F20 00           x86_bios_trace_active:      db 0
+  79  0F21 00           x86_bios_trace_event_status: db 0
+  80  0F22 00 00        x86_bios_trace_event_cs:     dw 0
+  81  0F24 00 00        x86_bios_trace_event_ip:     dw 0
+  82  0F26              x86_bios_image_diag:
   83  0F26 C9                   ret
   84  0F27
-  85  0F27                  DISPLAY "P126_NGS_IPC_START=", /H, p126_ngs_ipc_module_start
-  86  0F27                  DISPLAY "P126_NGS_IPC_END=", /H, p126_ngs_ipc_module_end
-  87  0F27                  DISPLAY "P126_NGS_IPC_SIZE=", /D, p126_ngs_ipc_module_end-p126_ngs_ipc_module_start
-  88  0F27
-  89  0F27                  ASSERT p126_ngs_ipc_module_end > p126_ngs_ipc_module_start
-  90  0F27                  ASSERT p126_ngs_ipc_module_end <= #10000
-  91  0F27
+  85  0F27              x86_bios_startup_trace:
+  86  0F27 C9                   ret
+  87  0F28
+  88  0F28                  DISPLAY "P126_NGS_IPC_START=", /H, p126_ngs_ipc_module_start
+  89  0F28                  DISPLAY "P126_NGS_IPC_END=", /H, p126_ngs_ipc_module_end
+  90  0F28                  DISPLAY "P126_NGS_IPC_SIZE=", /D, p126_ngs_ipc_module_end-p126_ngs_ipc_module_start
+  91  0F28
+  92  0F28                  ASSERT p126_ngs_ipc_module_end > p126_ngs_ipc_module_start
+  93  0F28                  ASSERT p126_ngs_ipc_module_end <= #10000
+  94  0F28
 # file closed: p126_ipc_assemble.asm
 
 Value    Label
@@ -2762,11 +2764,12 @@ Value    Label
 0x0019   P126_VIDEO_TEXT80_HEIGHT
 0x0050   P126_VIDEO_TEXT80_WIDTH
 0x0F1D   x86_alu_overlay_probe
-0x0F25 X x86_bios_image_diag
-0x0F26   x86_bios_startup_trace
-0x0F21   x86_bios_trace_event_cs
-0x0F23   x86_bios_trace_event_ip
-0x0F20   x86_bios_trace_event_status
+0x0F26 X x86_bios_image_diag
+0x0F27   x86_bios_startup_trace
+0x0F20   x86_bios_trace_active
+0x0F22   x86_bios_trace_event_cs
+0x0F24   x86_bios_trace_event_ip
+0x0F21   x86_bios_trace_event_status
 0x0F1C   x86_dev_reset
 0x0F16   x86_exec_overlay_probe
 0x0F1A   x86_io_keyboard_push_impl
