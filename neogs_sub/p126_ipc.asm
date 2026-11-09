@@ -732,42 +732,42 @@ p126_ngs_ipc_dispatch_once::
         jp      p126_ngs_ipc_dma_send_video_frame
 
 .p126_ngs_dispatch_ngs_frame:
-        ; The host may request the stop record immediately after IMAGE_FINISH.
-        ; BIOS execution requires SYSBIOS plus the X86IO, X86ALU and X86DEV overlays.
-        ld      a,(p126_ngs_io_overlay_ready)
-        or      a
-        jr      z,.ngs_frame_trace_ready
-        ld      a,(p126_ngs_alu_overlay_ready)
-        or      a
-        jr      z,.ngs_frame_trace_ready
-        ld      a,(p126_ngs_dev_overlay_ready)
-        or      a
-        jr      z,.ngs_frame_trace_ready
-        ld      a,(p126_ngs_exec_overlay_ready)
-        or      a
-        jr      z,.ngs_frame_trace_ready
-        ; 0=BIOS image not installed, 1=installed/not started, 2=running.
-        ; Keep the startup trace visible, then stop NeoGS #EF chatter: ATM and
-        ; NeoGS writes share the emulator's merged debug stream and otherwise
-        ; interleave with the host's per-byte IPC/CRC diagnostics.
-        ; Advance BIOS execution on every host E1 poll while the bounded
-        ; startup runner is active. The first poll performs the reset-vector
-        ; step; later polls must continue the 64-instruction slices until the
-        ; guest reaches a stable screen or stops. Do not freeze the CPU after
-        ; changing BIOS_IMAGE_READY from 1 (installed) to 2 (running).
-        ld      a,(p126_ngs_bios_image_ready)
-        or      a
-        jr      z,.ngs_frame_trace_ready
-        ld      a,(x86_bios_trace_active)
-        or      a
-        jr      z,.ngs_frame_trace_ready
-        call    x86_bios_startup_trace
-        ld      a,2
-        ld      (p126_ngs_bios_image_ready),a
-.ngs_frame_trace_ready:
+        ; Complete the requested response frame before advancing the guest CPU.
+        ; The host waits for the DMA END acknowledgement; running a BIOS slice
+        ; before that acknowledgement can exhaust the host's READY watchdog.
         ld      hl,p126_ngs_ipc_log_dma_rx_request
         call    p126_ngs_ipc_log
         call    p126_ngs_ipc_dma_send_test_frame
+        ret     c
+
+        ; BIOS execution requires SYSBIOS plus all mandatory CPU overlays.
+        ; Advance one bounded slice only after the host has received its frame
+        ; and the DMA transaction is fully acknowledged.
+        ld      a,(p126_ngs_io_overlay_ready)
+        or      a
+        ret     z
+        ld      a,(p126_ngs_alu_overlay_ready)
+        or      a
+        ret     z
+        ld      a,(p126_ngs_dev_overlay_ready)
+        or      a
+        ret     z
+        ld      a,(p126_ngs_exec_overlay_ready)
+        or      a
+        ret     z
+        ; 0=BIOS image not installed, 1=installed/not started, 2=running.
+        ; Keep the startup trace visible, then stop NeoGS #EF chatter.
+        ; Continue on every host E1 poll until the guest reaches a stable
+        ; screen or stops; do not freeze after the first 64-instruction slice.
+        ld      a,(p126_ngs_bios_image_ready)
+        or      a
+        ret     z
+        ld      a,(x86_bios_trace_active)
+        or      a
+        ret     z
+        call    x86_bios_startup_trace
+        ld      a,2
+        ld      (p126_ngs_bios_image_ready),a
         ret
 
 ; -------------------------------------------------------------------------
