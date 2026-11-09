@@ -762,9 +762,14 @@ p126_ngs_ipc_dispatch_once::
         ld      a,(p126_ngs_bios_image_ready)
         or      a
         ret     z
+        ; State 1 starts the BIOS on the first acknowledged host poll.
+        ; State 2 advances it only while the bounded execution trace is active.
+        cp      1
+        jr      z,.run_bios_slice
         ld      a,(x86_bios_trace_active)
         or      a
         ret     z
+.run_bios_slice:
         call    x86_bios_startup_trace
         ld      a,2
         ld      (p126_ngs_bios_image_ready),a
