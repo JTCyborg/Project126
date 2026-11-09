@@ -73,6 +73,9 @@ x86_alu_overlay_probe:
         ld      a,#A5
         ret
 
+; Audit-only mirror of the resident BIOS trace scheduler state.
+; The production image gets this byte from x86_cpu_state.asm.
+x86_bios_trace_active:      db 0
 x86_bios_trace_event_status: db 0
 x86_bios_trace_event_cs:     dw 0
 x86_bios_trace_event_ip:     dw 0
